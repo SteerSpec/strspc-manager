@@ -7,7 +7,14 @@ LDFLAGS := -s -w \
 	-X github.com/SteerSpec/strspc-manager/src/internal/version.Commit=$(COMMIT) \
 	-X github.com/SteerSpec/strspc-manager/src/internal/version.Date=$(DATE)
 
-.PHONY: build test lint fmt clean
+.PHONY: setup build test lint fmt clean
+
+setup:
+	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — install via: brew install pre-commit"; exit 1; }
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found — install via: brew install golangci-lint"; exit 1; }
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+	@echo "✓ pre-commit hooks installed"
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) ./src/cmd/strspc-manager
