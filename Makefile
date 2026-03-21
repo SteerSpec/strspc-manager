@@ -27,7 +27,7 @@ lint:
 
 fmt:
 	gofmt -w .
-	go run golang.org/x/tools/cmd/goimports@latest -w .
+	go run golang.org/x/tools/cmd/goimports@v0.43.0 -w .
 
 clean:
 	rm -f $(BINARY)
