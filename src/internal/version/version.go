@@ -6,6 +6,6 @@ var (
 	Version = "dev"
 	// Commit is the Git commit hash of this build.
 	Commit = "none"
-	// Date is the build timestamp of this build.
+	// Date is the timestamp when this binary was built.
 	Date = "unknown"
 )
