@@ -15,3 +15,8 @@ vendor/
 
 # OS
 .DS_Store
+
+# Beads/Dolt (added by bd init)
+.dolt/
+*.db
+.beads/.beads-credential-key
