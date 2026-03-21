@@ -9,16 +9,15 @@ linters:
     - unused
     - misspell
     - revive
+  settings:
+    revive:
+      rules:
+        - name: exported
 
 formatters:
   enable:
     - gofmt
     - goimports
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
 
 run:
   timeout: 5m
