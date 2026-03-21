@@ -10,8 +10,8 @@ LDFLAGS := -s -w \
 .PHONY: setup build test lint fmt clean
 
 setup:
-	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — install via: brew install pre-commit"; exit 1; }
-	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found — install via: brew install golangci-lint"; exit 1; }
+	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — see https://pre-commit.com/#installation"; exit 1; }
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not found — see https://golangci-lint.run/welcome/install/"; exit 1; }
 	pre-commit install
 	pre-commit install --hook-type commit-msg
 	@echo "✓ pre-commit hooks installed"
@@ -26,8 +26,7 @@ lint:
 	golangci-lint run
 
 fmt:
-	gofmt -w .
-	go run golang.org/x/tools/cmd/goimports@v0.43.0 -w .
+	golangci-lint fmt
 
 clean:
 	rm -f $(BINARY)

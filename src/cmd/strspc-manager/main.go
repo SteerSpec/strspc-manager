@@ -28,15 +28,12 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "strspc-manager",
 		Short: brand.Render("SteerSpec Rule Manager") + subtle.Render(" — core enforcement engine"),
-		Long: fmt.Sprintf(`
-%s
-
-  The SteerSpec Rule Manager validates, enforces, and evaluates
-  rules across your codebase.
-
-  %s  rule-lint, rule-diff, rule-eval, rule-resolve
-
-  %s  https://steerspec.dev`,
+		Long: fmt.Sprintf(
+			"%s\n\n"+
+				"\tThe SteerSpec Rule Manager validates, enforces, and evaluates\n"+
+				"\trules across your codebase.\n\n"+
+				"\t%s  rule-lint, rule-diff, rule-eval, rule-resolve\n\n"+
+				"\t%s  https://steerspec.dev",
 			brand.Render("SteerSpec Rule Manager"),
 			accent.Render("Modules:"),
 			subtle.Render("Docs:"),
@@ -54,13 +51,13 @@ func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
-		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Printf("%s %s\n",
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Printf("%s %s\n",
 				brand.Render("strspc-manager"),
 				accent.Render(version.Version),
 			)
-			fmt.Printf("  %s %s\n", subtle.Render("commit:"), version.Commit)
-			fmt.Printf("  %s %s\n", subtle.Render("built:"), version.Date)
+			cmd.Printf("  %s %s\n", subtle.Render("commit:"), version.Commit)
+			cmd.Printf("  %s %s\n", subtle.Render("built:"), version.Date)
 		},
 	}
 }

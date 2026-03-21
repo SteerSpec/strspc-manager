@@ -1,6 +1,8 @@
 module github.com/SteerSpec/strspc-manager
 
-go 1.26.1
+go 1.26
+
+toolchain go1.26.1
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
