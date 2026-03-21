@@ -1,9 +1,11 @@
 // Package version holds build-time version metadata.
 package version
 
-// Set via ldflags at build time.
 var (
+	// Version is the semantic version of this build.
 	Version = "dev"
-	Commit  = "none"
-	Date    = "unknown"
+	// Commit is the Git commit hash of this build.
+	Commit = "none"
+	// Date is the build timestamp of this build.
+	Date = "unknown"
 )
