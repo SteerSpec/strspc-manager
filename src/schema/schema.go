@@ -75,6 +75,11 @@ func New(opts ...Option) *Fetcher {
 	for _, opt := range opts {
 		opt(&cfg)
 	}
+	// Ensure Client is non-nil even if a caller passed nil via WithClient
+	// after the default was set (e.g. via a custom Option).
+	if cfg.Client == nil {
+		cfg.Client = &http.Client{Timeout: defaultTimeout}
+	}
 	if cfg.CacheDir == "" {
 		dir, err := os.UserCacheDir()
 		if err != nil {
@@ -113,9 +118,18 @@ func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) 
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
-	// Verify the resolved cache path stays within CacheDir.
+	// Verify the resolved cache path stays within CacheDir, resolving
+	// symlinks where possible so the check is not purely lexical.
 	base := filepath.Clean(f.cfg.CacheDir)
+	if phys, err := filepath.EvalSymlinks(base); err == nil {
+		base = phys
+	}
 	resolved := filepath.Clean(filepath.Join(base, filepath.FromSlash(clean)))
+	if parent := filepath.Dir(resolved); parent != base {
+		if phys, err := filepath.EvalSymlinks(parent); err == nil {
+			resolved = filepath.Join(phys, filepath.Base(resolved))
+		}
+	}
 	rel, err := filepath.Rel(base, resolved)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)

@@ -5,6 +5,7 @@ package ruleeval
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -58,15 +59,15 @@ type Evaluator struct {
 
 // New creates an Evaluator with the given provider and options.
 // Provider may be nil if StaticOnly is enabled; otherwise it is required.
-func New(provider Provider, opts ...Option) *Evaluator {
+func New(provider Provider, opts ...Option) (*Evaluator, error) {
 	cfg := Config{}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 	if provider == nil && !cfg.StaticOnly {
-		panic("ruleeval: provider is required when StaticOnly is not enabled")
+		return nil, fmt.Errorf("ruleeval: provider is required when StaticOnly is not enabled")
 	}
-	return &Evaluator{provider: provider, cfg: cfg}
+	return &Evaluator{provider: provider, cfg: cfg}, nil
 }
 
 // Evaluate checks code against the given rules and returns diagnostics.
