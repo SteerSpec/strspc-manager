@@ -11,6 +11,7 @@ import (
 // Format represents an output format.
 type Format string
 
+// Supported output formats.
 const (
 	FormatMarkdown Format = "markdown"
 )
