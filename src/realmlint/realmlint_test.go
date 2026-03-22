@@ -137,6 +137,48 @@ func TestRM005_NoDelegation(t *testing.T) {
 	}
 }
 
+func TestLint_NestedEntityFiles(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	rl := rulelint.New()
+	linter := New(WithRuleLinter(rl))
+	res := linter.Lint(dir)
+
+	for _, d := range res.Diagnostics {
+		if d.Severity == result.Error {
+			t.Errorf("unexpected error: %s %s: %s", d.Code, d.Path, d.Message)
+		}
+	}
+
+	// Should not report RM006 — TST and NESTED have distinct EUIDs.
+	if hasCode(res, "RM006") {
+		t.Error("unexpected RM006 diagnostic for valid nested entities")
+	}
+}
+
+func TestRM006_NestedDuplicateEUID(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "nested_duplicate_euid")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM006")
+	if res.OK() {
+		t.Error("expected errors for nested duplicate EUID")
+	}
+}
+
+func TestScanEntityFiles_SkipsSchemaDir(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	linter := New()
+	res := linter.Lint(dir)
+
+	// No diagnostic should reference any path inside _schema/.
+	for _, d := range res.Diagnostics {
+		if d.Severity == result.Error && filepath.Base(filepath.Dir(d.Path)) == "_schema" {
+			t.Errorf("unexpected diagnostic for _schema/ file: %s %s: %s", d.Code, d.Path, d.Message)
+		}
+	}
+}
+
 func TestRM006_DuplicateEUID(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "duplicate_euid")
 	linter := New()
