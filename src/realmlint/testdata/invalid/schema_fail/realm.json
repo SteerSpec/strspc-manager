@@ -1,0 +1,8 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "not_realm": {
+    "id": "dev.steerspec.test",
+    "title": "Missing realm key",
+    "version": "0.1.0"
+  }
+}

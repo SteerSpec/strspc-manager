@@ -59,9 +59,8 @@ func WithRuleLinter(l *rulelint.Linter) Option {
 type RealmLinter struct {
 	cfg Config
 
-	schemaOnce sync.Once
-	compiled   *jsonschema.Schema
-	schemaErr  error
+	schemaMu sync.Mutex
+	compiled *jsonschema.Schema
 }
 
 // New creates a RealmLinter with the given options.
@@ -122,27 +121,22 @@ func (l *RealmLinter) Lint(dir string) *result.Result {
 }
 
 // getCompiledSchema returns the cached compiled JSON Schema for realm.json.
+// Only successful compilations are cached; transient failures are retried
+// on subsequent calls. All access is synchronized via mutex.
 func (l *RealmLinter) getCompiledSchema() (*jsonschema.Schema, error) {
-	l.schemaOnce.Do(func() {
-		l.compiled, l.schemaErr = l.compileSchema()
-	})
+	l.schemaMu.Lock()
+	defer l.schemaMu.Unlock()
 
 	if l.compiled != nil {
 		return l.compiled, nil
 	}
 
-	// Retry on error so transient failures don't get cached forever.
-	if l.schemaErr != nil {
-		compiled, err := l.compileSchema()
-		if err != nil {
-			return nil, err
-		}
-		l.compiled = compiled
-		l.schemaErr = nil
-		return l.compiled, nil
+	compiled, err := l.compileSchema()
+	if err != nil {
+		return nil, err
 	}
-
-	return nil, fmt.Errorf("schema not initialized")
+	l.compiled = compiled
+	return l.compiled, nil
 }
 
 // compileSchema fetches and compiles the realm JSON Schema.
@@ -233,12 +227,26 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 func checkSchemaDir(dir string, res *result.Result) {
 	schemaDir := filepath.Join(dir, "_schema")
 	info, err := os.Stat(schemaDir)
-	if err != nil || !info.IsDir() {
+	if err != nil {
+		msg := fmt.Sprintf("failed to access _schema/ directory: %v", err)
+		if os.IsNotExist(err) {
+			msg = "_schema/ directory missing"
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM003",
 			Severity: result.Error,
-			Message:  "_schema/ directory missing",
+			Message:  msg,
+			Path:     schemaDir,
+		})
+		return
+	}
+	if !info.IsDir() {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM003",
+			Severity: result.Error,
+			Message:  "_schema/ exists but is not a directory",
 			Path:     schemaDir,
 		})
 		return
@@ -246,11 +254,15 @@ func checkSchemaDir(dir string, res *result.Result) {
 
 	entitySchemaPath := filepath.Join(schemaDir, "entity.v1.schema.json")
 	if _, err := os.Stat(entitySchemaPath); err != nil {
+		msg := "entity.v1.schema.json missing in _schema/"
+		if !os.IsNotExist(err) {
+			msg = fmt.Sprintf("unable to access entity.v1.schema.json in _schema/: %v", err)
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM004",
 			Severity: result.Error,
-			Message:  "entity.v1.schema.json missing in _schema/",
+			Message:  msg,
 			Path:     entitySchemaPath,
 		})
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/realmlint"
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/rulelint"
+	"github.com/SteerSpec/strspc-manager/src/schema"
 )
 
 var (
@@ -81,9 +82,14 @@ func newRealmLintCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := args[0]
-			rl := rulelint.New(rulelint.WithStrict(strict))
+			fetcher := schema.New()
+			rl := rulelint.New(
+				rulelint.WithStrict(strict),
+				rulelint.WithSchemaFetcher(fetcher),
+			)
 			linter := realmlint.New(
 				realmlint.WithStrict(strict),
+				realmlint.WithSchemaFetcher(fetcher),
 				realmlint.WithRuleLinter(rl),
 			)
 			res := linter.Lint(dir)

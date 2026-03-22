@@ -1,12 +1,16 @@
 package realmlint
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/rulelint"
+	"github.com/SteerSpec/strspc-manager/src/schema"
 )
 
 // testdataPath returns the absolute path to the testdata directory.
@@ -163,6 +167,81 @@ func TestRM007_BadRealmID(t *testing.T) {
 	}
 	if count != 2 {
 		t.Errorf("expected 2 RM007 diagnostics (ID + version), got %d", count)
+	}
+}
+
+// minimalRealmSchema is a minimal JSON Schema that validates realm.json structure.
+const minimalRealmSchema = `{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["realm"],"properties":{"realm":{"type":"object","required":["id","title","version"],"properties":{"id":{"type":"string"},"title":{"type":"string"},"version":{"type":"string"}}}}}`
+
+// newTestFetcher creates a schema.Fetcher backed by a test HTTP server
+// serving the minimal realm schema at realm/v1.json.
+func newTestFetcher(t *testing.T) *schema.Fetcher {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/realm/v1.json" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprint(w, minimalRealmSchema)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return schema.New(
+		schema.WithBaseURL(srv.URL),
+		schema.WithCacheDir(t.TempDir()),
+	)
+}
+
+// newBrokenFetcher creates a schema.Fetcher that always returns 500.
+func newBrokenFetcher(t *testing.T) *schema.Fetcher {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	return schema.New(
+		schema.WithBaseURL(srv.URL),
+		schema.WithCacheDir(t.TempDir()),
+	)
+}
+
+func TestRM002_SchemaValidationPass(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	fetcher := newTestFetcher(t)
+	linter := New(WithSchemaFetcher(fetcher))
+	res := linter.Lint(dir)
+
+	// Should not have RM002 error.
+	if hasCodeWithSeverity(res, "RM002", result.Error) {
+		for _, d := range res.Diagnostics {
+			if d.Code == "RM002" {
+				t.Errorf("unexpected RM002 error: %s", d.Message)
+			}
+		}
+	}
+}
+
+func TestRM002_SchemaValidationFail(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "schema_fail")
+	fetcher := newTestFetcher(t)
+	linter := New(WithSchemaFetcher(fetcher))
+	res := linter.Lint(dir)
+
+	// realm.json is missing the required "realm" key, so schema validation fails.
+	if !hasCodeWithSeverity(res, "RM002", result.Error) {
+		t.Error("expected RM002 error for schema validation failure")
+	}
+}
+
+func TestRM002_SchemaFetchError(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	fetcher := newBrokenFetcher(t)
+	linter := New(WithSchemaFetcher(fetcher))
+	res := linter.Lint(dir)
+
+	// Should have RM002 error from failed fetch.
+	if !hasCodeWithSeverity(res, "RM002", result.Error) {
+		t.Error("expected RM002 error when schema fetch fails")
 	}
 }
 
