@@ -103,8 +103,19 @@ func (f *Fetcher) Bootstrap(ctx context.Context) ([]byte, error) {
 // Fetch retrieves a schema by path (relative to BaseURL). It serves from
 // the local file cache if available, otherwise fetches via HTTP and caches.
 func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) {
+	// Reject backslashes to prevent Windows path traversal bypasses.
+	if strings.ContainsRune(schemaPath, '\\') {
+		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
+	}
+
 	clean := path.Clean(schemaPath)
 	if clean == "." || strings.HasPrefix(clean, "..") || path.IsAbs(clean) {
+		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
+	}
+
+	// Verify the resolved cache path stays within CacheDir.
+	resolved := filepath.Clean(filepath.Join(f.cfg.CacheDir, filepath.FromSlash(clean)))
+	if !strings.HasPrefix(resolved, filepath.Clean(f.cfg.CacheDir)+string(filepath.Separator)) {
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 

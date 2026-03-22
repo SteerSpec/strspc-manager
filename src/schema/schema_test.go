@@ -80,6 +80,8 @@ func TestFetch_InvalidPaths(t *testing.T) {
 		{"traversal", "../etc/passwd"},
 		{"nested traversal", "entity/../../etc/passwd"},
 		{"absolute", "/etc/passwd"},
+		{"backslash traversal", `entity\..\..\etc\passwd`},
+		{"backslash", `entity\v1.json`},
 	}
 
 	for _, tc := range cases {
