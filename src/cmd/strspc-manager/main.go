@@ -116,7 +116,7 @@ func printDiagnostics(cmd *cobra.Command, res *result.Result) {
 		default:
 			style = infoStyle
 		}
-		prefix := style.Render(fmt.Sprintf("[%s]", d.Severity))
+		prefix := style.Render("[" + d.Severity.String() + "]")
 		code := subtle.Render(d.Code)
 		msg := d.Message
 		if d.Path != "" {
