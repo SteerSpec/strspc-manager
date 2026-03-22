@@ -330,7 +330,7 @@ func assertHasCode(t *testing.T, res *result.Result, code string) {
 func assertNoCode(t *testing.T, res *result.Result, code string) {
 	t.Helper()
 	for _, d := range res.Diagnostics {
-		if d.Code == code && d.Severity == result.Error {
+		if d.Code == code {
 			t.Errorf("unexpected diagnostic %s: %s", code, d)
 		}
 	}

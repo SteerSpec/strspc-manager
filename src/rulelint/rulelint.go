@@ -98,6 +98,15 @@ func New(opts ...Option) *Linter {
 // and hash verification (RL011), use LintBytes which has access to raw JSON.
 func (l *Linter) LintFile(ef *entity.File) *result.Result {
 	res := &result.Result{}
+	if ef == nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RL001",
+			Severity: result.Error,
+			Message:  "entity file is nil",
+		})
+		return res
+	}
 	l.lintEntity(ef, res, "")
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -144,10 +153,9 @@ func (l *Linter) lintBytesInternal(data []byte) (*result.Result, *entity.File) {
 	return res, f
 }
 
-// dirEntry holds a parsed entity file and its raw bytes from a directory scan.
+// dirEntry holds a parsed entity file from a directory scan.
 type dirEntry struct {
 	path string
-	data []byte
 	file *entity.File
 }
 
@@ -212,7 +220,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 
 		if ef != nil {
 			collectRuleIDs(ef, fpath, allRuleIDs)
-			parsed = append(parsed, dirEntry{path: fpath, data: data, file: ef})
+			parsed = append(parsed, dirEntry{path: fpath, file: ef})
 		}
 	}
 
@@ -250,36 +258,56 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 	}
 }
 
-// getCompiledSchema returns the cached compiled JSON Schema, fetching and
-// compiling it on first call.
+// getCompiledSchema returns the cached compiled JSON Schema. On first
+// successful call the result is cached. Transient failures are retried
+// on subsequent calls so a temporary network issue doesn't permanently
+// disable RL002.
 func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
 	l.schemaOnce.Do(func() {
-		schemaPath := schema.EntityV1Path
-		if l.cfg.SchemaVersion != "" && l.cfg.SchemaVersion != "v1" {
-			schemaPath = "entity/" + l.cfg.SchemaVersion + ".json"
-		}
-
-		schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schemaPath)
-		if err != nil {
-			l.schemaErr = fmt.Errorf("fetching schema: %w", err)
-			return
-		}
-
-		sch, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
-		if err != nil {
-			l.schemaErr = fmt.Errorf("parsing schema: %w", err)
-			return
-		}
-
-		c := jsonschema.NewCompiler()
-		if err := c.AddResource("entity.schema.json", sch); err != nil {
-			l.schemaErr = fmt.Errorf("compiling schema: %w", err)
-			return
-		}
-
-		l.compiled, l.schemaErr = c.Compile("entity.schema.json")
+		l.compiled, l.schemaErr = l.compileSchema()
 	})
-	return l.compiled, l.schemaErr
+
+	if l.compiled != nil {
+		return l.compiled, nil
+	}
+
+	// Retry on error so transient failures don't get cached forever.
+	if l.schemaErr != nil {
+		compiled, err := l.compileSchema()
+		if err != nil {
+			return nil, err
+		}
+		l.compiled = compiled
+		l.schemaErr = nil
+		return l.compiled, nil
+	}
+
+	return nil, fmt.Errorf("schema not initialized")
+}
+
+// compileSchema fetches and compiles the entity JSON Schema.
+func (l *Linter) compileSchema() (*jsonschema.Schema, error) {
+	schemaPath := schema.EntityV1Path
+	if l.cfg.SchemaVersion != "" && l.cfg.SchemaVersion != "v1" {
+		schemaPath = "entity/" + l.cfg.SchemaVersion + ".json"
+	}
+
+	schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schemaPath)
+	if err != nil {
+		return nil, fmt.Errorf("fetching schema: %w", err)
+	}
+
+	sch, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
+	if err != nil {
+		return nil, fmt.Errorf("parsing schema: %w", err)
+	}
+
+	c := jsonschema.NewCompiler()
+	if err := c.AddResource("entity.schema.json", sch); err != nil {
+		return nil, fmt.Errorf("compiling schema: %w", err)
+	}
+
+	return c.Compile("entity.schema.json")
 }
 
 // RL002: JSON Schema validation.
