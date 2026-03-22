@@ -71,6 +71,10 @@ func TestIsEntitySchemaAnyVersion(t *testing.T) {
 		{"realm_url", "https://steerspec.dev/schemas/realm/v1.json", false},
 		{"random", "random.json", false},
 		{"empty", "", false},
+
+		// False positives prevented by stricter matching.
+		{"nested_entity_path", "https://example.com/entity/archive/v1.json", false},
+		{"empty_version_relative", "entity.v.schema.json", false},
 	}
 
 	for _, tt := range tests {
@@ -152,6 +156,24 @@ func TestValidateFileSchema(t *testing.T) {
 		}
 		if want := "sub-entity BAD"; !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q should contain %q", err, want)
+		}
+	})
+
+	t.Run("nil file", func(t *testing.T) {
+		err := ValidateFileSchema(nil, "v1")
+		if !errors.Is(err, ErrNotEntity) {
+			t.Errorf("expected ErrNotEntity for nil input, got: %v", err)
+		}
+	})
+
+	t.Run("empty version", func(t *testing.T) {
+		ef := &entity.File{
+			Schema: "entity.v1.schema.json",
+			Entity: entity.Entity{ID: "TST"},
+		}
+		err := ValidateFileSchema(ef, "")
+		if err == nil {
+			t.Fatal("expected error for empty version, got nil")
 		}
 	})
 

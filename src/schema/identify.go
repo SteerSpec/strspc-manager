@@ -39,13 +39,18 @@ func IsEntitySchemaAnyVersion(schema string) bool {
 		return false
 	}
 	base := path.Base(schema)
-	// Relative style: entity.v<N>.schema.json
+	// Relative style: entity.v<N>.schema.json (require at least one char after "v").
 	if strings.HasPrefix(base, "entity.v") && strings.HasSuffix(base, ".schema.json") {
-		return true
+		ver := strings.TrimPrefix(base, "entity.")
+		ver = strings.TrimSuffix(ver, ".schema.json")
+		if len(ver) > 1 { // "v" alone is not a valid version
+			return true
+		}
 	}
-	// URL style: v<N>.json under an /entity/ path segment
-	if strings.HasPrefix(base, "v") && strings.HasSuffix(base, ".json") &&
-		strings.Contains(schema, "/entity/") {
+	// URL style: v<N>.json directly under /entity/ path segment.
+	dir := path.Dir(schema)
+	if path.Base(dir) == "entity" &&
+		strings.HasPrefix(base, "v") && strings.HasSuffix(base, ".json") {
 		return true
 	}
 	return false
@@ -55,6 +60,12 @@ func IsEntitySchemaAnyVersion(schema string) bool {
 // the expected schema version. Returns [ErrNotEntity] if the schema
 // doesn't reference an entity schema at all.
 func ValidateFileSchema(ef *entity.File, version string) error {
+	if ef == nil {
+		return ErrNotEntity
+	}
+	if version == "" {
+		return errors.New("schema version must not be empty")
+	}
 	if !IsEntitySchema(ef.Schema, version) {
 		if !IsEntitySchemaAnyVersion(ef.Schema) {
 			return ErrNotEntity
