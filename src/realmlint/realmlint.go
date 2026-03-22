@@ -32,8 +32,8 @@ var (
 
 // Config holds options for the RealmLinter.
 type Config struct {
-	Strict        bool            // treat warnings as errors
-	SchemaFetcher *schema.Fetcher // fetcher for realm.v1.schema.json
+	Strict        bool             // treat warnings as errors
+	SchemaFetcher *schema.Fetcher  // fetcher for realm.v1.schema.json
 	RuleLinter    *rulelint.Linter // optional: delegate entity file checks
 }
 

@@ -67,7 +67,7 @@ func newVersionCmd() *cobra.Command {
 }
 
 var (
-	errStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
+	errStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444"))
 	warnStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B"))
 	infoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280"))
 )

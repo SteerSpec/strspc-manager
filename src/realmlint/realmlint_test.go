@@ -48,17 +48,6 @@ func assertHasCode(t *testing.T, res *result.Result, code string) {
 	}
 }
 
-// assertNoCode fails the test if the result contains the given code with
-// Error severity.
-func assertNoCode(t *testing.T, res *result.Result, code string) {
-	t.Helper()
-	for _, d := range res.Diagnostics {
-		if d.Code == code && d.Severity == result.Error {
-			t.Errorf("unexpected error diagnostic %s: %s", code, d.Message)
-		}
-	}
-}
-
 func TestLint_ValidRealm(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	linter := New()
