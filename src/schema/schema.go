@@ -104,7 +104,7 @@ func (f *Fetcher) Bootstrap(ctx context.Context) ([]byte, error) {
 // the local file cache if available, otherwise fetches via HTTP and caches.
 func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) {
 	clean := path.Clean(schemaPath)
-	if strings.HasPrefix(clean, "..") || path.IsAbs(clean) {
+	if clean == "." || strings.HasPrefix(clean, "..") || path.IsAbs(clean) {
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
@@ -191,9 +191,17 @@ func (f *Fetcher) writeCache(clean string, data []byte) error {
 		_ = os.Remove(tmpName)
 		return err
 	}
+	// On Windows, os.Rename fails if the destination already exists.
+	// Try a direct rename first, then remove and retry on failure.
 	if err := os.Rename(tmpName, cp); err != nil {
-		_ = os.Remove(tmpName)
-		return err
+		if removeErr := os.Remove(cp); removeErr != nil && !os.IsNotExist(removeErr) {
+			_ = os.Remove(tmpName)
+			return err
+		}
+		if err2 := os.Rename(tmpName, cp); err2 != nil {
+			_ = os.Remove(tmpName)
+			return err2
+		}
 	}
 	return nil
 }

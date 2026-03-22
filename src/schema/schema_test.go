@@ -65,6 +65,33 @@ func TestFetch_ServesFromCache(t *testing.T) {
 	}
 }
 
+func TestFetch_InvalidPaths(t *testing.T) {
+	f := schema.New(
+		schema.WithBaseURL("http://unused"),
+		schema.WithCacheDir(t.TempDir()),
+	)
+
+	cases := []struct {
+		name string
+		path string
+	}{
+		{"empty", ""},
+		{"dot", "."},
+		{"traversal", "../etc/passwd"},
+		{"nested traversal", "entity/../../etc/passwd"},
+		{"absolute", "/etc/passwd"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.Fetch(context.Background(), tc.path)
+			if err == nil {
+				t.Errorf("expected error for path %q, got nil", tc.path)
+			}
+		})
+	}
+}
+
 func TestFetch_HTTP404(t *testing.T) {
 	srv := httptest.NewServer(http.NotFoundHandler())
 	defer srv.Close()
