@@ -114,8 +114,10 @@ func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) 
 	}
 
 	// Verify the resolved cache path stays within CacheDir.
-	resolved := filepath.Clean(filepath.Join(f.cfg.CacheDir, filepath.FromSlash(clean)))
-	if !strings.HasPrefix(resolved, filepath.Clean(f.cfg.CacheDir)+string(filepath.Separator)) {
+	base := filepath.Clean(f.cfg.CacheDir)
+	resolved := filepath.Clean(filepath.Join(base, filepath.FromSlash(clean)))
+	rel, err := filepath.Rel(base, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
