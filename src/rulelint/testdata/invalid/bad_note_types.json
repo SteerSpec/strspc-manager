@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TST",
+    "title": "Bad Note Types"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "TST-001",
+      "revision": 0,
+      "state": "D",
+      "body": "First rule.",
+      "added_by": "test",
+      "added_at": "2026-03-22"
+    }
+  ],
+  "notes": [
+    {
+      "id": "TST-001/01",
+      "rule_ref": "TST-001",
+      "type": "invalid_type",
+      "content": "Bad note type.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "revision": 0
+    }
+  ]
+}

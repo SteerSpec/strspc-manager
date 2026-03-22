@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "RUL",
+    "title": "Rule Rules"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "RUL-001",
+      "revision": 1,
+      "state": "A",
+      "body": "Supersedes a valid rule.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "supersedes": "ENT-001"
+    },
+    {
+      "id": "RUL-002",
+      "revision": 0,
+      "state": "D",
+      "body": "Supersedes a missing rule.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "supersedes": "MISSING-001"
+    }
+  ],
+  "notes": []
+}
