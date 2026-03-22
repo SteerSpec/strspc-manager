@@ -1,0 +1,23 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ENT",
+    "title": "Entity Rules"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "ENT-001",
+      "revision": 0,
+      "state": "D",
+      "body": "First entity rule.",
+      "added_by": "test",
+      "added_at": "2026-03-22"
+    }
+  ],
+  "notes": []
+}
