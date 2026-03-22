@@ -1,6 +1,7 @@
 // Package realmlint validates Realm directory structure, including the
-// realm.json manifest, schema directory, entity file validation, and
-// EUID uniqueness across the Realm.
+// realm.json manifest, schema directory, and EUID uniqueness across
+// the Realm. Entity file validation is optionally delegated to a
+// rulelint.Linter when one is provided via WithRuleLinter.
 package realmlint
 
 import (
