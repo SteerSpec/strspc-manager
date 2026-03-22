@@ -168,12 +168,13 @@ func TestRM006_NestedDuplicateEUID(t *testing.T) {
 
 func TestScanEntityFiles_SkipsSchemaDir(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
-	linter := New()
+	rl := rulelint.New()
+	linter := New(WithRuleLinter(rl))
 	res := linter.Lint(dir)
 
 	// No diagnostic should reference any path inside _schema/.
 	for _, d := range res.Diagnostics {
-		if d.Severity == result.Error && filepath.Base(filepath.Dir(d.Path)) == "_schema" {
+		if filepath.Base(filepath.Dir(d.Path)) == "_schema" {
 			t.Errorf("unexpected diagnostic for _schema/ file: %s %s: %s", d.Code, d.Path, d.Message)
 		}
 	}

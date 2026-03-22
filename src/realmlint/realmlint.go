@@ -299,6 +299,15 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 		})
 	}
 
+	// relPath returns path relative to the Realm root for diagnostic messages.
+	relPath := func(path string) string {
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return filepath.Base(path)
+		}
+		return rel
+	}
+
 	// EUID → first file path where it was seen.
 	euids := make(map[string]string)
 
@@ -356,7 +365,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 					Module:   module,
 					Code:     "RM006",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, filepath.Base(firstPath)),
+					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, relPath(firstPath)),
 					Path:     path,
 				})
 			} else {
@@ -365,7 +374,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 		}
 
 		// Collect EUIDs from sub-entities too.
-		collectSubEntityEUIDs(ef, path, euids, res)
+		collectSubEntityEUIDs(ef, path, euids, relPath, res)
 
 		// RM005: Delegate entity file validation to rulelint.
 		if l.cfg.RuleLinter != nil {
@@ -387,7 +396,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 }
 
 // collectSubEntityEUIDs collects EUIDs from sub-entities and checks uniqueness.
-func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]string, res *result.Result) {
+func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]string, relPath func(string) string, res *result.Result) {
 	for i := range ef.SubEntities {
 		sub := &ef.SubEntities[i]
 		euid := sub.Entity.ID
@@ -397,14 +406,14 @@ func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]strin
 					Module:   module,
 					Code:     "RM006",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, filepath.Base(firstPath)),
+					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, relPath(firstPath)),
 					Path:     fpath,
 				})
 			} else {
 				euids[euid] = fpath
 			}
 		}
-		collectSubEntityEUIDs(sub, fpath, euids, res)
+		collectSubEntityEUIDs(sub, fpath, euids, relPath, res)
 	}
 }
 
