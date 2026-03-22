@@ -4,6 +4,7 @@
 package rulelint
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -106,6 +107,14 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 
 // LintBytes parses raw JSON and validates the entity file.
 func (l *Linter) LintBytes(data []byte) *result.Result {
+	res, _ := l.lintBytesInternal(data)
+	return res
+}
+
+// lintBytesInternal parses, validates, and returns both the result and the
+// parsed entity file (nil on parse failure) so callers like LintDir can
+// reuse the parsed struct without re-parsing.
+func (l *Linter) lintBytesInternal(data []byte) (*result.Result, *entity.File) {
 	res := &result.Result{}
 
 	// RL001: Valid JSON.
@@ -117,7 +126,7 @@ func (l *Linter) LintBytes(data []byte) *result.Result {
 			Severity: result.Error,
 			Message:  err.Error(),
 		})
-		return res
+		return res, nil
 	}
 
 	// RL002: JSON Schema validation (requires raw bytes).
@@ -132,7 +141,7 @@ func (l *Linter) LintBytes(data []byte) *result.Result {
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}
-	return res
+	return res, f
 }
 
 // dirEntry holds a parsed entity file and its raw bytes from a directory scan.
@@ -185,7 +194,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			continue
 		}
 
-		fileRes := l.LintBytes(data)
+		fileRes, ef := l.lintBytesInternal(data)
 		// Copy diagnostics, adding file path context.
 		for _, d := range fileRes.Diagnostics {
 			if d.Path == "" {
@@ -196,8 +205,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			res.Add(d)
 		}
 
-		ef, parseErr := entity.Parse(data)
-		if parseErr == nil {
+		if ef != nil {
 			collectRuleIDs(ef, fpath, allRuleIDs)
 			parsed = append(parsed, dirEntry{path: fpath, data: data, file: ef})
 		}
@@ -252,7 +260,7 @@ func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
 			return
 		}
 
-		sch, err := jsonschema.UnmarshalJSON(strings.NewReader(string(schemaData)))
+		sch, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaData))
 		if err != nil {
 			l.schemaErr = fmt.Errorf("parsing schema: %w", err)
 			return
@@ -349,7 +357,7 @@ func checkRuleIDs(ef *entity.File, res *result.Result, path string) {
 // RL005: Sequential rule numbers, no gaps, no duplicates.
 func checkSequential(ef *entity.File, res *result.Result, path string) {
 	seen := make(map[int]bool)
-	var nums []int
+	count := 0
 
 	for _, r := range ef.Rules {
 		m := ruleIDRe.FindStringSubmatch(r.ID)
@@ -370,15 +378,15 @@ func checkSequential(ef *entity.File, res *result.Result, path string) {
 			})
 		}
 		seen[n] = true
-		nums = append(nums, n)
+		count++
 	}
 
-	if len(nums) == 0 {
+	if count == 0 {
 		return
 	}
 
 	// Check for sequential numbering starting at 1.
-	for i := 1; i <= len(nums); i++ {
+	for i := 1; i <= count; i++ {
 		if !seen[i] {
 			res.Add(result.Diagnostic{
 				Module:   module,
