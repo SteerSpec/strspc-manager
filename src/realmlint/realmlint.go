@@ -296,6 +296,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 			Code:     "RM005",
 			Severity: result.Info,
 			Message:  "entity file validation skipped: no rule linter configured",
+			Path:     dir,
 		})
 	}
 
