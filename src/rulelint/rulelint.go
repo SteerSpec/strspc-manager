@@ -189,9 +189,14 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			continue
 		}
 
-		// Skip non-entity files (e.g. realm.json).
+		// Skip valid JSON that isn't an entity file (e.g. realm.json).
+		// Invalid JSON is still linted so RL001 gets reported.
 		if !isEntityJSON(data) {
-			continue
+			// Check if it's valid JSON but not an entity file → skip silently.
+			if json.Valid(data) {
+				continue
+			}
+			// Invalid JSON → report RL001.
 		}
 
 		fileRes, ef := l.lintBytesInternal(data)
@@ -357,7 +362,7 @@ func checkRuleIDs(ef *entity.File, res *result.Result, path string) {
 // RL005: Sequential rule numbers, no gaps, no duplicates.
 func checkSequential(ef *entity.File, res *result.Result, path string) {
 	seen := make(map[int]bool)
-	count := 0
+	maxNum := 0
 
 	for _, r := range ef.Rules {
 		m := ruleIDRe.FindStringSubmatch(r.ID)
@@ -378,15 +383,17 @@ func checkSequential(ef *entity.File, res *result.Result, path string) {
 			})
 		}
 		seen[n] = true
-		count++
+		if n > maxNum {
+			maxNum = n
+		}
 	}
 
-	if count == 0 {
+	if maxNum == 0 {
 		return
 	}
 
-	// Check for sequential numbering starting at 1.
-	for i := 1; i <= count; i++ {
+	// Check for sequential numbering from 1 to max.
+	for i := 1; i <= maxNum; i++ {
 		if !seen[i] {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -493,6 +500,8 @@ func (l *Linter) checkHash(ef *entity.File, data []byte, res *result.Result) {
 		return // hash is optional
 	}
 
+	hashPath := ef.Entity.ID + "/rule_set.hash"
+
 	expected := *ef.RuleSet.Hash
 	if !hashRe.MatchString(expected) {
 		res.Add(result.Diagnostic{
@@ -500,6 +509,7 @@ func (l *Linter) checkHash(ef *entity.File, data []byte, res *result.Result) {
 			Code:     "RL011",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("hash format invalid: %q (expected blake3:<64 hex>)", expected),
+			Path:     hashPath,
 		})
 		return
 	}
@@ -511,6 +521,7 @@ func (l *Linter) checkHash(ef *entity.File, data []byte, res *result.Result) {
 			Code:     "RL011",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("computing hash: %s", err),
+			Path:     hashPath,
 		})
 		return
 	}
@@ -521,6 +532,7 @@ func (l *Linter) checkHash(ef *entity.File, data []byte, res *result.Result) {
 			Code:     "RL011",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("hash mismatch: computed %s, expected %s", computed, expected),
+			Path:     hashPath,
 		})
 	}
 }

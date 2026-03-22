@@ -1,6 +1,9 @@
 package rulelint
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,6 +11,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
+	"github.com/SteerSpec/strspc-manager/src/schema"
 )
 
 func testdataPath(elem ...string) string {
@@ -84,6 +88,31 @@ func TestRL005_BadSequence(t *testing.T) {
 	assertHasCode(t, res, "RL005")
 }
 
+func TestRL005_LargeGap(t *testing.T) {
+	// Rules 001 and 010 — should detect missing 002-009.
+	ef := &entity.File{
+		Entity:  entity.Entity{ID: "TST", Title: "Test"},
+		RuleSet: entity.RuleSet{Version: "1.0.0", Timestamp: "2026-01-01"},
+		Rules: []entity.Rule{
+			{ID: "TST-001", State: "D", Body: "r1", AddedBy: "t", AddedAt: "2026-01-01"},
+			{ID: "TST-010", State: "D", Body: "r10", AddedBy: "t", AddedAt: "2026-01-01"},
+		},
+	}
+	l := New()
+	res := l.LintFile(ef)
+
+	// Should report 8 missing numbers (002-009).
+	count := 0
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL005" {
+			count++
+		}
+	}
+	if count != 8 {
+		t.Errorf("expected 8 RL005 diagnostics for gaps 002-009, got %d", count)
+	}
+}
+
 func TestRL006_BadStates(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_states.json"))
 	l := New()
@@ -131,6 +160,21 @@ func TestRL011_ValidHash(t *testing.T) {
 	l := New()
 	res := l.LintBytes(data)
 	assertNoCode(t, res, "RL011")
+}
+
+func TestRL011_HasPath(t *testing.T) {
+	data := mustReadFile(t, testdataPath("invalid", "bad_hash.json"))
+	l := New()
+	res := l.LintBytes(data)
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL011" {
+			if d.Path == "" {
+				t.Error("RL011 diagnostic should have a Path")
+			}
+			return
+		}
+	}
+	t.Error("expected RL011 diagnostic")
 }
 
 func TestRL013_BadSemver(t *testing.T) {
@@ -186,6 +230,89 @@ func TestStrictMode(t *testing.T) {
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Warning {
 			t.Errorf("strict mode should have no warnings, got: %s", d)
+		}
+	}
+}
+
+// --- RL002 Schema validation tests ---
+
+// minimalEntitySchema is a minimal JSON Schema that requires an "entity" object
+// with a string "id" field.
+const minimalEntitySchema = `{
+  "type": "object",
+  "required": ["entity"],
+  "properties": {
+    "entity": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" }
+      }
+    }
+  }
+}`
+
+func newTestFetcher(t *testing.T, schemaBody string, statusCode int) *schema.Fetcher {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+		fmt.Fprint(w, schemaBody)
+	}))
+	t.Cleanup(srv.Close)
+
+	cacheDir := t.TempDir()
+	return schema.New(
+		schema.WithBaseURL(srv.URL),
+		schema.WithCacheDir(cacheDir),
+	)
+}
+
+func TestRL002_SchemaValidationPass(t *testing.T) {
+	fetcher := newTestFetcher(t, minimalEntitySchema, http.StatusOK)
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New(WithSchemaFetcher(fetcher))
+	res := l.LintBytes(data)
+	assertNoCode(t, res, "RL002")
+}
+
+func TestRL002_SchemaValidationFail(t *testing.T) {
+	// Schema requires "entity.id" to be a number — our valid file has a string.
+	strictSchema := `{
+		"type": "object",
+		"required": ["entity"],
+		"properties": {
+			"entity": {
+				"type": "object",
+				"required": ["id"],
+				"properties": {
+					"id": { "type": "number" }
+				}
+			}
+		}
+	}`
+	fetcher := newTestFetcher(t, strictSchema, http.StatusOK)
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New(WithSchemaFetcher(fetcher))
+	res := l.LintBytes(data)
+	assertHasCode(t, res, "RL002")
+}
+
+func TestRL002_SchemaFetchError(t *testing.T) {
+	fetcher := newTestFetcher(t, "not found", http.StatusNotFound)
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New(WithSchemaFetcher(fetcher))
+	res := l.LintBytes(data)
+	assertHasCode(t, res, "RL002")
+}
+
+func TestRL002_NoFetcherSkips(t *testing.T) {
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New() // no fetcher
+	res := l.LintBytes(data)
+	// Should have Info-level RL002 (skipped), not Error.
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL002" && d.Severity == result.Error {
+			t.Errorf("RL002 should be Info when no fetcher, got Error: %s", d)
 		}
 	}
 }
