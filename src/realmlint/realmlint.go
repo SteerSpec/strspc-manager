@@ -201,8 +201,9 @@ func (l *RealmLinter) checkRealmSchema(data []byte, realmPath string, res *resul
 }
 
 // RM007: Validate realm ID format (RLM-008) and semver version.
+// Empty values are skipped — schema validation (RM002) catches missing fields.
 func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result) {
-	if !realmIDRe.MatchString(rf.Realm.ID) {
+	if rf.Realm.ID != "" && !realmIDRe.MatchString(rf.Realm.ID) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM007",
@@ -212,7 +213,7 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 		})
 	}
 
-	if !semverRe.MatchString(rf.Realm.Version) {
+	if rf.Realm.Version != "" && !semverRe.MatchString(rf.Realm.Version) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM007",
