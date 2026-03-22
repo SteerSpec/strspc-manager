@@ -1,0 +1,6 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TEST"
+  }
+}
