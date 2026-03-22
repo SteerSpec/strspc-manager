@@ -256,7 +256,7 @@ func newTestFetcher(t *testing.T, schemaBody string, statusCode int) *schema.Fet
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(statusCode)
-		fmt.Fprint(w, schemaBody)
+		_, _ = fmt.Fprint(w, schemaBody)
 	}))
 	t.Cleanup(srv.Close)
 
