@@ -33,7 +33,7 @@ var (
 // Config holds options for the RealmLinter.
 type Config struct {
 	Strict        bool             // treat warnings as errors
-	SchemaFetcher *schema.Fetcher  // fetcher for realm.v1.schema.json
+	SchemaFetcher *schema.Fetcher  // fetcher for the Realm v1 schema (realm/v1.json)
 	RuleLinter    *rulelint.Linter // optional: delegate entity file checks
 }
 
@@ -201,9 +201,16 @@ func (l *RealmLinter) checkRealmSchema(data []byte, realmPath string, res *resul
 }
 
 // RM007: Validate realm ID format (RLM-008) and semver version.
-// Empty values are skipped — schema validation (RM002) catches missing fields.
 func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result) {
-	if rf.Realm.ID != "" && !realmIDRe.MatchString(rf.Realm.ID) {
+	if rf.Realm.ID == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM007",
+			Severity: result.Error,
+			Message:  "realm ID is required",
+			Path:     realmPath,
+		})
+	} else if !realmIDRe.MatchString(rf.Realm.ID) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM007",
@@ -213,7 +220,15 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 		})
 	}
 
-	if rf.Realm.Version != "" && !semverRe.MatchString(rf.Realm.Version) {
+	if rf.Realm.Version == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM007",
+			Severity: result.Error,
+			Message:  "realm version is required",
+			Path:     realmPath,
+		})
+	} else if !semverRe.MatchString(rf.Realm.Version) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM007",
