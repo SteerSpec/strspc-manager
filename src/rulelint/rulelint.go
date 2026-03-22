@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -77,6 +78,10 @@ func WithSchemaFetcher(f *schema.Fetcher) Option {
 // Linter validates entity files against schema and business rules.
 type Linter struct {
 	cfg Config
+
+	schemaOnce sync.Once
+	compiled   *jsonschema.Schema
+	schemaErr  error
 }
 
 // New creates a Linter with the given options.
@@ -130,6 +135,13 @@ func (l *Linter) LintBytes(data []byte) *result.Result {
 	return res
 }
 
+// dirEntry holds a parsed entity file and its raw bytes from a directory scan.
+type dirEntry struct {
+	path string
+	data []byte
+	file *entity.File
+}
+
 // LintDir validates all entity JSON files in a directory and runs cross-file
 // reference checks (RL012).
 func (l *Linter) LintDir(dir string) *result.Result {
@@ -139,7 +151,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
-			Code:     "RL001",
+			Code:     "RL000",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("reading directory: %s", err),
 			Path:     dir,
@@ -147,7 +159,8 @@ func (l *Linter) LintDir(dir string) *result.Result {
 		return res
 	}
 
-	// Collect all entity files and their rule IDs for cross-ref checks.
+	// First pass: lint each file and collect parsed entities.
+	var parsed []dirEntry
 	allRuleIDs := make(map[string]string) // ruleID → file path
 
 	for _, entry := range entries {
@@ -159,7 +172,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 		if readErr != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RL001",
+				Code:     "RL000",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("reading file: %s", readErr),
 				Path:     fpath,
@@ -183,28 +196,16 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			res.Add(d)
 		}
 
-		// Parse again for cross-ref collection (cheap, already validated).
 		ef, parseErr := entity.Parse(data)
 		if parseErr == nil {
 			collectRuleIDs(ef, fpath, allRuleIDs)
+			parsed = append(parsed, dirEntry{path: fpath, data: data, file: ef})
 		}
 	}
 
-	// RL012: Cross-file supersedes/relation references.
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		fpath := filepath.Join(dir, entry.Name())
-		data, _ := os.ReadFile(fpath)
-		if !isEntityJSON(data) {
-			continue
-		}
-		ef, parseErr := entity.Parse(data)
-		if parseErr != nil {
-			continue
-		}
-		checkCrossRefs(ef, fpath, allRuleIDs, res, l.cfg.Strict)
+	// Second pass: cross-file supersedes/relation references (RL012).
+	for _, de := range parsed {
+		checkCrossRefs(de.file, de.path, allRuleIDs, res, l.cfg.Strict)
 	}
 
 	return res
@@ -230,9 +231,42 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 
 	for i := range ef.SubEntities {
 		sub := &ef.SubEntities[i]
-		checkSubEntityParent(sub, ef.Entity.ID, res, path)
+		subPath := path + " > " + sub.Entity.ID
+		checkSubEntityParent(sub, ef.Entity.ID, res, subPath)
 		l.lintEntity(sub, res, path)
 	}
+}
+
+// getCompiledSchema returns the cached compiled JSON Schema, fetching and
+// compiling it on first call.
+func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
+	l.schemaOnce.Do(func() {
+		schemaPath := schema.EntityV1Path
+		if l.cfg.SchemaVersion != "" && l.cfg.SchemaVersion != "v1" {
+			schemaPath = "entity/" + l.cfg.SchemaVersion + ".json"
+		}
+
+		schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schemaPath)
+		if err != nil {
+			l.schemaErr = fmt.Errorf("fetching schema: %w", err)
+			return
+		}
+
+		sch, err := jsonschema.UnmarshalJSON(strings.NewReader(string(schemaData)))
+		if err != nil {
+			l.schemaErr = fmt.Errorf("parsing schema: %w", err)
+			return
+		}
+
+		c := jsonschema.NewCompiler()
+		if err := c.AddResource("entity.schema.json", sch); err != nil {
+			l.schemaErr = fmt.Errorf("compiling schema: %w", err)
+			return
+		}
+
+		l.compiled, l.schemaErr = c.Compile("entity.schema.json")
+	})
+	return l.compiled, l.schemaErr
 }
 
 // RL002: JSON Schema validation.
@@ -247,51 +281,13 @@ func (l *Linter) checkSchema(data []byte, res *result.Result) {
 		return
 	}
 
-	schemaPath := schema.EntityV1Path
-	if l.cfg.SchemaVersion != "" && l.cfg.SchemaVersion != "v1" {
-		schemaPath = "entity/" + l.cfg.SchemaVersion + ".json"
-	}
-
-	schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schemaPath)
+	compiled, err := l.getCompiledSchema()
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RL002",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("fetching schema: %s", err),
-		})
-		return
-	}
-
-	sch, err := jsonschema.UnmarshalJSON(strings.NewReader(string(schemaData)))
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("parsing schema: %s", err),
-		})
-		return
-	}
-
-	c := jsonschema.NewCompiler()
-	if err := c.AddResource("entity.schema.json", sch); err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("compiling schema: %s", err),
-		})
-		return
-	}
-
-	compiled, err := c.Compile("entity.schema.json")
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("compiling schema: %s", err),
+			Message:  err.Error(),
 		})
 		return
 	}
@@ -411,14 +407,14 @@ func checkStates(ef *entity.File, res *result.Result, path string) {
 }
 
 // RL007: Sub-entity parent matches containing entity ID.
-func checkSubEntityParent(sub *entity.File, parentID string, res *result.Result, path string) {
+func checkSubEntityParent(sub *entity.File, parentID string, res *result.Result, subPath string) {
 	if sub.Entity.Parent != parentID {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RL007",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("sub-entity %q parent %q does not match containing entity %q", sub.Entity.ID, sub.Entity.Parent, parentID),
-			Path:     path,
+			Path:     subPath,
 		})
 	}
 }
@@ -555,6 +551,10 @@ func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string,
 				Path:     fpath,
 			})
 		}
+	}
+
+	for i := range ef.SubEntities {
+		checkCrossRefs(&ef.SubEntities[i], fpath, allRuleIDs, res, strict)
 	}
 }
 
