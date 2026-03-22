@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/SteerSpec/strspc-manager/compare/v1.3.0...v1.4.0) (2026-03-22)
+
+
+### Features
+
+* add Source field to RealmDep for dependency resolution ([7c419fc](https://github.com/SteerSpec/strspc-manager/commit/7c419fc759d5d74b811c465039b541f9b5e38bdd))
+
 ## [1.3.0](https://github.com/SteerSpec/strspc-manager/compare/v1.2.0...v1.3.0) (2026-03-22)
 
 
