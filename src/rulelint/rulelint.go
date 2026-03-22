@@ -101,7 +101,7 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 	if ef == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
-			Code:     "RL001",
+			Code:     "RL000",
 			Severity: result.Error,
 			Message:  "entity file is nil",
 		})
@@ -197,14 +197,10 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			continue
 		}
 
-		// Skip valid JSON that isn't an entity file (e.g. realm.json).
-		// Invalid JSON is still linted so RL001 gets reported.
-		if !isEntityJSON(data) {
-			// Check if it's valid JSON but not an entity file → skip silently.
-			if json.Valid(data) {
-				continue
-			}
-			// Invalid JSON → report RL001.
+		// Skip known non-entity files (e.g. realm.json).
+		// All other .json files are linted so violations surface.
+		if isRealmJSON(data) {
+			continue
 		}
 
 		fileRes, ef := l.lintBytesInternal(data)
@@ -616,15 +612,15 @@ func collectRuleIDs(ef *entity.File, fpath string, out map[string]string) {
 	}
 }
 
-// isEntityJSON does a quick check if the JSON has an "entity" top-level key.
-func isEntityJSON(data []byte) bool {
+// isRealmJSON detects Realm manifest files by checking for a "realm" top-level key.
+func isRealmJSON(data []byte) bool {
 	var probe struct {
-		Entity *json.RawMessage `json:"entity"`
+		Realm *json.RawMessage `json:"realm"`
 	}
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return false
 	}
-	return probe.Entity != nil
+	return probe.Realm != nil
 }
 
 // promoteWarnings promotes all Warning-severity diagnostics to Error.
