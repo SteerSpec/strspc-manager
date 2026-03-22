@@ -179,9 +179,12 @@ func (f *Fetcher) localPath(clean string) string {
 func (f *Fetcher) readCache(clean string) ([]byte, error) {
 	cp := f.localPath(clean)
 
-	fi, err := os.Stat(cp)
+	fi, err := os.Lstat(cp)
 	if err != nil {
 		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("cached schema is not a regular file: %s", cp)
 	}
 	if fi.Size() > maxSchemaSize {
 		return nil, fmt.Errorf("cached schema too large: %d bytes", fi.Size())
