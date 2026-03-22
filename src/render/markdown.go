@@ -114,6 +114,9 @@ func (r *MarkdownRenderer) parseTemplate() (*template.Template, error) {
 
 	funcMap := template.FuncMap{
 		"heading": func(depth int) string {
+			if depth < 1 {
+				depth = 1
+			}
 			if depth > 6 {
 				depth = 6
 			}
