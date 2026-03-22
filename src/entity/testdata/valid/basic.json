@@ -1,0 +1,71 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NTE",
+    "title": "Note",
+    "description": "A supplemental explanation attached to a specific rule, providing clarification, context, or elaboration."
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-03-21T00:00:00Z",
+    "hash": "blake3:8ed20e9f5149db3aaffcb28607c6a0806bd6cfaaeecfefae2fc2be2c18c2e9ea"
+  },
+  "rules": [
+    {
+      "id": "NTE-001",
+      "revision": 0,
+      "state": "D",
+      "body": "IS associated with a single rule and must reference the rule's identifier explicitly (e.g., [<rule id>/<incremental note id (OOn)]).",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    },
+    {
+      "id": "NTE-002",
+      "revision": 0,
+      "state": "D",
+      "body": "A Note provides clarification, context, or elaboration and must not modify the rule it supplements.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    },
+    {
+      "id": "NTE-003",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST be stored in the same directory as the entity and rule it references.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    },
+    {
+      "id": "NTE-004",
+      "revision": 0,
+      "state": "D",
+      "body": "MAY include: Business rationale, Examples or use cases, Historical context, Clarifications of terminology.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    },
+    {
+      "id": "NTE-005",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST be versioned and maintained alongside the rules they support.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    },
+    {
+      "id": "NTE-006",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST be concise but may span multiple paragraphs if needed for clarity.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-07",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [],
+  "notes": []
+}

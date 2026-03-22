@@ -1,0 +1,153 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "RLM",
+    "title": "Realm",
+    "description": "A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent. The organizational boundary for rule authoring."
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": "blake3:61ca57c674128f213c08d0c8c6ac2157877d439da65303e65a1e2fe3ff78c29e"
+  },
+  "rules": [
+    {
+      "id": "RLM-001",
+      "revision": 0,
+      "state": "D",
+      "body": "IS a namespace in which Entity Unique Identifiers are unique.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-002",
+      "revision": 0,
+      "state": "D",
+      "body": "HAS a Rule Identifier Format configuration.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-003",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST contain a `_schema/` directory with schema files used to validate its entities.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-004",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST contain a `realm.json` manifest at its root.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-005",
+      "revision": 0,
+      "state": "D",
+      "body": "MAY declare dependencies on other Realms, importing their rules as read-only references.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-006",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST NOT define Entity Unique Identifiers that collide with any Realm it depends on.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-007",
+      "revision": 0,
+      "state": "D",
+      "body": "An Entity MUST reside in the directory tree of exactly one Realm.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-008",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST have an identifier that follows reverse domain notation (e.g., `com.example.realm`) to ensure global uniqueness across organizations.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    },
+    {
+      "id": "RLM-009",
+      "revision": 0,
+      "state": "D",
+      "body": "Cross-realm entity references MUST use the qualified form `<realm-id>:<EUID>`. Within the same Realm, the short form (EUID only) is sufficient.",
+      "added_by": "@pleberre",
+      "added_at": "2026-03-22",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "RLMMNFST",
+        "title": "Realm Manifest",
+        "description": "The realm.json file that declares a Realm's identity, version, and dependencies.",
+        "parent": "RLM"
+      },
+      "rule_set": {
+        "version": "0.1.0",
+        "timestamp": "2026-03-22T00:00:00Z",
+        "hash": null
+      },
+      "rules": [
+        {
+          "id": "RLMMNFST-001",
+          "revision": 0,
+          "state": "D",
+          "body": "IS a JSON file named `realm.json` at the root of a Realm directory.",
+          "added_by": "@pleberre",
+          "added_at": "2026-03-22",
+          "supersedes": null
+        },
+        {
+          "id": "RLMMNFST-002",
+          "revision": 0,
+          "state": "D",
+          "body": "MUST declare the Realm's identifier, title, and version.",
+          "added_by": "@pleberre",
+          "added_at": "2026-03-22",
+          "supersedes": null
+        },
+        {
+          "id": "RLMMNFST-003",
+          "revision": 0,
+          "state": "D",
+          "body": "MAY declare dependencies on other Realms with pinned version references.",
+          "added_by": "@pleberre",
+          "added_at": "2026-03-22",
+          "supersedes": null
+        },
+        {
+          "id": "RLMMNFST-004",
+          "revision": 0,
+          "state": "D",
+          "body": "MAY override the Rule Identifier Format defaults for the Realm.",
+          "added_by": "@pleberre",
+          "added_at": "2026-03-22",
+          "supersedes": null
+        }
+      ],
+      "sub_entities": [],
+      "notes": []
+    }
+  ],
+  "notes": []
+}
