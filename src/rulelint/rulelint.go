@@ -23,11 +23,11 @@ import (
 const module = "rule-lint"
 
 var (
-	euidRe    = regexp.MustCompile(`^[a-zA-Z0-9]{3,18}$`)
-	ruleIDRe  = regexp.MustCompile(`^([A-Za-z0-9]+)-(\d{3})$`)
-	noteIDRe  = regexp.MustCompile(`^([A-Za-z0-9]+-\d{3})/(\d{2})$`)
-	semverRe  = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
-	hashRe    = regexp.MustCompile(`^blake3:[a-f0-9]{64}$`)
+	euidRe   = regexp.MustCompile(`^[a-zA-Z0-9]{3,18}$`)
+	ruleIDRe = regexp.MustCompile(`^([A-Za-z0-9]+)-(\d{3})$`)
+	noteIDRe = regexp.MustCompile(`^([A-Za-z0-9]+-\d{3})/(\d{2})$`)
+	semverRe = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+	hashRe   = regexp.MustCompile(`^blake3:[a-f0-9]{64}$`)
 )
 
 var validStates = map[string]bool{
@@ -51,9 +51,9 @@ var validNoteTypes = map[string]bool{
 
 // Config holds options for the Linter.
 type Config struct {
-	SchemaVersion  string          // schema version to validate against (default: "v1")
-	Strict         bool            // treat warnings as errors
-	SchemaFetcher  *schema.Fetcher // fetcher for JSON schemas (nil = skip schema check)
+	SchemaVersion string          // schema version to validate against (default: "v1")
+	Strict        bool            // treat warnings as errors
+	SchemaFetcher *schema.Fetcher // fetcher for JSON schemas (nil = skip schema check)
 }
 
 // Option configures the Linter.
