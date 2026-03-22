@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.3.0](https://github.com/SteerSpec/strspc-manager/compare/v1.2.0...v1.3.0) (2026-03-22)
+
+
+### Features
+
+* **realmlint:** implement Realm directory validation ([1480248](https://github.com/SteerSpec/strspc-manager/commit/1480248d4b97bcf8a4d23f1e18b85ef55535b024))
+* **realmlint:** implement Realm directory validation (RM001-RM007) ([fc3a4de](https://github.com/SteerSpec/strspc-manager/commit/fc3a4dea213a226c6243646dfec43674b96ddb2f)), closes [#8](https://github.com/SteerSpec/strspc-manager/issues/8)
+* **schema:** add entity schema detection API ([0d09a6f](https://github.com/SteerSpec/strspc-manager/commit/0d09a6f375c2570506706377d14a39536220dbaa))
+* **schema:** add entity schema detection API ([485cb99](https://github.com/SteerSpec/strspc-manager/commit/485cb9961a642cf8d59689830c0bf1b9281b10ab)), closes [#24](https://github.com/SteerSpec/strspc-manager/issues/24)
+
+
+### Bug Fixes
+
+* **realmlint:** address CI failures — gofmt, unused func, missing _schema gitkeep ([2cbf2cd](https://github.com/SteerSpec/strspc-manager/commit/2cbf2cd67617684d54f76d7559345cec3c068a50))
+* **realmlint:** address PR review comments ([e46c286](https://github.com/SteerSpec/strspc-manager/commit/e46c286d21a1333bbd8dbd1980957f8cf4ddc4b6))
+* **realmlint:** address second round of PR review comments ([2f5f1d2](https://github.com/SteerSpec/strspc-manager/commit/2f5f1d2eb8d2e15d7de47cd6199a06ca089a0c7d))
+* **realmlint:** address third round of PR review comments ([fc3c051](https://github.com/SteerSpec/strspc-manager/commit/fc3c051316ff5dd5a0899a82e98570b95c2b5269))
+* **realmlint:** clarify package doc re optional entity validation ([997eeee](https://github.com/SteerSpec/strspc-manager/commit/997eeee1b5b105ce746a914b91cf2cd0271fc18e))
+* **realmlint:** use explicit Severity.String() in diagnostic output ([7e0f49c](https://github.com/SteerSpec/strspc-manager/commit/7e0f49ce08875febc7eeb5d602795e56412efefa))
+* **schema:** nil guard, tighten IsEntitySchemaAnyVersion matching ([f6b6b75](https://github.com/SteerSpec/strspc-manager/commit/f6b6b75fe54a646b4f45f3970c7451c67cdda5dc))
+* **schema:** reject empty version in IsEntitySchemaAnyVersion URL branch ([723c3e3](https://github.com/SteerSpec/strspc-manager/commit/723c3e328e8824a4694f71caefcb7d0a5c908f1c))
+* **schema:** tighten IsEntitySchema matching and clean up tests ([db4f3d4](https://github.com/SteerSpec/strspc-manager/commit/db4f3d41525d6fe8f99c465c56a153a522c621c3))
+
 ## [1.2.0](https://github.com/SteerSpec/strspc-manager/compare/v1.1.0...v1.2.0) (2026-03-22)
 
 
