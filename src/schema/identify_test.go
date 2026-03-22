@@ -2,6 +2,7 @@ package schema
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -9,33 +10,39 @@ import (
 
 func TestIsEntitySchema(t *testing.T) {
 	tests := []struct {
+		name    string
 		schema  string
 		version string
 		want    bool
 	}{
 		// Relative format matches.
-		{"./_schema/entity.v1.schema.json", "v1", true},
-		{"entity.v1.schema.json", "v1", true},
-		{"../schemas/entity.v2.schema.json", "v2", true},
+		{"relative_v1", "./_schema/entity.v1.schema.json", "v1", true},
+		{"relative_bare", "entity.v1.schema.json", "v1", true},
+		{"relative_v2", "../schemas/entity.v2.schema.json", "v2", true},
 
 		// URL format matches.
-		{"https://steerspec.dev/schemas/entity/v1.json", "v1", true},
-		{"https://example.com/entity/v2.json", "v2", true},
+		{"url_v1", "https://steerspec.dev/schemas/entity/v1.json", "v1", true},
+		{"url_v2", "https://example.com/entity/v2.json", "v2", true},
 
 		// Wrong version.
-		{"entity.v2.schema.json", "v1", false},
-		{"https://steerspec.dev/schemas/entity/v2.json", "v1", false},
+		{"wrong_version_relative", "entity.v2.schema.json", "v1", false},
+		{"wrong_version_url", "https://steerspec.dev/schemas/entity/v2.json", "v1", false},
 
 		// Realm schema (not entity).
-		{"realm/v1.json", "v1", false},
-		{"realm.v1.schema.json", "v1", false},
+		{"realm_url", "realm/v1.json", "v1", false},
+		{"realm_relative", "realm.v1.schema.json", "v1", false},
 
 		// Empty.
-		{"", "v1", false},
+		{"empty_schema", "", "v1", false},
+		{"empty_version", "entity.v1.schema.json", "", false},
+
+		// False positives prevented by stricter matching.
+		{"prefix_false_positive", "myentity.v1.schema.json", "v1", false},
+		{"url_no_boundary", "notentity/v1.json", "v1", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.schema+"_"+tt.version, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			if got := IsEntitySchema(tt.schema, tt.version); got != tt.want {
 				t.Errorf("IsEntitySchema(%q, %q) = %v, want %v",
 					tt.schema, tt.version, got, tt.want)
@@ -46,27 +53,28 @@ func TestIsEntitySchema(t *testing.T) {
 
 func TestIsEntitySchemaAnyVersion(t *testing.T) {
 	tests := []struct {
+		name   string
 		schema string
 		want   bool
 	}{
 		// Relative format.
-		{"entity.v1.schema.json", true},
-		{"entity.v2.schema.json", true},
-		{"./_schema/entity.v1.schema.json", true},
+		{"relative_v1", "entity.v1.schema.json", true},
+		{"relative_v2", "entity.v2.schema.json", true},
+		{"relative_path", "./_schema/entity.v1.schema.json", true},
 
 		// URL format.
-		{"https://steerspec.dev/schemas/entity/v1.json", true},
-		{"https://steerspec.dev/schemas/entity/v99.json", true},
+		{"url_v1", "https://steerspec.dev/schemas/entity/v1.json", true},
+		{"url_v99", "https://steerspec.dev/schemas/entity/v99.json", true},
 
 		// Not entity.
-		{"realm.v1.schema.json", false},
-		{"https://steerspec.dev/schemas/realm/v1.json", false},
-		{"random.json", false},
-		{"", false},
+		{"realm_relative", "realm.v1.schema.json", false},
+		{"realm_url", "https://steerspec.dev/schemas/realm/v1.json", false},
+		{"random", "random.json", false},
+		{"empty", "", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.schema, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			if got := IsEntitySchemaAnyVersion(tt.schema); got != tt.want {
 				t.Errorf("IsEntitySchemaAnyVersion(%q) = %v, want %v",
 					tt.schema, got, tt.want)
@@ -142,7 +150,7 @@ func TestValidateFileSchema(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		if want := "sub-entity BAD"; !containsStr(err.Error(), want) {
+		if want := "sub-entity BAD"; !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q should contain %q", err, want)
 		}
 	})
@@ -163,17 +171,4 @@ func TestValidateFileSchema(t *testing.T) {
 			t.Errorf("expected wrapped ErrNotEntity, got: %v", err)
 		}
 	})
-}
-
-func containsStr(s, substr string) bool {
-	return len(s) >= len(substr) && searchStr(s, substr)
-}
-
-func searchStr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

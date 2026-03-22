@@ -18,8 +18,18 @@ var ErrNotEntity = errors.New("not an entity file")
 //   - Relative: ./_schema/entity.v1.schema.json
 //   - URL:      https://steerspec.dev/schemas/entity/v1.json
 func IsEntitySchema(schema, version string) bool {
-	return strings.HasSuffix(schema, "entity."+version+".schema.json") ||
-		strings.HasSuffix(schema, "entity/"+version+".json")
+	if schema == "" || version == "" {
+		return false
+	}
+	// Relative style: exact base filename match.
+	if path.Base(schema) == "entity."+version+".schema.json" {
+		return true
+	}
+	// URL style: require /entity/ as a distinct path segment.
+	if strings.HasSuffix(schema, "/entity/"+version+".json") {
+		return true
+	}
+	return false
 }
 
 // IsEntitySchemaAnyVersion reports whether schema references any
