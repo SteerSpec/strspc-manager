@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ import (
 const BaseURL = "https://steerspec.dev/schemas"
 
 // maxSchemaSize is the maximum allowed schema size (1 MB).
-const maxSchemaSize = 1 << 20
+const maxSchemaSize int64 = 1 << 20
 
 // defaultTimeout is the HTTP client timeout when no custom client is provided.
 const defaultTimeout = 30 * time.Second
@@ -51,9 +52,13 @@ func WithBaseURL(url string) Option {
 	return func(c *Config) { c.BaseURL = url }
 }
 
-// WithClient sets a custom HTTP client.
+// WithClient sets a custom HTTP client. Nil values are ignored.
 func WithClient(client *http.Client) Option {
-	return func(c *Config) { c.Client = client }
+	return func(c *Config) {
+		if client != nil {
+			c.Client = client
+		}
+	}
 }
 
 // Fetcher retrieves and caches JSON schemas from steerspec.dev.
@@ -97,10 +102,10 @@ func (f *Fetcher) Bootstrap(ctx context.Context) ([]byte, error) {
 
 // Fetch retrieves a schema by path (relative to BaseURL). It serves from
 // the local file cache if available, otherwise fetches via HTTP and caches.
-func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
-	clean := filepath.Clean(filepath.FromSlash(path))
-	if strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) {
-		return nil, fmt.Errorf("invalid schema path: %q", path)
+func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) {
+	clean := path.Clean(schemaPath)
+	if strings.HasPrefix(clean, "..") || path.IsAbs(clean) {
+		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
 	// Try cache first.
@@ -108,8 +113,8 @@ func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
 		return data, nil
 	}
 
-	// Fetch from remote.
-	url := f.cfg.BaseURL + "/" + path
+	// Fetch from remote using the canonicalized path.
+	url := strings.TrimRight(f.cfg.BaseURL, "/") + "/" + clean
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request for %s: %w", url, err)
@@ -125,9 +130,13 @@ func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("fetching schema %s: HTTP %d", url, resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSchemaSize))
+	// Read up to maxSchemaSize+1 to detect oversized responses.
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSchemaSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("reading schema %s: %w", url, err)
+	}
+	if int64(len(data)) > maxSchemaSize {
+		return nil, fmt.Errorf("schema %s exceeds max allowed size of %d bytes", url, maxSchemaSize)
 	}
 
 	// Cache for next time (best-effort, don't fail if caching fails).
@@ -136,18 +145,55 @@ func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
 	return data, nil
 }
 
-func (f *Fetcher) cachePath(clean string) string {
-	return filepath.Join(f.cfg.CacheDir, clean)
+func (f *Fetcher) localPath(clean string) string {
+	return filepath.Join(f.cfg.CacheDir, filepath.FromSlash(clean))
 }
 
 func (f *Fetcher) readCache(clean string) ([]byte, error) {
-	return os.ReadFile(f.cachePath(clean))
+	cp := f.localPath(clean)
+
+	fi, err := os.Stat(cp)
+	if err != nil {
+		return nil, err
+	}
+	if fi.Size() > maxSchemaSize {
+		return nil, fmt.Errorf("cached schema too large: %d bytes", fi.Size())
+	}
+
+	return os.ReadFile(cp)
 }
 
 func (f *Fetcher) writeCache(clean string, data []byte) error {
-	cp := f.cachePath(clean)
-	if err := os.MkdirAll(filepath.Dir(cp), 0o755); err != nil {
+	cp := f.localPath(clean)
+	dir := filepath.Dir(cp)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(cp, data, 0o644)
+
+	// Write to a temp file then atomically rename to avoid partial reads.
+	tmp, err := os.CreateTemp(dir, ".schema-cache-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	if err := os.Rename(tmpName, cp); err != nil {
+		_ = os.Remove(tmpName)
+		return err
+	}
+	return nil
 }
