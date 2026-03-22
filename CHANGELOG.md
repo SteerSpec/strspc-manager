@@ -5,7 +5,6 @@
 
 ### Features
 
-* add src/render package for markdown rendering ([2417a4a](https://github.com/SteerSpec/strspc-manager/commit/2417a4a8adaf4b4b269b8a31f8743a4335a7316b))
 * add src/render package for markdown rendering ([d66270b](https://github.com/SteerSpec/strspc-manager/commit/d66270bd60b235c1b423b9ecf48f86f07232f93b)), closes [#16](https://github.com/SteerSpec/strspc-manager/issues/16)
 
 
