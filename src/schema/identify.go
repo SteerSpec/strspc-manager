@@ -51,7 +51,10 @@ func IsEntitySchemaAnyVersion(schema string) bool {
 	dir := path.Dir(schema)
 	if path.Base(dir) == "entity" &&
 		strings.HasPrefix(base, "v") && strings.HasSuffix(base, ".json") {
-		return true
+		ver := strings.TrimSuffix(strings.TrimPrefix(base, "v"), ".json")
+		if ver != "" { // "v" alone is not a valid version
+			return true
+		}
 	}
 	return false
 }

@@ -75,6 +75,7 @@ func TestIsEntitySchemaAnyVersion(t *testing.T) {
 		// False positives prevented by stricter matching.
 		{"nested_entity_path", "https://example.com/entity/archive/v1.json", false},
 		{"empty_version_relative", "entity.v.schema.json", false},
+		{"empty_version_url", "https://example.com/entity/v.json", false},
 	}
 
 	for _, tt := range tests {
