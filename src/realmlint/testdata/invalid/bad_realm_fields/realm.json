@@ -1,0 +1,10 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "INVALID-ID!",
+    "title": "Bad Fields Realm",
+    "version": "not-semver"
+  },
+  "dependencies": [],
+  "rule_identifier_format": null
+}
