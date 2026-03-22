@@ -20,7 +20,7 @@ func Parse(data []byte) (*File, error) {
 func Load(path string) (*File, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading entity file: %w", err)
+		return nil, fmt.Errorf("reading entity file %q: %w", path, err)
 	}
 	return Parse(data)
 }
@@ -38,7 +38,7 @@ func ParseRealm(data []byte) (*RealmFile, error) {
 func LoadRealm(path string) (*RealmFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading realm file: %w", err)
+		return nil, fmt.Errorf("reading realm file %q: %w", path, err)
 	}
 	return ParseRealm(data)
 }

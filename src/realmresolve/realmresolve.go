@@ -5,6 +5,7 @@ package realmresolve
 
 import (
 	"context"
+	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -12,15 +13,15 @@ import (
 
 // Config holds options for the RealmResolver.
 type Config struct {
-	CacheTTL string // cache time-to-live (default: "24h")
-	CacheDir string // path to cache directory
+	CacheTTL time.Duration // cache time-to-live (default: 24h)
+	CacheDir string        // path to cache directory
 }
 
 // Option configures the RealmResolver.
 type Option func(*Config)
 
 // WithCacheTTL sets the cache time-to-live.
-func WithCacheTTL(ttl string) Option {
+func WithCacheTTL(ttl time.Duration) Option {
 	return func(c *Config) { c.CacheTTL = ttl }
 }
 
@@ -36,7 +37,7 @@ type RealmResolver struct {
 
 // New creates a RealmResolver with the given options.
 func New(opts ...Option) *RealmResolver {
-	cfg := Config{CacheTTL: "24h"}
+	cfg := Config{CacheTTL: 24 * time.Hour}
 	for _, opt := range opts {
 		opt(&cfg)
 	}

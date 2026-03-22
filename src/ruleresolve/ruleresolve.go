@@ -5,6 +5,7 @@ package ruleresolve
 
 import (
 	"context"
+	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -18,16 +19,16 @@ type Source interface {
 
 // Config holds options for the Resolver.
 type Config struct {
-	CacheTTL  string // cache time-to-live (default: "24h")
-	ForceSync bool   // bypass cache
-	CacheDir  string // path to cache directory
+	CacheTTL  time.Duration // cache time-to-live (default: 24h)
+	ForceSync bool          // bypass cache
+	CacheDir  string        // path to cache directory
 }
 
 // Option configures the Resolver.
 type Option func(*Config)
 
 // WithCacheTTL sets the cache time-to-live.
-func WithCacheTTL(ttl string) Option {
+func WithCacheTTL(ttl time.Duration) Option {
 	return func(c *Config) { c.CacheTTL = ttl }
 }
 
@@ -49,7 +50,7 @@ type Resolver struct {
 
 // New creates a Resolver with the given sources and options.
 func New(sources []Source, opts ...Option) *Resolver {
-	cfg := Config{CacheTTL: "24h"}
+	cfg := Config{CacheTTL: 24 * time.Hour}
 	for _, opt := range opts {
 		opt(&cfg)
 	}

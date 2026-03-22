@@ -11,10 +11,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 // BaseURL is the default base URL for schema fetches.
 const BaseURL = "https://steerspec.dev/schemas"
+
+// maxSchemaSize is the maximum allowed schema size (1 MB).
+const maxSchemaSize = 1 << 20
+
+// defaultTimeout is the HTTP client timeout when no custom client is provided.
+const defaultTimeout = 30 * time.Second
 
 // Well-known schema paths relative to BaseURL.
 const (
@@ -57,30 +65,32 @@ type Fetcher struct {
 func New(opts ...Option) *Fetcher {
 	cfg := Config{
 		BaseURL: BaseURL,
-		Client:  http.DefaultClient,
+		Client:  &http.Client{Timeout: defaultTimeout},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 	if cfg.CacheDir == "" {
-		if dir, err := os.UserCacheDir(); err == nil {
-			cfg.CacheDir = filepath.Join(dir, "strspc", "schemas")
+		dir, err := os.UserCacheDir()
+		if err != nil {
+			dir = os.TempDir()
 		}
+		cfg.CacheDir = filepath.Join(dir, "strspc", "schemas")
 	}
 	return &Fetcher{cfg: cfg}
 }
 
-// EntityV1 fetches the entity.v1.schema.json.
+// EntityV1 fetches the entity/v1.json schema.
 func (f *Fetcher) EntityV1(ctx context.Context) ([]byte, error) {
 	return f.Fetch(ctx, EntityV1Path)
 }
 
-// RealmV1 fetches the realm.v1.schema.json.
+// RealmV1 fetches the realm/v1.json schema.
 func (f *Fetcher) RealmV1(ctx context.Context) ([]byte, error) {
 	return f.Fetch(ctx, RealmV1Path)
 }
 
-// Bootstrap fetches the bootstrap.schema.json.
+// Bootstrap fetches the entity/bootstrap.json schema.
 func (f *Fetcher) Bootstrap(ctx context.Context) ([]byte, error) {
 	return f.Fetch(ctx, BootstrapPath)
 }
@@ -88,8 +98,13 @@ func (f *Fetcher) Bootstrap(ctx context.Context) ([]byte, error) {
 // Fetch retrieves a schema by path (relative to BaseURL). It serves from
 // the local file cache if available, otherwise fetches via HTTP and caches.
 func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
+	clean := filepath.Clean(filepath.FromSlash(path))
+	if strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) {
+		return nil, fmt.Errorf("invalid schema path: %q", path)
+	}
+
 	// Try cache first.
-	if data, err := f.readCache(path); err == nil {
+	if data, err := f.readCache(clean); err == nil {
 		return data, nil
 	}
 
@@ -110,27 +125,27 @@ func (f *Fetcher) Fetch(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("fetching schema %s: HTTP %d", url, resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSchemaSize))
 	if err != nil {
 		return nil, fmt.Errorf("reading schema %s: %w", url, err)
 	}
 
 	// Cache for next time (best-effort, don't fail if caching fails).
-	_ = f.writeCache(path, data)
+	_ = f.writeCache(clean, data)
 
 	return data, nil
 }
 
-func (f *Fetcher) cachePath(path string) string {
-	return filepath.Join(f.cfg.CacheDir, filepath.FromSlash(path))
+func (f *Fetcher) cachePath(clean string) string {
+	return filepath.Join(f.cfg.CacheDir, clean)
 }
 
-func (f *Fetcher) readCache(path string) ([]byte, error) {
-	return os.ReadFile(f.cachePath(path))
+func (f *Fetcher) readCache(clean string) ([]byte, error) {
+	return os.ReadFile(f.cachePath(clean))
 }
 
-func (f *Fetcher) writeCache(path string, data []byte) error {
-	cp := f.cachePath(path)
+func (f *Fetcher) writeCache(clean string, data []byte) error {
+	cp := f.cachePath(clean)
 	if err := os.MkdirAll(filepath.Dir(cp), 0o755); err != nil {
 		return err
 	}
