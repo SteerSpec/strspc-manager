@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/SteerSpec/strspc-manager/compare/v1.1.0...v1.2.0) (2026-03-22)
+
+
+### Features
+
+* **rulelint:** implement all 13 business-rule checks ([e8c8dad](https://github.com/SteerSpec/strspc-manager/commit/e8c8dadf864e093377e29106d7b85ce8df91cb0d))
+* **rulelint:** implement all 13 business-rule checks from §7.1 ([62b6643](https://github.com/SteerSpec/strspc-manager/commit/62b66439ea3b68fd987dee749ed5af0b00189f2f)), closes [#1](https://github.com/SteerSpec/strspc-manager/issues/1)
+
+
+### Bug Fixes
+
+* **rulelint:** address fourth round of PR review comments ([5cfe3bf](https://github.com/SteerSpec/strspc-manager/commit/5cfe3bf5e450624da0e4fc4161b0e23d3ab2c078))
+* **rulelint:** address PR review comments ([580e61d](https://github.com/SteerSpec/strspc-manager/commit/580e61d3acab1b23040bf131a72ca0c6830e6b9b))
+* **rulelint:** address second round of PR review comments ([65458d8](https://github.com/SteerSpec/strspc-manager/commit/65458d8fa3f8788bcec200f2a572b73ad3cc63e2))
+* **rulelint:** address third round of PR review comments ([a892e31](https://github.com/SteerSpec/strspc-manager/commit/a892e319e31ca2ec3c85de089dc1638ec6171f57))
+* **rulelint:** check fmt.Fprint return value in test helper ([eee0599](https://github.com/SteerSpec/strspc-manager/commit/eee05991aea546af8f95759b1bb859d499619ad9))
+* **rulelint:** correct gofmt alignment in var block and Config struct ([7beccf5](https://github.com/SteerSpec/strspc-manager/commit/7beccf551bab7004e5fe443edcffccdf486e3991))
+* **rulelint:** lint all JSON files in LintDir, use RL000 for nil input ([3962f7c](https://github.com/SteerSpec/strspc-manager/commit/3962f7c59149bd67872521541256155b7d0ad759))
+* **rulelint:** replace sync.Once with sync.Mutex for thread-safe schema caching ([3b93013](https://github.com/SteerSpec/strspc-manager/commit/3b93013fbe9d57bc16d14108a93cf74cf6962814))
+
 ## [1.1.0](https://github.com/SteerSpec/strspc-manager/compare/v1.0.0...v1.1.0) (2026-03-22)
 
 
