@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/SteerSpec/strspc-manager/compare/v1.0.0...v1.1.0) (2026-03-22)
+
+
+### Features
+
+* add src/render package for markdown rendering ([d66270b](https://github.com/SteerSpec/strspc-manager/commit/d66270bd60b235c1b423b9ecf48f86f07232f93b)), closes [#16](https://github.com/SteerSpec/strspc-manager/issues/16)
+
+
+### Bug Fixes
+
+* add export comment for FormatMarkdown const block ([b31bd75](https://github.com/SteerSpec/strspc-manager/commit/b31bd750dacab639d8d9cc1f830d3de049101e36))
+* clamp heading depth minimum to 1 to prevent panic ([5d9a4f0](https://github.com/SteerSpec/strspc-manager/commit/5d9a4f0bc14a95a6e70a4bd69800b20488cdc8ad))
+
 ## 1.0.0 (2026-03-22)
 
 
