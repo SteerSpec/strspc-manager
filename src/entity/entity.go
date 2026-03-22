@@ -68,4 +68,5 @@ type RealmMeta struct {
 type RealmDep struct {
 	RealmID string `json:"realm_id"`
 	Version string `json:"version"`
+	Source  string `json:"source,omitempty"`
 }
