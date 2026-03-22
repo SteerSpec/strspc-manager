@@ -80,9 +80,8 @@ func WithSchemaFetcher(f *schema.Fetcher) Option {
 type Linter struct {
 	cfg Config
 
-	schemaOnce sync.Once
-	compiled   *jsonschema.Schema
-	schemaErr  error
+	schemaMu sync.Mutex
+	compiled *jsonschema.Schema
 }
 
 // New creates a Linter with the given options.
@@ -257,28 +256,21 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 // getCompiledSchema returns the cached compiled JSON Schema. On first
 // successful call the result is cached. Transient failures are retried
 // on subsequent calls so a temporary network issue doesn't permanently
-// disable RL002.
+// disable RL002. All access is synchronized via mutex.
 func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
-	l.schemaOnce.Do(func() {
-		l.compiled, l.schemaErr = l.compileSchema()
-	})
+	l.schemaMu.Lock()
+	defer l.schemaMu.Unlock()
 
 	if l.compiled != nil {
 		return l.compiled, nil
 	}
 
-	// Retry on error so transient failures don't get cached forever.
-	if l.schemaErr != nil {
-		compiled, err := l.compileSchema()
-		if err != nil {
-			return nil, err
-		}
-		l.compiled = compiled
-		l.schemaErr = nil
-		return l.compiled, nil
+	compiled, err := l.compileSchema()
+	if err != nil {
+		return nil, err
 	}
-
-	return nil, fmt.Errorf("schema not initialized")
+	l.compiled = compiled
+	return l.compiled, nil
 }
 
 // compileSchema fetches and compiles the entity JSON Schema.
