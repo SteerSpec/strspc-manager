@@ -154,6 +154,20 @@ func TestLint_NestedEntityFiles(t *testing.T) {
 	if hasCode(res, "RM006") {
 		t.Error("unexpected RM006 diagnostic for valid nested entities")
 	}
+
+	// Verify the nested entity file was actually processed by rulelint.
+	// rulelint.New() without a schema fetcher always emits RL002 per file.
+	nestedSuffix := filepath.Join("subdir", "NESTED.json")
+	foundNested := false
+	for _, d := range res.Diagnostics {
+		if strings.HasSuffix(d.Path, nestedSuffix) {
+			foundNested = true
+			break
+		}
+	}
+	if !foundNested {
+		t.Error("expected at least one diagnostic for nested entity file subdir/NESTED.json")
+	}
 }
 
 func TestRM006_NestedDuplicateEUID(t *testing.T) {
