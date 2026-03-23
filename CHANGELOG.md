@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.5.0](https://github.com/SteerSpec/strspc-manager/compare/v1.4.0...v1.5.0) (2026-03-23)
+
+
+### Features
+
+* **realmlint:** recursive entity scanning via filepath.WalkDir ([89b147c](https://github.com/SteerSpec/strspc-manager/commit/89b147c9159b8d178724d8c867971e91c2ceb7f7))
+* **realmlint:** recursive entity scanning via filepath.WalkDir ([0d11417](https://github.com/SteerSpec/strspc-manager/commit/0d114176695908f497dbb19907e764143d52ae08)), closes [#27](https://github.com/SteerSpec/strspc-manager/issues/27)
+
+
+### Bug Fixes
+
+* **realmlint:** address PR review comments ([4169712](https://github.com/SteerSpec/strspc-manager/commit/4169712f94ab7b5a6e580e1308432f7e376fe70d))
+* **realmlint:** address second round of PR review comments ([f6e1c4b](https://github.com/SteerSpec/strspc-manager/commit/f6e1c4b2c6fd1d529839e1243d8c7950ee1c39e5))
+* **realmlint:** address third round of PR review comments ([1d211ef](https://github.com/SteerSpec/strspc-manager/commit/1d211eff523f1250c033ad93ffafffe8df7e0e04))
+* **realmlint:** assert nested entity was actually processed ([353c1cd](https://github.com/SteerSpec/strspc-manager/commit/353c1cdf01b856b357bd02e7e71e515e5231c7f3))
+
 ## [1.4.0](https://github.com/SteerSpec/strspc-manager/compare/v1.3.0...v1.4.0) (2026-03-22)
 
 
