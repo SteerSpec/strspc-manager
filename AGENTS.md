@@ -1,5 +1,14 @@
 # Agent Instructions
 
+## Rule Manager Specification
+
+The canonical specification for this project lives at [`docs/SPEC.md`](docs/SPEC.md).
+All modules (rule-lint, rule-diff, rule-eval, realm-resolve, realm-lint, etc.) implement
+against this spec. When implementing or modifying any module, consult the relevant spec
+sections — particularly §2 (Data Model), §6 (Module Breakdown), and §7–8 (Workflows & Enforcement).
+
+## Issue Tracking
+
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
 ## Quick Reference
@@ -98,7 +107,7 @@ bd close bd-42 --reason "Completed" --json
 2. **Claim your task atomically**: `bd update <id> --claim`
 3. **Work on it**: Implement, test, document
 4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
+	- `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
 5. **Complete**: `bd close <id> --reason "Done"`
 
 ### Auto-Sync
@@ -131,12 +140,12 @@ For more details, see README.md and .beads/README.md.
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
+	```bash
+	git pull --rebase
+	bd dolt push
+	git push
+	git status  # MUST show "up to date with origin"
+	```
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
