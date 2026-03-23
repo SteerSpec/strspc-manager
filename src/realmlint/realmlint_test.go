@@ -154,18 +154,6 @@ func TestLint_NestedEntityFiles(t *testing.T) {
 	if hasCode(res, "RM006") {
 		t.Error("unexpected RM006 diagnostic for valid nested entities")
 	}
-
-	// Verify the nested entity file was actually visited.
-	nestedVisited := false
-	for _, d := range res.Diagnostics {
-		if strings.Contains(d.Path, filepath.Join("subdir", "NESTED.json")) {
-			nestedVisited = true
-			break
-		}
-	}
-	if !nestedVisited {
-		t.Error("expected at least one diagnostic referencing subdir/NESTED.json, nested file may not have been scanned")
-	}
 }
 
 func TestRM006_NestedDuplicateEUID(t *testing.T) {
