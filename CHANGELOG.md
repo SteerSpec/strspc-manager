@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0](https://github.com/SteerSpec/strspc-manager/compare/v1.6.0...v1.7.0) (2026-03-23)
+
+
+### Features
+
+* **entityops:** add entity/rule mutation logic ([a0fe296](https://github.com/SteerSpec/strspc-manager/commit/a0fe29692fb5712b3f7f0704c4beb5025c73e61b))
+* **entityops:** add entity/rule mutation logic ([806a6fb](https://github.com/SteerSpec/strspc-manager/commit/806a6fb59d8feb576d0967cd4de2fc16abe05409)), closes [#22](https://github.com/SteerSpec/strspc-manager/issues/22)
+
+
+### Bug Fixes
+
+* **entityops:** address PR review comments ([c44f63d](https://github.com/SteerSpec/strspc-manager/commit/c44f63d97d8399152ff7ed87479d6a173d8971f4))
+* **entityops:** filter NextRuleNumber by entity ID, improve semver errors ([3e6021f](https://github.com/SteerSpec/strspc-manager/commit/3e6021f99650335acc1b41ca3d5d4ec2907fbfad))
+* **entityops:** nil-check ordering and doc clarity ([ffe7487](https://github.com/SteerSpec/strspc-manager/commit/ffe748767f182dceab7ca28701fcee37f3293627))
+* **entityops:** strict semver parsing, validate entity ID before mutations ([78aa543](https://github.com/SteerSpec/strspc-manager/commit/78aa54397b4cd695bcd430d578acf80cdf813c8a))
+
 ## [1.6.0](https://github.com/SteerSpec/strspc-manager/compare/v1.5.0...v1.6.0) (2026-03-23)
 
 
