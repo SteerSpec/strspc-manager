@@ -11,7 +11,7 @@ consult the relevant spec sections:
 - **§2** Data Model — entities, rules, rule sets, notes, realms, configuration
 - **§6** Module Breakdown — what each module does
 - **§7** CI/CD Workflows — validation checks rule-lint and rule-diff must perform
-- **§8** Enforcement Architecture — how rule-eval and rule-resolve work
+- **§8** Enforcement Architecture — how rule-eval and realm-resolve work
 
 ## Project
 
@@ -22,7 +22,7 @@ Go library consumed by strspc-CLI (OSS) and strspc-cloud (SaaS).
 
 ```bash
 make build        # build binary
-make test         # run tests with -race
+make test         # run go test ./...
 make lint         # golangci-lint
 ```
 
