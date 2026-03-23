@@ -26,8 +26,14 @@ func TestComputeHash(t *testing.T) {
 	})
 
 	t.Run("stable output", func(t *testing.T) {
-		h1, _ := ComputeHash(minimal)
-		h2, _ := ComputeHash(minimal)
+		h1, err := ComputeHash(minimal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		h2, err := ComputeHash(minimal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if h1 != h2 {
 			t.Fatalf("unstable hash: %q != %q", h1, h2)
 		}
@@ -44,8 +50,14 @@ func TestComputeHash(t *testing.T) {
 			"rule_set": {"version": "0.1.0", "timestamp": "2026-01-01T00:00:00Z", "hash": "blake3:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
 			"rules": [], "notes": []
 		}`)
-		h1, _ := ComputeHash(withNull)
-		h2, _ := ComputeHash(withHash)
+		h1, err := ComputeHash(withNull)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		h2, err := ComputeHash(withHash)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if h1 != h2 {
 			t.Fatalf("hash should be excluded: %q != %q", h1, h2)
 		}
@@ -79,8 +91,14 @@ func TestComputeHash(t *testing.T) {
 				"rules": [], "notes": []
 			}]
 		}`)
-		h1, _ := ComputeHash(withSub)
-		h2, _ := ComputeHash(withSubHash)
+		h1, err := ComputeHash(withSub)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		h2, err := ComputeHash(withSubHash)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if h1 != h2 {
 			t.Fatalf("sub-entity hash should be nulled: %q != %q", h1, h2)
 		}
