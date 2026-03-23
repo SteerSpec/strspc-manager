@@ -471,6 +471,50 @@ func TestIsNewerSemver(t *testing.T) {
 	}
 }
 
+// --- nil guard tests (Fix 2) ---
+
+func TestDiff_NilBase(t *testing.T) {
+	d := New()
+	res := d.Diff(nil, makeBase())
+	assertHasCode(t, res, "RD000")
+}
+
+func TestDiff_NilHead(t *testing.T) {
+	d := New()
+	res := d.Diff(makeBase(), nil)
+	assertHasCode(t, res, "RD000")
+}
+
+func TestDiffNew_NilHead(t *testing.T) {
+	d := New()
+	res := d.DiffNew(nil)
+	assertHasCode(t, res, "RD000")
+}
+
+// --- semver pre-release rejection (Fix 1) ---
+
+func TestIsNewerSemver_PreRelease(t *testing.T) {
+	// Pre-release suffix → treated as invalid → returns false.
+	if isNewerSemver("1.0.0", "1.0.0-alpha") {
+		t.Error("expected false: 1.0.0-alpha has invalid pre-release suffix")
+	}
+	if isNewerSemver("1.0.0-alpha", "1.0.0") {
+		t.Error("expected false: 1.0.0-alpha (base) has invalid pre-release suffix")
+	}
+}
+
+// --- RD012 type mutation bypass (Fix 3) ---
+
+func TestDiff_RD012_TypeMutation(t *testing.T) {
+	d := New()
+	base := makeBase()
+	head := makeHead(base)
+	// Change the changelog note's type to a non-append-only type.
+	head.Notes[0].Type = "general"
+	res := d.Diff(base, head)
+	assertHasCode(t, res, "RD012")
+}
+
 // --- strict mode ---
 
 func TestDiff_StrictMode_PromotesWarnings(t *testing.T) {

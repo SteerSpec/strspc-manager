@@ -76,6 +76,15 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 // Runs checks RD001–RD007, RD009–RD012. For RD008 (hash verification), use DiffBytes.
 func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	res := &result.Result{}
+	if base == nil || head == nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD000",
+			Severity: result.Error,
+			Message:  "nil entity file passed to Diff",
+		})
+		return res
+	}
 	d.diffEntityTree(base, head, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
@@ -87,6 +96,15 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 // Checks RD004 (revision=0, state=D) and RD011 (added_by present) for all rules and notes.
 func (d *Differ) DiffNew(head *entity.File) *result.Result {
 	res := &result.Result{}
+	if head == nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD000",
+			Severity: result.Error,
+			Message:  "nil entity file passed to DiffNew",
+		})
+		return res
+	}
 	checkNewEntityTree(head, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)

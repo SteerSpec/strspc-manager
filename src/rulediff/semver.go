@@ -6,7 +6,8 @@ import (
 )
 
 // isNewerSemver reports whether head is strictly greater than base.
-// Pre-release and build metadata suffixes are stripped before comparison.
+// Versions with pre-release or build metadata suffixes are treated as invalid
+// (parseSemver returns nil), so isNewerSemver returns false for them.
 // Returns false if either version cannot be parsed.
 func isNewerSemver(base, head string) bool {
 	b := parseSemver(base)
@@ -26,9 +27,11 @@ func isNewerSemver(base, head string) bool {
 }
 
 // parseSemver returns [major, minor, patch] as ints, or nil on failure.
+// Versions with pre-release (-) or build metadata (+) suffixes are rejected.
 func parseSemver(v string) []int {
-	v, _, _ = strings.Cut(v, "-") // strip pre-release (e.g. "1.0.0-beta")
-	v, _, _ = strings.Cut(v, "+") // strip build metadata (e.g. "1.0.0+build")
+	if strings.ContainsAny(v, "-+") {
+		return nil
+	}
 	parts := strings.Split(v, ".")
 	if len(parts) != 3 {
 		return nil

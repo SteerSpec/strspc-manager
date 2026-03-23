@@ -179,19 +179,24 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 	for _, n := range baseNotes {
 		baseNoteSet[n.ID] = true
 	}
-	headNoteSet := make(map[string]bool, len(headNotes))
+	// Map id → type so RD012 can verify the type was not changed away from append-only.
+	headNoteTypes := make(map[string]string, len(headNotes))
 	for _, n := range headNotes {
-		headNoteSet[n.ID] = true
+		headNoteTypes[n.ID] = n.Type
 	}
 
-	// RD012: append-only notes must not be removed.
+	// RD012: append-only notes must not be removed or have their type changed.
 	for _, n := range baseNotes {
-		if appendOnlyNoteTypes[n.Type] && !headNoteSet[n.ID] {
+		if !appendOnlyNoteTypes[n.Type] {
+			continue
+		}
+		headType, ok := headNoteTypes[n.ID]
+		if !ok || headType != n.Type {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD012",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("append-only note %q (type %q) was removed", n.ID, n.Type),
+				Message:  fmt.Sprintf("append-only note %q (type %q) was removed or retyped", n.ID, n.Type),
 				Path:     path + "/notes/" + n.ID,
 			})
 		}
