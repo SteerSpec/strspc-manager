@@ -28,7 +28,11 @@ func PromoteRule(f *entity.File, ruleID string) error {
 	}
 
 	r.State = target
-	f.RuleSet.Version = BumpMinor(f.RuleSet.Version)
+	v, err := BumpMinor(f.RuleSet.Version)
+	if err != nil {
+		return fmt.Errorf("bumping version: %w", err)
+	}
+	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
 	}
@@ -57,7 +61,11 @@ func RetireRule(f *entity.File, ruleID string) error {
 	}
 
 	r.State = target
-	f.RuleSet.Version = BumpMinor(f.RuleSet.Version)
+	v, err := BumpMinor(f.RuleSet.Version)
+	if err != nil {
+		return fmt.Errorf("bumping version: %w", err)
+	}
+	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
 	}
@@ -80,7 +88,11 @@ func AbandonRule(f *entity.File, ruleID string) error {
 	}
 
 	r.State = StateAbandoned
-	f.RuleSet.Version = BumpPatch(f.RuleSet.Version)
+	v, err := BumpPatch(f.RuleSet.Version)
+	if err != nil {
+		return fmt.Errorf("bumping version: %w", err)
+	}
+	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
 	}

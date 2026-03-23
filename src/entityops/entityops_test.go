@@ -150,8 +150,9 @@ func TestAddRule(t *testing.T) {
 			t.Fatalf("AddRule: %v", err)
 		}
 
-		if f.RuleSet.Version != BumpPatch(v0) {
-			t.Errorf("Version = %q, want %q", f.RuleSet.Version, BumpPatch(v0))
+		expected, _ := BumpPatch(v0)
+		if f.RuleSet.Version != expected {
+			t.Errorf("Version = %q, want %q", f.RuleSet.Version, expected)
 		}
 	})
 
@@ -277,8 +278,9 @@ func TestPromoteRule(t *testing.T) {
 		if f.Rules[0].State != StatePublished {
 			t.Errorf("State = %q, want %q", f.Rules[0].State, StatePublished)
 		}
-		if f.RuleSet.Version != BumpMinor(v) {
-			t.Errorf("Version = %q, want %q", f.RuleSet.Version, BumpMinor(v))
+		expected, _ := BumpMinor(v)
+		if f.RuleSet.Version != expected {
+			t.Errorf("Version = %q, want %q", f.RuleSet.Version, expected)
 		}
 	})
 
@@ -316,8 +318,9 @@ func TestRetireRule(t *testing.T) {
 		if f.Rules[0].State != StateRetired {
 			t.Errorf("State = %q, want %q", f.Rules[0].State, StateRetired)
 		}
-		if f.RuleSet.Version != BumpMinor(v) {
-			t.Errorf("Version = %q, want %q", f.RuleSet.Version, BumpMinor(v))
+		expected, _ := BumpMinor(v)
+		if f.RuleSet.Version != expected {
+			t.Errorf("Version = %q, want %q", f.RuleSet.Version, expected)
 		}
 	})
 
@@ -355,8 +358,9 @@ func TestAbandonRule(t *testing.T) {
 		if f.Rules[0].State != StateAbandoned {
 			t.Errorf("State = %q, want %q", f.Rules[0].State, StateAbandoned)
 		}
-		if f.RuleSet.Version != BumpPatch(v) {
-			t.Errorf("Version = %q, want %q", f.RuleSet.Version, BumpPatch(v))
+		expected, _ := BumpPatch(v)
+		if f.RuleSet.Version != expected {
+			t.Errorf("Version = %q, want %q", f.RuleSet.Version, expected)
 		}
 	})
 
@@ -454,11 +458,22 @@ func TestBumpPatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			if got := BumpPatch(tt.in); got != tt.want {
+			got, err := BumpPatch(tt.in)
+			if err != nil {
+				t.Fatalf("BumpPatch(%q) unexpected error: %v", tt.in, err)
+			}
+			if got != tt.want {
 				t.Errorf("BumpPatch(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}
+
+	t.Run("invalid semver", func(t *testing.T) {
+		_, err := BumpPatch("not-semver")
+		if err == nil {
+			t.Fatal("expected error for invalid semver")
+		}
+	})
 }
 
 func TestBumpMinor(t *testing.T) {
@@ -469,11 +484,22 @@ func TestBumpMinor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
-			if got := BumpMinor(tt.in); got != tt.want {
+			got, err := BumpMinor(tt.in)
+			if err != nil {
+				t.Fatalf("BumpMinor(%q) unexpected error: %v", tt.in, err)
+			}
+			if got != tt.want {
 				t.Errorf("BumpMinor(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}
+
+	t.Run("invalid semver", func(t *testing.T) {
+		_, err := BumpMinor("bad")
+		if err == nil {
+			t.Fatal("expected error for invalid semver")
+		}
+	})
 }
 
 func TestUpdateMeta(t *testing.T) {

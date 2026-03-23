@@ -29,6 +29,9 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 	}
 
 	num := NextRuleNumber(f)
+	if num > maxRuleNumber {
+		return "", fmt.Errorf("cannot add rule: maximum number of rules (%d) exceeded for entity %q", maxRuleNumber, f.Entity.ID)
+	}
 	newID := fmt.Sprintf("%s-%03d", f.Entity.ID, num)
 	supersededID := ruleID
 
@@ -42,7 +45,11 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 		Supersedes: &supersededID,
 	})
 
-	f.RuleSet.Version = BumpPatch(f.RuleSet.Version)
+	v, err := BumpPatch(f.RuleSet.Version)
+	if err != nil {
+		return "", fmt.Errorf("bumping version: %w", err)
+	}
+	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return "", fmt.Errorf("updating metadata: %w", err)
 	}

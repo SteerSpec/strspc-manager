@@ -11,33 +11,39 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/entity"
 )
 
+// maxRuleNumber is the maximum rule number supported by the 3-digit ID format.
+const maxRuleNumber = 999
+
 var (
-	ruleIDRe = regexp.MustCompile(`^([A-Za-z0-9]+)-(\d{3,})$`)
+	ruleIDRe = regexp.MustCompile(`^([A-Za-z0-9]+)-(\d{3})$`)
 
 	// nowFunc is overridable in tests for deterministic timestamps.
 	nowFunc = func() time.Time { return time.Now().UTC() }
 )
 
 // BumpPatch increments the patch component of a semver string.
-func BumpPatch(version string) string {
+func BumpPatch(version string) (string, error) {
 	major, minor, patch, err := parseSemver(version)
 	if err != nil {
-		return version
+		return "", err
 	}
-	return fmt.Sprintf("%d.%d.%d", major, minor, patch+1)
+	return fmt.Sprintf("%d.%d.%d", major, minor, patch+1), nil
 }
 
 // BumpMinor increments the minor component and resets patch to 0.
-func BumpMinor(version string) string {
+func BumpMinor(version string) (string, error) {
 	major, minor, _, err := parseSemver(version)
 	if err != nil {
-		return version
+		return "", err
 	}
-	return fmt.Sprintf("%d.%d.0", major, minor+1)
+	return fmt.Sprintf("%d.%d.0", major, minor+1), nil
 }
 
 // NextRuleNumber scans existing rule IDs and returns max+1 (or 1 if empty).
 func NextRuleNumber(f *entity.File) int {
+	if f == nil {
+		return 1
+	}
 	max := 0
 	for _, r := range f.Rules {
 		m := ruleIDRe.FindStringSubmatch(r.ID)
@@ -57,6 +63,9 @@ func NextRuleNumber(f *entity.File) int {
 
 // UpdateMeta sets the rule_set timestamp and recomputes the blake3 hash.
 func UpdateMeta(f *entity.File) error {
+	if f == nil {
+		return fmt.Errorf("entity file is nil")
+	}
 	f.RuleSet.Timestamp = nowFunc().Format(time.RFC3339)
 
 	data, err := json.Marshal(f)
