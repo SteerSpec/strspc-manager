@@ -64,6 +64,19 @@ func assertNoCode(t *testing.T, res *result.Result, code string) {
 	}
 }
 
+func assertCodeSeverity(t *testing.T, res *result.Result, code string, sev result.Severity) {
+	t.Helper()
+	for _, d := range res.Diagnostics {
+		if d.Code == code {
+			if d.Severity != sev {
+				t.Errorf("diagnostic %q has severity %v, want %v", code, d.Severity, sev)
+			}
+			return
+		}
+	}
+	t.Errorf("expected diagnostic %q (severity %v), got: %v", code, sev, res.Diagnostics)
+}
+
 // --- valid cases ---
 
 func TestDiff_Valid_NoChanges(t *testing.T) {
@@ -491,15 +504,20 @@ func TestDiffNew_NilHead(t *testing.T) {
 	assertHasCode(t, res, "RD000")
 }
 
-// --- semver pre-release rejection (Fix 1) ---
+// --- semver pre-release ordering (Fix 1 — Masterminds) ---
 
 func TestIsNewerSemver_PreRelease(t *testing.T) {
-	// Pre-release suffix → treated as invalid → returns false.
-	if isNewerSemver("1.0.0", "1.0.0-alpha") {
-		t.Error("expected false: 1.0.0-alpha has invalid pre-release suffix")
+	// Per semver spec: pre-release < release, so 1.0.0-alpha → 1.0.0 is a valid bump.
+	if !isNewerSemver("1.0.0-alpha", "1.0.0") {
+		t.Error("expected true: 1.0.0-alpha < 1.0.0")
 	}
-	if isNewerSemver("1.0.0-alpha", "1.0.0") {
-		t.Error("expected false: 1.0.0-alpha (base) has invalid pre-release suffix")
+	// Bumping between pre-releases is also valid.
+	if !isNewerSemver("1.0.0-alpha", "1.0.0-beta") {
+		t.Error("expected true: 1.0.0-alpha < 1.0.0-beta")
+	}
+	// Release → pre-release of next version: not a bump (same numeric components).
+	if isNewerSemver("1.0.0", "1.0.0-alpha") {
+		t.Error("expected false: 1.0.0 > 1.0.0-alpha")
 	}
 }
 
@@ -515,16 +533,78 @@ func TestDiff_RD012_TypeMutation(t *testing.T) {
 	assertHasCode(t, res, "RD012")
 }
 
+// --- RD006 is Warning (spec allows linked follow-up PR) ---
+
+func TestDiff_RD006_IsWarning(t *testing.T) {
+	d := New()
+	base := makeBase()
+	base.Rules = append(base.Rules, entity.Rule{
+		ID: "TSTENT-004", Revision: 0, State: "P",
+		Body: "Superseding rule", AddedBy: "test@example.com", AddedAt: "2026-01-01",
+		Supersedes: ptr("TSTENT-003"),
+	})
+	head := makeHead(base)
+	head.Rules[3].State = "I" // TSTENT-004: P → I; TSTENT-003 stays I (not yet R)
+	res := d.Diff(base, head)
+	assertCodeSeverity(t, res, "RD006", result.Warning)
+}
+
+// --- RD004 sequential numbering ---
+
+func TestDiff_RD004_NonSequentialNumber(t *testing.T) {
+	d := New()
+	base := makeBase() // rules: 001, 002, 003
+	head := makeHead(base)
+	head.Rules = append(head.Rules, entity.Rule{
+		ID: "TSTENT-005", Revision: 0, State: "D", // skips 004
+		Body: "New rule", AddedBy: "test@example.com", AddedAt: "2026-02-01",
+	})
+	res := d.Diff(base, head)
+	assertHasCode(t, res, "RD004")
+}
+
+func TestDiff_RD004_Sequential_Valid(t *testing.T) {
+	d := New()
+	base := makeBase() // rules: 001, 002, 003
+	head := makeHead(base)
+	head.Rules = append(head.Rules, entity.Rule{
+		ID: "TSTENT-004", Revision: 0, State: "D",
+		Body: "New rule", AddedBy: "test@example.com", AddedAt: "2026-02-01",
+	})
+	res := d.Diff(base, head)
+	assertNoCode(t, res, "RD004")
+}
+
+// --- sub-entity deletion ---
+
+func TestDiff_SubEntityDeleted(t *testing.T) {
+	d := New()
+	base := makeBase()
+	base.SubEntities = []entity.File{
+		{
+			Entity:  entity.Entity{ID: "TSTENT-SUB1", Title: "Sub"},
+			RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-01-01T00:00:00Z"},
+		},
+	}
+	head := makeHead(base)
+	head.SubEntities = nil // delete the sub-entity
+	res := d.Diff(base, head)
+	assertHasCode(t, res, "RD005")
+}
+
 // --- strict mode ---
 
 func TestDiff_StrictMode_PromotesWarnings(t *testing.T) {
-	// There are currently no Warning-severity checks in rule-diff,
-	// but verify strict mode doesn't break anything.
+	// RD006 is a Warning; strict mode promotes it to Error.
 	d := New(WithStrict(true))
 	base := makeBase()
+	base.Rules = append(base.Rules, entity.Rule{
+		ID: "TSTENT-004", Revision: 0, State: "P",
+		Body: "Superseding rule", AddedBy: "test@example.com", AddedAt: "2026-01-01",
+		Supersedes: ptr("TSTENT-003"),
+	})
 	head := makeHead(base)
+	head.Rules[3].State = "I"
 	res := d.Diff(base, head)
-	if !res.OK() {
-		t.Errorf("expected OK in strict mode for valid diff: %v", res.Diagnostics)
-	}
+	assertCodeSeverity(t, res, "RD006", result.Error)
 }

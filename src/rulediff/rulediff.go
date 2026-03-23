@@ -128,9 +128,21 @@ func (d *Differ) diffEntityTree(base, head *entity.File, res *result.Result, pat
 		subPath := path + " > " + sub.Entity.ID
 		if baseSub, ok := baseSubMap[sub.Entity.ID]; ok {
 			d.diffEntityTree(baseSub, sub, res, subPath)
+			delete(baseSubMap, sub.Entity.ID)
 		} else {
 			checkNewEntityTree(sub, res, subPath)
 		}
+	}
+	// Any sub-entities remaining in baseSubMap were deleted in head — reject.
+	for id := range baseSubMap {
+		subPath := path + " > " + id
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD005",
+			Severity: result.Error,
+			Message:  "deletion of sub-entity is not allowed: " + subPath,
+			Path:     subPath,
+		})
 	}
 }
 

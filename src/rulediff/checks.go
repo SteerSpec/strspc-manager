@@ -3,6 +3,7 @@ package rulediff
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -41,13 +42,20 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 	}
 
 	// Single pass: RD001-RD004, RD006, RD010-RD011 per rule.
+	var newRuleNums []int
 	for id, h := range headMap {
 		if b, exists := baseMap[id]; exists {
 			checkExistingRule(b, h, headMap, res, path+"/"+id)
 		} else {
 			checkNewRule(h, baseNums, res, path+"/"+id)
+			if n := extractRuleNum(h.ID); n >= 0 {
+				newRuleNums = append(newRuleNums, n)
+			}
 		}
 	}
+
+	// RD004: new rule numbers must be consecutive starting at max(base)+1.
+	checkSequentialRuleNums(newRuleNums, maxRuleNum(baseNums)+1, res, path)
 
 	// RD011 (new notes) and RD012 (append-only notes).
 	checkNotes(base.Notes, head.Notes, res, path)
@@ -101,7 +109,9 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		}
 	}
 
-	// RD006: when a superseding rule reaches I, the superseded rule must be R.
+	// RD006: when a superseding rule reaches I, the superseded rule should be R.
+	// Spec §7.2 allows retirement to happen in a linked subsequent PR, so this is
+	// a Warning rather than an Error (strict mode promotes it to Error).
 	if h.Supersedes != nil && h.State == entityops.StateImplemented {
 		supersededID := *h.Supersedes
 		superseded, ok := headMap[supersededID]
@@ -109,7 +119,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD006",
-				Severity: result.Error,
+				Severity: result.Warning,
 				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q not found in file", supersededID),
 				Path:     path,
 			})
@@ -117,8 +127,8 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD006",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q has state %q (must be R)", supersededID, superseded.State),
+				Severity: result.Warning,
+				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q has state %q (expected R; may be a linked follow-up PR)", supersededID, superseded.State),
 				Path:     path,
 			})
 		}
@@ -273,9 +283,16 @@ func checkHashBytes(head *entity.File, headData []byte, res *result.Result, path
 // checkNewEntityTree validates all rules and notes in a new entity (no prior version).
 // Used by DiffNew and for sub-entities added for the first time.
 func checkNewEntityTree(head *entity.File, res *result.Result, path string) {
+	var nums []int
 	for _, r := range head.Rules {
 		checkNewRuleConstraints(r, res, path+"/"+r.ID)
+		if n := extractRuleNum(r.ID); n >= 0 {
+			nums = append(nums, n)
+		}
 	}
+	// RD004: rules in a new entity must start at 1 and be consecutive.
+	checkSequentialRuleNums(nums, 1, res, path)
+
 	for _, n := range head.Notes {
 		if strings.TrimSpace(n.AddedBy) == "" {
 			res.Add(result.Diagnostic{
@@ -327,4 +344,35 @@ func extractRuleNum(id string) int {
 		return -1
 	}
 	return n
+}
+
+// maxRuleNum returns the highest number in the set, or 0 if empty.
+func maxRuleNum(nums map[int]bool) int {
+	max := 0
+	for n := range nums {
+		if n > max {
+			max = n
+		}
+	}
+	return max
+}
+
+// checkSequentialRuleNums emits RD004 if nums (sorted ascending) do not form
+// a consecutive sequence starting at nextExpected. No-op if nums is empty.
+func checkSequentialRuleNums(nums []int, nextExpected int, res *result.Result, path string) {
+	if len(nums) == 0 {
+		return
+	}
+	sort.Ints(nums)
+	for i, n := range nums {
+		if n != nextExpected+i {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD004",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("new rule number %03d is not sequential: expected %03d", n, nextExpected+i),
+				Path:     path,
+			})
+		}
+	}
 }
