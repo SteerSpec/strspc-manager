@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/SteerSpec/strspc-manager/compare/v1.5.0...v1.6.0) (2026-03-23)
+
+
+### Features
+
+* **entity:** export hash computation for reuse ([cd664f7](https://github.com/SteerSpec/strspc-manager/commit/cd664f742957ba84f0e1ef87a3430cf7bc025af2))
+* **entity:** export hash computation for reuse ([2b72833](https://github.com/SteerSpec/strspc-manager/commit/2b728337954e029aee104764be4e3e6cd4f67d05)), closes [#23](https://github.com/SteerSpec/strspc-manager/issues/23)
+
+
+### Bug Fixes
+
+* **entity:** check ComputeHash errors in all test subtests ([fdd9220](https://github.com/SteerSpec/strspc-manager/commit/fdd9220ea9b8c57b2e1f910dc58e5c9a87d4e76e))
+
 ## [1.5.0](https://github.com/SteerSpec/strspc-manager/compare/v1.4.0...v1.5.0) (2026-03-23)
 
 
