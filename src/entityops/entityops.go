@@ -90,13 +90,12 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 
 // UpdateRuleBody changes the body of a Draft rule and increments its revision.
 func UpdateRuleBody(f *entity.File, ruleID, body string) error {
-	if body == "" {
-		return fmt.Errorf("rule body must not be empty")
-	}
-
 	r, err := findRule(f, ruleID)
 	if err != nil {
 		return err
+	}
+	if body == "" {
+		return fmt.Errorf("rule body must not be empty")
 	}
 	if r.State != StateDraft {
 		return fmt.Errorf("rule %q is in state %q: only Draft rules can be edited", ruleID, r.State)

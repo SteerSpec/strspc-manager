@@ -9,16 +9,15 @@ import (
 // SupersedeRule creates a new Draft rule that supersedes an existing rule.
 // The superseded rule must be in state P, I, or R.
 func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error) {
+	old, err := findRule(f, ruleID)
+	if err != nil {
+		return "", err
+	}
 	if body == "" {
 		return "", fmt.Errorf("rule body must not be empty")
 	}
 	if addedBy == "" {
 		return "", fmt.Errorf("added_by must not be empty")
-	}
-
-	old, err := findRule(f, ruleID)
-	if err != nil {
-		return "", err
 	}
 
 	switch old.State {

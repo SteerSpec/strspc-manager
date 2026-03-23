@@ -40,7 +40,7 @@ func BumpMinor(version string) (string, error) {
 }
 
 // NextRuleNumber scans existing rule IDs matching the entity's EUID prefix
-// and returns max+1 (or 1 if empty).
+// and returns max+1. Returns 1 if the file is nil or has no matching rules.
 func NextRuleNumber(f *entity.File) int {
 	if f == nil {
 		return 1
