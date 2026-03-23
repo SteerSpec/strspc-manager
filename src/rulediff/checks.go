@@ -109,10 +109,11 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		}
 	}
 
-	// RD006: when a superseding rule reaches I, the superseded rule should be R.
-	// Spec §7.2 allows retirement to happen in a linked subsequent PR, so this is
-	// a Warning rather than an Error (strict mode promotes it to Error).
-	if h.Supersedes != nil && h.State == entityops.StateImplemented {
+	// RD006: when a superseding rule *transitions to* I, the superseded rule should be R.
+	// Scoped to the transition (b.State != I && h.State == I) to avoid false positives
+	// in later PRs where the superseder is already I and unrelated changes are made.
+	// Spec §7.2 allows retirement in a linked subsequent PR, so severity is Warning.
+	if h.Supersedes != nil && b.State != entityops.StateImplemented && h.State == entityops.StateImplemented {
 		supersededID := *h.Supersedes
 		superseded, ok := headMap[supersededID]
 		if !ok {

@@ -304,6 +304,29 @@ func TestDiffBytes_RD008_NilHashSkipped(t *testing.T) {
 	assertNoCode(t, res, "RD008")
 }
 
+func TestDiffBytes_RD008_ValidHash(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	baseData, _ := json.Marshal(base)
+	headData, _ := json.Marshal(head)
+
+	// Compute the correct hash and inject it.
+	hash, err := entity.ComputeHash(headData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(headData, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["rule_set"].(map[string]any)["hash"] = hash
+	headData, _ = json.Marshal(raw)
+
+	d := New()
+	res := d.DiffBytes(baseData, headData)
+	assertNoCode(t, res, "RD008")
+}
+
 // --- RD009 ---
 
 func TestDiff_RD009_TimestampNotUpdated(t *testing.T) {
