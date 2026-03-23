@@ -16,6 +16,9 @@ vendor/
 # OS
 .DS_Store
 
+# Worktrees
+.worktrees/
+
 # Beads/Dolt (added by bd init)
 .dolt/
 *.db
