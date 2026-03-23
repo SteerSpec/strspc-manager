@@ -39,7 +39,8 @@ func BumpMinor(version string) (string, error) {
 	return fmt.Sprintf("%d.%d.0", major, minor+1), nil
 }
 
-// NextRuleNumber scans existing rule IDs and returns max+1 (or 1 if empty).
+// NextRuleNumber scans existing rule IDs matching the entity's EUID prefix
+// and returns max+1 (or 1 if empty).
 func NextRuleNumber(f *entity.File) int {
 	if f == nil {
 		return 1
@@ -47,7 +48,7 @@ func NextRuleNumber(f *entity.File) int {
 	max := 0
 	for _, r := range f.Rules {
 		m := ruleIDRe.FindStringSubmatch(r.ID)
-		if m == nil {
+		if m == nil || m[1] != f.Entity.ID {
 			continue
 		}
 		n, err := strconv.Atoi(m[2])
@@ -94,15 +95,15 @@ func parseSemver(version string) (int, int, int, error) {
 	}
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid major %q: %w", version, parts[0], err)
 	}
 	minor, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid minor %q: %w", version, parts[1], err)
 	}
 	patch, err := strconv.Atoi(patchStr)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid patch %q: %w", version, patchStr, err)
 	}
 	return major, minor, patch, nil
 }
