@@ -1,4 +1,4 @@
-package rulelint
+package entity
 
 import (
 	"encoding/hex"
@@ -9,10 +9,10 @@ import (
 	"lukechampine.com/blake3"
 )
 
-// computeHash computes the Blake3 hash of an entity file's canonical JSON.
+// ComputeHash computes the Blake3 hash of an entity file's canonical JSON.
 // It nulls out rule_set.hash recursively, serializes to sorted-key minified
 // JSON, and returns "blake3:<64 hex chars>".
-func computeHash(data []byte) (string, error) {
+func ComputeHash(data []byte) (string, error) {
 	var obj map[string]any
 	if err := json.Unmarshal(data, &obj); err != nil {
 		return "", fmt.Errorf("unmarshaling for hash: %w", err)
