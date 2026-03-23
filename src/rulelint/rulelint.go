@@ -530,7 +530,7 @@ func (l *Linter) checkHash(ef *entity.File, data []byte, res *result.Result) {
 		return
 	}
 
-	computed, err := computeHash(data)
+	computed, err := entity.ComputeHash(data)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
