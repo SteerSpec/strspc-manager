@@ -1,0 +1,15 @@
+{
+  "$schema": "../_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NESTED",
+    "title": "Nested Entity",
+    "description": "A nested entity for recursive scan testing"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": null
+  },
+  "rules": [],
+  "notes": []
+}

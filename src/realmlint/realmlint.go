@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -285,52 +286,64 @@ func checkSchemaDir(dir string, res *result.Result) {
 	}
 }
 
-// scanEntityFiles reads all .json files (excluding realm.json) and checks
-// EUID uniqueness (RM006) and optionally delegates to rulelint (RM005).
+// scanEntityFiles walks the Realm directory tree for .json entity files,
+// checking EUID uniqueness (RM006) and optionally delegating to rulelint (RM005).
+// The _schema/ subtree and realm.json files are skipped.
 func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RM005",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("reading directory: %s", err),
-			Path:     dir,
-		})
-		return
-	}
-
 	if l.cfg.RuleLinter == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM005",
 			Severity: result.Info,
 			Message:  "entity file validation skipped: no rule linter configured",
+			Path:     dir,
 		})
+	}
+
+	// relPath returns path relative to the Realm root for diagnostic messages.
+	relPath := func(path string) string {
+		rel, err := filepath.Rel(dir, path)
+		if err != nil {
+			return filepath.Base(path)
+		}
+		return rel
 	}
 
 	// EUID → first file path where it was seen.
 	euids := make(map[string]string)
 
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		if entry.Name() == "realm.json" {
-			continue
+	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM005",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("accessing path: %s", err),
+				Path:     path,
+			})
+			return nil
 		}
 
-		fpath := filepath.Join(dir, entry.Name())
-		data, readErr := os.ReadFile(fpath)
+		// Skip _schema/ subtree entirely.
+		if d.IsDir() && d.Name() == "_schema" {
+			return fs.SkipDir
+		}
+
+		// Skip directories, non-.json files, and realm.json.
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".json") || d.Name() == "realm.json" {
+			return nil
+		}
+
+		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM005",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("reading file: %s", readErr),
-				Path:     fpath,
+				Path:     path,
 			})
-			continue
+			return nil
 		}
 
 		// Try to parse as entity file to extract EUID.
@@ -340,9 +353,9 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 			// report the error; otherwise skip silently.
 			if l.cfg.RuleLinter != nil {
 				fileRes := l.cfg.RuleLinter.LintBytes(data)
-				copyDiagnostics(fileRes, fpath, res)
+				copyDiagnostics(fileRes, path, res)
 			}
-			continue
+			return nil
 		}
 
 		// RM006: EUID uniqueness.
@@ -353,27 +366,38 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 					Module:   module,
 					Code:     "RM006",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, filepath.Base(firstPath)),
-					Path:     fpath,
+					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, relPath(firstPath)),
+					Path:     path,
 				})
 			} else {
-				euids[euid] = fpath
+				euids[euid] = path
 			}
 		}
 
 		// Collect EUIDs from sub-entities too.
-		collectSubEntityEUIDs(ef, fpath, euids, res)
+		collectSubEntityEUIDs(ef, path, euids, relPath, res)
 
 		// RM005: Delegate entity file validation to rulelint.
 		if l.cfg.RuleLinter != nil {
 			fileRes := l.cfg.RuleLinter.LintBytes(data)
-			copyDiagnostics(fileRes, fpath, res)
+			copyDiagnostics(fileRes, path, res)
 		}
+
+		return nil
+	})
+	if walkErr != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM005",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("walking directory: %s", walkErr),
+			Path:     dir,
+		})
 	}
 }
 
 // collectSubEntityEUIDs collects EUIDs from sub-entities and checks uniqueness.
-func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]string, res *result.Result) {
+func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]string, relPath func(string) string, res *result.Result) {
 	for i := range ef.SubEntities {
 		sub := &ef.SubEntities[i]
 		euid := sub.Entity.ID
@@ -383,14 +407,14 @@ func collectSubEntityEUIDs(ef *entity.File, fpath string, euids map[string]strin
 					Module:   module,
 					Code:     "RM006",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, filepath.Base(firstPath)),
+					Message:  fmt.Sprintf("duplicate EUID %q (first seen in %s)", euid, relPath(firstPath)),
 					Path:     fpath,
 				})
 			} else {
 				euids[euid] = fpath
 			}
 		}
-		collectSubEntityEUIDs(sub, fpath, euids, res)
+		collectSubEntityEUIDs(sub, fpath, euids, relPath, res)
 	}
 }
 

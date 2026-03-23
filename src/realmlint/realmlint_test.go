@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -134,6 +135,78 @@ func TestRM005_NoDelegation(t *testing.T) {
 	// Should emit an Info diagnostic that entity validation was skipped.
 	if !hasCodeWithSeverity(res, "RM005", result.Info) {
 		t.Error("expected RM005 info diagnostic when no rule linter configured")
+	}
+}
+
+func TestLint_NestedEntityFiles(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	rl := rulelint.New()
+	linter := New(WithRuleLinter(rl))
+	res := linter.Lint(dir)
+
+	for _, d := range res.Diagnostics {
+		if d.Severity == result.Error {
+			t.Errorf("unexpected error: %s %s: %s", d.Code, d.Path, d.Message)
+		}
+	}
+
+	// Should not report RM006 — TST and NESTED have distinct EUIDs.
+	if hasCode(res, "RM006") {
+		t.Error("unexpected RM006 diagnostic for valid nested entities")
+	}
+
+	// Verify the nested entity file was actually processed by rulelint.
+	// rulelint.New() without a schema fetcher always emits RL002 per file.
+	nestedSuffix := filepath.Join("subdir", "NESTED.json")
+	foundNested := false
+	for _, d := range res.Diagnostics {
+		if strings.HasSuffix(d.Path, nestedSuffix) {
+			foundNested = true
+			break
+		}
+	}
+	if !foundNested {
+		t.Error("expected at least one diagnostic for nested entity file subdir/NESTED.json")
+	}
+}
+
+func TestRM006_NestedDuplicateEUID(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "nested_duplicate_euid")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM006")
+	if res.OK() {
+		t.Error("expected errors for nested duplicate EUID")
+	}
+}
+
+func TestScanEntityFiles_SkipsSchemaDir(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	rl := rulelint.New()
+	linter := New(WithRuleLinter(rl))
+	res := linter.Lint(dir)
+
+	// No diagnostic should reference any path inside _schema/.
+	for _, d := range res.Diagnostics {
+		if filepath.Base(filepath.Dir(d.Path)) == "_schema" {
+			t.Errorf("unexpected diagnostic for _schema/ file: %s %s: %s", d.Code, d.Path, d.Message)
+		}
+	}
+}
+
+func TestScanEntityFiles_SkipsNestedRealmJSON(t *testing.T) {
+	// testdata/valid/subdir/realm.json contains invalid JSON that would
+	// trigger diagnostics if processed as an entity file.
+	dir := filepath.Join(testdataPath(t), "valid")
+	rl := rulelint.New()
+	linter := New(WithRuleLinter(rl))
+	res := linter.Lint(dir)
+
+	for _, d := range res.Diagnostics {
+		if strings.HasSuffix(d.Path, filepath.Join("subdir", "realm.json")) {
+			t.Errorf("realm.json in subdirectory should be skipped, got diagnostic: %s %s: %s", d.Code, d.Path, d.Message)
+		}
 	}
 }
 
