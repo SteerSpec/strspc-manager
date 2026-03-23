@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.1](https://github.com/SteerSpec/strspc-manager/compare/v1.7.0...v1.7.1) (2026-03-23)
+
+
+### Bug Fixes
+
+* address PR review comments in CLAUDE.md ([adf8c1f](https://github.com/SteerSpec/strspc-manager/commit/adf8c1f19689455e89a18f0f46e6af9400b8a348))
+
+
+### Documentation
+
+* add Rule Manager Spec and CLAUDE.md ([e1509af](https://github.com/SteerSpec/strspc-manager/commit/e1509af3b342256aeb9b53f96d27fa97a44191fa))
+* add Rule Manager Spec and CLAUDE.md ([cd7a59f](https://github.com/SteerSpec/strspc-manager/commit/cd7a59fb448c4c13d77c5617663fae80236e39a4))
+
 ## [1.7.0](https://github.com/SteerSpec/strspc-manager/compare/v1.6.0...v1.7.0) (2026-03-23)
 
 
