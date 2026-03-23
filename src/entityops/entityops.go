@@ -58,6 +58,10 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 		return "", fmt.Errorf("added_by must not be empty")
 	}
 
+	if err := ValidateEUID(f.Entity.ID); err != nil {
+		return "", fmt.Errorf("invalid entity ID: %w", err)
+	}
+
 	num := NextRuleNumber(f)
 	if num > maxRuleNumber {
 		return "", fmt.Errorf("cannot add rule: maximum number of rules (%d) exceeded for entity %q", maxRuleNumber, f.Entity.ID)

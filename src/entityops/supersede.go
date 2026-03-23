@@ -28,6 +28,10 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 		return "", fmt.Errorf("rule %q is in state %q: only Published, Implemented, or Retired rules can be superseded", ruleID, old.State)
 	}
 
+	if err := ValidateEUID(f.Entity.ID); err != nil {
+		return "", fmt.Errorf("invalid entity ID: %w", err)
+	}
+
 	num := NextRuleNumber(f)
 	if num > maxRuleNumber {
 		return "", fmt.Errorf("cannot add rule: maximum number of rules (%d) exceeded for entity %q", maxRuleNumber, f.Entity.ID)

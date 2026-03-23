@@ -93,17 +93,36 @@ func parseSemver(version string) (int, int, int, error) {
 	if idx := strings.IndexAny(patchStr, "-+"); idx >= 0 {
 		patchStr = patchStr[:idx]
 	}
-	major, err := strconv.Atoi(parts[0])
+	major, err := parseSemverComponent(version, "major", parts[0])
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid major %q: %w", version, parts[0], err)
+		return 0, 0, 0, err
 	}
-	minor, err := strconv.Atoi(parts[1])
+	minor, err := parseSemverComponent(version, "minor", parts[1])
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid minor %q: %w", version, parts[1], err)
+		return 0, 0, 0, err
 	}
-	patch, err := strconv.Atoi(patchStr)
+	patch, err := parseSemverComponent(version, "patch", patchStr)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("invalid semver %q: invalid patch %q: %w", version, patchStr, err)
+		return 0, 0, 0, err
 	}
 	return major, minor, patch, nil
+}
+
+// parseSemverComponent validates and parses a single numeric semver component.
+// It rejects leading zeros (except "0" itself) and negative/signed values.
+func parseSemverComponent(version, label, s string) (int, error) {
+	if s == "" {
+		return 0, fmt.Errorf("invalid semver %q: empty %s", version, label)
+	}
+	if len(s) > 1 && s[0] == '0' {
+		return 0, fmt.Errorf("invalid semver %q: %s %q has leading zero", version, label, s)
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid semver %q: invalid %s %q: %w", version, label, s, err)
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("invalid semver %q: %s must be non-negative", version, label)
+	}
+	return n, nil
 }
