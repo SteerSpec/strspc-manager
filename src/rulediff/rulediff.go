@@ -64,6 +64,8 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 		return res
 	}
 
+	checkVersion(baseEnt, headEnt, res, headEnt.Entity.ID)
+	checkTimestamp(baseEnt, headEnt, res, headEnt.Entity.ID)
 	d.diffEntityTree(baseEnt, headEnt, res, headEnt.Entity.ID)
 	checkHashBytes(headEnt, headData, res, headEnt.Entity.ID)
 	if d.cfg.Strict {
@@ -85,6 +87,8 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 		})
 		return res
 	}
+	checkVersion(base, head, res, head.Entity.ID)
+	checkTimestamp(base, head, res, head.Entity.ID)
 	d.diffEntityTree(base, head, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
@@ -112,11 +116,11 @@ func (d *Differ) DiffNew(head *entity.File) *result.Result {
 	return res
 }
 
-// diffEntityTree runs all diff checks for one entity and recurses into sub-entities.
+// diffEntityTree runs rule/note diff checks for one entity and recurses into sub-entities.
+// RD007 (version) and RD009 (timestamp) are intentionally NOT run here — they apply only
+// to the top-level entity file and are called directly by Diff/DiffBytes.
 func (d *Differ) diffEntityTree(base, head *entity.File, res *result.Result, path string) {
 	checkRules(base, head, res, path)
-	checkVersion(base, head, res, path)
-	checkTimestamp(base, head, res, path)
 
 	// Index base sub-entities for O(1) lookup.
 	baseSubMap := make(map[string]*entity.File, len(base.SubEntities))

@@ -598,6 +598,26 @@ func TestDiff_RD004_Sequential_Valid(t *testing.T) {
 	assertNoCode(t, res, "RD004")
 }
 
+// --- sub-entity version/timestamp not required (RD007/RD009 top-level only) ---
+
+func TestDiff_UnchangedSubEntityNoVersionError(t *testing.T) {
+	d := New()
+	base := makeBase()
+	base.SubEntities = []entity.File{
+		{
+			Entity:  entity.Entity{ID: "TSTENT-SUB1", Title: "Sub"},
+			RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-01-01T00:00:00Z"},
+		},
+	}
+	head := makeHead(base) // top-level version/timestamp bumped; sub-entity unchanged
+	head.SubEntities = base.SubEntities
+	res := d.Diff(base, head)
+	// Sub-entity has same version/timestamp as base — must NOT trigger RD007/RD009.
+	if !res.OK() {
+		t.Errorf("expected no errors for unchanged sub-entity: %v", res.Diagnostics)
+	}
+}
+
 // --- sub-entity deletion ---
 
 func TestDiff_SubEntityDeleted(t *testing.T) {

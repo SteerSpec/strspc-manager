@@ -234,7 +234,7 @@ func checkVersion(base, head *entity.File, res *result.Result, path string) {
 			Module:   module,
 			Code:     "RD007",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule_set.version must be strictly higher than %q, got %q", base.RuleSet.Version, head.RuleSet.Version),
+			Message:  fmt.Sprintf("rule_set.version must be a valid semver and strictly higher than %q, got %q", base.RuleSet.Version, head.RuleSet.Version),
 			Path:     path + "/rule_set.version",
 		})
 	}
