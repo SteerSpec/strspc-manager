@@ -5,16 +5,55 @@ package ruleresolve
 
 import (
 	"context"
+	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
+const module = "rule-resolve"
+
+// Scope represents the applicability of a rule source.
+type Scope string
+
+// Rule source scope values.
+const (
+	ScopeGlobal Scope = "global"
+	ScopeLocal  Scope = "local"
+)
+
+// SourceEntry represents a single rule source from config.yaml.
+type SourceEntry struct {
+	Source string // URI: "./rules/", "github://...", etc.
+	Scope  Scope
+}
+
+// ResolvedFile wraps an entity.File with metadata from resolution.
+type ResolvedFile struct {
+	File   *entity.File
+	Origin SourceEntry
+	Path   string // filesystem path (for diagnostics)
+}
+
+// SourceFile pairs a parsed entity file with the path it was loaded from.
+type SourceFile struct {
+	File *entity.File
+	Path string // filesystem path or URL
+}
+
 // Source represents a location rules can be fetched from.
 type Source interface {
-	// Fetch retrieves an entity file from the source at the given reference.
-	Fetch(ctx context.Context, ref string) ([]*entity.File, error)
+	// Fetch retrieves entity files from the source at the given reference.
+	Fetch(ctx context.Context, ref string) ([]SourceFile, *result.Result)
+}
+
+// sourceBinding pairs a concrete Source with the SourceEntry it was parsed from.
+type sourceBinding struct {
+	source Source
+	entry  SourceEntry
 }
 
 // Config holds options for the Resolver.
@@ -22,6 +61,7 @@ type Config struct {
 	CacheTTL  time.Duration // cache time-to-live (default: 24h)
 	ForceSync bool          // bypass cache
 	CacheDir  string        // path to cache directory
+	BaseDir   string        // base directory for resolving relative source paths
 }
 
 // Option configures the Resolver.
@@ -42,23 +82,96 @@ func WithCacheDir(dir string) Option {
 	return func(c *Config) { c.CacheDir = dir }
 }
 
-// Resolver fetches and caches rules from configured sources.
-type Resolver struct {
-	sources []Source
-	cfg     Config
+// WithBaseDir sets the base directory for resolving relative source paths.
+// Defaults to the current working directory.
+func WithBaseDir(dir string) Option {
+	return func(c *Config) { c.BaseDir = dir }
 }
 
-// New creates a Resolver with the given sources and options.
-func New(sources []Source, opts ...Option) *Resolver {
+// Resolver fetches and caches rules from configured sources.
+type Resolver struct {
+	bindings []sourceBinding
+	cfg      Config
+}
+
+// New creates a Resolver from the given source entries and options.
+// It returns an error if any entry uses an unsupported URI scheme.
+func New(entries []SourceEntry, opts ...Option) (*Resolver, error) {
 	cfg := Config{CacheTTL: 24 * time.Hour}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	return &Resolver{sources: sources, cfg: cfg}
+
+	if cfg.BaseDir == "" {
+		cfg.BaseDir = "."
+	}
+
+	bindings := make([]sourceBinding, 0, len(entries))
+	for _, e := range entries {
+		src, err := parseSource(e)
+		if err != nil {
+			return nil, err
+		}
+		bindings = append(bindings, sourceBinding{source: src, entry: e})
+	}
+
+	return &Resolver{bindings: bindings, cfg: cfg}, nil
 }
 
-// Resolve fetches all rules from configured sources.
-func (r *Resolver) Resolve(_ context.Context) ([]*entity.File, *result.Result) {
-	// TODO: implement source resolution, validation, and caching
-	return nil, &result.Result{}
+// Resolve fetches all rules from configured sources and checks for
+// EUID collisions across sources.
+func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result) {
+	res := &result.Result{}
+
+	if err := ctx.Err(); err != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RSV000",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("context cancelled: %s", err),
+		})
+		return nil, res
+	}
+
+	var all []*ResolvedFile
+	for _, b := range r.bindings {
+		if ctx.Err() != nil {
+			break
+		}
+
+		ref := b.entry.Source
+		// Resolve relative paths against BaseDir.
+		if !filepath.IsAbs(ref) && !strings.Contains(ref, "://") {
+			ref = filepath.Join(r.cfg.BaseDir, ref)
+		}
+
+		files, fetchRes := b.source.Fetch(ctx, ref)
+		if fetchRes != nil {
+			res.Diagnostics = append(res.Diagnostics, fetchRes.Diagnostics...)
+		}
+		for _, sf := range files {
+			all = append(all, &ResolvedFile{
+				File:   sf.File,
+				Origin: b.entry,
+				Path:   sf.Path,
+			})
+		}
+	}
+
+	checkCollisions(all, res)
+	return all, res
+}
+
+// parseSource dispatches a SourceEntry to a concrete Source implementation.
+func parseSource(e SourceEntry) (Source, error) {
+	s := e.Source
+	switch {
+	case strings.HasPrefix(s, "github://"):
+		return nil, fmt.Errorf("RSV001: github source not yet implemented: %s", s)
+	case strings.Contains(s, "://"):
+		return nil, fmt.Errorf("RSV001: unsupported source scheme: %s", s)
+	default:
+		// Local path (relative or absolute).
+		return &LocalSource{}, nil
+	}
 }

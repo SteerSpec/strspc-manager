@@ -1,6 +1,10 @@
 package entity
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -103,4 +107,55 @@ func TestComputeHash(t *testing.T) {
 			t.Fatalf("sub-entity hash should be nulled: %q != %q", h1, h2)
 		}
 	})
+}
+
+// TestComputeHash_TestdataFiles verifies that every testdata/valid/*.json file
+// with a non-null hash field has a hash that matches ComputeHash output.
+// This prevents stale hashes from going undetected.
+func TestComputeHash_TestdataFiles(t *testing.T) {
+	_, file, _, _ := runtime.Caller(0)
+	validDir := filepath.Join(filepath.Dir(file), "testdata", "valid")
+
+	entries, err := os.ReadDir(validDir)
+	if err != nil {
+		t.Fatalf("reading testdata/valid: %v", err)
+	}
+
+	checked := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		path := filepath.Join(validDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("reading %s: %v", entry.Name(), err)
+		}
+
+		var probe struct {
+			RuleSet struct {
+				Hash *string `json:"hash"`
+			} `json:"rule_set"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			t.Fatalf("parsing %s: %v", entry.Name(), err)
+		}
+		if probe.RuleSet.Hash == nil || *probe.RuleSet.Hash == "" {
+			continue
+		}
+
+		computed, err := ComputeHash(data)
+		if err != nil {
+			t.Errorf("%s: ComputeHash error: %v", entry.Name(), err)
+			continue
+		}
+		if computed != *probe.RuleSet.Hash {
+			t.Errorf("%s: hash mismatch\n  stored:   %s\n  computed: %s", entry.Name(), *probe.RuleSet.Hash, computed)
+		}
+		checked++
+	}
+
+	if checked == 0 {
+		t.Fatal("no testdata files with non-null hashes found — test is not exercising anything")
+	}
 }

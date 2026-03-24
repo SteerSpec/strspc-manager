@@ -34,6 +34,17 @@ func ParseRealm(data []byte) (*RealmFile, error) {
 	return &r, nil
 }
 
+// IsRealmJSON detects Realm manifest files by checking for a "realm" top-level key.
+func IsRealmJSON(data []byte) bool {
+	var probe struct {
+		Realm *json.RawMessage `json:"realm"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return false
+	}
+	return probe.Realm != nil
+}
+
 // LoadRealm reads and parses a realm.json file from the given path.
 func LoadRealm(path string) (*RealmFile, error) {
 	data, err := os.ReadFile(path)
