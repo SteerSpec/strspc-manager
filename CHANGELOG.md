@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.8.0](https://github.com/SteerSpec/strspc-manager/compare/v1.7.1...v1.8.0) (2026-03-24)
+
+
+### Features
+
+* **rulediff:** add Compare/CompareNew/CompareDir package-level API ([0706f16](https://github.com/SteerSpec/strspc-manager/commit/0706f16b9fd144eeb8dcb3a6b9cc5a8fde6af0cf))
+* **rulediff:** implement 12 lifecycle checks (§7.2) ([d0cd9e7](https://github.com/SteerSpec/strspc-manager/commit/d0cd9e7f646525a4a8aebf456e1acaae39f1d0c7))
+* **rulediff:** implement 12 lifecycle checks (§7.2) ([781e315](https://github.com/SteerSpec/strspc-manager/commit/781e315f1b2bd955dc4fd52ce3e3cea61e2365ae)), closes [#2](https://github.com/SteerSpec/strspc-manager/issues/2)
+
+
+### Bug Fixes
+
+* **rulediff:** address second-round Copilot review comments ([66dadf7](https://github.com/SteerSpec/strspc-manager/commit/66dadf75e27120d07e37f13b1e6574bf0df62c23))
+* **rulediff:** address three Copilot PR review comments ([4e7e56f](https://github.com/SteerSpec/strspc-manager/commit/4e7e56f06f4c1be62223f2c1b70f0d5d84cfd601))
+* **rulediff:** scope RD006 to transition and add RD008 positive test ([85b54bc](https://github.com/SteerSpec/strspc-manager/commit/85b54bc5c3d424736c9b40490ac97f47265276af))
+* **rulediff:** scope RD007/RD009 to root entity and clarify error message ([213b1af](https://github.com/SteerSpec/strspc-manager/commit/213b1af047f07a5c9655256cae045823fa514b04))
+
 ## [1.7.1](https://github.com/SteerSpec/strspc-manager/compare/v1.7.0...v1.7.1) (2026-03-23)
 
 
