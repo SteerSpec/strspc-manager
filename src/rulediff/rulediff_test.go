@@ -2,6 +2,8 @@ package rulediff
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -633,6 +635,108 @@ func TestDiff_SubEntityDeleted(t *testing.T) {
 	head.SubEntities = nil // delete the sub-entity
 	res := d.Diff(base, head)
 	assertHasCode(t, res, "RD005")
+}
+
+// --- package-level Compare / CompareNew / CompareDir ---
+
+func TestCompare_Valid(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	baseData, _ := json.Marshal(base)
+	headData, _ := json.Marshal(head)
+	res := Compare(baseData, headData)
+	if !res.OK() {
+		t.Errorf("expected OK: %v", res.Diagnostics)
+	}
+}
+
+func TestCompareNew_Valid(t *testing.T) {
+	head := &entity.File{
+		Schema:  "./_schema/entity.v1.schema.json",
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-03-24T00:00:00Z"},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 0, State: "D", Body: "Rule", AddedBy: "test@example.com", AddedAt: "2026-03-24"},
+		},
+	}
+	headData, _ := json.Marshal(head)
+	res := CompareNew(headData)
+	if !res.OK() {
+		t.Errorf("expected OK: %v", res.Diagnostics)
+	}
+}
+
+func TestCompareNew_BadRevision(t *testing.T) {
+	head := &entity.File{
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-03-24T00:00:00Z"},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 1, State: "D", Body: "Rule", AddedBy: "test@example.com", AddedAt: "2026-03-24"},
+		},
+	}
+	headData, _ := json.Marshal(head)
+	res := CompareNew(headData)
+	assertHasCode(t, res, "RD004")
+}
+
+func TestCompareDir_Valid(t *testing.T) {
+	baseDir := t.TempDir()
+	headDir := t.TempDir()
+
+	base := makeBase()
+	head := makeHead(base)
+	baseData, _ := json.Marshal(base)
+	headData, _ := json.Marshal(head)
+
+	if err := os.WriteFile(filepath.Join(baseDir, "TSTENT.json"), baseData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(headDir, "TSTENT.json"), headData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res := CompareDir(baseDir, headDir)
+	if !res.OK() {
+		t.Errorf("expected OK: %v", res.Diagnostics)
+	}
+}
+
+func TestCompareDir_DeletedFile(t *testing.T) {
+	baseDir := t.TempDir()
+	headDir := t.TempDir()
+
+	base := makeBase()
+	baseData, _ := json.Marshal(base)
+	if err := os.WriteFile(filepath.Join(baseDir, "TSTENT.json"), baseData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// headDir is empty — file was deleted
+
+	res := CompareDir(baseDir, headDir)
+	assertHasCode(t, res, "RD005")
+}
+
+func TestCompareDir_NewFile(t *testing.T) {
+	baseDir := t.TempDir()
+	headDir := t.TempDir()
+
+	// New file only in headDir
+	head := &entity.File{
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-03-24T00:00:00Z"},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 0, State: "D", Body: "Rule", AddedBy: "test@example.com", AddedAt: "2026-03-24"},
+		},
+	}
+	headData, _ := json.Marshal(head)
+	if err := os.WriteFile(filepath.Join(headDir, "NEWENT.json"), headData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res := CompareDir(baseDir, headDir)
+	if !res.OK() {
+		t.Errorf("expected OK for valid new file: %v", res.Diagnostics)
+	}
 }
 
 // --- strict mode ---
