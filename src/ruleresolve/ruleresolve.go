@@ -135,8 +135,14 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 
 	var all []*ResolvedFile
 	for _, b := range r.bindings {
-		if ctx.Err() != nil {
-			break
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RSV000",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("context cancelled: %s", err),
+			})
+			return nil, res
 		}
 
 		ref := b.entry.Source
@@ -167,9 +173,9 @@ func parseSource(e SourceEntry) (Source, error) {
 	s := e.Source
 	switch {
 	case strings.HasPrefix(s, "github://"):
-		return nil, fmt.Errorf("RSV001: github source not yet implemented: %s", s)
+		return nil, fmt.Errorf("github source not yet implemented: %s", s)
 	case strings.Contains(s, "://"):
-		return nil, fmt.Errorf("RSV001: unsupported source scheme: %s", s)
+		return nil, fmt.Errorf("unsupported source scheme: %s", s)
 	default:
 		// Local path (relative or absolute).
 		return &LocalSource{}, nil

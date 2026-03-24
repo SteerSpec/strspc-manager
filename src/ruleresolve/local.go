@@ -55,7 +55,13 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".json") {
+		if d.IsDir() {
+			if d.Name() == "_schema" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".json") {
 			return nil
 		}
 
@@ -84,6 +90,10 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 				Message:  fmt.Sprintf("parsing entity: %s", parseErr),
 				Path:     path,
 			})
+			return nil
+		}
+
+		if f.Entity.ID == "" {
 			return nil
 		}
 
