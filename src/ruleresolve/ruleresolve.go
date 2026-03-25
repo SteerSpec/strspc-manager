@@ -6,6 +6,7 @@ package ruleresolve
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -104,7 +105,11 @@ func New(entries []SourceEntry, opts ...Option) (*Resolver, error) {
 	}
 
 	if cfg.BaseDir == "" {
-		cfg.BaseDir = "."
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("resolving base directory: %w", err)
+		}
+		cfg.BaseDir = wd
 	}
 
 	bindings := make([]sourceBinding, 0, len(entries))
