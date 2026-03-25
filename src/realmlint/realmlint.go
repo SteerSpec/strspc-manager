@@ -9,11 +9,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -312,45 +310,20 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 	// EUID → first file path where it was seen.
 	euids := make(map[string]string)
 
-	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RM005",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("accessing path: %s", err),
-				Path:     path,
-			})
-			return nil
-		}
-
-		// Skip _schema/ subtree entirely.
-		if d.IsDir() && d.Name() == "_schema" {
-			return fs.SkipDir
-		}
-
-		// Skip directories, non-.json files, and realm.json.
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".json") || d.Name() == "realm.json" {
-			return nil
-		}
-
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RM005",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("reading file: %s", readErr),
-				Path:     path,
-			})
-			return nil
-		}
-
-		// Try to parse as entity file to extract EUID.
-		ef, parseErr := entity.Parse(data)
+	walkErr := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
-			// Not a valid entity file — if rulelint is configured it will
-			// report the error; otherwise skip silently.
+			if data == nil {
+				// Read/traversal error — always report regardless of RuleLinter config.
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RM005",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("accessing path: %s", parseErr),
+					Path:     path,
+				})
+				return nil
+			}
+			// Parse error — delegate to rulelint if configured.
 			if l.cfg.RuleLinter != nil {
 				fileRes := l.cfg.RuleLinter.LintBytes(data)
 				copyDiagnostics(fileRes, path, res)

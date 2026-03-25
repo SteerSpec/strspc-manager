@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -49,55 +48,35 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 
 	var files []SourceFile
 
-	walkErr := filepath.WalkDir(abs, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	walkErr := entity.WalkEntityFiles(abs, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if d.IsDir() {
-			if d.Name() == "_schema" {
-				return filepath.SkipDir
+
+		if parseErr != nil {
+			if data == nil {
+				// Traversal or read error.
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RSV002",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("accessing path: %s", parseErr),
+					Path:     path,
+				})
+			} else {
+				// Parse error.
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RSV003",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("parsing entity: %s", parseErr),
+					Path:     path,
+				})
 			}
 			return nil
 		}
-		if !strings.HasSuffix(d.Name(), ".json") {
-			return nil
-		}
-		if d.Name() == "realm.json" {
-			return nil
-		}
 
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RSV002",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("reading file: %s", readErr),
-				Path:     path,
-			})
-			return nil
-		}
-
-		if entity.IsRealmJSON(data) {
-			return nil
-		}
-
-		f, parseErr := entity.Parse(data)
-		if parseErr != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RSV003",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("parsing entity: %s", parseErr),
-				Path:     path,
-			})
-			return nil
-		}
-
-		if f.Entity.ID == "" {
+		if ef.Entity.ID == "" {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RSV003",
@@ -109,7 +88,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 		}
 
 		// Verify hash if present.
-		if f.RuleSet.Hash != nil && *f.RuleSet.Hash != "" {
+		if ef.RuleSet.Hash != nil && *ef.RuleSet.Hash != "" {
 			computed, hashErr := entity.ComputeHash(data)
 			if hashErr != nil {
 				res.Add(result.Diagnostic{
@@ -121,19 +100,19 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 				})
 				return nil
 			}
-			if computed != *f.RuleSet.Hash {
+			if computed != *ef.RuleSet.Hash {
 				res.Add(result.Diagnostic{
 					Module:   module,
 					Code:     "RSV004",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("hash mismatch: expected %s, got %s", *f.RuleSet.Hash, computed),
+					Message:  fmt.Sprintf("hash mismatch: expected %s, got %s", *ef.RuleSet.Hash, computed),
 					Path:     path,
 				})
 				return nil
 			}
 		}
 
-		files = append(files, SourceFile{File: f, Path: path})
+		files = append(files, SourceFile{File: ef, Path: path})
 		return nil
 	})
 

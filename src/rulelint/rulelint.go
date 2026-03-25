@@ -8,11 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -154,51 +151,50 @@ type dirEntry struct {
 }
 
 // LintDir validates all entity JSON files in a directory and runs cross-file
-// reference checks (RL012).
+// reference checks (RL012). Only immediate children are scanned (shallow).
 func (l *Linter) LintDir(dir string) *result.Result {
-	res := &result.Result{}
+	return l.lintDir(dir, entity.WithRecursive(false))
+}
 
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL000",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("reading directory: %s", err),
-			Path:     dir,
-		})
-		return res
-	}
+// lintDir is the internal implementation used by LintDir; recursion behavior
+// is controlled via the provided entity.WalkOption values.
+// TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
+// Split schema/hash checks from parsing to reuse the walker-provided *File.
+func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
+	res := &result.Result{}
 
 	// First pass: lint each file and collect parsed entities.
 	var parsed []dirEntry
 	allRuleIDs := make(map[string]string) // ruleID → file path
 
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		fpath := filepath.Join(dir, entry.Name())
-		data, readErr := os.ReadFile(fpath)
-		if readErr != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RL000",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("reading file: %s", readErr),
-				Path:     fpath,
-			})
-			continue
+	walkErr := entity.WalkEntityFiles(dir, func(fpath string, data []byte, ef *entity.File, parseErr error) error {
+		if parseErr != nil {
+			if data == nil {
+				// Read error.
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RL000",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("reading file: %s", parseErr),
+					Path:     fpath,
+				})
+			} else {
+				// Parse error — lint the raw bytes to get full diagnostics.
+				fileRes, _ := l.lintBytesInternal(data)
+				for _, d := range fileRes.Diagnostics {
+					if d.Path == "" {
+						d.Path = fpath
+					} else {
+						d.Path = fpath + ": " + d.Path
+					}
+					res.Add(d)
+				}
+			}
+			return nil
 		}
 
-		// Skip known non-entity files (e.g. realm.json).
-		// All other .json files are linted so violations surface.
-		if entity.IsRealmJSON(data) {
-			continue
-		}
-
-		fileRes, ef := l.lintBytesInternal(data)
-		// Copy diagnostics, adding file path context.
+		// Lint the already-parsed entity.
+		fileRes, _ := l.lintBytesInternal(data)
 		for _, d := range fileRes.Diagnostics {
 			if d.Path == "" {
 				d.Path = fpath
@@ -208,10 +204,19 @@ func (l *Linter) LintDir(dir string) *result.Result {
 			res.Add(d)
 		}
 
-		if ef != nil {
-			collectRuleIDs(ef, fpath, allRuleIDs)
-			parsed = append(parsed, dirEntry{path: fpath, file: ef})
-		}
+		collectRuleIDs(ef, fpath, allRuleIDs)
+		parsed = append(parsed, dirEntry{path: fpath, file: ef})
+		return nil
+	}, walkOpts...)
+	if walkErr != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RL000",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("reading directory: %s", walkErr),
+			Path:     dir,
+		})
+		return res
 	}
 
 	// Second pass: cross-file supersedes/relation references (RL012).
