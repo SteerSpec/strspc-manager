@@ -152,12 +152,13 @@ type dirEntry struct {
 
 // LintDir validates all entity JSON files in a directory and runs cross-file
 // reference checks (RL012). Only immediate children are scanned (shallow).
-// Use LintRealm for recursive realm-wide validation.
 func (l *Linter) LintDir(dir string) *result.Result {
 	return l.lintDir(dir, entity.WithRecursive(false))
 }
 
 // lintDir is the shared implementation for LintDir (shallow) and LintRealm (recursive).
+// TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
+// Split schema/hash checks from parsing to reuse the walker-provided *File.
 func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
 

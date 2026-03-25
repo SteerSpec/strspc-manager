@@ -312,22 +312,21 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 
 	walkErr := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
-			// Not a valid entity file — if rulelint is configured it will
-			// report the error; otherwise skip silently.
+			if data == nil {
+				// Read/traversal error — always report regardless of RuleLinter config.
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RM005",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("accessing path: %s", parseErr),
+					Path:     path,
+				})
+				return nil
+			}
+			// Parse error — delegate to rulelint if configured.
 			if l.cfg.RuleLinter != nil {
-				if data != nil {
-					fileRes := l.cfg.RuleLinter.LintBytes(data)
-					copyDiagnostics(fileRes, path, res)
-				} else {
-					// Read error — data is nil.
-					res.Add(result.Diagnostic{
-						Module:   module,
-						Code:     "RM005",
-						Severity: result.Error,
-						Message:  fmt.Sprintf("reading file: %s", parseErr),
-						Path:     path,
-					})
-				}
+				fileRes := l.cfg.RuleLinter.LintBytes(data)
+				copyDiagnostics(fileRes, path, res)
 			}
 			return nil
 		}
