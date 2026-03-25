@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -239,17 +240,17 @@ func TestStrictMode(t *testing.T) {
 // minimalEntitySchema is a minimal JSON Schema that requires an "entity" object
 // with a string "id" field.
 const minimalEntitySchema = `{
-  "type": "object",
-  "required": ["entity"],
-  "properties": {
-    "entity": {
-      "type": "object",
-      "required": ["id"],
-      "properties": {
-        "id": { "type": "string" }
-      }
-    }
-  }
+	"type": "object",
+	"required": ["entity"],
+	"properties": {
+		"entity": {
+			"type": "object",
+			"required": ["id"],
+			"properties": {
+				"id": { "type": "string" }
+			}
+		}
+	}
 }`
 
 func newTestFetcher(t *testing.T, schemaBody string, statusCode int) *schema.Fetcher {
@@ -332,6 +333,45 @@ func assertNoCode(t *testing.T, res *result.Result, code string) {
 	for _, d := range res.Diagnostics {
 		if d.Code == code {
 			t.Errorf("unexpected diagnostic %s: %s", code, d)
+		}
+	}
+}
+
+func TestLintRealm_CrossEntitySupersedes(t *testing.T) {
+	l := New()
+	res := l.LintRealm(testdataPath("realm"))
+
+	// ENT-001 supersedes RUL-001 — valid cross-entity reference, no RL012 for it.
+	// SUB-001 supersedes MISSING-999 — invalid, should trigger RL012.
+
+	// Check that we have exactly 1 RL012 diagnostic (for MISSING-999).
+	var rl012Count int
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL012" {
+			rl012Count++
+			if !strings.Contains(d.Message, "MISSING-999") {
+				t.Errorf("expected RL012 for MISSING-999, got: %s", d.Message)
+			}
+		}
+	}
+	if rl012Count != 1 {
+		t.Errorf("expected 1 RL012 diagnostic, got %d", rl012Count)
+	}
+}
+
+func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
+	// LintDir should still work shallow — ENT.json supersedes RUL-001 which
+	// IS in the same directory, so no RL012 for it. But subdir/SUB.json
+	// should NOT be scanned.
+	l := New()
+	res := l.LintDir(testdataPath("realm"))
+
+	// In shallow mode, allRuleIDs only has ENT-001 and RUL-001.
+	// ENT-001 supersedes RUL-001 — found, no RL012.
+	// SUB-001 is not scanned at all (it's in subdir/).
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL012" {
+			t.Errorf("unexpected RL012 in shallow LintDir: %s", d.Message)
 		}
 	}
 }

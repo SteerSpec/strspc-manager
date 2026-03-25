@@ -157,6 +157,14 @@ func (l *Linter) LintDir(dir string) *result.Result {
 	return l.lintDir(dir, entity.WithRecursive(false))
 }
 
+// LintRealm validates all entity JSON files in a realm directory tree recursively
+// and runs cross-entity reference checks (RL012).
+// TODO: Add RL014 for cross-entity relation note references once the
+// cross-entity reference format in note content is well-defined.
+func (l *Linter) LintRealm(dir string) *result.Result {
+	return l.lintDir(dir)
+}
+
 // lintDir is the shared implementation for LintDir (shallow) and LintRealm (recursive).
 func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
