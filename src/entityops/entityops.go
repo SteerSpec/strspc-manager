@@ -71,7 +71,7 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 	f.Rules = append(f.Rules, entity.Rule{
 		ID:       ruleID,
 		Revision: 0,
-		State:    StateDraft,
+		State:    entity.StateDraft,
 		Body:     body,
 		AddedBy:  addedBy,
 		AddedAt:  nowFunc().Format(dateFormat),
@@ -97,7 +97,7 @@ func UpdateRuleBody(f *entity.File, ruleID, body string) error {
 	if body == "" {
 		return fmt.Errorf("rule body must not be empty")
 	}
-	if r.State != StateDraft {
+	if r.State != entity.StateDraft {
 		return fmt.Errorf("rule %q is in state %q: only Draft rules can be edited", ruleID, r.State)
 	}
 

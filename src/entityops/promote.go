@@ -15,15 +15,15 @@ func PromoteRule(f *entity.File, ruleID string) error {
 
 	var target string
 	switch r.State {
-	case StateDraft:
-		target = StatePublished
-	case StatePublished:
-		target = StateImplemented
+	case entity.StateDraft:
+		target = entity.StatePublished
+	case entity.StatePublished:
+		target = entity.StateImplemented
 	default:
 		return fmt.Errorf("rule %q is in state %q: cannot promote", ruleID, r.State)
 	}
 
-	if err := ValidateTransition(r.State, target); err != nil {
+	if err := entity.ValidateTransition(r.State, target); err != nil {
 		return err
 	}
 
@@ -48,15 +48,15 @@ func RetireRule(f *entity.File, ruleID string) error {
 
 	var target string
 	switch r.State {
-	case StateImplemented:
-		target = StateRetired
-	case StateRetired:
-		target = StateTerminated
+	case entity.StateImplemented:
+		target = entity.StateRetired
+	case entity.StateRetired:
+		target = entity.StateTerminated
 	default:
 		return fmt.Errorf("rule %q is in state %q: cannot retire", ruleID, r.State)
 	}
 
-	if err := ValidateTransition(r.State, target); err != nil {
+	if err := entity.ValidateTransition(r.State, target); err != nil {
 		return err
 	}
 
@@ -79,15 +79,15 @@ func AbandonRule(f *entity.File, ruleID string) error {
 		return err
 	}
 
-	if r.State != StateDraft {
+	if r.State != entity.StateDraft {
 		return fmt.Errorf("rule %q is in state %q: only Draft rules can be abandoned", ruleID, r.State)
 	}
 
-	if err := ValidateTransition(r.State, StateAbandoned); err != nil {
+	if err := entity.ValidateTransition(r.State, entity.StateAbandoned); err != nil {
 		return err
 	}
 
-	r.State = StateAbandoned
+	r.State = entity.StateAbandoned
 	v, err := BumpPatch(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)

@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
-	"github.com/SteerSpec/strspc-manager/src/entityops"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -20,17 +19,6 @@ const (
 	CodeProviderError = "RE002" // AI provider returned an error
 	CodeStaticOnly    = "RE003" // AI evaluation skipped (static-only mode)
 )
-
-// validStates is the set of recognised rule lifecycle state codes,
-// derived from entityops constants to avoid drift.
-var validStates = map[string]bool{
-	entityops.StateDraft:       true,
-	entityops.StateAbandoned:   true,
-	entityops.StatePublished:   true,
-	entityops.StateImplemented: true,
-	entityops.StateRetired:     true,
-	entityops.StateTerminated:  true,
-}
 
 // Verdict represents the evaluation outcome for a single rule.
 type Verdict string
@@ -137,7 +125,7 @@ func New(provider Provider, opts ...Option) (*Evaluator, error) {
 		return nil, fmt.Errorf("ruleeval: provider is required when StaticOnly is not enabled")
 	}
 	for s := range cfg.FailOn {
-		if !validStates[s] {
+		if !entity.IsValidState(s) {
 			return nil, fmt.Errorf("ruleeval: invalid fail_on state code: %q", s)
 		}
 	}

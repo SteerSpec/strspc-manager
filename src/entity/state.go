@@ -1,6 +1,4 @@
-// Package entityops provides pure business logic for entity and rule mutations.
-// It operates on in-memory *entity.File structs with no filesystem I/O.
-package entityops
+package entity
 
 import "fmt"
 
@@ -13,6 +11,16 @@ const (
 	StateRetired     = "R"
 	StateTerminated  = "T"
 )
+
+// validStates is the set of recognised rule lifecycle state codes.
+var validStates = map[string]bool{
+	StateDraft:       true,
+	StateAbandoned:   true,
+	StatePublished:   true,
+	StateImplemented: true,
+	StateRetired:     true,
+	StateTerminated:  true,
+}
 
 // validTransitions defines the allowed forward-only state machine.
 //
@@ -31,6 +39,17 @@ var validTransitions = map[string]map[string]bool{
 var terminalStates = map[string]bool{
 	StateAbandoned:  true,
 	StateTerminated: true,
+}
+
+// IsValidState reports whether s is a recognised rule lifecycle state code.
+func IsValidState(s string) bool {
+	return validStates[s]
+}
+
+// IsTerminalState reports whether s is a terminal state from which
+// no further transition is allowed.
+func IsTerminalState(s string) bool {
+	return terminalStates[s]
 }
 
 // ValidateTransition checks whether a state transition is allowed.

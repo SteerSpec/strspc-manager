@@ -32,11 +32,6 @@ var (
 	hashRe   = regexp.MustCompile(`^blake3:[a-f0-9]{64}$`)
 )
 
-var validStates = map[string]bool{
-	"D": true, "A": true, "P": true,
-	"I": true, "R": true, "T": true,
-}
-
 var validNoteTypes = map[string]bool{
 	"rationale":          true,
 	"example":            true,
@@ -425,7 +420,7 @@ func checkSequential(ef *entity.File, res *result.Result, path string) {
 // RL006: State values in allowed enum.
 func checkStates(ef *entity.File, res *result.Result, path string) {
 	for _, r := range ef.Rules {
-		if !validStates[r.State] {
+		if !entity.IsValidState(r.State) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL006",

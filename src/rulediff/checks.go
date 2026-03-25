@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
-	"github.com/SteerSpec/strspc-manager/src/entityops"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -64,7 +63,7 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 // checkExistingRule runs RD001, RD002, RD003, RD006 for a rule present in both versions.
 func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *result.Result, path string) {
 	// RD001: body edited in Draft — revision must increment, state must stay D.
-	if b.State == entityops.StateDraft && h.Body != b.Body {
+	if b.State == entity.StateDraft && h.Body != b.Body {
 		if h.Revision != b.Revision+1 {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -74,7 +73,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 				Path:     path,
 			})
 		}
-		if h.State != entityops.StateDraft {
+		if h.State != entity.StateDraft {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD001",
@@ -86,7 +85,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 	}
 
 	// RD002: body is immutable once a rule has left Draft.
-	if b.State != entityops.StateDraft && h.Body != b.Body {
+	if b.State != entity.StateDraft && h.Body != b.Body {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD002",
@@ -98,7 +97,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 
 	// RD003: state transitions must follow the forward-only state machine.
 	if h.State != b.State {
-		if err := entityops.ValidateTransition(b.State, h.State); err != nil {
+		if err := entity.ValidateTransition(b.State, h.State); err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD003",
@@ -113,7 +112,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 	// Scoped to the transition (b.State != I && h.State == I) to avoid false positives
 	// in later PRs where the superseder is already I and unrelated changes are made.
 	// Spec §7.2 allows retirement in a linked subsequent PR, so severity is Warning.
-	if h.Supersedes != nil && b.State != entityops.StateImplemented && h.State == entityops.StateImplemented {
+	if h.Supersedes != nil && b.State != entity.StateImplemented && h.State == entity.StateImplemented {
 		supersededID := *h.Supersedes
 		superseded, ok := headMap[supersededID]
 		if !ok {
@@ -124,7 +123,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q not found in file", supersededID),
 				Path:     path,
 			})
-		} else if superseded.State != entityops.StateRetired {
+		} else if superseded.State != entity.StateRetired {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD006",
@@ -164,7 +163,7 @@ func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 			Path:     path,
 		})
 	}
-	if r.State != entityops.StateDraft {
+	if r.State != entity.StateDraft {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD004",
