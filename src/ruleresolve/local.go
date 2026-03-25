@@ -2,6 +2,7 @@ package ruleresolve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -72,7 +73,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 		if readErr != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RSV003",
+				Code:     "RSV002",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("reading file: %s", readErr),
 				Path:     path,
@@ -137,9 +138,13 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 	})
 
 	if walkErr != nil {
+		code := "RSV002"
+		if errors.Is(walkErr, context.Canceled) || errors.Is(walkErr, context.DeadlineExceeded) {
+			code = "RSV000"
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
-			Code:     "RSV002",
+			Code:     code,
 			Severity: result.Error,
 			Message:  fmt.Sprintf("walking directory: %s", walkErr),
 			Path:     abs,

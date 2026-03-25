@@ -33,9 +33,10 @@ type SourceEntry struct {
 
 // ResolvedFile wraps an entity.File with metadata from resolution.
 type ResolvedFile struct {
-	File   *entity.File
-	Origin SourceEntry
-	Path   string // filesystem path (for diagnostics)
+	File           *entity.File
+	Origin         SourceEntry
+	Path           string // filesystem path (for diagnostics)
+	ResolvedSource string // absolute path or normalized URI of the source
 }
 
 // SourceFile pairs a parsed entity file with the path it was loaded from.
@@ -157,9 +158,10 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 		}
 		for _, sf := range files {
 			all = append(all, &ResolvedFile{
-				File:   sf.File,
-				Origin: b.entry,
-				Path:   sf.Path,
+				File:           sf.File,
+				Origin:         b.entry,
+				Path:           sf.Path,
+				ResolvedSource: ref,
 			})
 		}
 	}
