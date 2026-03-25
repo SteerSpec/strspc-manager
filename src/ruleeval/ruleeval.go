@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/entityops"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -20,10 +21,15 @@ const (
 	CodeStaticOnly    = "RE003" // AI evaluation skipped (static-only mode)
 )
 
-// validStates is the set of recognised rule lifecycle state codes.
+// validStates is the set of recognised rule lifecycle state codes,
+// derived from entityops constants to avoid drift.
 var validStates = map[string]bool{
-	"D": true, "A": true, "P": true,
-	"I": true, "R": true, "T": true,
+	entityops.StateDraft:       true,
+	entityops.StateAbandoned:   true,
+	entityops.StatePublished:   true,
+	entityops.StateImplemented: true,
+	entityops.StateRetired:     true,
+	entityops.StateTerminated:  true,
 }
 
 // Verdict represents the evaluation outcome for a single rule.
