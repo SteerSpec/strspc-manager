@@ -25,6 +25,7 @@ func checkCollisions(files []*ResolvedFile, res *result.Result) {
 				Code:     "RSV005",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("EUID %q provided by both %s and %s", id, prev, origin.Source),
+				Path:     origin.Source,
 			})
 		} else if !ok {
 			euids[id] = origin.Source

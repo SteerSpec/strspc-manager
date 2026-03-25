@@ -64,6 +64,9 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 		if !strings.HasSuffix(d.Name(), ".json") {
 			return nil
 		}
+		if d.Name() == "realm.json" {
+			return nil
+		}
 
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
@@ -94,6 +97,13 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 		}
 
 		if f.Entity.ID == "" {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RSV003",
+				Severity: result.Error,
+				Message:  "entity.id is empty",
+				Path:     path,
+			})
 			return nil
 		}
 
