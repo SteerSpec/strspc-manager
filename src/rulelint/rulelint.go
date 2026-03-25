@@ -591,7 +591,7 @@ func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string,
 				Module:   module,
 				Code:     "RL012",
 				Severity: sev,
-				Message:  fmt.Sprintf("rule %s supersedes %q which was not found in directory", r.ID, ref),
+				Message:  fmt.Sprintf("rule %s supersedes %q which was not found in scanned files", r.ID, ref),
 				Path:     fpath,
 			})
 		}

@@ -1,5 +1,5 @@
 {
-  "$schema": "./_schema/entity.v1.schema.json",
+  "$schema": "../_schema/entity.v1.schema.json",
   "entity": { "id": "SUB", "title": "Sub Entity", "description": "Nested entity" },
   "rule_set": { "version": "0.1.0", "timestamp": "2026-03-25T00:00:00Z", "hash": null },
   "rules": [
