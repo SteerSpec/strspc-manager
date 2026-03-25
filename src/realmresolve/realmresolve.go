@@ -25,7 +25,7 @@ type ResolveResult struct {
 type ResolvedRealm struct {
 	Realm *entity.RealmFile
 	Dir   string            // absolute path to resolved realm directory
-	EUIDs map[string]string // EUID → file path within this realm
+	EUIDs map[string]string // EUID → absolute file path
 }
 
 // Config holds options for the RealmResolver.
