@@ -37,15 +37,6 @@ func hasDiagCode(res *result.Result, code string) bool {
 	return false
 }
 
-func diagWithCode(res *result.Result, code string) *result.Diagnostic {
-	for i := range res.Diagnostics {
-		if res.Diagnostics[i].Code == code {
-			return &res.Diagnostics[i]
-		}
-	}
-	return nil
-}
-
 func TestResolve_LocalSuccess(t *testing.T) {
 	rf := loadTestRealm(t, "parent")
 	baseDir := absTestdata(t, "parent")
@@ -224,11 +215,73 @@ func TestResolve_RemoteSourceSkipped(t *testing.T) {
 		t.Errorf("expected 0 resolved dependencies (remote skipped), got %d", len(got.Dependencies))
 	}
 
-	d := diagWithCode(res, "RR001")
-	if d == nil {
-		t.Fatal("expected RR001 info diagnostic for skipped remote source")
+	// Should have an info diagnostic (no error code).
+	var hasInfo bool
+	for _, d := range res.Diagnostics {
+		if d.Severity == result.Info {
+			hasInfo = true
+		}
 	}
-	if d.Severity != result.Info {
-		t.Errorf("expected Info severity, got %s", d.Severity)
+	if !hasInfo {
+		t.Fatal("expected Info diagnostic for skipped remote source")
+	}
+}
+
+func TestResolve_AbsolutePathRejected(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{
+			{RealmID: "dev.dep.a", Version: "0.1.0", Source: "/absolute/path"},
+		},
+	}
+	baseDir := absTestdata(t, "parent")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error for absolute path")
+	}
+	if !hasDiagCode(res, "RR001") {
+		t.Errorf("expected RR001 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_DepVsDepCollision(t *testing.T) {
+	// dep-a and dep-b both have EUID "DEP" — should produce RR005.
+	rf := &entity.RealmFile{
+		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{
+			{RealmID: "dev.dep.a", Version: "0.1.0", Source: "../dep-a/"},
+			{RealmID: "dev.dep.b", Version: "0.1.0", Source: "../dep-b/"},
+		},
+	}
+	baseDir := absTestdata(t, "parent")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if !hasDiagCode(res, "RR005") {
+		t.Errorf("expected RR005 for dep-vs-dep EUID collision, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	rf := &entity.RealmFile{
+		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{
+			{RealmID: "dev.dep.a", Version: "0.1.0", Source: "../dep-a/"},
+		},
+	}
+	baseDir := absTestdata(t, "parent")
+
+	resolver := New()
+	_, res := resolver.Resolve(ctx, rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error for cancelled context")
 	}
 }

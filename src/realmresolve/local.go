@@ -1,6 +1,7 @@
 package realmresolve
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 
 // resolveLocalDep resolves a single local dependency from the filesystem.
 // Returns nil if the dependency cannot be resolved (diagnostics added to res).
-func resolveLocalDep(dep entity.RealmDep, resolvedDir string, res *result.Result) *ResolvedRealm {
+func resolveLocalDep(ctx context.Context, dep entity.RealmDep, resolvedDir string, res *result.Result) *ResolvedRealm {
 	// Check directory exists and is a directory.
 	info, err := os.Stat(resolvedDir)
 	if err != nil || !info.IsDir() {
@@ -20,6 +21,7 @@ func resolveLocalDep(dep entity.RealmDep, resolvedDir string, res *result.Result
 			Code:     "RR002",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("dependency %q: resolved directory %q does not exist or is not a directory", dep.RealmID, resolvedDir),
+			Path:     resolvedDir,
 		})
 		return nil
 	}
@@ -33,6 +35,7 @@ func resolveLocalDep(dep entity.RealmDep, resolvedDir string, res *result.Result
 			Code:     "RR002",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("dependency %q: cannot load realm.json from %q: %v", dep.RealmID, realmPath, err),
+			Path:     realmPath,
 		})
 		return nil
 	}
@@ -44,6 +47,7 @@ func resolveLocalDep(dep entity.RealmDep, resolvedDir string, res *result.Result
 			Code:     "RR003",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("dependency realm ID mismatch: declared %q but found %q in %s", dep.RealmID, loaded.Realm.ID, realmPath),
+			Path:     realmPath,
 		})
 		return nil
 	}
@@ -55,28 +59,13 @@ func resolveLocalDep(dep entity.RealmDep, resolvedDir string, res *result.Result
 			Code:     "RR004",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("dependency %q version mismatch: declared %q but found %q in %s", dep.RealmID, dep.Version, loaded.Realm.Version, realmPath),
+			Path:     realmPath,
 		})
 		return nil
 	}
 
-	// Walk resolved directory to collect EUIDs.
-	euids := make(map[string]string)
-	walkErr := entity.WalkEntityFiles(resolvedDir, func(path string, _ []byte, ef *entity.File, parseErr error) error {
-		if parseErr != nil {
-			return nil // skip unparseable files
-		}
-		euids[ef.Entity.ID] = path
-		return nil
-	})
-	if walkErr != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RR002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("dependency %q: failed to walk directory %q: %v", dep.RealmID, resolvedDir, walkErr),
-		})
-		return nil
-	}
+	// Walk resolved directory to collect EUIDs (including sub-entities).
+	euids := collectEUIDs(ctx, resolvedDir, res)
 
 	return &ResolvedRealm{
 		Realm: loaded,

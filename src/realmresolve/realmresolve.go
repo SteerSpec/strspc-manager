@@ -63,14 +63,28 @@ func New(opts ...Option) *RealmResolver {
 
 // Resolve fetches and resolves all dependencies declared in a RealmFile.
 // baseDir is the directory containing the parent realm.json.
-func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir string) (*ResolveResult, *result.Result) {
+func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseDir string) (*ResolveResult, *result.Result) {
 	res := &result.Result{}
 	out := &ResolveResult{}
 
 	// Collect parent realm EUIDs.
-	parentEUIDs := collectEUIDs(baseDir, res)
+	parentEUIDs := collectEUIDs(ctx, baseDir, res)
+
+	// Track all dependency EUIDs for dep-vs-dep collision detection.
+	allDepEUIDs := make(map[string]string) // EUID → realm_id
 
 	for _, dep := range rf.Dependencies {
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR000",
+				Severity: result.Error,
+				Message:  err.Error(),
+				Path:     baseDir,
+			})
+			return out, res
+		}
+
 		// RR006: self-referencing dependency.
 		if dep.RealmID == rf.Realm.ID {
 			res.Add(result.Diagnostic{
@@ -78,6 +92,7 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 				Code:     "RR006",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("self-referencing dependency: realm_id %q matches parent realm", dep.RealmID),
+				Path:     baseDir,
 			})
 			continue
 		}
@@ -89,6 +104,19 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 				Code:     "RR001",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("dependency %q has empty source", dep.RealmID),
+				Path:     baseDir,
+			})
+			continue
+		}
+
+		// RR001: absolute paths not allowed.
+		if filepath.IsAbs(dep.Source) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR001",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("dependency %q has absolute source path %q; only relative paths are allowed", dep.RealmID, dep.Source),
+				Path:     baseDir,
 			})
 			continue
 		}
@@ -97,9 +125,9 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 		if strings.Contains(dep.Source, "://") {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RR001",
 				Severity: result.Info,
 				Message:  fmt.Sprintf("skipping remote dependency %q (source %q): remote resolution not yet supported", dep.RealmID, dep.Source),
+				Path:     baseDir,
 			})
 			continue
 		}
@@ -113,16 +141,17 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 				Code:     "RR002",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
+				Path:     baseDir,
 			})
 			continue
 		}
 
-		resolved := resolveLocalDep(dep, resolvedDir, res)
+		resolved := resolveLocalDep(ctx, dep, resolvedDir, res)
 		if resolved == nil {
 			continue
 		}
 
-		// RR005: EUID collisions between parent and dependency.
+		// RR005: EUID collisions — parent vs dependency.
 		for euid, depPath := range resolved.EUIDs {
 			if parentPath, ok := parentEUIDs[euid]; ok {
 				res.Add(result.Diagnostic{
@@ -130,8 +159,23 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 					Code:     "RR005",
 					Severity: result.Error,
 					Message:  fmt.Sprintf("EUID collision: %q exists in parent (%s) and dependency %q (%s)", euid, parentPath, dep.RealmID, depPath),
+					Path:     resolvedDir,
 				})
 			}
+		}
+
+		// RR005: EUID collisions — dependency vs dependency.
+		for euid, depPath := range resolved.EUIDs {
+			if prevRealm, ok := allDepEUIDs[euid]; ok {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RR005",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("EUID collision: %q exists in dependency %q and dependency %q (%s)", euid, prevRealm, dep.RealmID, depPath),
+					Path:     resolvedDir,
+				})
+			}
+			allDepEUIDs[euid] = dep.RealmID
 		}
 
 		out.Dependencies = append(out.Dependencies, resolved)
@@ -140,23 +184,49 @@ func (r *RealmResolver) Resolve(_ context.Context, rf *entity.RealmFile, baseDir
 	return out, res
 }
 
-// collectEUIDs walks a directory and returns a map of EUID → file path.
-func collectEUIDs(dir string, res *result.Result) map[string]string {
+// collectEUIDs walks a directory and returns a map of EUID → file path,
+// including EUIDs from sub-entities.
+func collectEUIDs(ctx context.Context, dir string, res *result.Result) map[string]string {
 	euids := make(map[string]string)
-	err := entity.WalkEntityFiles(dir, func(path string, _ []byte, ef *entity.File, parseErr error) error {
-		if parseErr != nil {
-			return nil // skip unparseable files
+	err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
-		euids[ef.Entity.ID] = path
+		if parseErr != nil {
+			msg := fmt.Sprintf("accessing path: %s", parseErr)
+			if data != nil {
+				msg = fmt.Sprintf("parsing entity: %s", parseErr)
+			}
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR002",
+				Severity: result.Error,
+				Message:  msg,
+				Path:     path,
+			})
+			return nil
+		}
+		addEUIDs(ef, path, euids)
 		return nil
 	})
-	if err != nil {
+	if err != nil && ctx.Err() == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR002",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("failed to walk directory %q: %v", dir, err),
+			Path:     dir,
 		})
 	}
 	return euids
+}
+
+// addEUIDs recursively collects EUIDs from an entity file and its sub-entities.
+func addEUIDs(ef *entity.File, path string, euids map[string]string) {
+	if id := ef.Entity.ID; id != "" {
+		euids[id] = path
+	}
+	for i := range ef.SubEntities {
+		addEUIDs(&ef.SubEntities[i], path, euids)
+	}
 }
