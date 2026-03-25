@@ -67,6 +67,17 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	res := &result.Result{}
 	out := &ResolveResult{}
 
+	if err := ctx.Err(); err != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR000",
+			Severity: result.Error,
+			Message:  err.Error(),
+			Path:     baseDir,
+		})
+		return out, res
+	}
+
 	// Collect parent realm EUIDs.
 	parentEUIDs := collectEUIDs(ctx, baseDir, res)
 

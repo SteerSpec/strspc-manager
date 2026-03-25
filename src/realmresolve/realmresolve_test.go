@@ -284,4 +284,7 @@ func TestResolve_ContextCancellation(t *testing.T) {
 	if res.OK() {
 		t.Fatal("expected error for cancelled context")
 	}
+	if !hasDiagCode(res, "RR000") {
+		t.Errorf("expected RR000 diagnostic for cancelled context, got: %v", res.Diagnostics)
+	}
 }
