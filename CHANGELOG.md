@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.10.0](https://github.com/SteerSpec/strspc-manager/compare/v1.9.0...v1.10.0) (2026-03-25)
+
+
+### Features
+
+* **ruleeval:** implement evaluation loop with pluggable AI providers ([44e25f5](https://github.com/SteerSpec/strspc-manager/commit/44e25f58ad49446b0b843368d83356da68ebe3bf))
+* **ruleeval:** implement evaluation loop with pluggable AI providers ([618b101](https://github.com/SteerSpec/strspc-manager/commit/618b1015924a1fad991522da75bce312c6ea3e50)), closes [#3](https://github.com/SteerSpec/strspc-manager/issues/3)
+
+
+### Bug Fixes
+
+* **ruleeval:** address Copilot review — nil guard, unknown verdict, message fix ([3f55a0e](https://github.com/SteerSpec/strspc-manager/commit/3f55a0eb6038df61796ddcc50f265317706849ae))
+
+
+### Refactoring
+
+* **ruleeval:** use entityops state constants instead of string literals ([d68587d](https://github.com/SteerSpec/strspc-manager/commit/d68587d3b664d69bab9f5b2877661a52ae283bc1))
+
 ## [1.9.0](https://github.com/SteerSpec/strspc-manager/compare/v1.8.0...v1.9.0) (2026-03-25)
 
 
