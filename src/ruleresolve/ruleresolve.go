@@ -151,6 +151,10 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 		if !filepath.IsAbs(ref) && !strings.Contains(ref, "://") {
 			ref = filepath.Join(r.cfg.BaseDir, ref)
 		}
+		// Canonicalize for consistent collision comparison.
+		if absRef, err := filepath.Abs(ref); err == nil {
+			ref = filepath.Clean(absRef)
+		}
 
 		files, fetchRes := b.source.Fetch(ctx, ref)
 		if fetchRes != nil {
