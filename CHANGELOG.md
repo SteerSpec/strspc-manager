@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0](https://github.com/SteerSpec/strspc-manager/compare/v1.8.0...v1.9.0) (2026-03-25)
+
+
+### Features
+
+* **ruleresolve:** implement local-path rule resolution (MVP) ([9d01ec2](https://github.com/SteerSpec/strspc-manager/commit/9d01ec253a77bf969828cdd91dd9067867adebee))
+* **ruleresolve:** implement local-path rule resolution (MVP) ([b54e341](https://github.com/SteerSpec/strspc-manager/commit/b54e341a46fcda106d02ae977af72120ea3f3497)), closes [#4](https://github.com/SteerSpec/strspc-manager/issues/4)
+
+
+### Bug Fixes
+
+* **ruleresolve:** address PR review feedback ([ad403de](https://github.com/SteerSpec/strspc-manager/commit/ad403de944848f424a3841fd653098488df3f083))
+* **ruleresolve:** address PR review feedback (round 2) ([0fb837b](https://github.com/SteerSpec/strspc-manager/commit/0fb837bcc249ba99b189f765b6d77d0fb5abf5e4))
+* **ruleresolve:** address PR review feedback (round 3) ([6248caf](https://github.com/SteerSpec/strspc-manager/commit/6248caf71e7361632d0636a2a4152a65e0e7bd37))
+* **ruleresolve:** canonicalize ResolvedSource for collision detection ([aa1eefe](https://github.com/SteerSpec/strspc-manager/commit/aa1eefe1f03398a7c0a6384e40aa32cfe471dbec))
+* **ruleresolve:** clean up RSV000 message and assert code in test ([abf21f4](https://github.com/SteerSpec/strspc-manager/commit/abf21f451ee400c8f695b53880b6d569d49ba5da))
+* **ruleresolve:** resolve BaseDir at construction, use file path in RSV005 ([963f170](https://github.com/SteerSpec/strspc-manager/commit/963f1706fb338d7b100649cb853ca96c0f50eebc))
+
 ## [1.8.0](https://github.com/SteerSpec/strspc-manager/compare/v1.7.1...v1.8.0) (2026-03-24)
 
 
