@@ -21,7 +21,7 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 	}
 
 	switch old.State {
-	case StatePublished, StateImplemented, StateRetired:
+	case entity.StatePublished, entity.StateImplemented, entity.StateRetired:
 		// allowed
 	default:
 		return "", fmt.Errorf("rule %q is in state %q: only Published, Implemented, or Retired rules can be superseded", ruleID, old.State)
@@ -41,7 +41,7 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 	f.Rules = append(f.Rules, entity.Rule{
 		ID:         newID,
 		Revision:   0,
-		State:      StateDraft,
+		State:      entity.StateDraft,
 		Body:       body,
 		AddedBy:    addedBy,
 		AddedAt:    nowFunc().Format(dateFormat),

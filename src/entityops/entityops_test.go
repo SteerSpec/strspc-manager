@@ -124,8 +124,8 @@ func TestAddRule(t *testing.T) {
 		}
 
 		r := f.Rules[0]
-		if r.State != StateDraft {
-			t.Errorf("State = %q, want %q", r.State, StateDraft)
+		if r.State != entity.StateDraft {
+			t.Errorf("State = %q, want %q", r.State, entity.StateDraft)
 		}
 		if r.Revision != 0 {
 			t.Errorf("Revision = %d, want 0", r.Revision)
@@ -204,7 +204,7 @@ func TestUpdateRuleBody(t *testing.T) {
 	})
 
 	t.Run("non-draft rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StatePublished)
+		f := makeFileWithRule(t, entity.StatePublished)
 
 		err := UpdateRuleBody(f, "TST-001", "new body")
 		if err == nil {
@@ -240,43 +240,17 @@ func TestUpdateRuleBody(t *testing.T) {
 	})
 }
 
-func TestValidateTransition(t *testing.T) {
-	valid := []struct{ from, to string }{
-		{"D", "P"}, {"D", "A"}, {"P", "I"}, {"I", "R"}, {"R", "T"},
-	}
-	for _, tt := range valid {
-		t.Run(tt.from+"→"+tt.to, func(t *testing.T) {
-			if err := ValidateTransition(tt.from, tt.to); err != nil {
-				t.Errorf("expected valid transition %s→%s, got error: %v", tt.from, tt.to, err)
-			}
-		})
-	}
-
-	invalid := []struct{ from, to string }{
-		{"P", "D"}, {"I", "P"}, {"D", "I"}, {"D", "R"},
-		{"A", "D"}, {"A", "P"}, {"T", "R"}, {"T", "D"},
-		{"R", "I"}, {"P", "R"},
-	}
-	for _, tt := range invalid {
-		t.Run(tt.from+"→"+tt.to+" rejected", func(t *testing.T) {
-			if err := ValidateTransition(tt.from, tt.to); err == nil {
-				t.Errorf("expected error for transition %s→%s", tt.from, tt.to)
-			}
-		})
-	}
-}
-
 func TestPromoteRule(t *testing.T) {
 	t.Run("D→P", func(t *testing.T) {
-		f := makeFileWithRule(t, StateDraft)
+		f := makeFileWithRule(t, entity.StateDraft)
 		v := f.RuleSet.Version
 
 		err := PromoteRule(f, "TST-001")
 		if err != nil {
 			t.Fatalf("PromoteRule: %v", err)
 		}
-		if f.Rules[0].State != StatePublished {
-			t.Errorf("State = %q, want %q", f.Rules[0].State, StatePublished)
+		if f.Rules[0].State != entity.StatePublished {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StatePublished)
 		}
 		expected, _ := BumpMinor(v)
 		if f.RuleSet.Version != expected {
@@ -285,19 +259,19 @@ func TestPromoteRule(t *testing.T) {
 	})
 
 	t.Run("P→I", func(t *testing.T) {
-		f := makeFileWithRule(t, StatePublished)
+		f := makeFileWithRule(t, entity.StatePublished)
 
 		err := PromoteRule(f, "TST-001")
 		if err != nil {
 			t.Fatalf("PromoteRule: %v", err)
 		}
-		if f.Rules[0].State != StateImplemented {
-			t.Errorf("State = %q, want %q", f.Rules[0].State, StateImplemented)
+		if f.Rules[0].State != entity.StateImplemented {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateImplemented)
 		}
 	})
 
 	t.Run("I rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StateImplemented)
+		f := makeFileWithRule(t, entity.StateImplemented)
 
 		err := PromoteRule(f, "TST-001")
 		if err == nil {
@@ -308,15 +282,15 @@ func TestPromoteRule(t *testing.T) {
 
 func TestRetireRule(t *testing.T) {
 	t.Run("I→R", func(t *testing.T) {
-		f := makeFileWithRule(t, StateImplemented)
+		f := makeFileWithRule(t, entity.StateImplemented)
 		v := f.RuleSet.Version
 
 		err := RetireRule(f, "TST-001")
 		if err != nil {
 			t.Fatalf("RetireRule: %v", err)
 		}
-		if f.Rules[0].State != StateRetired {
-			t.Errorf("State = %q, want %q", f.Rules[0].State, StateRetired)
+		if f.Rules[0].State != entity.StateRetired {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateRetired)
 		}
 		expected, _ := BumpMinor(v)
 		if f.RuleSet.Version != expected {
@@ -325,19 +299,19 @@ func TestRetireRule(t *testing.T) {
 	})
 
 	t.Run("R→T", func(t *testing.T) {
-		f := makeFileWithRule(t, StateRetired)
+		f := makeFileWithRule(t, entity.StateRetired)
 
 		err := RetireRule(f, "TST-001")
 		if err != nil {
 			t.Fatalf("RetireRule: %v", err)
 		}
-		if f.Rules[0].State != StateTerminated {
-			t.Errorf("State = %q, want %q", f.Rules[0].State, StateTerminated)
+		if f.Rules[0].State != entity.StateTerminated {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateTerminated)
 		}
 	})
 
 	t.Run("D rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StateDraft)
+		f := makeFileWithRule(t, entity.StateDraft)
 
 		err := RetireRule(f, "TST-001")
 		if err == nil {
@@ -348,15 +322,15 @@ func TestRetireRule(t *testing.T) {
 
 func TestAbandonRule(t *testing.T) {
 	t.Run("D→A", func(t *testing.T) {
-		f := makeFileWithRule(t, StateDraft)
+		f := makeFileWithRule(t, entity.StateDraft)
 		v := f.RuleSet.Version
 
 		err := AbandonRule(f, "TST-001")
 		if err != nil {
 			t.Fatalf("AbandonRule: %v", err)
 		}
-		if f.Rules[0].State != StateAbandoned {
-			t.Errorf("State = %q, want %q", f.Rules[0].State, StateAbandoned)
+		if f.Rules[0].State != entity.StateAbandoned {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateAbandoned)
 		}
 		expected, _ := BumpPatch(v)
 		if f.RuleSet.Version != expected {
@@ -365,7 +339,7 @@ func TestAbandonRule(t *testing.T) {
 	})
 
 	t.Run("P rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StatePublished)
+		f := makeFileWithRule(t, entity.StatePublished)
 
 		err := AbandonRule(f, "TST-001")
 		if err == nil {
@@ -376,7 +350,7 @@ func TestAbandonRule(t *testing.T) {
 
 func TestSupersedeRule(t *testing.T) {
 	t.Run("supersede published", func(t *testing.T) {
-		f := makeFileWithRule(t, StatePublished)
+		f := makeFileWithRule(t, entity.StatePublished)
 
 		newID, err := SupersedeRule(f, "TST-001", "replacement body", "@user")
 		if err != nil {
@@ -389,20 +363,20 @@ func TestSupersedeRule(t *testing.T) {
 			t.Fatalf("Rules = %d, want 2", len(f.Rules))
 		}
 		newRule := f.Rules[1]
-		if newRule.State != StateDraft {
-			t.Errorf("new rule State = %q, want %q", newRule.State, StateDraft)
+		if newRule.State != entity.StateDraft {
+			t.Errorf("new rule State = %q, want %q", newRule.State, entity.StateDraft)
 		}
 		if newRule.Supersedes == nil || *newRule.Supersedes != "TST-001" {
 			t.Errorf("Supersedes = %v, want %q", newRule.Supersedes, "TST-001")
 		}
 		// Old rule unchanged.
-		if f.Rules[0].State != StatePublished {
-			t.Errorf("old rule State = %q, want %q", f.Rules[0].State, StatePublished)
+		if f.Rules[0].State != entity.StatePublished {
+			t.Errorf("old rule State = %q, want %q", f.Rules[0].State, entity.StatePublished)
 		}
 	})
 
 	t.Run("draft rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StateDraft)
+		f := makeFileWithRule(t, entity.StateDraft)
 
 		_, err := SupersedeRule(f, "TST-001", "body", "@user")
 		if err == nil {
@@ -411,7 +385,7 @@ func TestSupersedeRule(t *testing.T) {
 	})
 
 	t.Run("abandoned rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StateAbandoned)
+		f := makeFileWithRule(t, entity.StateAbandoned)
 
 		_, err := SupersedeRule(f, "TST-001", "body", "@user")
 		if err == nil {
@@ -420,7 +394,7 @@ func TestSupersedeRule(t *testing.T) {
 	})
 
 	t.Run("terminated rejected", func(t *testing.T) {
-		f := makeFileWithRule(t, StateTerminated)
+		f := makeFileWithRule(t, entity.StateTerminated)
 
 		_, err := SupersedeRule(f, "TST-001", "body", "@user")
 		if err == nil {
