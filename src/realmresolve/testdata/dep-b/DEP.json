@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "DEP",
+    "title": "Duplicate EUID",
+    "description": "Same EUID as dep-a for dep-vs-dep collision test"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-03-25T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "DEP-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Test rule in dep-b.",
+      "added_by": "test",
+      "added_at": "2026-03-25"
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": { "id": "dev.wrong.id", "title": "Wrong ID", "version": "0.1.0" },
+  "dependencies": [],
+  "rule_identifier_format": null
+}
