@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.11.0](https://github.com/SteerSpec/strspc-manager/compare/v1.10.2...v1.11.0) (2026-03-25)
+
+
+### Features
+
+* **realmresolve:** implement local path dependency resolution ([999482f](https://github.com/SteerSpec/strspc-manager/commit/999482f9ee7fd00295a50de0938f2703afcf267c))
+* **rulelint:** add LintRealm for recursive cross-entity validation ([1f80312](https://github.com/SteerSpec/strspc-manager/commit/1f80312893890574763e7ed89653221c54da4493))
+* **rulelint:** add LintRealm for recursive cross-entity validation ([9bf24ec](https://github.com/SteerSpec/strspc-manager/commit/9bf24ec1182ede25c18b490564d220046fa8b33d))
+
+
+### Bug Fixes
+
+* **realmresolve:** address PR [#56](https://github.com/SteerSpec/strspc-manager/issues/56) review — security, correctness, completeness ([39f34a1](https://github.com/SteerSpec/strspc-manager/commit/39f34a1efd89ac97c8050aa0ac5a5b4bc48f5c65))
+* **realmresolve:** early ctx check and stricter cancellation test ([78e69db](https://github.com/SteerSpec/strspc-manager/commit/78e69db4e733560896c1ce5e98b126a41a0bf63d))
+* **rulelint:** address PR [#57](https://github.com/SteerSpec/strspc-manager/issues/57) review comments ([713f773](https://github.com/SteerSpec/strspc-manager/commit/713f773455a4b355edbd99ecdc53513bdd022462))
+
+
+### Documentation
+
+* **realmresolve:** fix EUIDs comment to reflect absolute paths ([c243399](https://github.com/SteerSpec/strspc-manager/commit/c243399a8e659b6c683eeae102a39ea851250e51))
+
 ## [1.10.2](https://github.com/SteerSpec/strspc-manager/compare/v1.10.1...v1.10.2) (2026-03-25)
 
 
