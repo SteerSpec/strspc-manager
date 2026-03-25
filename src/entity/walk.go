@@ -7,12 +7,14 @@ import (
 	"strings"
 )
 
-// WalkFunc is the callback invoked for each JSON file found by WalkEntityFiles.
+// WalkFunc is the callback invoked by WalkEntityFiles.
 //
-// Three cases:
+// Four cases:
 //   - Parse success: ef is non-nil, parseErr is nil, data contains the raw bytes.
 //   - Parse failure: ef is nil, parseErr describes the failure, data contains the raw bytes.
 //   - Read error: ef is nil, data is nil, parseErr describes the I/O error.
+//   - Traversal error: ef is nil, data is nil, parseErr describes the access error
+//     (e.g. permission denied on a subdirectory). Path may be a directory.
 //
 // Return fs.SkipAll to stop the walk early (treated as clean termination).
 // Return any other non-nil error to abort the walk with that error.

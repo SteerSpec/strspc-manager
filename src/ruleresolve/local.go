@@ -55,12 +55,12 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 
 		if parseErr != nil {
 			if data == nil {
-				// Read error.
+				// Traversal or read error.
 				res.Add(result.Diagnostic{
 					Module:   module,
 					Code:     "RSV002",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("reading file: %s", parseErr),
+					Message:  fmt.Sprintf("accessing path: %s", parseErr),
 					Path:     path,
 				})
 			} else {
