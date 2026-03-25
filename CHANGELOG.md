@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.10.2](https://github.com/SteerSpec/strspc-manager/compare/v1.10.1...v1.10.2) (2026-03-25)
+
+
+### Bug Fixes
+
+* **entity:** address PR [#50](https://github.com/SteerSpec/strspc-manager/issues/50) review comments ([c37038e](https://github.com/SteerSpec/strspc-manager/commit/c37038efae7f66e4a5e7e1dfd900b6520eaea894))
+* **entity:** address PR [#50](https://github.com/SteerSpec/strspc-manager/issues/50) review round 2 ([1b24a37](https://github.com/SteerSpec/strspc-manager/commit/1b24a377ef6dc0a0ec9bd3fd9d744b1a1c848074))
+
+
+### Refactoring
+
+* **entity:** extract shared WalkEntityFiles utility ([92b08bf](https://github.com/SteerSpec/strspc-manager/commit/92b08bf2f24735e570286ce0334c96f574b9631b))
+* **entity:** extract shared WalkEntityFiles utility ([a308132](https://github.com/SteerSpec/strspc-manager/commit/a308132675d9725d42da43129d66a41338f5bf57))
+
 ## [1.10.1](https://github.com/SteerSpec/strspc-manager/compare/v1.10.0...v1.10.1) (2026-03-25)
 
 
