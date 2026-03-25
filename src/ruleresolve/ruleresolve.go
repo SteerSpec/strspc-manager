@@ -134,7 +134,7 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 			Module:   module,
 			Code:     "RSV000",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("context cancelled: %s", err),
+			Message:  err.Error(),
 		})
 		return nil, res
 	}
@@ -146,7 +146,7 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 				Module:   module,
 				Code:     "RSV000",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("context cancelled: %s", err),
+				Message:  err.Error(),
 			})
 			return nil, res
 		}

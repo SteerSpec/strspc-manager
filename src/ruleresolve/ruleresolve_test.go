@@ -205,4 +205,5 @@ func TestResolve_ContextCancelled(t *testing.T) {
 	if res.OK() {
 		t.Error("expected error from cancelled context")
 	}
+	assertHasCode(t, res, "RSV000")
 }
