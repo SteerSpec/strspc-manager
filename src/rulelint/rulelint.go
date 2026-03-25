@@ -156,8 +156,16 @@ func (l *Linter) LintDir(dir string) *result.Result {
 	return l.lintDir(dir, entity.WithRecursive(false))
 }
 
-// lintDir is the internal implementation used by LintDir; recursion behavior
-// is controlled via the provided entity.WalkOption values.
+// LintRealm validates all entity JSON files in a realm directory tree recursively
+// and runs cross-entity reference checks (RL012).
+// TODO: Add RL014 for cross-entity relation note references once the
+// cross-entity reference format in note content is well-defined.
+func (l *Linter) LintRealm(dir string) *result.Result {
+	return l.lintDir(dir)
+}
+
+// lintDir is the internal implementation used by LintDir and LintRealm; recursion
+// behavior is controlled via the provided entity.WalkOption values.
 // TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
 // Split schema/hash checks from parsing to reuse the walker-provided *File.
 func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
@@ -583,7 +591,7 @@ func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string,
 				Module:   module,
 				Code:     "RL012",
 				Severity: sev,
-				Message:  fmt.Sprintf("rule %s supersedes %q which was not found in directory", r.ID, ref),
+				Message:  fmt.Sprintf("rule %s supersedes %q which was not found in scanned files", r.ID, ref),
 				Path:     fpath,
 			})
 		}
