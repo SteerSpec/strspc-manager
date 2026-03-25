@@ -285,9 +285,6 @@ func TestEvaluate_ContextCancelled(t *testing.T) {
 		},
 	}
 
-	// Cancel after first call
-	original := mp.Evaluate
-	_ = original // mp.Evaluate is a method, we wrap via a custom provider
 	wrapping := &cancellingProvider{inner: mp, cancelAfter: 1, cancel: cancel}
 
 	e, err := ruleeval.New(wrapping, ruleeval.WithFailOn([]string{"I"}))
@@ -436,6 +433,58 @@ func TestEvaluate_EmptyInputs(t *testing.T) {
 	res := e.Evaluate(context.Background(), nil, "diff")
 	if len(res.Diagnostics) != 0 {
 		t.Fatalf("expected 0 diagnostics for empty inputs, got %d", len(res.Diagnostics))
+	}
+}
+
+func TestEvaluate_NilResponse(t *testing.T) {
+	mp := &mockProvider{
+		responses: map[string]*ruleeval.EvalResponse{
+			"ENT-001": nil, // explicit nil
+		},
+	}
+	e, err := ruleeval.New(mp, ruleeval.WithFailOn([]string{"I"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inputs := []ruleeval.RuleInput{makeInput("ENT-001", "I")}
+	res := e.Evaluate(context.Background(), inputs, "diff")
+
+	if len(res.Diagnostics) != 1 {
+		t.Fatalf("expected 1 diagnostic, got %d: %v", len(res.Diagnostics), res.Diagnostics)
+	}
+	d := res.Diagnostics[0]
+	if d.Code != ruleeval.CodeProviderError {
+		t.Errorf("expected code %s, got %s", ruleeval.CodeProviderError, d.Code)
+	}
+	if d.Severity != result.Warning {
+		t.Errorf("expected Warning severity, got %s", d.Severity)
+	}
+}
+
+func TestEvaluate_UnknownVerdict(t *testing.T) {
+	mp := &mockProvider{
+		responses: map[string]*ruleeval.EvalResponse{
+			"ENT-001": {Verdict: ruleeval.Verdict("maybe")},
+		},
+	}
+	e, err := ruleeval.New(mp, ruleeval.WithFailOn([]string{"I"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inputs := []ruleeval.RuleInput{makeInput("ENT-001", "I")}
+	res := e.Evaluate(context.Background(), inputs, "diff")
+
+	if len(res.Diagnostics) != 1 {
+		t.Fatalf("expected 1 diagnostic, got %d: %v", len(res.Diagnostics), res.Diagnostics)
+	}
+	d := res.Diagnostics[0]
+	if d.Code != ruleeval.CodeProviderError {
+		t.Errorf("expected code %s, got %s", ruleeval.CodeProviderError, d.Code)
+	}
+	if d.Severity != result.Warning {
+		t.Errorf("expected Warning severity, got %s", d.Severity)
 	}
 }
 

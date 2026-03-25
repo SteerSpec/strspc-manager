@@ -149,7 +149,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 			Module:   module,
 			Code:     CodeStaticOnly,
 			Severity: result.Info,
-			Message:  "AI evaluation skipped: no provider configured (static-only mode)",
+			Message:  "AI evaluation skipped: static-only mode",
 		})
 		return res
 	}
@@ -176,7 +176,20 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 			continue
 		}
 
-		if resp.Verdict == Violated {
+		if resp == nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     CodeProviderError,
+				Severity: result.Warning,
+				Message:  fmt.Sprintf("evaluation failed for rule %s: provider returned nil response without error", input.Rule.ID),
+			})
+			continue
+		}
+
+		switch resp.Verdict {
+		case Compliant, NotApplicable:
+			// no diagnostic
+		case Violated:
 			sev := result.Warning
 			if e.cfg.FailOn[input.Rule.State] {
 				sev = result.Error
@@ -186,6 +199,13 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 				Code:     CodeViolated,
 				Severity: sev,
 				Message:  fmt.Sprintf("rule %s violated: %s", input.Rule.ID, resp.Explanation),
+			})
+		default:
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     CodeProviderError,
+				Severity: result.Warning,
+				Message:  fmt.Sprintf("evaluation failed for rule %s: unrecognized verdict %q", input.Rule.ID, resp.Verdict),
 			})
 		}
 	}
