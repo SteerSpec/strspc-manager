@@ -198,7 +198,7 @@ func (l *Linter) LintDir(dir string) *result.Result {
 
 		// Skip known non-entity files (e.g. realm.json).
 		// All other .json files are linted so violations surface.
-		if isRealmJSON(data) {
+		if entity.IsRealmJSON(data) {
 			continue
 		}
 
@@ -602,17 +602,6 @@ func collectRuleIDs(ef *entity.File, fpath string, out map[string]string) {
 	for i := range ef.SubEntities {
 		collectRuleIDs(&ef.SubEntities[i], fpath, out)
 	}
-}
-
-// isRealmJSON detects Realm manifest files by checking for a "realm" top-level key.
-func isRealmJSON(data []byte) bool {
-	var probe struct {
-		Realm *json.RawMessage `json:"realm"`
-	}
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return false
-	}
-	return probe.Realm != nil
 }
 
 // promoteWarnings promotes all Warning-severity diagnostics to Error.
