@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.10.1](https://github.com/SteerSpec/strspc-manager/compare/v1.10.0...v1.10.1) (2026-03-25)
+
+
+### Refactoring
+
+* **entity:** move state constants and transition logic from entityops to entity ([58d50c6](https://github.com/SteerSpec/strspc-manager/commit/58d50c63a38ce78533f535634643a41db249acf2)), closes [#45](https://github.com/SteerSpec/strspc-manager/issues/45)
+* **entity:** move state constants from entityops to entity ([5a3d413](https://github.com/SteerSpec/strspc-manager/commit/5a3d413ffd30ed520e9f1cb89701a4057dada82f))
+
+
+### Documentation
+
+* design spec for moving state constants to entity package ([4d78461](https://github.com/SteerSpec/strspc-manager/commit/4d784618fbead9a7bf1cdf16e74e248dfc7ef110))
+
 ## [1.10.0](https://github.com/SteerSpec/strspc-manager/compare/v1.9.0...v1.10.0) (2026-03-25)
 
 
