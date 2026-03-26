@@ -446,11 +446,15 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 		// RM008: Sub-realm directory must exist.
 		info, err := os.Stat(srDir)
 		if err != nil {
+			msg := fmt.Sprintf("sub_realms entry %q: directory does not exist", srName)
+			if !os.IsNotExist(err) {
+				msg = fmt.Sprintf("sub_realms entry %q: unable to stat directory: %v", srName, err)
+			}
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM008",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub_realms entry %q: directory does not exist", srName),
+				Message:  msg,
 				Path:     realmPath,
 			})
 			continue
