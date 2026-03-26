@@ -390,6 +390,24 @@ func TestResolve_SubRealm_EUIDCollision_SubVsDep(t *testing.T) {
 	}
 }
 
+func TestResolve_SubRealm_PathTraversal(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm:     entity.RealmMeta{ID: "dev.steerspec.test", Title: "Test", Version: "0.1.0"},
+		SubRealms: []string{"../escape"},
+	}
+	baseDir := absTestdata(t, "parent-with-sub")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics for path traversal")
+	}
+	if !hasDiagCode(res, "RR007") {
+		t.Errorf("expected RR007 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
 func TestResolve_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately

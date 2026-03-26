@@ -201,7 +201,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	}
 
 	// --- Sub-realm resolution ---
-	allSubRealmEUIDs := make(map[string]string) // EUID → sub-realm name
+	allSubRealmEUIDs := make(map[string]string) // EUID → "sub-realm-name (file-path)"
 
 	for _, subRealmName := range rf.SubRealms {
 		if err := ctx.Err(); err != nil {
@@ -230,6 +230,17 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		}
 
 		subDir := filepath.Join(baseDir, subRealmName)
+		subDir, err := filepath.Abs(subDir)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR007",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: cannot resolve absolute path: %v", subRealmName, err),
+				Path:     baseDir,
+			})
+			continue
+		}
 
 		// RR007: sub-realm directory must exist and be a directory.
 		info, err := os.Stat(subDir)
@@ -306,11 +317,11 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 					Module:   module,
 					Code:     "RR011",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("EUID collision: %q exists in sub-realm %q and sub-realm %q (%s)", euid, prevSub, subRealmName, subPath),
+					Message:  fmt.Sprintf("EUID collision: %q exists in %s and sub-realm %q (%s)", euid, prevSub, subRealmName, subPath),
 					Path:     subDir,
 				})
 			} else {
-				allSubRealmEUIDs[euid] = subRealmName
+				allSubRealmEUIDs[euid] = fmt.Sprintf("sub-realm %q (%s)", subRealmName, subPath)
 			}
 		}
 
