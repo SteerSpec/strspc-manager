@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.13.0](https://github.com/SteerSpec/strspc-manager/compare/v1.12.0...v1.13.0) (2026-03-26)
+
+
+### Features
+
+* **realmlint:** add WithExcludeDirs walker option and sub-realm validation ([fb5f8fa](https://github.com/SteerSpec/strspc-manager/commit/fb5f8fa2cae224e55fd0befd9e523c62963bbea6))
+
+
+### Bug Fixes
+
+* **realmlint:** address PR review — path traversal, error detail, EUID scoping ([58be9de](https://github.com/SteerSpec/strspc-manager/commit/58be9de6f6e9f64502d23cbfab7ebd3e215e2599))
+* **realmlint:** distinguish ENOENT from other errors in RM008 ([397fb3e](https://github.com/SteerSpec/strspc-manager/commit/397fb3efb6812286b91e234a89f1b7c611e79621))
+
 ## [1.12.0](https://github.com/SteerSpec/strspc-manager/compare/v1.11.0...v1.12.0) (2026-03-26)
 
 
