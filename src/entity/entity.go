@@ -54,6 +54,7 @@ type RealmFile struct {
 	Schema               string      `json:"$schema"`
 	Realm                RealmMeta   `json:"realm"`
 	Dependencies         []RealmDep  `json:"dependencies,omitempty"`
+	SubRealms            []string    `json:"sub_realms,omitempty"`
 	RuleIdentifierFormat interface{} `json:"rule_identifier_format,omitempty"`
 }
 

@@ -149,6 +149,7 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
 | `dependencies` | array | Array of `{ realm_id, version }` objects referencing other Realms (RLMMNFST-003). |
+| `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults, or `null` to inherit (RLMMNFST-004). |
 
 The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-002). Dependencies use pinned version references (RLMMNFST-003).
@@ -156,6 +157,29 @@ The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-0
 The `realm.v1.schema.json` schema validates this manifest format. It is a hand-maintained axiom — the same bootstrap pattern as `bootstrap.schema.json`.
 
 > See #19 for the Realm architecture discussion and phased implementation plan.
+
+#### Sub-Realms
+
+A Realm MAY contain child Realms (sub-realms) declared via the `sub_realms` field in its manifest (RLM-010, RLMMNFST-005). Each entry names a subdirectory that contains its own `realm.json`.
+
+**Directory structure:**
+
+```
+platform/
+  realm.json          # id: dev.steerspec.platform, sub_realms: ["sync"]
+  ENT.json
+  sync/
+    realm.json        # id: dev.steerspec.platform.sync
+    SYNC.json
+```
+
+**ID convention:** A sub-realm's identifier MUST equal `<parent-realm-id>.<subdirectory-name>` (RLM-011). For example, directory `sync/` under realm `dev.steerspec.platform` must have ID `dev.steerspec.platform.sync`.
+
+**Nesting depth:** Sub-realms are limited to one level — a sub-realm MUST NOT declare its own `sub_realms` (RLM-012).
+
+**EUID uniqueness:** EUID uniqueness (RLM-001) spans the parent Realm and all its declared sub-realms (RLM-013). No EUID may appear in both the parent and a sub-realm, or in two sibling sub-realms.
+
+**Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own.
 
 ### 2.9 Configuration
 
