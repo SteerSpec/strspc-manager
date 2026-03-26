@@ -373,27 +373,6 @@ func TestLintRealm_SubRealmCrossRef(t *testing.T) {
 	}
 }
 
-func TestLintRealm_SubRealmCrossRef_Missing(t *testing.T) {
-	// If the sub-realm references a rule that doesn't exist anywhere in the
-	// realm tree, RL012 should fire. We reuse realm_with_sub — modify the
-	// test expectation: SYN-001 supersedes PAR-001 which exists, so no RL012.
-	// This test verifies the global scope works by confirming absence of false positives.
-	l := New()
-	res := l.LintRealm(testdataPath("realm_with_sub"))
-
-	// PAR-001 exists in parent realm, SYN-001 supersedes it — should be clean.
-	hasError := false
-	for _, d := range res.Diagnostics {
-		if d.Severity == result.Error {
-			hasError = true
-			t.Logf("unexpected error: %s", d.Message)
-		}
-	}
-	if hasError {
-		t.Error("expected no errors for valid sub-realm cross-reference")
-	}
-}
-
 func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
 	// LintDir should still work shallow — ENT.json supersedes RUL-001 which
 	// IS in the same directory, so no RL012 for it. But subdir/SUB.json

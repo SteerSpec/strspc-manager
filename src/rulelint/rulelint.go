@@ -255,62 +255,10 @@ func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[s
 // Split schema/hash checks from parsing to reuse the walker-provided *File.
 func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
-
-	// First pass: lint each file and collect parsed entities.
+	allRuleIDs := make(map[string]string)
 	var parsed []dirEntry
-	allRuleIDs := make(map[string]string) // ruleID → file path
 
-	walkErr := entity.WalkEntityFiles(dir, func(fpath string, data []byte, ef *entity.File, parseErr error) error {
-		if parseErr != nil {
-			if data == nil {
-				// Read error.
-				res.Add(result.Diagnostic{
-					Module:   module,
-					Code:     "RL000",
-					Severity: result.Error,
-					Message:  fmt.Sprintf("reading file: %s", parseErr),
-					Path:     fpath,
-				})
-			} else {
-				// Parse error — lint the raw bytes to get full diagnostics.
-				fileRes, _ := l.lintBytesInternal(data)
-				for _, d := range fileRes.Diagnostics {
-					if d.Path == "" {
-						d.Path = fpath
-					} else {
-						d.Path = fpath + ": " + d.Path
-					}
-					res.Add(d)
-				}
-			}
-			return nil
-		}
-
-		// Lint the already-parsed entity.
-		fileRes, _ := l.lintBytesInternal(data)
-		for _, d := range fileRes.Diagnostics {
-			if d.Path == "" {
-				d.Path = fpath
-			} else {
-				d.Path = fpath + ": " + d.Path
-			}
-			res.Add(d)
-		}
-
-		collectRuleIDs(ef, fpath, allRuleIDs)
-		parsed = append(parsed, dirEntry{path: fpath, file: ef})
-		return nil
-	}, walkOpts...)
-	if walkErr != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL000",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("reading directory: %s", walkErr),
-			Path:     dir,
-		})
-		return res
-	}
+	l.lintDirCollect(dir, res, allRuleIDs, &parsed, walkOpts...)
 
 	// Second pass: cross-file supersedes/relation references (RL012).
 	for _, de := range parsed {
