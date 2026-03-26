@@ -217,7 +217,8 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 
 		// Validate sub-realm name is a clean directory name (no path traversal).
 		if subRealmName == "" || subRealmName == "." || subRealmName == ".." ||
-			strings.ContainsAny(subRealmName, "/\\") || filepath.IsAbs(subRealmName) {
+			strings.ContainsAny(subRealmName, "/\\") || filepath.IsAbs(subRealmName) ||
+			filepath.VolumeName(subRealmName) != "" {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RR007",
@@ -308,8 +309,9 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 					Message:  fmt.Sprintf("EUID collision: %q exists in sub-realm %q and sub-realm %q (%s)", euid, prevSub, subRealmName, subPath),
 					Path:     subDir,
 				})
+			} else {
+				allSubRealmEUIDs[euid] = subRealmName
 			}
-			allSubRealmEUIDs[euid] = subRealmName
 		}
 
 		// RR011: EUID collision — sub-realm vs dependency.
