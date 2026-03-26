@@ -266,6 +266,148 @@ func TestResolve_DepVsDepCollision(t *testing.T) {
 	}
 }
 
+// --- Sub-realm tests ---
+
+func TestResolve_SubRealms_Success(t *testing.T) {
+	rf := loadTestRealm(t, "parent-with-sub")
+	baseDir := absTestdata(t, "parent-with-sub")
+
+	resolver := New()
+	got, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if !res.OK() {
+		t.Fatalf("expected no errors, got: %v", res.Diagnostics)
+	}
+	if len(got.SubRealms) != 1 {
+		t.Fatalf("expected 1 sub-realm, got %d", len(got.SubRealms))
+	}
+
+	sub := got.SubRealms[0]
+	if sub.Realm.Realm.ID != "dev.steerspec.test.sync" {
+		t.Errorf("expected sub-realm ID dev.steerspec.test.sync, got %s", sub.Realm.Realm.ID)
+	}
+	if _, ok := sub.EUIDs["SYNC"]; !ok {
+		t.Errorf("expected EUID SYNC in sub-realm, got %v", sub.EUIDs)
+	}
+}
+
+func TestResolve_SubRealm_MissingDir(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm:     entity.RealmMeta{ID: "dev.steerspec.test", Title: "Test", Version: "0.1.0"},
+		SubRealms: []string{"nonexistent"},
+	}
+	baseDir := absTestdata(t, "parent-with-sub")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics")
+	}
+	if !hasDiagCode(res, "RR007") {
+		t.Errorf("expected RR007 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_MissingRealmJSON(t *testing.T) {
+	rf := loadTestRealm(t, "sub-missing-realm")
+	baseDir := absTestdata(t, "sub-missing-realm")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics")
+	}
+	if !hasDiagCode(res, "RR008") {
+		t.Errorf("expected RR008 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_IDMismatch(t *testing.T) {
+	rf := loadTestRealm(t, "sub-id-mismatch")
+	baseDir := absTestdata(t, "sub-id-mismatch")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics")
+	}
+	if !hasDiagCode(res, "RR009") {
+		t.Errorf("expected RR009 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_NestedSubRealms(t *testing.T) {
+	rf := loadTestRealm(t, "sub-nested-sub")
+	baseDir := absTestdata(t, "sub-nested-sub")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics")
+	}
+	if !hasDiagCode(res, "RR010") {
+		t.Errorf("expected RR010 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_EUIDCollision_ParentVsSub(t *testing.T) {
+	rf := loadTestRealm(t, "sub-collision-parent")
+	baseDir := absTestdata(t, "sub-collision-parent")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if !hasDiagCode(res, "RR011") {
+		t.Errorf("expected RR011 diagnostic for parent-vs-sub EUID collision, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_EUIDCollision_SubVsSub(t *testing.T) {
+	rf := loadTestRealm(t, "sub-collision-sibling")
+	baseDir := absTestdata(t, "sub-collision-sibling")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if !hasDiagCode(res, "RR011") {
+		t.Errorf("expected RR011 diagnostic for sub-vs-sub EUID collision, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_EUIDCollision_SubVsDep(t *testing.T) {
+	rf := loadTestRealm(t, "sub-collision-dep")
+	baseDir := absTestdata(t, "sub-collision-dep")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if !hasDiagCode(res, "RR011") {
+		t.Errorf("expected RR011 diagnostic for sub-vs-dep EUID collision, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_PathTraversal(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm:     entity.RealmMeta{ID: "dev.steerspec.test", Title: "Test", Version: "0.1.0"},
+		SubRealms: []string{"../escape"},
+	}
+	baseDir := absTestdata(t, "parent-with-sub")
+
+	resolver := New()
+	_, res := resolver.Resolve(context.Background(), rf, baseDir)
+
+	if res.OK() {
+		t.Fatal("expected error diagnostics for path traversal")
+	}
+	if !hasDiagCode(res, "RR007") {
+		t.Errorf("expected RR007 diagnostic, got: %v", res.Diagnostics)
+	}
+}
+
 func TestResolve_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately

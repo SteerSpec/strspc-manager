@@ -6,6 +6,7 @@ package realmresolve
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,9 +17,10 @@ import (
 
 const module = "realm-resolve"
 
-// ResolveResult holds the resolved dependencies for a realm.
+// ResolveResult holds the resolved dependencies and sub-realms for a realm.
 type ResolveResult struct {
 	Dependencies []*ResolvedRealm
+	SubRealms    []*ResolvedRealm
 }
 
 // ResolvedRealm represents a single resolved dependency.
@@ -78,8 +80,14 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		return out, res
 	}
 
-	// Collect parent realm EUIDs.
-	parentEUIDs := collectEUIDs(ctx, baseDir, res)
+	// Collect parent realm EUIDs. When sub-realms are declared, exclude
+	// their directories so their entities don't appear in the parent's
+	// EUID set (they are checked separately).
+	var walkOpts []entity.WalkOption
+	if len(rf.SubRealms) > 0 {
+		walkOpts = append(walkOpts, entity.WithExcludeDirs(rf.SubRealms))
+	}
+	parentEUIDs := collectEUIDs(ctx, baseDir, res, walkOpts...)
 
 	// Track all dependency EUIDs for dep-vs-dep collision detection.
 	allDepEUIDs := make(map[string]string) // EUID → realm_id
@@ -192,12 +200,186 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		out.Dependencies = append(out.Dependencies, resolved)
 	}
 
+	// --- Sub-realm resolution ---
+	allSubRealmEUIDs := make(map[string]string) // EUID → "sub-realm-name (file-path)"
+
+	for _, subRealmName := range rf.SubRealms {
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR000",
+				Severity: result.Error,
+				Message:  err.Error(),
+				Path:     baseDir,
+			})
+			return out, res
+		}
+
+		// Validate sub-realm name is a clean directory name (no path traversal).
+		if subRealmName == "" || subRealmName == "." || subRealmName == ".." ||
+			strings.ContainsAny(subRealmName, "/\\") || filepath.IsAbs(subRealmName) ||
+			filepath.VolumeName(subRealmName) != "" {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR007",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: invalid directory name", subRealmName),
+				Path:     baseDir,
+			})
+			continue
+		}
+
+		subDir := filepath.Join(baseDir, subRealmName)
+		subDir, err := filepath.Abs(subDir)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR007",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: cannot resolve absolute path: %v", subRealmName, err),
+				Path:     baseDir,
+			})
+			continue
+		}
+
+		// RR007: sub-realm directory must exist and be a directory.
+		info, err := os.Stat(subDir)
+		if err != nil || !info.IsDir() {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR007",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: directory %q does not exist or is not a directory", subRealmName, subDir),
+				Path:     subDir,
+			})
+			continue
+		}
+
+		// RR008: load realm.json from sub-realm directory.
+		subRealmPath := filepath.Join(subDir, "realm.json")
+		subRF, err := entity.LoadRealm(subRealmPath)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR008",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: cannot load realm.json from %q: %v", subRealmName, subRealmPath, err),
+				Path:     subRealmPath,
+			})
+			continue
+		}
+
+		// RR009: sub-realm ID must match parent.id + "." + dirname.
+		expectedID := rf.Realm.ID + "." + subRealmName
+		if subRF.Realm.ID != expectedID {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR009",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: expected ID %q but found %q", subRealmName, expectedID, subRF.Realm.ID),
+				Path:     subRealmPath,
+			})
+			continue
+		}
+
+		// RR010: sub-realm must not declare its own sub_realms.
+		if len(subRF.SubRealms) > 0 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR010",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q declares nested sub_realms; only one level of nesting is allowed", subRealmName),
+				Path:     subRealmPath,
+			})
+			continue
+		}
+
+		// Collect EUIDs from the sub-realm directory.
+		subEUIDs := collectEUIDs(ctx, subDir, res)
+
+		// RR011: EUID collision — sub-realm vs parent.
+		for euid, subPath := range subEUIDs {
+			if parentPath, ok := parentEUIDs[euid]; ok {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RR011",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("EUID collision: %q exists in parent (%s) and sub-realm %q (%s)", euid, parentPath, subRealmName, subPath),
+					Path:     subDir,
+				})
+			}
+		}
+
+		// RR011: EUID collision — sub-realm vs sibling sub-realm.
+		for euid, subPath := range subEUIDs {
+			if prevSub, ok := allSubRealmEUIDs[euid]; ok {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RR011",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("EUID collision: %q exists in %s and sub-realm %q (%s)", euid, prevSub, subRealmName, subPath),
+					Path:     subDir,
+				})
+			} else {
+				allSubRealmEUIDs[euid] = fmt.Sprintf("sub-realm %q (%s)", subRealmName, subPath)
+			}
+		}
+
+		// RR011: EUID collision — sub-realm vs dependency.
+		// TODO: Once sub-realm dep resolution is implemented (Phase 2-4),
+		// this should check against the sub-realm's effective dep EUIDs
+		// (after mergeDepLists), not the parent's dep EUIDs.
+		for euid, subPath := range subEUIDs {
+			if depRealm, ok := allDepEUIDs[euid]; ok {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RR011",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("EUID collision: %q exists in sub-realm %q (%s) and dependency %q", euid, subRealmName, subPath, depRealm),
+					Path:     subDir,
+				})
+			}
+		}
+
+		// Dependency inheritance: merge parent deps with sub-realm's own.
+		effectiveDeps := mergeDepLists(rf.Dependencies, subRF.Dependencies)
+		subRF.Dependencies = effectiveDeps
+
+		out.SubRealms = append(out.SubRealms, &ResolvedRealm{
+			Realm: subRF,
+			Dir:   subDir,
+			EUIDs: subEUIDs,
+		})
+	}
+
 	return out, res
+}
+
+// mergeDepLists merges parent and child dependency lists.
+// Parent deps come first; if a child declares a dep with the same realm_id
+// as a parent dep, the child's version takes precedence (override).
+func mergeDepLists(parent, child []entity.RealmDep) []entity.RealmDep {
+	// Build set of child realm IDs for override detection.
+	childIDs := make(map[string]struct{}, len(child))
+	for _, d := range child {
+		childIDs[d.RealmID] = struct{}{}
+	}
+
+	merged := make([]entity.RealmDep, 0, len(parent)+len(child))
+	// Add parent deps that are not overridden by child.
+	for _, d := range parent {
+		if _, overridden := childIDs[d.RealmID]; !overridden {
+			merged = append(merged, d)
+		}
+	}
+	// Add all child deps (including overrides).
+	merged = append(merged, child...)
+	return merged
 }
 
 // collectEUIDs walks a directory and returns a map of EUID → file path,
 // including EUIDs from sub-entities.
-func collectEUIDs(ctx context.Context, dir string, res *result.Result) map[string]string {
+func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts ...entity.WalkOption) map[string]string {
 	euids := make(map[string]string)
 	err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
@@ -219,7 +401,7 @@ func collectEUIDs(ctx context.Context, dir string, res *result.Result) map[strin
 		}
 		addEUIDs(ef, path, euids)
 		return nil
-	})
+	}, walkOpts...)
 	if err != nil && ctx.Err() == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
