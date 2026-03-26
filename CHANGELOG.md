@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.14.0](https://github.com/SteerSpec/strspc-manager/compare/v1.13.0...v1.14.0) (2026-03-26)
+
+
+### Features
+
+* **realmresolve:** add sub-realm discovery and resolution ([28f0678](https://github.com/SteerSpec/strspc-manager/commit/28f0678926d7ba3092f4681372190ac3d808deb3))
+* **rulelint:** make LintRealm sub-realm-aware with global cross-refs ([11060f9](https://github.com/SteerSpec/strspc-manager/commit/11060f9d643c1a3bf3164550ec59b8e3d4fff177))
+* **rulelint:** make LintRealm sub-realm-aware with global cross-refs ([5cd7ad5](https://github.com/SteerSpec/strspc-manager/commit/5cd7ad5e025a343507d88d56d6a86bb052f9fc6a))
+
+
+### Bug Fixes
+
+* **realmresolve:** absolute subDir path, richer collision messages, traversal test ([5ec8188](https://github.com/SteerSpec/strspc-manager/commit/5ec8188ba0a95cda075d528e5b496ae0c7c09ed4))
+* **realmresolve:** address PR review — WithExcludeDirs, path traversal, testdata ([2523673](https://github.com/SteerSpec/strspc-manager/commit/25236734c3d371733d84d1a7ac0516cb7e33bdf4))
+* **realmresolve:** reject volume-prefixed names, fix sibling EUID tracking ([36e1a32](https://github.com/SteerSpec/strspc-manager/commit/36e1a321b68f75499cd7a2dcc259fceefd92f7ae))
+* **rulelint:** deduplicate lintDir via lintDirCollect, remove misleading test ([ac59ec7](https://github.com/SteerSpec/strspc-manager/commit/ac59ec7558d898e58dae497ec25437a9f9b783f7))
+
 ## [1.13.0](https://github.com/SteerSpec/strspc-manager/compare/v1.12.0...v1.13.0) (2026-03-26)
 
 
