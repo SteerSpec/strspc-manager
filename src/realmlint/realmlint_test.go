@@ -345,6 +345,103 @@ func TestStrict_PromotesWarnings(t *testing.T) {
 	}
 }
 
+func TestLint_ValidSubRealm(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid_sub_realm")
+	linter := New()
+	res := linter.Lint(dir)
+
+	for _, d := range res.Diagnostics {
+		if d.Severity == result.Error {
+			t.Errorf("unexpected error: %s %s: %s", d.Code, d.Path, d.Message)
+		}
+	}
+
+	// Should not report any RM008-RM012 diagnostics.
+	for _, code := range []string{"RM008", "RM009", "RM010", "RM011", "RM012"} {
+		if hasCode(res, code) {
+			t.Errorf("unexpected %s diagnostic for valid sub-realm", code)
+		}
+	}
+
+	// Should not report RM006 — PARENT and SYNC have distinct EUIDs.
+	if hasCode(res, "RM006") {
+		t.Error("unexpected RM006 diagnostic for valid sub-realm")
+	}
+}
+
+func TestRM008_SubRealmMissingDir(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_missing_dir")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM008")
+	if res.OK() {
+		t.Error("expected errors for missing sub-realm directory")
+	}
+}
+
+func TestRM009_SubRealmNoManifest(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_no_manifest")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM009")
+	if res.OK() {
+		t.Error("expected errors for sub-realm without realm.json")
+	}
+}
+
+func TestRM010_SubRealmBadID(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_bad_id")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM010")
+	if res.OK() {
+		t.Error("expected errors for sub-realm with wrong ID")
+	}
+
+	// Verify the message mentions the expected ID.
+	for _, d := range res.Diagnostics {
+		if d.Code == "RM010" {
+			if !strings.Contains(d.Message, "dev.steerspec.test.sync") {
+				t.Errorf("RM010 message should mention expected ID, got: %s", d.Message)
+			}
+		}
+	}
+}
+
+func TestRM011_SubRealmNested(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_nested")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM011")
+	if res.OK() {
+		t.Error("expected errors for nested sub-realm")
+	}
+}
+
+func TestRM012_SubRealmEUIDCollision(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_euid_collision")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM012")
+	if res.OK() {
+		t.Error("expected errors for EUID collision between parent and sub-realm")
+	}
+
+	// Verify the message mentions the colliding EUID.
+	for _, d := range res.Diagnostics {
+		if d.Code == "RM012" {
+			if !strings.Contains(d.Message, "COLLIDE") {
+				t.Errorf("RM012 message should mention colliding EUID, got: %s", d.Message)
+			}
+		}
+	}
+}
+
 func TestRealmIDRegex(t *testing.T) {
 	tests := []struct {
 		id    string
