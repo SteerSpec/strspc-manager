@@ -1,0 +1,7 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": { "id": "dev.steerspec.test", "title": "Test", "version": "0.1.0" },
+  "dependencies": [],
+  "sub_realms": ["sync"],
+  "rule_identifier_format": null
+}

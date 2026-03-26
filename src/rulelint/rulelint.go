@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
@@ -158,36 +159,61 @@ func (l *Linter) LintDir(dir string) *result.Result {
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
 // and runs cross-entity reference checks (RL012).
+// When the realm declares sub_realms, each sub-realm directory is linted
+// separately, and RL012 cross-references are validated globally across the
+// parent realm and all sub-realms.
 // TODO: Add RL014 for cross-entity relation note references once the
 // cross-entity reference format in note content is well-defined.
 func (l *Linter) LintRealm(dir string) *result.Result {
-	return l.lintDir(dir)
+	// Try to load realm.json to check for sub_realms.
+	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
+	if err != nil || len(rf.SubRealms) == 0 {
+		// No realm.json or no sub-realms: fall back to recursive walk.
+		return l.lintDir(dir)
+	}
+
+	// Sub-realm-aware linting: lint parent excluding sub-realm dirs,
+	// then lint each sub-realm dir, and validate cross-refs globally.
+	return l.lintRealmWithSubs(dir, rf.SubRealms)
 }
 
-// lintDir is the internal implementation used by LintDir and LintRealm; recursion
-// behavior is controlled via the provided entity.WalkOption values.
-// TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
-// Split schema/hash checks from parsing to reuse the walker-provided *File.
-func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
+// lintRealmWithSubs lints the parent realm and each sub-realm separately,
+// then validates RL012 cross-references across the combined rule ID set.
+func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Result {
 	res := &result.Result{}
 
-	// First pass: lint each file and collect parsed entities.
-	var parsed []dirEntry
-	allRuleIDs := make(map[string]string) // ruleID → file path
+	// Shared state for global RL012 cross-ref validation.
+	allRuleIDs := make(map[string]string)
+	var allParsed []dirEntry
 
+	// Lint parent dir, excluding sub-realm directories.
+	l.lintDirCollect(dir, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
+
+	// Lint each sub-realm directory.
+	for _, sub := range subRealms {
+		subDir := filepath.Join(dir, sub)
+		l.lintDirCollect(subDir, res, allRuleIDs, &allParsed)
+	}
+
+	// Cross-file supersedes/relation references (RL012) across entire realm tree.
+	for _, de := range allParsed {
+		checkCrossRefs(de.file, de.path, allRuleIDs, res, l.cfg.Strict)
+	}
+
+	return res
+}
+
+// lintDirCollect lints entity files in dir and appends results to shared
+// collections (allRuleIDs, allParsed) for later cross-ref validation.
+func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[string]string, allParsed *[]dirEntry, walkOpts ...entity.WalkOption) {
 	walkErr := entity.WalkEntityFiles(dir, func(fpath string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
 			if data == nil {
-				// Read error.
 				res.Add(result.Diagnostic{
-					Module:   module,
-					Code:     "RL000",
-					Severity: result.Error,
-					Message:  fmt.Sprintf("reading file: %s", parseErr),
-					Path:     fpath,
+					Module: module, Code: "RL000", Severity: result.Error,
+					Message: fmt.Sprintf("reading file: %s", parseErr), Path: fpath,
 				})
 			} else {
-				// Parse error — lint the raw bytes to get full diagnostics.
 				fileRes, _ := l.lintBytesInternal(data)
 				for _, d := range fileRes.Diagnostics {
 					if d.Path == "" {
@@ -201,7 +227,6 @@ func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Resu
 			return nil
 		}
 
-		// Lint the already-parsed entity.
 		fileRes, _ := l.lintBytesInternal(data)
 		for _, d := range fileRes.Diagnostics {
 			if d.Path == "" {
@@ -213,19 +238,27 @@ func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Resu
 		}
 
 		collectRuleIDs(ef, fpath, allRuleIDs)
-		parsed = append(parsed, dirEntry{path: fpath, file: ef})
+		*allParsed = append(*allParsed, dirEntry{path: fpath, file: ef})
 		return nil
 	}, walkOpts...)
 	if walkErr != nil {
 		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL000",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("reading directory: %s", walkErr),
-			Path:     dir,
+			Module: module, Code: "RL000", Severity: result.Error,
+			Message: fmt.Sprintf("reading directory: %s", walkErr), Path: dir,
 		})
-		return res
 	}
+}
+
+// lintDir is the internal implementation used by LintDir and LintRealm; recursion
+// behavior is controlled via the provided entity.WalkOption values.
+// TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
+// Split schema/hash checks from parsing to reuse the walker-provided *File.
+func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
+	res := &result.Result{}
+	allRuleIDs := make(map[string]string)
+	var parsed []dirEntry
+
+	l.lintDirCollect(dir, res, allRuleIDs, &parsed, walkOpts...)
 
 	// Second pass: cross-file supersedes/relation references (RL012).
 	for _, de := range parsed {

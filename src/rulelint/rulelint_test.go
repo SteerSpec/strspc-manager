@@ -359,6 +359,20 @@ func TestLintRealm_CrossEntitySupersedes(t *testing.T) {
 	}
 }
 
+func TestLintRealm_SubRealmCrossRef(t *testing.T) {
+	// realm_with_sub has parent PAR.json with PAR-001, and sub-realm sync/SYN.json
+	// with SYN-001 that supersedes PAR-001. Since sub-realm EUID scope is global,
+	// the supersedes reference should resolve successfully (no RL012).
+	l := New()
+	res := l.LintRealm(testdataPath("realm_with_sub"))
+
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL012" {
+			t.Errorf("unexpected RL012: cross-realm supersedes should resolve; got: %s", d.Message)
+		}
+	}
+}
+
 func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
 	// LintDir should still work shallow — ENT.json supersedes RUL-001 which
 	// IS in the same directory, so no RL012 for it. But subdir/SUB.json
