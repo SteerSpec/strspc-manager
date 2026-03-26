@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -428,6 +429,18 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 	subRealmEUIDs := make(map[string]map[string]string, len(rf.SubRealms))
 
 	for _, srName := range rf.SubRealms {
+		// Validate sub-realm name is a clean directory name (no path traversal).
+		if srName == "" || srName == "." || srName == ".." || strings.ContainsAny(srName, "/\\") {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM008",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub_realms entry %q: invalid directory name", srName),
+				Path:     realmPath,
+			})
+			continue
+		}
+
 		srDir := filepath.Join(dir, srName)
 
 		// RM008: Sub-realm directory must exist.
@@ -457,11 +470,15 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 		srRealmPath := filepath.Join(srDir, "realm.json")
 		srData, err := os.ReadFile(srRealmPath)
 		if err != nil {
+			msg := fmt.Sprintf("sub-realm %q: error reading realm.json: %v", srName, err)
+			if os.IsNotExist(err) {
+				msg = fmt.Sprintf("sub-realm %q: missing realm.json", srName)
+			}
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM009",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub-realm %q: missing realm.json", srName),
+				Message:  msg,
 				Path:     srRealmPath,
 			})
 			continue
@@ -503,7 +520,9 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 		}
 
 		// Scan sub-realm entity files for EUID collection.
-		srEUIDs := l.scanEntityFiles(srDir, nil, res)
+		// If the sub-realm violates RM011 (nested sub_realms), exclude those
+		// dirs so their entities don't leak into this sub-realm's EUID set.
+		srEUIDs := l.scanEntityFiles(srDir, srRF.SubRealms, res)
 		subRealmEUIDs[srName] = srEUIDs
 	}
 

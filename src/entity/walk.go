@@ -102,9 +102,6 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 		if entry.IsDir() {
 			continue
 		}
-		if cfg.excludeDirs[entry.Name()] {
-			continue
-		}
 		if err := processEntry(filepath.Join(dir, entry.Name()), entry.Name(), fn); err != nil {
 			if err == fs.SkipAll {
 				return nil
