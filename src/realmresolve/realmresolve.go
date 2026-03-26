@@ -80,15 +80,14 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		return out, res
 	}
 
-	// Collect parent realm EUIDs. When sub-realms are declared, use a
-	// shallow walk so that sub-realm subdirectories are not included in the
-	// parent's EUID set (they are checked separately).
-	var parentEUIDs map[string]string
+	// Collect parent realm EUIDs. When sub-realms are declared, exclude
+	// their directories so their entities don't appear in the parent's
+	// EUID set (they are checked separately).
+	var walkOpts []entity.WalkOption
 	if len(rf.SubRealms) > 0 {
-		parentEUIDs = collectEUIDsShallow(ctx, baseDir, res)
-	} else {
-		parentEUIDs = collectEUIDs(ctx, baseDir, res)
+		walkOpts = append(walkOpts, entity.WithExcludeDirs(rf.SubRealms))
 	}
+	parentEUIDs := collectEUIDs(ctx, baseDir, res, walkOpts...)
 
 	// Track all dependency EUIDs for dep-vs-dep collision detection.
 	allDepEUIDs := make(map[string]string) // EUID → realm_id
@@ -216,6 +215,19 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			return out, res
 		}
 
+		// Validate sub-realm name is a clean directory name (no path traversal).
+		if subRealmName == "" || subRealmName == "." || subRealmName == ".." ||
+			strings.ContainsAny(subRealmName, "/\\") || filepath.IsAbs(subRealmName) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR007",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: invalid directory name", subRealmName),
+				Path:     baseDir,
+			})
+			continue
+		}
+
 		subDir := filepath.Join(baseDir, subRealmName)
 
 		// RR007: sub-realm directory must exist and be a directory.
@@ -301,6 +313,9 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		}
 
 		// RR011: EUID collision — sub-realm vs dependency.
+		// TODO: Once sub-realm dep resolution is implemented (Phase 2-4),
+		// this should check against the sub-realm's effective dep EUIDs
+		// (after mergeDepLists), not the parent's dep EUIDs.
 		for euid, subPath := range subEUIDs {
 			if depRealm, ok := allDepEUIDs[euid]; ok {
 				res.Add(result.Diagnostic{
@@ -351,7 +366,7 @@ func mergeDepLists(parent, child []entity.RealmDep) []entity.RealmDep {
 
 // collectEUIDs walks a directory and returns a map of EUID → file path,
 // including EUIDs from sub-entities.
-func collectEUIDs(ctx context.Context, dir string, res *result.Result) map[string]string {
+func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts ...entity.WalkOption) map[string]string {
 	euids := make(map[string]string)
 	err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
@@ -373,44 +388,7 @@ func collectEUIDs(ctx context.Context, dir string, res *result.Result) map[strin
 		}
 		addEUIDs(ef, path, euids)
 		return nil
-	})
-	if err != nil && ctx.Err() == nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RR002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("failed to walk directory %q: %v", dir, err),
-			Path:     dir,
-		})
-	}
-	return euids
-}
-
-// collectEUIDsShallow walks only the immediate files in a directory (non-recursive)
-// and returns a map of EUID → file path, including EUIDs from sub-entities.
-func collectEUIDsShallow(ctx context.Context, dir string, res *result.Result) map[string]string {
-	euids := make(map[string]string)
-	err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		if parseErr != nil {
-			msg := fmt.Sprintf("accessing path: %s", parseErr)
-			if data != nil {
-				msg = fmt.Sprintf("parsing entity: %s", parseErr)
-			}
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR002",
-				Severity: result.Error,
-				Message:  msg,
-				Path:     path,
-			})
-			return nil
-		}
-		addEUIDs(ef, path, euids)
-		return nil
-	}, entity.WithRecursive(false))
+	}, walkOpts...)
 	if err != nil && ctx.Err() == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
