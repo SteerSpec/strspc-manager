@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0](https://github.com/SteerSpec/strspc-manager/compare/v1.11.0...v1.12.0) (2026-03-26)
+
+
+### Features
+
+* **entity:** add SubRealms field and spec sub-realm section ([1496322](https://github.com/SteerSpec/strspc-manager/commit/1496322b6eefe8315a59f92e4ee815889b90a532))
+* **entity:** add SubRealms field and spec sub-realm section ([4236eed](https://github.com/SteerSpec/strspc-manager/commit/4236eed37b75def72ce3a67fccf070f2bac40ba1))
+
 ## [1.11.0](https://github.com/SteerSpec/strspc-manager/compare/v1.10.2...v1.11.0) (2026-03-25)
 
 
