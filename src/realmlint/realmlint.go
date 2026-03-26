@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -111,8 +112,14 @@ func (l *RealmLinter) Lint(dir string) *result.Result {
 	// RM003 + RM004: Directory structure.
 	checkSchemaDir(dir, res)
 
-	// RM005 + RM006: Entity file scanning.
-	l.scanEntityFiles(dir, res)
+	// RM008–RM011: Sub-realm validation.
+	subRealmEUIDs := l.checkSubRealms(dir, rf, realmPath, res)
+
+	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
+	parentEUIDs := l.scanEntityFiles(dir, rf.SubRealms, res)
+
+	// RM012: EUID collision between parent and sub-realms.
+	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
 
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -286,8 +293,9 @@ func checkSchemaDir(dir string, res *result.Result) {
 
 // scanEntityFiles walks the Realm directory tree for .json entity files,
 // checking EUID uniqueness (RM006) and optionally delegating to rulelint (RM005).
-// The _schema/ subtree and realm.json files are skipped.
-func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
+// The _schema/ subtree, realm.json files, and sub-realm directories are skipped.
+// Returns the EUID map (euid → file path) collected from the scanned files.
+func (l *RealmLinter) scanEntityFiles(dir string, excludeDirs []string, res *result.Result) map[string]string {
 	if l.cfg.RuleLinter == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -309,6 +317,11 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 
 	// EUID → first file path where it was seen.
 	euids := make(map[string]string)
+
+	var walkOpts []entity.WalkOption
+	if len(excludeDirs) > 0 {
+		walkOpts = append(walkOpts, entity.WithExcludeDirs(excludeDirs))
+	}
 
 	walkErr := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
@@ -357,7 +370,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 		}
 
 		return nil
-	})
+	}, walkOpts...)
 	if walkErr != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -367,6 +380,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, res *result.Result) {
 			Path:     dir,
 		})
 	}
+	return euids
 }
 
 // collectSubEntityEUIDs collects EUIDs from sub-entities and checks uniqueness.
@@ -401,6 +415,144 @@ func copyDiagnostics(from *result.Result, fpath string, to *result.Result) {
 			d.Path = fpath + ": " + d.Path
 		}
 		to.Add(d)
+	}
+}
+
+// checkSubRealms validates all sub-realm entries declared in the parent realm.
+// Returns a map of sub-realm name → EUID map for cross-realm collision checks.
+func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath string, res *result.Result) map[string]map[string]string {
+	if len(rf.SubRealms) == 0 {
+		return nil
+	}
+
+	subRealmEUIDs := make(map[string]map[string]string, len(rf.SubRealms))
+
+	for _, srName := range rf.SubRealms {
+		srDir := filepath.Join(dir, srName)
+
+		// RM008: Sub-realm directory must exist.
+		info, err := os.Stat(srDir)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM008",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub_realms entry %q: directory does not exist", srName),
+				Path:     realmPath,
+			})
+			continue
+		}
+		if !info.IsDir() {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM008",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub_realms entry %q: path is not a directory", srName),
+				Path:     realmPath,
+			})
+			continue
+		}
+
+		// RM009: Sub-realm must have realm.json.
+		srRealmPath := filepath.Join(srDir, "realm.json")
+		srData, err := os.ReadFile(srRealmPath)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM009",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: missing realm.json", srName),
+				Path:     srRealmPath,
+			})
+			continue
+		}
+
+		srRF, err := entity.ParseRealm(srData)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM009",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: invalid realm.json: %s", srName, err),
+				Path:     srRealmPath,
+			})
+			continue
+		}
+
+		// RM010: Sub-realm ID must be parentID + "." + dirname.
+		expectedID := rf.Realm.ID + "." + srName
+		if srRF.Realm.ID != expectedID {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM010",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: ID %q must be %q", srName, srRF.Realm.ID, expectedID),
+				Path:     srRealmPath,
+			})
+		}
+
+		// RM011: Sub-realms must not declare their own sub_realms.
+		if len(srRF.SubRealms) > 0 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM011",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: nested sub_realms not allowed", srName),
+				Path:     srRealmPath,
+			})
+		}
+
+		// Scan sub-realm entity files for EUID collection.
+		srEUIDs := l.scanEntityFiles(srDir, nil, res)
+		subRealmEUIDs[srName] = srEUIDs
+	}
+
+	return subRealmEUIDs
+}
+
+// checkEUIDCollisions checks for EUID collisions between parent and sub-realms,
+// and between sibling sub-realms (RM012).
+func checkEUIDCollisions(parentEUIDs map[string]string, subRealmEUIDs map[string]map[string]string, res *result.Result) {
+	if len(subRealmEUIDs) == 0 {
+		return
+	}
+
+	// Check parent vs each sub-realm.
+	for srName, srEUIDs := range subRealmEUIDs {
+		for euid, srPath := range srEUIDs {
+			if parentPath, exists := parentEUIDs[euid]; exists {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RM012",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("EUID %q in sub-realm %q collides with parent realm (%s)", euid, srName, filepath.Base(parentPath)),
+					Path:     srPath,
+				})
+			}
+		}
+	}
+
+	// Check sibling sub-realms against each other.
+	names := make([]string, 0, len(subRealmEUIDs))
+	for name := range subRealmEUIDs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for i := 0; i < len(names); i++ {
+		for j := i + 1; j < len(names); j++ {
+			for euid, pathI := range subRealmEUIDs[names[i]] {
+				if _, exists := subRealmEUIDs[names[j]][euid]; exists {
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RM012",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("EUID %q in sub-realm %q collides with sub-realm %q", euid, names[i], names[j]),
+						Path:     pathI,
+					})
+				}
+			}
+		}
 	}
 }
 

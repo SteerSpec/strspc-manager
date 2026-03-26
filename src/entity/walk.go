@@ -24,13 +24,29 @@ type WalkFunc func(path string, data []byte, ef *File, parseErr error) error
 type WalkOption func(*walkConfig)
 
 type walkConfig struct {
-	recursive bool
+	recursive   bool
+	excludeDirs map[string]bool
 }
 
 // WithRecursive controls whether subdirectories are walked.
 // The default is true (recursive).
 func WithRecursive(b bool) WalkOption {
 	return func(c *walkConfig) { c.recursive = b }
+}
+
+// WithExcludeDirs causes the walker to skip directories whose names
+// match any entry in dirs. The comparison uses the directory base name,
+// not the full path.
+func WithExcludeDirs(dirs []string) WalkOption {
+	return func(c *walkConfig) {
+		if len(dirs) == 0 {
+			return
+		}
+		c.excludeDirs = make(map[string]bool, len(dirs))
+		for _, d := range dirs {
+			c.excludeDirs[d] = true
+		}
+	}
 }
 
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
@@ -46,13 +62,13 @@ func WalkEntityFiles(dir string, fn WalkFunc, opts ...WalkOption) error {
 	}
 
 	if cfg.recursive {
-		return walkRecursive(dir, fn)
+		return walkRecursive(dir, fn, &cfg)
 	}
-	return walkShallow(dir, fn)
+	return walkShallow(dir, fn, &cfg)
 }
 
 // walkRecursive walks the full directory tree.
-func walkRecursive(dir string, fn WalkFunc) error {
+func walkRecursive(dir string, fn WalkFunc, cfg *walkConfig) error {
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if path == dir {
@@ -67,6 +83,9 @@ func walkRecursive(dir string, fn WalkFunc) error {
 			if d.Name() == "_schema" {
 				return fs.SkipDir
 			}
+			if cfg.excludeDirs[d.Name()] {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		return processEntry(path, d.Name(), fn)
@@ -74,13 +93,16 @@ func walkRecursive(dir string, fn WalkFunc) error {
 }
 
 // walkShallow processes only the immediate children of dir.
-func walkShallow(dir string, fn WalkFunc) error {
+func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if cfg.excludeDirs[entry.Name()] {
 			continue
 		}
 		if err := processEntry(filepath.Join(dir, entry.Name()), entry.Name(), fn); err != nil {

@@ -1,0 +1,23 @@
+{
+  "$schema": "../_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "COLLIDE",
+    "title": "Colliding Entity in Sub-Realm"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-03-22T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "COLLIDE-001",
+      "revision": 1,
+      "state": "A",
+      "body": "IS a colliding rule in sub-realm.",
+      "added_by": "test",
+      "added_at": "2026-03-22"
+    }
+  ],
+  "notes": []
+}
