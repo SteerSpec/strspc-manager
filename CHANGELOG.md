@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.1](https://github.com/SteerSpec/strspc-manager/compare/v1.14.0...v1.14.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* match Python canonical JSON in Blake3 hash computation ([a42423c](https://github.com/SteerSpec/strspc-manager/commit/a42423c25350038829fe3dd292755c67e2af97b5))
+
 ## [1.14.0](https://github.com/SteerSpec/strspc-manager/compare/v1.13.0...v1.14.0) (2026-03-26)
 
 
