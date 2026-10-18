@@ -408,6 +408,15 @@ func (p *Provider) call(ctx context.Context, chunk, rulesBlock string) (*wireRes
 	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
 	}
+	// Structured outputs should guarantee the enum, but a proxy or schema
+	// drift must not turn an unknown value into a silently ignored verdict.
+	for _, v := range parsed.Verdicts {
+		switch ruleeval.Verdict(v.Verdict) {
+		case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
+		default:
+			return nil, fmt.Errorf("%w: rule %s has unknown verdict %q", ErrMalformed, v.RuleID, v.Verdict)
+		}
+	}
 	return &parsed, nil
 }
 

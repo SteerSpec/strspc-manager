@@ -326,6 +326,25 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "invalid_verdict_value",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				// Well-formed JSON whose verdict is outside the enum; the API
+				// would reject this under structured outputs, but a proxy or a
+				// future schema drift must not slip through as "seen".
+				writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{RuleID: "CMD-001", Verdict: "maybe", Explanation: "unsure", Confidence: 0.3}), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if !errors.Is(err, claude.ErrMalformed) || resp != nil {
+					t.Fatalf("err = %v (resp %v), want ErrMalformed", err, resp)
+				}
+				if !strings.Contains(err.Error(), "maybe") || !strings.Contains(err.Error(), "CMD-001") {
+					t.Errorf("error should name the rule and the bad value, got %q", err)
+				}
+			},
+		},
+		{
 			name:   "rate_limited_then_ok",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,
