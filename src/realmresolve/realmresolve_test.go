@@ -195,38 +195,6 @@ func TestResolve_EmptySource(t *testing.T) {
 	}
 }
 
-func TestResolve_RemoteSourceSkipped(t *testing.T) {
-	rf := &entity.RealmFile{
-		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
-		Dependencies: []entity.RealmDep{
-			{RealmID: "dev.remote", Version: "1.0.0", Source: "github://org/repo"},
-		},
-	}
-	baseDir := absTestdata(t, "parent")
-
-	resolver := New()
-	got, res := resolver.Resolve(context.Background(), rf, baseDir)
-
-	// Should not produce errors, only info.
-	if !res.OK() {
-		t.Fatalf("expected no errors, got: %v", res.Diagnostics)
-	}
-	if len(got.Dependencies) != 0 {
-		t.Errorf("expected 0 resolved dependencies (remote skipped), got %d", len(got.Dependencies))
-	}
-
-	// Should have an info diagnostic (no error code).
-	var hasInfo bool
-	for _, d := range res.Diagnostics {
-		if d.Severity == result.Info {
-			hasInfo = true
-		}
-	}
-	if !hasInfo {
-		t.Fatal("expected Info diagnostic for skipped remote source")
-	}
-}
-
 func TestResolve_AbsolutePathRejected(t *testing.T) {
 	rf := &entity.RealmFile{
 		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},

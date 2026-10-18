@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -32,8 +33,14 @@ type ResolvedRealm struct {
 
 // Config holds options for the RealmResolver.
 type Config struct {
-	CacheTTL time.Duration // cache time-to-live (default: 24h)
-	CacheDir string        // path to cache directory
+	CacheTTL time.Duration // cache time-to-live for mutable remote refs such as @latest (default: 24h)
+	CacheDir string        // path to cache directory; remote dependencies land under <CacheDir>/github/
+
+	// Fetcher downloads github:// dependency sources. When nil and CacheDir
+	// is set, New builds one from CacheDir, CacheTTL and the
+	// GITHUB_TOKEN/GH_TOKEN environment variables. When nil and no cache
+	// dir is configured, remote dependencies fail with RR012.
+	Fetcher *remote.Fetcher
 }
 
 // Option configures the RealmResolver.
@@ -49,6 +56,12 @@ func WithCacheDir(dir string) Option {
 	return func(c *Config) { c.CacheDir = dir }
 }
 
+// WithRemoteFetcher supplies the fetcher used for github:// dependency
+// sources, overriding the one New would build from CacheDir/CacheTTL.
+func WithRemoteFetcher(f *remote.Fetcher) Option {
+	return func(c *Config) { c.Fetcher = f }
+}
+
 // RealmResolver resolves Realm dependencies.
 type RealmResolver struct {
 	cfg Config
@@ -59,6 +72,13 @@ func New(opts ...Option) *RealmResolver {
 	cfg := Config{CacheTTL: 24 * time.Hour}
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+	if cfg.Fetcher == nil && cfg.CacheDir != "" {
+		cfg.Fetcher = &remote.Fetcher{
+			Token:    remote.TokenFromEnv(),
+			CacheDir: cfg.CacheDir,
+			TTL:      cfg.CacheTTL,
+		}
 	}
 	return &RealmResolver{cfg: cfg}
 }
@@ -116,59 +136,11 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			continue
 		}
 
-		// RR001: empty source.
-		if dep.Source == "" {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR001",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("dependency %q has empty source", dep.RealmID),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// RR001: absolute paths not allowed.
-		if filepath.IsAbs(dep.Source) {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR001",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("dependency %q has absolute source path %q; only relative paths are allowed", dep.RealmID, dep.Source),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// Skip remote sources (future Phase 2).
-		if strings.Contains(dep.Source, "://") {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Severity: result.Info,
-				Message:  fmt.Sprintf("skipping remote dependency %q (source %q): remote resolution not yet supported", dep.RealmID, dep.Source),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// Resolve local path.
-		resolvedDir := filepath.Join(baseDir, dep.Source)
-		resolvedDir, err := filepath.Abs(resolvedDir)
-		if err != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR002",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		resolved := resolveLocalDep(ctx, dep, resolvedDir, res)
+		resolved := r.resolveDep(ctx, dep, baseDir, res)
 		if resolved == nil {
 			continue
 		}
+		resolvedDir := resolved.Dir
 
 		// RR005: EUID collisions — parent vs dependency.
 		for euid, depPath := range resolved.EUIDs {
@@ -353,6 +325,85 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	}
 
 	return out, res
+}
+
+// resolveDep validates a dependency's source and resolves it, locally or
+// through the remote fetcher. Relative paths are taken against baseDir.
+// Returns nil when the dependency cannot be resolved (diagnostics added).
+func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, baseDir string, res *result.Result) *ResolvedRealm {
+	// RR001: empty source.
+	if dep.Source == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has empty source", dep.RealmID),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
+	// RR001: absolute paths not allowed.
+	if filepath.IsAbs(dep.Source) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has absolute source path %q; only relative paths are allowed", dep.RealmID, dep.Source),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
+	// Remote source: fetch into the cache, then treat as local.
+	if strings.Contains(dep.Source, "://") {
+		dir, err := r.fetchRemote(ctx, dep)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR012",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("dependency %q: %v", dep.RealmID, err),
+				Path:     dep.Source,
+			})
+			return nil
+		}
+		return resolveLocalDep(ctx, dep, dir, res)
+	}
+
+	// Resolve local path.
+	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
+	if err != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR002",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
+			Path:     baseDir,
+		})
+		return nil
+	}
+	return resolveLocalDep(ctx, dep, resolvedDir, res)
+}
+
+// fetchRemote materialises a remote dependency source in the cache and
+// returns the local directory holding it.
+func (r *RealmResolver) fetchRemote(ctx context.Context, dep entity.RealmDep) (string, error) {
+	if !strings.HasPrefix(dep.Source, remote.Scheme) {
+		return "", fmt.Errorf("unsupported remote source scheme in %q (only %s is supported)", dep.Source, remote.Scheme)
+	}
+	ref, err := remote.ParseGitHub(dep.Source)
+	if err != nil {
+		return "", err
+	}
+	if r.cfg.Fetcher == nil {
+		return "", fmt.Errorf("remote source %s requires a cache directory (WithCacheDir) or fetcher (WithRemoteFetcher)", ref.String())
+	}
+	dir, err := r.cfg.Fetcher.EnsureDir(ctx, ref)
+	if err != nil {
+		return "", fmt.Errorf("fetching %s: %w", ref.String(), err)
+	}
+	return dir, nil
 }
 
 // mergeDepLists merges parent and child dependency lists.
