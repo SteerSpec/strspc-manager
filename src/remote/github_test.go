@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -658,5 +659,38 @@ func TestEnsureDir_LatestCancelledContextDoesNotUseStalePointer(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("error = %v, want context.Canceled", err)
+	}
+}
+
+func TestEnsureDir_LatestTagMustBeSinglePathComponent(t *testing.T) {
+	// A tag such as "v1/<cache-key>/injected" is a legal Git ref but would
+	// land inside the pinned @v1 cache entry. Both the API answer and a
+	// poisoned pointer must be rejected.
+	injected := "v1/" + pathKey("rules/core") + "/injected"
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{injected: rulesTarball(t, "o-r-1")}, latestTag: injected}
+	f, _ := newFetcher(t, g)
+	ref := Ref{Owner: "o", Repo: "r", Ref: LatestRef, Path: "rules/core"}
+
+	if _, err := f.EnsureDir(context.Background(), ref); err == nil {
+		t.Fatal("expected an error for a multi-component latest tag from the API")
+	}
+	if got := atomic.LoadInt32(&g.tarballHits); got != 0 {
+		t.Errorf("tarball fetched %d times, want 0", got)
+	}
+
+	// Poisoned pointer on disk: ignored, then the API answer is rejected too.
+	pointer := filepath.Join(f.CacheDir, "github", "o", "r", metaDir, latestPointer)
+	if err := os.MkdirAll(filepath.Dir(pointer), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rec, _ := json.Marshal(latestRecord{Tag: injected, ResolvedAt: time.Now()})
+	if err := os.WriteFile(pointer, rec, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.EnsureDir(context.Background(), ref); err == nil {
+		t.Fatal("expected an error with a poisoned pointer")
+	}
+	if _, err := os.Stat(filepath.Join(f.CacheDir, "github", "o", "r", "v1")); !os.IsNotExist(err) {
+		t.Errorf("v1 cache entry must not exist, stat err = %v", err)
 	}
 }

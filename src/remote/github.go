@@ -156,7 +156,7 @@ func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
 		return "", fmt.Errorf("remote: incomplete reference %q", ref.String())
 	}
 	for _, c := range []string{ref.Owner, ref.Repo, ref.Ref} {
-		if c == "." || c == ".." || strings.ContainsAny(c, `/\`) {
+		if !safeComponent(c) {
 			return "", fmt.Errorf("remote: illegal component %q in reference %q", c, ref.String())
 		}
 	}
@@ -191,6 +191,13 @@ func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
 	return dir, nil
 }
 
+// safeComponent reports whether c can be used as a single cache directory
+// name: non-empty, not "." or "..", no path separators, and not starting
+// with "." (reserved for fetcher metadata and staging directories).
+func safeComponent(c string) bool {
+	return c != "" && c != "." && c != ".." && !strings.ContainsAny(c, `/\`) && !strings.HasPrefix(c, ".")
+}
+
 // pathKey derives the per-path cache segment.
 func pathKey(p string) string {
 	sum := sha256.Sum256([]byte(p))
@@ -216,7 +223,8 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 	var cached *latestRecord
 	if data, err := os.ReadFile(pointer); err == nil {
 		var rec latestRecord
-		if json.Unmarshal(data, &rec) == nil && rec.Tag != "" {
+		// A pointer holding an unsafe tag is ignored, never trusted.
+		if json.Unmarshal(data, &rec) == nil && safeComponent(rec.Tag) {
 			cached = &rec
 		}
 	}
@@ -263,6 +271,11 @@ func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
 	}
 	if body.TagName == "" {
 		return "", fmt.Errorf("remote: latest release of %s/%s has no tag_name", ref.Owner, ref.Repo)
+	}
+	// The tag becomes a cache directory name; a tag containing path
+	// separators (legal in Git) must never escape into another ref's entry.
+	if !safeComponent(body.TagName) {
+		return "", fmt.Errorf("remote: latest release of %s/%s has tag %q, which cannot be cached as a single path component; pin an exact tag instead", ref.Owner, ref.Repo, body.TagName)
 	}
 	return body.TagName, nil
 }
