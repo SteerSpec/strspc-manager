@@ -49,13 +49,16 @@ type scenario struct {
 	check      func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, rt *replay.Transport)
 }
 
+// rule builds a fixture rule from a global-scope source. The fixture diffs
+// touch src/cmd/, so a local-scope source rooted elsewhere would make the
+// rule not_applicable by the prompt's own instructions.
 func rule(id, body string, notes ...entity.Note) ruleeval.RuleInput {
 	return ruleeval.RuleInput{
 		Rule:     entity.Rule{ID: id, Revision: 1, State: "I", Body: body},
 		Notes:    notes,
 		EntityID: strings.SplitN(id, "-", 2)[0],
 		Source:   "./rules/",
-		Scope:    "local",
+		Scope:    "global",
 	}
 }
 
