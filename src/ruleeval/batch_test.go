@@ -527,3 +527,21 @@ func TestEvaluate_GroupErrors_InputOrderUnderConcurrency(t *testing.T) {
 		}
 	}
 }
+
+func TestNew_CacheRequiresDescriber(t *testing.T) {
+	// mockProvider has no Model()/PromptVersion(): a cache key without them
+	// would be shared across backends and prompt revisions (SPEC §8.4).
+	_, err := ruleeval.New(&mockProvider{}, ruleeval.WithCache(newMemCache()))
+	if err == nil {
+		t.Fatal("expected New to reject WithCache for a provider without Describer")
+	}
+	if !strings.Contains(err.Error(), "Describer") {
+		t.Errorf("error should name the missing capability, got %q", err)
+	}
+	if _, err := ruleeval.New(&mockProvider{}); err != nil {
+		t.Errorf("same provider without a cache must be accepted: %v", err)
+	}
+	if _, err := ruleeval.New(&batchProvider{}, ruleeval.WithCache(newMemCache())); err != nil {
+		t.Errorf("provider with Describer must be accepted: %v", err)
+	}
+}

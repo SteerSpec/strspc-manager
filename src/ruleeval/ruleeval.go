@@ -141,7 +141,9 @@ func WithEvaluateStates(states []string) Option {
 	}
 }
 
-// WithCache enables verdict caching.
+// WithCache enables verdict caching. The provider must implement Describer
+// so that the model and prompt version can be mixed into every key; New
+// returns an error otherwise.
 func WithCache(cache Cache) Option {
 	return func(c *Config) { c.Cache = cache }
 }
@@ -190,6 +192,11 @@ func New(provider Provider, opts ...Option) (*Evaluator, error) {
 	}
 	if cfg.Concurrency < 1 {
 		cfg.Concurrency = 1
+	}
+	if cfg.Cache != nil && !cfg.StaticOnly {
+		if _, ok := provider.(Describer); !ok {
+			return nil, fmt.Errorf("ruleeval: WithCache requires a provider implementing Describer (model and prompt version are part of the cache key)")
+		}
 	}
 	return &Evaluator{provider: provider, cfg: cfg}, nil
 }
@@ -319,12 +326,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // plan filters inputs by state, consults the cache and groups the
 // remaining inputs by entity in first-seen order.
 func (e *Evaluator) plan(inputs []RuleInput, diff string, outcomes []outcome, keys []string) []group {
-	var model, promptVersion string
-	if d, ok := e.provider.(Describer); ok {
-		model, promptVersion = d.Model(), d.PromptVersion()
-	}
-	var diffHash string
+	var model, promptVersion, diffHash string
 	if e.cfg.Cache != nil {
+		d := e.provider.(Describer) // enforced by New
+		model, promptVersion = d.Model(), d.PromptVersion()
 		diffHash = DiffHash(diff)
 	}
 
