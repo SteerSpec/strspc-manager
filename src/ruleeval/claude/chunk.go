@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
@@ -66,21 +67,87 @@ func splitHunks(file string) (header string, hunks []string) {
 	return header, hunks
 }
 
-// filePath extracts the new-side path from a file diff header.
+// filePath extracts the path of a file diff for diagnostics. It prefers
+// the "+++" line (the "---" line for deletions), decoding Git's C-style
+// quoting, and falls back to the "diff --git a/X b/X" header, which it
+// splits in the middle so that paths containing spaces survive.
 func filePath(file string) string {
+	var header, oldSide string
 	for _, line := range strings.SplitAfter(file, "\n") {
+		line = strings.TrimRight(line, "\r\n")
 		switch {
 		case strings.HasPrefix(line, "diff --git "):
-			fields := strings.Fields(line)
-			if len(fields) >= 4 {
-				return strings.TrimPrefix(fields[3], "b/")
-			}
+			header = strings.TrimPrefix(line, "diff --git ")
+		case strings.HasPrefix(line, "--- "):
+			oldSide = strings.TrimPrefix(line, "--- ")
 		case strings.HasPrefix(line, "+++ "):
-			p := strings.TrimSpace(strings.TrimPrefix(line, "+++ "))
-			return strings.TrimPrefix(p, "b/")
+			if p := diffSidePath(strings.TrimPrefix(line, "+++ "), "b/"); p != "" {
+				return p
+			}
+			if p := diffSidePath(oldSide, "a/"); p != "" {
+				return p // new side is /dev/null: the file was deleted
+			}
+		}
+	}
+	if header != "" {
+		if p := headerPath(header); p != "" {
+			return p
 		}
 	}
 	return "<unknown>"
+}
+
+// diffSidePath decodes one side of a ---/+++ line. It returns "" for
+// /dev/null or an empty side.
+func diffSidePath(side, prefix string) string {
+	side = strings.TrimSpace(side)
+	if i := strings.Index(side, "\t"); i >= 0 {
+		side = side[:i] // optional timestamp after a tab
+	}
+	if side == "" || side == "/dev/null" {
+		return ""
+	}
+	side = unquoteGit(side)
+	return strings.TrimPrefix(side, prefix)
+}
+
+// headerPath splits "a/X b/X" (both sides identical for a modification)
+// in the middle so that a path containing spaces is kept whole; quoted
+// sides are decoded. Renames (different sides) yield the new side when it
+// can be identified, else "".
+func headerPath(rest string) string {
+	rest = strings.TrimSpace(rest)
+	if strings.HasPrefix(rest, "\"") {
+		// "a/X" "b/Y": take the last quoted token.
+		if i := strings.LastIndex(rest, " \""); i >= 0 {
+			return strings.TrimPrefix(unquoteGit(rest[i+1:]), "b/")
+		}
+		return ""
+	}
+	if len(rest)%2 == 1 {
+		mid := len(rest) / 2
+		if rest[mid] == ' ' && rest[:mid] == "a"+rest[mid+2:] {
+			return strings.TrimPrefix(rest[mid+1:], "b/")
+		}
+	}
+	// Different sides (rename) or unusual spacing: best effort on the last
+	// "b/" token.
+	if i := strings.LastIndex(rest, " b/"); i >= 0 {
+		return rest[i+3:]
+	}
+	return ""
+}
+
+// unquoteGit decodes a Git-quoted path ("my\303\251.go") when quoted;
+// unquoted input is returned unchanged.
+func unquoteGit(s string) string {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return s
+	}
+	if u, err := strconv.Unquote(s); err == nil {
+		return u
+	}
+	return s[1 : len(s)-1]
 }
 
 // chunkDiff packs the diff into chunks of at most budget bytes. Whole

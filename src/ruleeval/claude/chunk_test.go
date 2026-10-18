@@ -63,14 +63,22 @@ func TestSplitHunks(t *testing.T) {
 }
 
 func TestFilePath(t *testing.T) {
-	if got := filePath(fileDiff("src/x.go", hunk(1, "a"))); got != "src/x.go" {
-		t.Errorf("filePath = %q", got)
+	cases := map[string]struct{ diff, want string }{
+		"plain":         {fileDiff("src/x.go", hunk(1, "a")), "src/x.go"},
+		"plus-only":     {"--- a/old.go\n+++ b/new.go\n@@ -1 +1 @@\n", "new.go"},
+		"garbage":       {"garbage\n", "<unknown>"},
+		"spaces":        {fileDiff("src/my file.go", hunk(1, "a")), "src/my file.go"},
+		"spaces-header": {"diff --git a/src/my file.go b/src/my file.go\nBinary files differ\n", "src/my file.go"},
+		"quoted":        {"diff --git \"a/caf\\303\\251.go\" \"b/caf\\303\\251.go\"\n--- \"a/caf\\303\\251.go\"\n+++ \"b/caf\\303\\251.go\"\n@@ -1 +1 @@\n", "café.go"},
+		"quoted-header": {"diff --git \"a/with \\\"q\\\".go\" \"b/with \\\"q\\\".go\"\nBinary files differ\n", "with \"q\".go"},
+		"deleted":       {"diff --git a/gone.go b/gone.go\ndeleted file mode 100644\n--- a/gone.go\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n", "gone.go"},
+		"timestamp":     {"--- a/t.go\t2026-01-01 00:00:00\n+++ b/t.go\t2026-01-02 00:00:00\n@@ -1 +1 @@\n", "t.go"},
+		"rename-header": {"diff --git a/old name.go b/new name.go\nsimilarity index 90%\n", "new name.go"},
 	}
-	if got := filePath("--- a/old.go\n+++ b/new.go\n@@ -1 +1 @@\n"); got != "new.go" {
-		t.Errorf("filePath from +++ = %q", got)
-	}
-	if got := filePath("garbage\n"); got != "<unknown>" {
-		t.Errorf("filePath garbage = %q", got)
+	for name, tc := range cases {
+		if got := filePath(tc.diff); got != tc.want {
+			t.Errorf("%s: filePath = %q, want %q", name, got, tc.want)
+		}
 	}
 }
 
