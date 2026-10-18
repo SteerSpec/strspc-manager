@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -60,10 +61,15 @@ type sourceBinding struct {
 
 // Config holds options for the Resolver.
 type Config struct {
-	CacheTTL  time.Duration // cache time-to-live (default: 24h)
-	ForceSync bool          // bypass cache
-	CacheDir  string        // path to cache directory
+	CacheTTL  time.Duration // cache time-to-live for mutable remote refs such as @latest (default: 24h)
+	ForceSync bool          // bypass the remote cache and re-download
+	CacheDir  string        // path to cache directory; remote sources land under <CacheDir>/github/
 	BaseDir   string        // base directory for resolving relative source paths
+
+	// Fetcher downloads github:// sources. When nil, New builds one from
+	// CacheDir, CacheTTL, ForceSync and the GITHUB_TOKEN/GH_TOKEN
+	// environment variables.
+	Fetcher *remote.Fetcher
 }
 
 // Option configures the Resolver.
@@ -90,6 +96,12 @@ func WithBaseDir(dir string) Option {
 	return func(c *Config) { c.BaseDir = dir }
 }
 
+// WithRemoteFetcher supplies the fetcher used for github:// sources,
+// overriding the one New would build from CacheDir/CacheTTL/ForceSync.
+func WithRemoteFetcher(f *remote.Fetcher) Option {
+	return func(c *Config) { c.Fetcher = f }
+}
+
 // Resolver fetches and caches rules from configured sources.
 type Resolver struct {
 	bindings []sourceBinding
@@ -114,7 +126,7 @@ func New(entries []SourceEntry, opts ...Option) (*Resolver, error) {
 
 	bindings := make([]sourceBinding, 0, len(entries))
 	for _, e := range entries {
-		src, err := parseSource(e)
+		src, err := parseSource(e, &cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -152,13 +164,19 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 		}
 
 		ref := b.entry.Source
-		// Resolve relative paths against BaseDir.
-		if !filepath.IsAbs(ref) && !strings.Contains(ref, "://") {
-			ref = filepath.Join(r.cfg.BaseDir, ref)
-		}
-		// Canonicalize for consistent collision comparison.
-		if absRef, err := filepath.Abs(ref); err == nil {
-			ref = filepath.Clean(absRef)
+		if strings.Contains(ref, "://") {
+			// Remote URI: normalise for consistent collision comparison.
+			if parsed, err := remote.ParseGitHub(ref); err == nil {
+				ref = parsed.String()
+			}
+		} else {
+			// Resolve relative paths against BaseDir and canonicalize.
+			if !filepath.IsAbs(ref) {
+				ref = filepath.Join(r.cfg.BaseDir, ref)
+			}
+			if absRef, err := filepath.Abs(ref); err == nil {
+				ref = filepath.Clean(absRef)
+			}
 		}
 
 		files, fetchRes := b.source.Fetch(ctx, ref)
@@ -180,11 +198,26 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 }
 
 // parseSource dispatches a SourceEntry to a concrete Source implementation.
-func parseSource(e SourceEntry) (Source, error) {
+// For github:// sources it lazily builds cfg.Fetcher when none was supplied.
+func parseSource(e SourceEntry, cfg *Config) (Source, error) {
 	s := e.Source
 	switch {
-	case strings.HasPrefix(s, "github://"):
-		return nil, fmt.Errorf("github source not yet implemented: %s", s)
+	case strings.HasPrefix(s, remote.Scheme):
+		if _, err := remote.ParseGitHub(s); err != nil {
+			return nil, err
+		}
+		if cfg.Fetcher == nil {
+			if cfg.CacheDir == "" {
+				return nil, fmt.Errorf("github source %s requires a cache directory (WithCacheDir)", s)
+			}
+			cfg.Fetcher = &remote.Fetcher{
+				Token:    remote.TokenFromEnv(),
+				CacheDir: cfg.CacheDir,
+				TTL:      cfg.CacheTTL,
+				Force:    cfg.ForceSync,
+			}
+		}
+		return &GitHubSource{Fetcher: cfg.Fetcher}, nil
 	case strings.Contains(s, "://"):
 		return nil, fmt.Errorf("unsupported source scheme: %s", s)
 	default:
