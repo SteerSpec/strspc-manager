@@ -148,11 +148,11 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.id` | string | Reverse domain notation identifier. |
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
-| `dependencies` | array | Array of `{ realm_id, version }` objects referencing other Realms (RLMMNFST-003). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.6.0/rules/core`, see §6.3). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults, or `null` to inherit (RLMMNFST-004). |
 
-The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-002). Dependencies use pinned version references (RLMMNFST-003).
+The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-002). Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
 The `realm.v1.schema.json` schema validates this manifest format. It is a hand-maintained axiom — the same bootstrap pattern as `bootstrap.schema.json`.
 
@@ -179,7 +179,7 @@ platform/
 
 **EUID uniqueness:** EUID uniqueness (RLM-001) spans the parent Realm and all its declared sub-realms (RLM-013). No EUID may appear in both the parent and a sub-realm, or in two sibling sub-realms.
 
-**Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own.
+**Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own; a sub-realm dependency with the same `realm_id` as a parent dependency overrides it. `realm-resolve` resolves this effective list for each sub-realm — inherited entries reuse the parent's resolution, own entries are resolved relative to the sub-realm directory — and checks sub-realm EUIDs against the effective dependency set (RR011).
 
 ### 2.9 Configuration
 
@@ -375,6 +375,39 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `rule-render` | No | Generates markdown (or other formats) from entity JSON. The display layer. |
 | `realm-resolve` | No | Resolves Realm dependencies and cross-realm references. Validates EUID uniqueness across dependent Realms. |
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
+| `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
+| `remote` | Yes (cache) | Downloads `github://` references into the local cache. Shared by `rule-resolve` and `realm-resolve`. |
+
+### 6.3 Remote Sources (`github://`)
+
+Rule sources in a Configuration and dependency `source` fields in a Realm Manifest MAY point at a directory inside a GitHub repository:
+
+```
+github://<owner>/<repo>@<ref>[/<path>]
+```
+
+| Part | Meaning |
+|------|---------|
+| `<owner>/<repo>` | GitHub repository. |
+| `@<ref>` | Mandatory. An exact tag (`v1.6.0`), a full commit SHA, or the literal `latest`. Branch names are not supported: a ref MUST identify immutable content so cached copies never go stale. |
+| `/<path>` | Optional directory inside the repository (`rules/core`). Omitted means the repository root. `..` segments are rejected. |
+
+**Resolution.** Exact tags and SHAs are immutable: once downloaded they are served from the cache indefinitely (a forced sync re-downloads). `@latest` is resolved through the GitHub releases API (`GET /repos/{owner}/{repo}/releases/latest` → `tag_name`), the resolved tag is cached, and it is re-resolved once the configured cache TTL (default 24h) has elapsed. If the releases API is unreachable and a previously resolved tag exists, that tag is used so offline runs keep working.
+
+**Download.** Content is fetched with `GET /repos/{owner}/{repo}/tarball/{ref}`. Only entries under `<path>/` are extracted; symlinks and other special entries are skipped, entries that would escape the target directory are rejected, and extraction stops once 50 MB of file data has been written. The directory is assembled in a temporary location and installed with an atomic rename, so a cache directory either exists completely or not at all.
+
+**Cache layout.**
+
+```
+<cache-dir>/github/<owner>/<repo>/<ref>/<sha256(path)[:12]>/   # extracted content
+<cache-dir>/github/<owner>/<repo>/latest.json                   # resolved @latest tag + timestamp
+```
+
+`<cache-dir>` is the cache directory configured on the resolver (the CLI uses the Configuration's `.strspc/` cache location).
+
+**Authentication.** Private repositories and higher rate limits need a token. The resolvers read `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment and send it as `Authorization: Bearer <token>`. A 404 without a token is reported as "private repo or missing token".
+
+**Validation after download.** A fetched directory is treated exactly like a local one: `rule-resolve` parses every entity file and verifies `rule_set.hash` (RSV003, RSV004); `realm-resolve` loads its `realm.json` and enforces the declared `realm_id` and `version` (RR003, RR004). Download failures are reported as RSV007 (rule sources) or RR012 (realm dependencies).
 
 ---
 
