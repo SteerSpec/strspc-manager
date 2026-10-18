@@ -226,7 +226,10 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 
 	tag, err := f.fetchLatestTag(ctx, ref)
 	if err != nil {
-		if cached != nil && !errors.Is(err, ErrNotFound) {
+		// A stale pointer covers transient network failures only. A
+		// cancelled or expired context is not "offline": propagate it so
+		// callers see the cancellation instead of a success built on cache.
+		if cached != nil && ctx.Err() == nil && !errors.Is(err, ErrNotFound) {
 			return cached.Tag, nil
 		}
 		return "", err

@@ -638,3 +638,25 @@ func TestEnsureDir_TagNamedLatestJSONDoesNotCollideWithPointer(t *testing.T) {
 		t.Errorf("tarball fetched %d times, want 1", got)
 	}
 }
+
+func TestEnsureDir_LatestCancelledContextDoesNotUseStalePointer(t *testing.T) {
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": rulesTarball(t, "o-r-1")}, latestTag: "v1"}
+	f, _ := newFetcher(t, g)
+	f.TTL = time.Nanosecond
+	ref := Ref{Owner: "o", Repo: "r", Ref: LatestRef, Path: "rules/core"}
+
+	if _, err := f.EnsureDir(context.Background(), ref); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Millisecond) // pointer is now stale
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := f.EnsureDir(ctx, ref)
+	if err == nil {
+		t.Fatal("expected an error on a cancelled context, got success from the stale pointer")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("error = %v, want context.Canceled", err)
+	}
+}
