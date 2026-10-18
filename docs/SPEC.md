@@ -373,7 +373,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `rule-lint` | No | Stateless validator. Takes a single entity file, validates against schema + business rules. Accepts Realm context for cross-entity EUID checks. |
 | `rule-diff` | Yes | Stateful validator. Compares before/after of an entity file. Enforces lifecycle, versioning, immutability. |
 | `rule-render` | No | Generates markdown (or other formats) from entity JSON. The display layer. |
-| `realm-resolve` | No | Resolves Realm dependencies and cross-realm references. Validates EUID uniqueness across dependent Realms. |
+| `realm-resolve` | Yes (cache) | Resolves Realm dependencies (local or `github://`) and cross-realm references. Validates EUID uniqueness across dependent Realms. |
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache. Shared by `rule-resolve` and `realm-resolve`. |
@@ -389,7 +389,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 | Part | Meaning |
 |------|---------|
 | `<owner>/<repo>` | GitHub repository. |
-| `@<ref>` | Mandatory. An exact tag (`v1.6.0`), a full commit SHA, or the literal `latest`. Branch names are not supported: a ref MUST identify immutable content so cached copies never go stale. |
+| `@<ref>` | Mandatory. An exact tag (`v1.6.0`), a full commit SHA, or the literal `latest`. Every ref other than `latest` is treated as immutable and cached indefinitely, so branch names (`@main`) are discouraged: they resolve, but a forced sync is needed to pick up new commits. |
 | `/<path>` | Optional directory inside the repository (`rules/core`). Omitted means the repository root. `..` segments are rejected. |
 
 **Resolution.** Exact tags and SHAs are immutable: once downloaded they are served from the cache indefinitely (a forced sync re-downloads). `@latest` is resolved through the GitHub releases API (`GET /repos/{owner}/{repo}/releases/latest` → `tag_name`), the resolved tag is cached, and it is re-resolved once the configured cache TTL (default 24h) has elapsed. If the releases API is unreachable and a previously resolved tag exists, that tag is used so offline runs keep working.
@@ -403,7 +403,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 <cache-dir>/github/<owner>/<repo>/latest.json                   # resolved @latest tag + timestamp
 ```
 
-`<cache-dir>` is the cache directory configured on the resolver (the CLI uses the Configuration's `.strspc/` cache location).
+`<cache-dir>` is the cache directory configured on the resolver (`WithCacheDir`). Consumers SHOULD point it at a git-ignored location such as `.strspc/cache/` so downloaded rules are never committed alongside the Configuration.
 
 **Authentication.** Private repositories and higher rate limits need a token. The resolvers read `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment and send it as `Authorization: Bearer <token>`. A 404 without a token is reported as "private repo or missing token".
 
@@ -432,8 +432,9 @@ github://<owner>/<repo>@<ref>[/<path>]
 9. Note IDs follow the `<rule_id>/<incremental>` format.
 10. Note types are in the closed enum.
 11. If `rule_set.hash` is present, recompute Blake3 over canonical JSON and verify match.
-12. Cross-file references: `supersedes` and relation notes point to existing rule IDs within `rules/core/`.
+12. Cross-file references: each rule's `supersedes` points to an existing rule ID within the scanned realm.
 13. `rule_set.version` is valid semver.
+14. Relation notes (`supersedes`, `extends`, `related`): every unqualified `<EUID>-<NNN>` reference in the note content points to an existing rule ID within the scanned realm. Qualified `<realm-id>:<EUID>-<NNN>` references target another realm and are not checked here.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
