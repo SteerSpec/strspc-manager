@@ -194,8 +194,12 @@ func New(provider Provider, opts ...Option) (*Evaluator, error) {
 		cfg.Concurrency = 1
 	}
 	if cfg.Cache != nil && !cfg.StaticOnly {
-		if _, ok := provider.(Describer); !ok {
+		d, ok := provider.(Describer)
+		if !ok {
 			return nil, fmt.Errorf("ruleeval: WithCache requires a provider implementing Describer (model and prompt version are part of the cache key)")
+		}
+		if d.Model() == "" || d.PromptVersion() == "" {
+			return nil, fmt.Errorf("ruleeval: WithCache requires a non-empty model and prompt version from the provider (got model %q, prompt version %q)", d.Model(), d.PromptVersion())
 		}
 	}
 	return &Evaluator{provider: provider, cfg: cfg}, nil

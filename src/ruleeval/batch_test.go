@@ -545,3 +545,19 @@ func TestNew_CacheRequiresDescriber(t *testing.T) {
 		t.Errorf("provider with Describer must be accepted: %v", err)
 	}
 }
+
+// blankDescriber implements Describer but reports empty identity.
+type blankDescriber struct{ mockProvider }
+
+func (blankDescriber) Model() string         { return "" }
+func (blankDescriber) PromptVersion() string { return "" }
+
+func TestNew_CacheRejectsEmptyIdentity(t *testing.T) {
+	_, err := ruleeval.New(&blankDescriber{}, ruleeval.WithCache(newMemCache()))
+	if err == nil {
+		t.Fatal("expected New to reject a Describer returning empty model or prompt version")
+	}
+	if !strings.Contains(err.Error(), "model") {
+		t.Errorf("error should explain the empty identity, got %q", err)
+	}
+}
