@@ -367,31 +367,32 @@ type groupError struct {
 
 // run evaluates every group, concurrently up to cfg.Concurrency, writing
 // into outcomes. It stops scheduling new groups once ctx is cancelled.
+// Group errors are returned in group (first-seen entity) order regardless
+// of which goroutine finished first, so diagnostics stay deterministic.
 func (e *Evaluator) run(ctx context.Context, groups []group, inputs []RuleInput, diff string, outcomes []outcome) []groupError {
 	var (
-		mu        sync.Mutex
-		groupErrs []groupError
-		wg        sync.WaitGroup
-		sem       = make(chan struct{}, e.cfg.Concurrency)
+		perGroup = make([][]groupError, len(groups)) // each goroutine owns one slot
+		wg       sync.WaitGroup
+		sem      = make(chan struct{}, e.cfg.Concurrency)
 	)
-	for _, g := range groups {
+	for gi, g := range groups {
 		if ctx.Err() != nil {
 			break
 		}
 		sem <- struct{}{}
 		wg.Add(1)
-		go func(g group) {
+		go func(gi int, g group) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			errs := e.runGroup(ctx, g, inputs, diff, outcomes)
-			if len(errs) > 0 {
-				mu.Lock()
-				groupErrs = append(groupErrs, errs...)
-				mu.Unlock()
-			}
-		}(g)
+			perGroup[gi] = e.runGroup(ctx, g, inputs, diff, outcomes)
+		}(gi, g)
 	}
 	wg.Wait()
+
+	var groupErrs []groupError
+	for _, errs := range perGroup {
+		groupErrs = append(groupErrs, errs...)
+	}
 	return groupErrs
 }
 

@@ -501,3 +501,29 @@ func TestRuleInputsFromFile_EntityID(t *testing.T) {
 		t.Errorf("unexpected entity ids: %q %q", inputs[0].EntityID, inputs[1].EntityID)
 	}
 }
+
+func TestEvaluate_GroupErrors_InputOrderUnderConcurrency(t *testing.T) {
+	entities := []string{"A", "B", "C", "D", "E", "F", "G", "H"}
+	responses := map[string]*ruleeval.EvalResponse{}
+	var inputs []ruleeval.RuleInput
+	for _, ent := range entities {
+		responses[ent+"-001"] = &ruleeval.EvalResponse{Verdict: ruleeval.Compliant}
+		inputs = append(inputs, entityInput(ent, ent+"-001", "I"))
+	}
+	bp := &batchProvider{responses: responses, errs: []error{errors.New("hunk too large")}}
+	e, err := ruleeval.New(bp, ruleeval.WithConcurrency(4))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for run := 0; run < 20; run++ {
+		res := e.Evaluate(context.Background(), inputs, "diff")
+		if len(res.Diagnostics) != len(entities) {
+			t.Fatalf("run %d: expected %d group-error diagnostics, got %d", run, len(entities), len(res.Diagnostics))
+		}
+		for i, d := range res.Diagnostics {
+			if d.Code != ruleeval.CodeProviderError || !strings.Contains(d.Message, "entity "+entities[i]+":") {
+				t.Fatalf("run %d: diagnostic %d = %q, want entity %s", run, i, d.Message, entities[i])
+			}
+		}
+	}
+}
