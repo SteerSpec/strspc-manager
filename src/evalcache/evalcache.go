@@ -115,23 +115,91 @@ func Open(path string, opts ...Option) (*Store, error) {
 		return nil, fmt.Errorf("evalcache: open %s: %w", path, err)
 	}
 
-	// Corrupt: discard and start over.
-	if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
-		return nil, fmt.Errorf("evalcache: remove corrupt cache %s: %w", path, rmErr)
-	}
-	db, err2 := open(path, cfg.lockTimeout)
-	if err2 != nil {
-		return nil, fmt.Errorf("evalcache: recreate %s after corruption (%v): %w", path, err, err2)
+	// Corrupt: discard and start over, but only under a cross-process
+	// recovery lock and after confirming the file on disk is still the
+	// corrupt one. Otherwise two processes that both saw the corruption
+	// could race and one would unlink the healthy database the other had
+	// just recreated and locked.
+	db, recovered, err := recoverCorrupt(path, cfg.lockTimeout, err)
+	if err != nil {
+		return nil, err
 	}
 	s.db = db
-	s.diags.Add(result.Diagnostic{
-		Module:   module,
-		Code:     CodeRecreated,
-		Severity: result.Info,
-		Message:  fmt.Sprintf("evaluation cache was corrupt and has been recreated: %v", err),
-		Path:     path,
-	})
+	if recovered != nil {
+		s.diags.Add(result.Diagnostic{
+			Module:   module,
+			Code:     CodeRecreated,
+			Severity: result.Info,
+			Message:  fmt.Sprintf("evaluation cache was corrupt and has been recreated: %v", recovered),
+			Path:     path,
+		})
+	}
 	return s, nil
+}
+
+// recoverLockStale is how old a recovery lock file may be before it is
+// considered abandoned by a crashed process and reclaimed.
+const recoverLockStale = 30 * time.Second
+
+// recoverCorrupt replaces a corrupt database. It serialises with other processes
+// through <path>.recover.lock, re-opens the database under that lock and
+// only removes it when it is still corrupt. recovered is the corruption
+// error when a new file was created, nil when another process already
+// recreated the database (in which case db may still fail to open with
+// ErrLocked, which is returned as err).
+func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bolt.DB, recovered error, err error) {
+	unlock, err := acquireRecoverLock(path+".recover.lock", lockTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer unlock()
+
+	// Re-check under the lock: another process may have recreated it.
+	db, err = open(path, lockTimeout)
+	if err == nil {
+		return db, nil, nil
+	}
+	if errors.Is(err, bolterrors.ErrTimeout) {
+		return nil, nil, fmt.Errorf("%w: %s", ErrLocked, path)
+	}
+	if !isCorrupt(err) {
+		return nil, nil, fmt.Errorf("evalcache: open %s: %w", path, err)
+	}
+
+	if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
+		return nil, nil, fmt.Errorf("evalcache: remove corrupt cache %s: %w", path, rmErr)
+	}
+	db, err = open(path, lockTimeout)
+	if err != nil {
+		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%v): %w", path, cause, err)
+	}
+	return db, cause, nil
+}
+
+// acquireRecoverLock creates lockPath exclusively, retrying until timeout.
+// A lock file older than recoverLockStale is treated as abandoned and
+// replaced. The returned function releases the lock.
+func acquireRecoverLock(lockPath string, timeout time.Duration) (func(), error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		f, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err == nil {
+			_, _ = fmt.Fprintf(f, "%d\n", os.Getpid())
+			_ = f.Close()
+			return func() { _ = os.Remove(lockPath) }, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, fmt.Errorf("evalcache: create recovery lock %s: %w", lockPath, err)
+		}
+		if fi, statErr := os.Stat(lockPath); statErr == nil && time.Since(fi.ModTime()) > recoverLockStale {
+			_ = os.Remove(lockPath) // abandoned by a crashed process
+			continue
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("%w: recovery in progress (%s)", ErrLocked, lockPath)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // open opens the database and ensures the bucket exists. Any failure after

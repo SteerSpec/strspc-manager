@@ -144,13 +144,7 @@ func TestPrune_RemovesOnlyExpired(t *testing.T) {
 
 func TestOpen_CorruptFileIsRecreated(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cache.db")
-	garbage := make([]byte, 8192)
-	for i := range garbage {
-		garbage[i] = byte(i*7 + 3)
-	}
-	if err := os.WriteFile(path, garbage, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	writeGarbage(t, path)
 
 	s, err := evalcache.Open(path)
 	if err != nil {
@@ -270,5 +264,118 @@ func TestClose_ConcurrentWithOperations(t *testing.T) {
 
 	if _, _, err := s.Get("seed"); !errors.Is(err, evalcache.ErrClosed) {
 		t.Errorf("Get after Close = %v, want ErrClosed", err)
+	}
+}
+
+func writeGarbage(t *testing.T, path string) {
+	t.Helper()
+	garbage := make([]byte, 8192)
+	for i := range garbage {
+		garbage[i] = byte(i*7 + 3)
+	}
+	if err := os.WriteFile(path, garbage, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOpen_ConcurrentRecoveryKeepsOneDatabase(t *testing.T) {
+	for round := 0; round < 5; round++ {
+		path := filepath.Join(t.TempDir(), "cache.db")
+		writeGarbage(t, path)
+
+		const n = 4
+		type outcome struct {
+			s   *evalcache.Store
+			err error
+		}
+		results := make([]outcome, n)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				<-start
+				s, err := evalcache.Open(path, evalcache.WithLockTimeout(200*time.Millisecond))
+				results[i] = outcome{s, err}
+			}(i)
+		}
+		close(start)
+		wg.Wait()
+
+		var winner *evalcache.Store
+		for i, r := range results {
+			switch {
+			case r.err == nil:
+				if winner != nil {
+					t.Fatalf("round %d: two stores opened the same path at once (%d)", round, i)
+				}
+				winner = r.s
+			case errors.Is(r.err, evalcache.ErrLocked):
+				// lost the race: must degrade, never recover over a healthy file
+			default:
+				t.Fatalf("round %d: opener %d: unexpected error %v", round, i, r.err)
+			}
+		}
+		if winner == nil {
+			t.Fatalf("round %d: nobody recovered the corrupt file", round)
+		}
+		if diags := winner.Diagnostics().Diagnostics; len(diags) != 1 || diags[0].Code != evalcache.CodeRecreated {
+			t.Errorf("round %d: winner should report recovery, got %v", round, diags)
+		}
+		if err := winner.Put("k", sample()); err != nil {
+			t.Fatalf("round %d: winner Put: %v", round, err)
+		}
+		_ = winner.Close()
+
+		// The surviving file is the one the winner wrote to: a fresh open
+		// finds the entry and reports no recovery.
+		s, err := evalcache.Open(path)
+		if err != nil {
+			t.Fatalf("round %d: reopen: %v", round, err)
+		}
+		if _, ok, _ := s.Get("k"); !ok {
+			t.Fatalf("round %d: entry written by the winner was lost (file replaced underneath it)", round)
+		}
+		if len(s.Diagnostics().Diagnostics) != 0 {
+			t.Errorf("round %d: healthy file must not be recovered again", round)
+		}
+		_ = s.Close()
+		if _, err := os.Stat(path + ".recover.lock"); !os.IsNotExist(err) {
+			t.Errorf("round %d: recovery lock file left behind (%v)", round, err)
+		}
+	}
+}
+
+func TestOpen_StaleRecoveryLockIsReclaimed(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	writeGarbage(t, path)
+	lock := path + ".recover.lock"
+	if err := os.WriteFile(lock, []byte("12345\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(lock, old, old); err != nil {
+		t.Fatal(err)
+	}
+	s, err := evalcache.Open(path, evalcache.WithLockTimeout(300*time.Millisecond))
+	if err != nil {
+		t.Fatalf("stale recovery lock must be reclaimed, got %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	if len(s.Diagnostics().Diagnostics) != 1 {
+		t.Errorf("expected recovery diagnostic, got %v", s.Diagnostics().Diagnostics)
+	}
+}
+
+func TestOpen_FreshRecoveryLockHeldElsewhere(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	writeGarbage(t, path)
+	if err := os.WriteFile(path+".recover.lock", []byte("12345\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := evalcache.Open(path, evalcache.WithLockTimeout(150*time.Millisecond))
+	if !errors.Is(err, evalcache.ErrLocked) {
+		t.Fatalf("a fresh recovery lock held by another process should yield ErrLocked, got %v", err)
 	}
 }
