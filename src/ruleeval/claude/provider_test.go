@@ -18,6 +18,7 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/internal/replay"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/claude"
+	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
 
 // Provider tests run against HTTP cassettes in testdata/cassettes/ and
@@ -682,5 +683,26 @@ func TestEvaluateBatch_RuleTooLargeForBudget(t *testing.T) {
 	}
 	if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-002") || !strings.Contains(resp.Errors[0].Error(), "rules budget") {
 		t.Fatalf("expected one rules-budget error naming CMD-002, got %v", resp.Errors)
+	}
+}
+
+func TestPromptVersion_IncludesEffort(t *testing.T) {
+	low, err := claude.New(claude.Config{APIKey: "k", Effort: "low"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	high, err := claude.New(claude.Config{APIKey: "k", Effort: "high"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if low.PromptVersion() == high.PromptVersion() {
+		t.Fatalf("effort must change the cache identity, both %q", low.PromptVersion())
+	}
+	if !strings.HasPrefix(low.PromptVersion(), prompt.Version) || !strings.Contains(low.PromptVersion(), "low") {
+		t.Errorf("PromptVersion = %q, want prompt version qualified by effort", low.PromptVersion())
+	}
+	in := rule("CMD-001", cobraLongRule)
+	if ruleeval.CacheKey(in, "d", low.Model(), low.PromptVersion()) == ruleeval.CacheKey(in, "d", high.Model(), high.PromptVersion()) {
+		t.Error("cache keys must differ between effort levels")
 	}
 }

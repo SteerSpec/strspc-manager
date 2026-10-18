@@ -149,8 +149,11 @@ func New(cfg Config) (*Provider, error) {
 // Model returns the configured model id.
 func (p *Provider) Model() string { return p.cfg.Model }
 
-// PromptVersion returns the prompt revision in use.
-func (p *Provider) PromptVersion() string { return prompt.Version }
+// PromptVersion returns the prompt revision qualified by the effort level,
+// e.g. "v1/effort=medium". Effort changes how carefully the model judges
+// the same prompt, so it is part of the cache identity: raising effort
+// must not reuse a verdict produced at a lower one.
+func (p *Provider) PromptVersion() string { return prompt.Version + "/effort=" + p.cfg.Effort }
 
 // Usage returns the tokens and completed requests accumulated so far.
 // SDK-internal retries are not counted as requests.
