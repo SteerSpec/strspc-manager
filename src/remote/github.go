@@ -48,7 +48,11 @@ const (
 	MaxExtractBytes int64 = 50 << 20
 
 	defaultTimeout = 60 * time.Second
-	latestPointer  = "latest.json"
+
+	// metaDir holds fetcher metadata below <repo>/. Git ref components
+	// cannot start with ".", so no tag directory can collide with it.
+	metaDir       = ".meta"
+	latestPointer = "latest.json"
 )
 
 // ErrNotFound is wrapped into errors returned when GitHub answers 404.
@@ -143,6 +147,7 @@ type Fetcher struct {
 // "latest" is re-resolved through the releases API after TTL.
 //
 // Layout: <CacheDir>/github/<owner>/<repo>/<ref>/<sha256(path)[:12]>/
+// Metadata: <CacheDir>/github/<owner>/<repo>/.meta/latest.json
 func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
 	if f.CacheDir == "" {
 		return "", errors.New("remote: cache directory not configured")
@@ -206,7 +211,7 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 	if ttl <= 0 {
 		ttl = DefaultTTL
 	}
-	pointer := filepath.Join(repoDir, latestPointer)
+	pointer := filepath.Join(repoDir, metaDir, latestPointer)
 
 	var cached *latestRecord
 	if data, err := os.ReadFile(pointer); err == nil {
@@ -228,7 +233,9 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 	}
 
 	rec, _ := json.Marshal(latestRecord{Tag: tag, ResolvedAt: f.clock()})
-	_ = writeFileAtomic(pointer, rec) // best effort
+	if err := os.MkdirAll(filepath.Dir(pointer), 0o755); err == nil {
+		_ = writeFileAtomic(pointer, rec) // best effort
+	}
 	return tag, nil
 }
 

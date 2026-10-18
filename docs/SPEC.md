@@ -400,7 +400,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 ```
 <cache-dir>/github/<owner>/<repo>/<ref>/<sha256(path)[:12]>/   # extracted content
-<cache-dir>/github/<owner>/<repo>/latest.json                   # resolved @latest tag + timestamp
+<cache-dir>/github/<owner>/<repo>/.meta/latest.json             # resolved @latest tag + timestamp
 ```
 
 `<cache-dir>` is the cache directory configured on the resolver (`WithCacheDir`). Consumers SHOULD point it at a git-ignored location such as `.strspc/cache/` so downloaded rules are never committed alongside the Configuration.

@@ -607,3 +607,34 @@ func TestEnsureDir_ForceLeavesNoStagingDirs(t *testing.T) {
 		t.Errorf("ENT.json after Force = %q", got)
 	}
 }
+
+func TestEnsureDir_TagNamedLatestJSONDoesNotCollideWithPointer(t *testing.T) {
+	// A release tag literally named "latest.json" must coexist with the
+	// @latest pointer file, in both directions.
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{"latest.json": rulesTarball(t, "o-r-1")}, latestTag: "latest.json"}
+	f, _ := newFetcher(t, g)
+
+	// @latest resolves to the tag "latest.json": pointer written, then download.
+	dir, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: LatestRef, Path: "rules/core"})
+	if err != nil {
+		t.Fatalf("EnsureDir(@latest → latest.json): %v", err)
+	}
+	if got := readFile(t, filepath.Join(dir, "ENT.json")); got != `{"entity":{"id":"ENT"}}` {
+		t.Errorf("ENT.json = %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(f.CacheDir, "github", "o", "r", metaDir, latestPointer)); err != nil {
+		t.Errorf("pointer not written under %s: %v", metaDir, err)
+	}
+
+	// Pinning @latest.json while the pointer exists must hit the same cache.
+	pinned, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "latest.json", Path: "rules/core"})
+	if err != nil {
+		t.Fatalf("EnsureDir(@latest.json): %v", err)
+	}
+	if pinned != dir {
+		t.Errorf("pinned dir %s differs from resolved dir %s", pinned, dir)
+	}
+	if got := atomic.LoadInt32(&g.tarballHits); got != 1 {
+		t.Errorf("tarball fetched %d times, want 1", got)
+	}
+}
