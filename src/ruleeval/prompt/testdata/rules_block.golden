@@ -1,0 +1,31 @@
+<rules>
+### CMD-001
+entity: CMD
+state: I
+revision: 2
+source: ./rules/ (scope: local)
+rule: Every cobra command MUST set a Long description.
+applies_to:
+  - Go files under src/cmd/ that call cobra.Command.
+rationale:
+  - Long descriptions feed --help.
+  - Second rationale note.
+example:
+  - Long: "Validate entity files against the schema."
+counter_example:
+  - &cobra.Command{Use: "lint", Short: "Lint"}
+clarification:
+  - Hidden commands are exempt.
+
+### ERR-002
+entity: ERR
+state: P
+revision: 1
+source: github://SteerSpec/strspc-rules@v1.6.0/rules/core (scope: global)
+rule: Errors returned to callers MUST be wrapped with context.
+
+### BARE-001
+state: D
+revision: 1
+rule: A rule without entity or source metadata.
+</rules>

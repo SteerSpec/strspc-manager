@@ -54,10 +54,27 @@ import "github.com/SteerSpec/strspc-manager/src/realmresolve" // Realm dependenc
 | ------- | ---- | ----------- |
 | `rulelint` | deterministic, stateless | Validates entity files against schema and business rules (§7.1) |
 | `rulediff` | deterministic, stateful | Validates rule lifecycle transitions across PR diffs (§7.2) |
-| `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules. Supports Claude, OpenAI, Ollama, and static-only mode. |
+| `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules (§8.3). Batches rules per entity, caches verdicts, and degrades to static-only mode when no provider is configured. See [Evaluation providers](#evaluation-providers). |
+| `evalcache` | deterministic | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
 | `ruleresolve` | deterministic | Fetches, caches, and resolves rules from configured sources (§8.2) |
 | `realmlint` | deterministic, stateless | Validates Realm structure, `realm.json` manifest, and EUID uniqueness |
 | `realmresolve` | deterministic | Resolves Realm dependencies declared in `realm.json` and fetches remote Realms |
+
+## Evaluation providers
+
+`ruleeval/providers.New(name, opts)` builds a provider from the `evaluator.provider`
+value in `.strspc/config.yaml`:
+
+| Provider | Status | Notes |
+| -------- | ------ | ----- |
+| `claude` | available | Anthropic Messages API via `ruleeval/claude`. Default model `claude-sonnet-5-5`, effort `medium`; structured outputs; prompt caching on the system prompt and diff; API key from `ANTHROPIC_API_KEY`. |
+| `static-only` (also `null` or omitted) | available | No AI calls; `ruleeval` emits `RE003` and only structural checks run. |
+| `openai` | planned | Returns `ErrProviderNotImplemented` ([#67](https://github.com/SteerSpec/strspc-manager/issues/67)). |
+| `ollama` | planned | Returns `ErrProviderNotImplemented` ([#67](https://github.com/SteerSpec/strspc-manager/issues/67)). |
+
+Provider tests replay recorded HTTP cassettes from `src/ruleeval/claude/testdata/cassettes/`
+and never call the network in CI. Set `STRSPC_RECORD=1` with an API key to re-record,
+or run the live smoke test with `go test -tags live ./src/ruleeval/claude/`.
 
 ## Rule sources
 

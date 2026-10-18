@@ -1,0 +1,16 @@
+<diff>
+diff --git a/src/cmd/lint.go b/src/cmd/lint.go
+index 1111111..2222222 100644
+--- a/src/cmd/lint.go
++++ b/src/cmd/lint.go
+@@ -10,6 +10,9 @@ func newLintCmd() *cobra.Command {
+ 	cmd := &cobra.Command{
+ 		Use:   "lint",
+ 		Short: "Lint entity files",
++		RunE: func(cmd *cobra.Command, args []string) error {
++			return run(args)
++		},
+ 	}
+ 	return cmd
+ }
+</diff>
