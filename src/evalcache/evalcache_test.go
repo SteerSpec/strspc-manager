@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -219,5 +221,54 @@ func TestPut_RejectsNil(t *testing.T) {
 	defer func() { _ = s.Close() }()
 	if err := s.Put("k", nil); err == nil {
 		t.Error("Put(nil) should fail")
+	}
+}
+
+func TestClose_ConcurrentWithOperations(t *testing.T) {
+	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = s.Put("seed", sample())
+
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			for j := 0; j < 50; j++ {
+				key := "k" + strconv.Itoa(i*100+j)
+				// Every call must either succeed or return ErrClosed; never panic.
+				if err := s.Put(key, sample()); err != nil && !errors.Is(err, evalcache.ErrClosed) {
+					t.Errorf("Put: %v", err)
+				}
+				if _, _, err := s.Get("seed"); err != nil && !errors.Is(err, evalcache.ErrClosed) {
+					t.Errorf("Get: %v", err)
+				}
+				if _, err := s.Prune(); err != nil && !errors.Is(err, evalcache.ErrClosed) {
+					t.Errorf("Prune: %v", err)
+				}
+			}
+		}(i)
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		time.Sleep(time.Millisecond)
+		if err := s.Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		if err := s.Close(); err != nil {
+			t.Errorf("second Close: %v", err)
+		}
+	}()
+	close(start)
+	wg.Wait()
+
+	if _, _, err := s.Get("seed"); !errors.Is(err, evalcache.ErrClosed) {
+		t.Errorf("Get after Close = %v, want ErrClosed", err)
 	}
 }

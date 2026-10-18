@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -32,6 +33,9 @@ const CodeRecreated = "EC001"
 // database and the lock timeout elapsed. Callers should continue without a
 // cache rather than fail.
 var ErrLocked = errors.New("evalcache: database is locked by another process")
+
+// ErrClosed is returned by Get, Put and Prune after Close.
+var ErrClosed = errors.New("evalcache: store is closed")
 
 var bucketName = []byte("eval/v1")
 
@@ -70,8 +74,10 @@ func WithLockTimeout(d time.Duration) Option {
 	return func(c *config) { c.lockTimeout = d }
 }
 
-// Store is a bbolt-backed verdict cache.
+// Store is a bbolt-backed verdict cache. It is safe for concurrent use,
+// including Close racing with other operations.
 type Store struct {
+	mu    sync.RWMutex // guards db; write-locked only by Close
 	db    *bolt.DB
 	cfg   config
 	diags *result.Result
@@ -175,8 +181,10 @@ func (s *Store) Diagnostics() *result.Result { return s.diags }
 // Get returns the cached response for key. ok is false on a miss or when
 // the entry has expired.
 func (s *Store) Get(key string) (*ruleeval.EvalResponse, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.db == nil {
-		return nil, false, errors.New("evalcache: store is closed")
+		return nil, false, ErrClosed
 	}
 	var e entry
 	found := false
@@ -206,15 +214,17 @@ func (s *Store) Get(key string) (*ruleeval.EvalResponse, bool, error) {
 
 // Put stores resp under key with the current time as its creation time.
 func (s *Store) Put(key string, resp *ruleeval.EvalResponse) error {
-	if s.db == nil {
-		return errors.New("evalcache: store is closed")
-	}
 	if resp == nil {
 		return errors.New("evalcache: nil response")
 	}
 	raw, err := json.Marshal(entry{CreatedAt: s.cfg.now().UTC(), Response: resp})
 	if err != nil {
 		return fmt.Errorf("evalcache: encode entry: %w", err)
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.db == nil {
+		return ErrClosed
 	}
 	return s.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bucketName)
@@ -228,8 +238,10 @@ func (s *Store) Put(key string, resp *ruleeval.EvalResponse) error {
 // Prune deletes expired entries and returns how many were removed.
 // Undecodable entries are removed as well.
 func (s *Store) Prune() (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.db == nil {
-		return 0, errors.New("evalcache: store is closed")
+		return 0, ErrClosed
 	}
 	if s.cfg.ttl <= 0 {
 		return 0, nil
@@ -262,8 +274,12 @@ func (s *Store) Prune() (int, error) {
 	return removed, err
 }
 
-// Close releases the file lock. It is safe to call more than once.
+// Close releases the file lock once in-flight operations have finished.
+// It is safe to call more than once and concurrently with other methods,
+// which then return ErrClosed.
 func (s *Store) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.db == nil {
 		return nil
 	}
