@@ -346,11 +346,20 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 // list. Dependencies inherited from the parent (realm IDs not in ownIDs)
 // reuse the parent's resolution and are skipped when the parent failed to
 // resolve them, avoiding duplicate diagnostics. Dependencies the sub-realm
-// declares itself (including overrides) are resolved against subDir.
+// declares itself (including overrides) are resolved against subDir and
+// checked for EUID collisions with the dependencies already collected
+// (RR005); parent-only collisions are reported once by the parent loop.
 func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.RealmFile, subDir string, ownIDs map[string]struct{}, parentResolved map[string]*ResolvedRealm, res *result.Result) []*ResolvedRealm {
 	var deps []*ResolvedRealm
 	for _, dep := range subRF.Dependencies {
-		if ctx.Err() != nil {
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR000",
+				Severity: result.Error,
+				Message:  err.Error(),
+				Path:     subDir,
+			})
 			return deps
 		}
 		if _, own := ownIDs[dep.RealmID]; !own {
@@ -369,9 +378,27 @@ func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.R
 			})
 			continue
 		}
-		if resolved := r.resolveDep(ctx, dep, subDir, res); resolved != nil {
-			deps = append(deps, resolved)
+		resolved := r.resolveDep(ctx, dep, subDir, res)
+		if resolved == nil {
+			continue
 		}
+		// RR005: EUID collisions — own dependency vs the effective
+		// dependencies collected so far (inherited first, then own).
+		for euid, depPath := range resolved.EUIDs {
+			for _, prev := range deps {
+				if _, ok := prev.EUIDs[euid]; ok {
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RR005",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("EUID collision: %q exists in dependency %q and dependency %q (%s) of sub-realm %q", euid, prev.Realm.Realm.ID, dep.RealmID, depPath, subRF.Realm.ID),
+						Path:     resolved.Dir,
+					})
+					break
+				}
+			}
+		}
+		deps = append(deps, resolved)
 	}
 	return deps
 }

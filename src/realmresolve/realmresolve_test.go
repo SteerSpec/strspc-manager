@@ -451,3 +451,29 @@ func TestResolve_SubRealm_InheritsParentDependencyResolution(t *testing.T) {
 		t.Errorf("expected exactly 1 RR011, got %d: %v", count, res.Diagnostics)
 	}
 }
+
+func TestResolve_SubRealm_OwnDepVsInheritedDepIsRR005(t *testing.T) {
+	rf := loadTestRealm(t, "sub-dep-vs-inherited-dep")
+	baseDir := absTestdata(t, "sub-dep-vs-inherited-dep")
+
+	got, res := New().Resolve(context.Background(), rf, baseDir)
+
+	// Parent dep dev.dep.a and the sub-realm's own dep dev.dep.b both
+	// define DEP; the sub-realm itself does not, so RR011 must not fire
+	// but the dependency-vs-dependency collision must (RR005).
+	if len(got.SubRealms) != 1 || len(got.SubRealms[0].Dependencies) != 2 {
+		t.Fatalf("expected 1 sub-realm with 2 effective deps, got %+v", got.SubRealms)
+	}
+	if hasDiagCode(res, "RR011") {
+		t.Errorf("unexpected RR011: %v", res.Diagnostics)
+	}
+	count := 0
+	for _, d := range res.Diagnostics {
+		if d.Code == "RR005" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 RR005, got %d: %v", count, res.Diagnostics)
+	}
+}

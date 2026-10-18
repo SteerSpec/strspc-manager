@@ -31,9 +31,10 @@ var (
 	hashRe   = regexp.MustCompile(`^blake3:[a-f0-9]{64}$`)
 
 	// crossRefRe finds rule references inside note content, optionally
-	// qualified with a realm ID (`dev.steerspec.core:ENT-001`). Group 1 is
+	// qualified with a realm ID (`dev.steerspec.core:ENT-001`, or a
+	// single-component ID such as `core:ENT-001`, per RLM-008). Group 1 is
 	// the EUID, group 2 the three-digit sequence number.
-	crossRefRe = regexp.MustCompile(`\b(?:[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+:)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
+	crossRefRe = regexp.MustCompile(`\b(?:[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*:)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
 )
 
 // relationNoteTypes are the note types whose content is expected to

@@ -445,6 +445,7 @@ func TestCrossRefRe(t *testing.T) {
 	}{
 		{"ENT-001", []string{"ENT-001"}, []bool{false}},
 		{"see dev.steerspec.core:ENT-001 now", []string{"ENT-001"}, []bool{true}},
+		{"single-component realm core:ENT-001", []string{"ENT-001"}, []bool{true}},
 		{"a ENT-001, b RUL-002.", []string{"ENT-001", "RUL-002"}, []bool{false, false}},
 		{"ISO-8601 and 2026-03-22 and UTF-8", nil, nil},
 		{"AB-001 too short", nil, nil},

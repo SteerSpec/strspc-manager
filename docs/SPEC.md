@@ -179,7 +179,7 @@ platform/
 
 **EUID uniqueness:** EUID uniqueness (RLM-001) spans the parent Realm and all its declared sub-realms (RLM-013). No EUID may appear in both the parent and a sub-realm, or in two sibling sub-realms.
 
-**Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own; a sub-realm dependency with the same `realm_id` as a parent dependency overrides it. `realm-resolve` resolves this effective list for each sub-realm — inherited entries reuse the parent's resolution, own entries are resolved relative to the sub-realm directory — and checks sub-realm EUIDs against the effective dependency set (RR011).
+**Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own; a sub-realm dependency with the same `realm_id` as a parent dependency overrides it. `realm-resolve` resolves this effective list for each sub-realm — inherited entries reuse the parent's resolution, own entries are resolved relative to the sub-realm directory — checks sub-realm EUIDs against the effective dependency set (RR011), and checks each own dependency's EUIDs against the dependencies already in that set (RR005).
 
 ### 2.9 Configuration
 

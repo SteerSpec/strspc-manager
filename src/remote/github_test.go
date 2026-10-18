@@ -563,3 +563,47 @@ func TestTokenFromEnv(t *testing.T) {
 		t.Errorf("GITHUB_TOKEN should win → %q", got)
 	}
 }
+
+func TestEnsureDir_EscapesRefInURL(t *testing.T) {
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1#build": rulesTarball(t, "o-r-1")}}
+	f, _ := newFetcher(t, g)
+	ref := Ref{Owner: "o", Repo: "r", Ref: "v1#build", Path: "rules/core"}
+
+	dir, err := f.EnsureDir(context.Background(), ref)
+	if err != nil {
+		t.Fatalf("EnsureDir: %v", err)
+	}
+	if got := readFile(t, filepath.Join(dir, "ENT.json")); got != `{"entity":{"id":"ENT"}}` {
+		t.Errorf("ENT.json = %q", got)
+	}
+	if got := atomic.LoadInt32(&g.tarballHits); got != 1 {
+		t.Errorf("tarball fetched %d times, want 1 (the ref must reach the server intact)", got)
+	}
+}
+
+func TestEnsureDir_ForceLeavesNoStagingDirs(t *testing.T) {
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": rulesTarball(t, "o-r-1")}}
+	f, _ := newFetcher(t, g)
+	ref := Ref{Owner: "o", Repo: "r", Ref: "v1", Path: "rules/core"}
+
+	dir, err := f.EnsureDir(context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Force = true
+	if _, err := f.EnsureDir(context.Background(), ref); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Dir(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".old-") || strings.HasPrefix(e.Name(), ".tmp-") {
+			t.Errorf("staging dir %q left behind after Force", e.Name())
+		}
+	}
+	if got := readFile(t, filepath.Join(dir, "ENT.json")); got != `{"entity":{"id":"ENT"}}` {
+		t.Errorf("ENT.json after Force = %q", got)
+	}
+}

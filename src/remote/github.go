@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -232,8 +233,9 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 }
 
 func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest", f.baseURL(), ref.Owner, ref.Repo)
-	resp, err := f.get(ctx, url, "application/vnd.github+json")
+	endpoint := fmt.Sprintf("%s/repos/%s/%s/releases/latest", f.baseURL(),
+		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo))
+	resp, err := f.get(ctx, endpoint, "application/vnd.github+json")
 	if err != nil {
 		return "", err
 	}
@@ -256,10 +258,13 @@ func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
 }
 
 // download fetches the tarball for a concrete ref and extracts ref.Path
-// into dir via a temporary sibling directory and an atomic rename.
+// into dir via a temporary sibling directory and an atomic rename. Under
+// Force an existing dir is swapped out by two renames; it is never removed
+// before its replacement is ready.
 func (f *Fetcher) download(ctx context.Context, ref Ref, dir string) error {
-	url := fmt.Sprintf("%s/repos/%s/%s/tarball/%s", f.baseURL(), ref.Owner, ref.Repo, ref.Ref)
-	resp, err := f.get(ctx, url, "application/vnd.github+json")
+	endpoint := fmt.Sprintf("%s/repos/%s/%s/tarball/%s", f.baseURL(),
+		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo), url.PathEscape(ref.Ref))
+	resp, err := f.get(ctx, endpoint, "application/vnd.github+json")
 	if err != nil {
 		return err
 	}
@@ -289,19 +294,39 @@ func (f *Fetcher) download(ctx context.Context, ref Ref, dir string) error {
 		return fmt.Errorf("remote: path %q not found in %s/%s@%s", ref.Path, ref.Owner, ref.Repo, ref.Ref)
 	}
 
+	// With Force, move the published directory aside first so the path is
+	// never absent: readers either see the old generation or the new one,
+	// and a crash between the two renames leaves the old generation on
+	// disk under .old-* instead of losing it.
+	var old string
 	if f.Force {
-		if err := os.RemoveAll(dir); err != nil {
-			cleanup()
-			return fmt.Errorf("remote: replacing cached dir: %w", err)
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			old, err = os.MkdirTemp(parent, ".old-*")
+			if err != nil {
+				cleanup()
+				return fmt.Errorf("remote: staging replaced cache dir: %w", err)
+			}
+			_ = os.Remove(old)
+			if err := os.Rename(dir, old); err != nil {
+				cleanup()
+				return fmt.Errorf("remote: moving replaced cache dir aside: %w", err)
+			}
 		}
 	}
 	if err := os.Rename(tmp, dir); err != nil {
 		cleanup()
+		if old != "" {
+			// Restore the previous generation rather than leave a hole.
+			_ = os.Rename(old, dir)
+		}
 		// A concurrent fetch may have won the race; accept its result.
 		if info, statErr := os.Stat(dir); statErr == nil && info.IsDir() {
 			return nil
 		}
 		return fmt.Errorf("remote: installing cached dir: %w", err)
+	}
+	if old != "" {
+		_ = os.RemoveAll(old)
 	}
 	return nil
 }
