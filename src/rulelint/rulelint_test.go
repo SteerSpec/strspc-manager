@@ -389,3 +389,103 @@ func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
 		}
 	}
 }
+
+// --- RL014 note cross-reference tests ---
+
+func TestLintDir_RL014_NoteCrossRefs(t *testing.T) {
+	dir := testdataPath("crossref")
+	res := New().LintDir(dir)
+
+	var rl014 []result.Diagnostic
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL014" {
+			rl014 = append(rl014, d)
+		}
+	}
+	// Only MISSING-002 (unqualified, unresolved, in an "extends" note) is
+	// reported, and only once even though it appears twice. ENT-001 and
+	// RUL-001 resolve, dev.other.realm:FOO-001 is qualified, NOPE-001 sits
+	// in a rationale note, and dates/ISO-8601 do not match the pattern.
+	if len(rl014) != 1 {
+		t.Fatalf("expected exactly 1 RL014, got %d: %v", len(rl014), rl014)
+	}
+	d := rl014[0]
+	if d.Severity != result.Warning {
+		t.Errorf("RL014 severity = %s, want warning", d.Severity)
+	}
+	if !strings.Contains(d.Message, `"MISSING-002"`) || !strings.Contains(d.Message, "RUL-001/01") {
+		t.Errorf("unexpected RL014 message: %q", d.Message)
+	}
+	if !strings.HasSuffix(d.Path, "RUL.json") {
+		t.Errorf("RL014 path = %q, want the note's file", d.Path)
+	}
+}
+
+func TestLintDir_RL014_StrictIsError(t *testing.T) {
+	res := New(WithStrict(true)).LintDir(testdataPath("crossref"))
+	found := false
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL014" {
+			found = true
+			if d.Severity != result.Error {
+				t.Errorf("strict RL014 severity = %s, want error", d.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected RL014 in strict mode")
+	}
+}
+
+func TestCrossRefRe(t *testing.T) {
+	cases := []struct {
+		in        string
+		wantRefs  []string
+		qualified []bool
+	}{
+		{"ENT-001", []string{"ENT-001"}, []bool{false}},
+		{"see dev.steerspec.core:ENT-001 now", []string{"ENT-001"}, []bool{true}},
+		{"a ENT-001, b RUL-002.", []string{"ENT-001", "RUL-002"}, []bool{false, false}},
+		{"ISO-8601 and 2026-03-22 and UTF-8", nil, nil},
+		{"AB-001 too short", nil, nil},
+		{"ENT-0012 too long", nil, nil},
+	}
+	for _, tc := range cases {
+		ms := crossRefRe.FindAllStringSubmatch(tc.in, -1)
+		if len(ms) != len(tc.wantRefs) {
+			t.Errorf("%q: got %d matches, want %d (%v)", tc.in, len(ms), len(tc.wantRefs), ms)
+			continue
+		}
+		for i, m := range ms {
+			if got := m[1] + "-" + m[2]; got != tc.wantRefs[i] {
+				t.Errorf("%q: match %d = %q, want %q", tc.in, i, got, tc.wantRefs[i])
+			}
+			if q := strings.Contains(m[0], ":"); q != tc.qualified[i] {
+				t.Errorf("%q: match %d qualified=%v, want %v", tc.in, i, q, tc.qualified[i])
+			}
+		}
+	}
+}
+
+// --- Parse-once benchmark (#54) ---
+
+func BenchmarkLintDir(b *testing.B) {
+	dir := testdataPath("realm")
+	l := New()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = l.LintDir(dir)
+	}
+}
+
+func BenchmarkLintBytes(b *testing.B) {
+	data, err := os.ReadFile(testdataPath("valid", "basic.json"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	l := New()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = l.LintBytes(data)
+	}
+}

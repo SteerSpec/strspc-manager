@@ -29,5 +29,42 @@
       "supersedes": "MISSING-001"
     }
   ],
-  "notes": []
+  "notes": [
+    {
+      "id": "RUL-001/01",
+      "rule_ref": "RUL-001",
+      "type": "extends",
+      "content": "Extends ENT-001 and tightens MISSING-002 (mentioned twice: MISSING-002).",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "revision": 0
+    },
+    {
+      "id": "RUL-001/02",
+      "rule_ref": "RUL-001",
+      "type": "related",
+      "content": "See also dev.other.realm:FOO-001 for the cross-realm variant.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "revision": 0
+    },
+    {
+      "id": "RUL-002/01",
+      "rule_ref": "RUL-002",
+      "type": "rationale",
+      "content": "Rationale mentioning NOPE-001, which RL014 must ignore for this note type.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "revision": 0
+    },
+    {
+      "id": "RUL-002/02",
+      "rule_ref": "RUL-002",
+      "type": "supersedes",
+      "content": "Supersedes RUL-001 since revision 1; dates like 2026-03-22 and ISO-8601 are not refs.",
+      "added_by": "test",
+      "added_at": "2026-03-22",
+      "revision": 0
+    }
+  ]
 }
