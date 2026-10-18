@@ -3,6 +3,7 @@ package ruleeval_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -559,5 +560,27 @@ func TestNew_CacheRejectsEmptyIdentity(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "model") {
 		t.Errorf("error should explain the empty identity, got %q", err)
+	}
+}
+
+func TestEvaluate_PerRuleFallback_CarriesMetadata(t *testing.T) {
+	mp := &mockProvider{}
+	e, err := ruleeval.New(mp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := entityInput("CMD", "CMD-001", "I")
+	in.Source = "./tools/rules/"
+	in.Scope = "local"
+	e.Evaluate(context.Background(), []ruleeval.RuleInput{in}, "diff")
+	if len(mp.calls) != 1 {
+		t.Fatalf("expected 1 call, got %d", len(mp.calls))
+	}
+	got := mp.calls[0]
+	if got.EntityID != "CMD" || got.Source != "./tools/rules/" || got.Scope != "local" {
+		t.Errorf("per-rule request dropped metadata: %+v", got)
+	}
+	if !reflect.DeepEqual(got.Input(), in) {
+		t.Errorf("Input() = %+v, want %+v", got.Input(), in)
 	}
 }

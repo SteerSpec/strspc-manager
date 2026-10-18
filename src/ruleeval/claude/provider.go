@@ -163,11 +163,14 @@ func (p *Provider) Usage() ruleeval.Usage {
 	return p.usage
 }
 
-// Evaluate evaluates a single rule by delegating to EvaluateBatch.
+// Evaluate evaluates a single rule by delegating to EvaluateBatch. The
+// entity, source and scope metadata travel with the rule so that a
+// local-scope rule is restricted exactly as in the batch path.
 func (p *Provider) Evaluate(ctx context.Context, req ruleeval.EvalRequest) (*ruleeval.EvalResponse, error) {
 	resp, err := p.EvaluateBatch(ctx, ruleeval.BatchRequest{
-		Inputs: []ruleeval.RuleInput{{Rule: req.Rule, Notes: req.Notes}},
-		Diff:   req.Diff,
+		EntityID: req.EntityID,
+		Inputs:   []ruleeval.RuleInput{req.Input()},
+		Diff:     req.Diff,
 	})
 	if err != nil {
 		return nil, err

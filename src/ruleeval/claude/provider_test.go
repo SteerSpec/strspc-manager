@@ -542,7 +542,10 @@ func runScenario(t *testing.T, sc scenario, rt *replay.Transport, cfg claude.Con
 	if sc.single {
 		in := sc.inputs[0]
 		var v *ruleeval.EvalResponse
-		v, err = p.Evaluate(ctx, ruleeval.EvalRequest{Rule: in.Rule, Notes: in.Notes, Diff: sc.diff})
+		v, err = p.Evaluate(ctx, ruleeval.EvalRequest{
+			Rule: in.Rule, Notes: in.Notes, Diff: sc.diff,
+			EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
+		})
 		if v != nil {
 			resp = &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{in.Rule.ID: v}}
 		}
@@ -704,5 +707,38 @@ func TestPromptVersion_IncludesEffort(t *testing.T) {
 	in := rule("CMD-001", cobraLongRule)
 	if ruleeval.CacheKey(in, "d", low.Model(), low.PromptVersion()) == ruleeval.CacheKey(in, "d", high.Model(), high.PromptVersion()) {
 		t.Error("cache keys must differ between effort levels")
+	}
+}
+
+// cassetteBody returns the recorded request body of a cassette's first
+// interaction.
+func cassetteBody(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile(cassettePath(name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c replay.Cassette
+	if err := json.Unmarshal(raw, &c); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Interactions) == 0 {
+		t.Fatalf("cassette %s has no interactions", name)
+	}
+	return c.Interactions[0].Request.Body
+}
+
+// TestSingleRuleRequest_CarriesMetadata inspects the recorded body of the
+// single-rule scenario: the per-rule adapter must send entity, source and
+// scope exactly like the batch path (the replay only matches if it does).
+func TestSingleRuleRequest_CarriesMetadata(t *testing.T) {
+	if os.Getenv("STRSPC_SYNTHESIZE") == "1" {
+		t.Skip("cassettes are being regenerated")
+	}
+	body := cassetteBody(t, "single_rule_evaluate")
+	for _, want := range []string{"entity: CMD", "source: ./rules/ (scope: global)"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("single-rule request lost metadata %q", want)
+		}
 	}
 }

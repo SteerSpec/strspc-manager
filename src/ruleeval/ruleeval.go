@@ -81,11 +81,22 @@ func RuleInputsFromFile(f *entity.File) []RuleInput {
 	return inputs
 }
 
-// EvalRequest contains the inputs for evaluating a single rule.
+// EvalRequest contains the inputs for evaluating a single rule. EntityID,
+// Source and Scope mirror the RuleInput metadata so that a per-rule
+// provider can restrict a local-scope rule to its source directory exactly
+// as the batch path does.
 type EvalRequest struct {
-	Rule  entity.Rule
-	Notes []entity.Note // contextual notes (rationale, examples, applies_to, …)
-	Diff  string        // code diff to evaluate
+	Rule     entity.Rule
+	Notes    []entity.Note // contextual notes (rationale, examples, applies_to, …)
+	Diff     string        // code diff to evaluate
+	EntityID string
+	Source   string
+	Scope    string
+}
+
+// Input returns the RuleInput equivalent of the request.
+func (r EvalRequest) Input() RuleInput {
+	return RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: r.EntityID, Source: r.Source, Scope: r.Scope}
 }
 
 // EvalResponse contains the AI provider's evaluation of a single rule.
@@ -420,7 +431,10 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 				return nil
 			}
 			in := inputs[i]
-			resp, err := e.provider.Evaluate(ctx, EvalRequest{Rule: in.Rule, Notes: in.Notes, Diff: diff})
+			resp, err := e.provider.Evaluate(ctx, EvalRequest{
+				Rule: in.Rule, Notes: in.Notes, Diff: diff,
+				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
+			})
 			e.observe(Event{Kind: EventProviderCall, EntityID: g.entityID, RuleIDs: []string{in.Rule.ID}, Err: err})
 			outcomes[i] = outcome{resp: resp, err: err, fresh: err == nil, done: true}
 		}

@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -273,11 +274,22 @@ func (t *Transport) Save() error {
 }
 
 // WriteCassette writes c to path as indented JSON with a trailing newline,
-// creating parent directories as needed.
+// creating parent directories as needed. Interactions are sorted by
+// request so that concurrent recordings produce a stable file.
 func WriteCassette(path string, c *Cassette) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	sort.SliceStable(c.Interactions, func(i, j int) bool {
+		a, b := c.Interactions[i].Request, c.Interactions[j].Request
+		if a.Method != b.Method {
+			return a.Method < b.Method
+		}
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		return a.Body < b.Body
+	})
 	out, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
