@@ -208,16 +208,22 @@ The Configuration MAY configure an evaluator for rule enforcement (SPCFG-006). T
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `provider` | string | The AI provider (e.g., `claude`, `openai`, `ollama`, `static-only`). Required. |
+| `provider` | string | The AI provider (e.g., `claude`, `openai`, `ollama`, `static-only`). Required. Only `claude` is implemented today; `openai` and `ollama` are reserved and currently fail with an explicit not-implemented error. |
 | `endpoint` | string or null | Custom endpoint URL, or `null` for provider default. Optional. |
+| `model` | string | Model identifier passed to the provider (default `claude-sonnet-5-5` for `claude`). Optional. |
+| `effort` | string | Reasoning effort hint: `low`, `medium` (default), `high`, `xhigh` or `max`. Optional. |
 
 #### Cache
 
 The `cache` object MAY declare a `ttl` property (time-to-live string) controlling how long resolved rules and evaluation results are kept locally.
 
+#### Evaluation States
+
+The Configuration MAY declare which rule lifecycle states are sent to the evaluator. The `evaluate_on` array contains state codes; it defaults to `[D, P, I]` (Draft, Published, Implemented). Rules in other states (`A`, `R`, `T`) are never evaluated.
+
 #### Fail Conditions
 
-The Configuration MAY declare fail conditions referencing rule lifecycle states (SPCFG-007). The `fail_on` array contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails.
+The Configuration MAY declare fail conditions referencing rule lifecycle states (SPCFG-007). The `fail_on` array contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails. Violations of evaluated rules whose state is not listed in `fail_on` are reported as warnings.
 
 **Schema:** The `config.v1.schema.json` schema validates this configuration format. Unlike hand-maintained axioms (`bootstrap.schema.json`, `realm.v1.schema.json`), the config schema is **generated** from SPCFG entity rules by `tools/build-schema.py`. This follows the same self-referential pattern as `entity.v1.schema.json` — the rules define the schema that validates the artifact.
 
@@ -441,7 +447,7 @@ A developer's repository contains a `.strspc/` directory (see §2.9) that config
 project-repo/
 ├── .strspc/
 │   ├── config.yaml       ← rule sources, evaluation settings
-│   └── cache.db          ← local rule cache (SQLite)
+│   └── cache.db          ← local evaluation cache (embedded key-value store)
 ├── src/
 │   └── ...
 └── .github/workflows/
@@ -458,11 +464,18 @@ rules:
     scope: local
 
 evaluator:
-  provider: claude          # or ollama, openai, static-only
+  provider: claude          # or static-only (openai, ollama reserved)
   endpoint: null            # defaults per provider
+  model: claude-sonnet-5-5  # provider default when omitted
+  effort: medium            # low | medium | high | xhigh | max
 
 cache:
   ttl: 24h
+
+evaluate_on:
+  - D                       # states sent to the evaluator (default D, P, I)
+  - P
+  - I
 
 fail_on:
   - I                       # fail if an Implemented rule is violated
@@ -475,17 +488,19 @@ The `fail_on` list references rule lifecycle state codes, not severity levels (s
 ### 8.3 Evaluation Flow
 
 1. Resolve applicable rule sets (from config sources).
-2. Collect all rules in state `I` (Implemented) — or `P` and `I` depending on config.
-3. Gather the code diff (pre-commit) or PR diff (CI).
-4. For each rule, send to the AI evaluator: the rule body, its notes (rationale, examples, applies_to), and the diff.
-5. The AI determines: compliant, violated, or not applicable.
-6. Report results. Block merge if `fail_on` conditions are met.
+2. Collect all rules whose state is listed in `evaluate_on` (default `D`, `P`, `I`).
+3. Gather the code diff (pre-commit) or PR diff (CI). An empty diff ends evaluation with an informational notice (`RE004`).
+4. Look up each rule in the evaluation cache (§8.4); only cache misses are sent to the provider.
+5. Group the remaining rules by owning entity and send one request per entity: a shared system prompt, the diff, and the rules with their notes (`applies_to`, `rationale`, `example`, `counter_example`, `clarification`). Providers split large diffs on file and hunk boundaries and merge verdicts, a violation in any chunk winning; a hunk too large to send is reported, never silently skipped.
+6. The AI returns exactly one verdict per rule — compliant, violated, or not applicable — with an explanation and evidence locations (file, line, excerpt). `not_applicable` is the default when the rule's subject is absent from the diff.
+7. Report results. Violations carry the first evidence location; a provider failure is a warning (`RE002`) for each affected rule and never blocks on its own. Block merge if `fail_on` conditions are met.
 
 ### 8.4 Local Mode (Pre-commit Hook, Free Tier)
 
 - CLI tool: `strspc init`, `strspc check`, `strspc sync`.
-- Rules cached locally in `.strspc/cache.db`, keyed on rule ID + rule set hash.
-- Evaluation results cached on `(rule_id, rule_revision, diff_hash)` — same diff against same rule skips re-evaluation.
+- Resolved rules cached locally under `.strspc/cache/`; evaluation results in `.strspc/cache.db`, an embedded key-value store (no external database).
+- Evaluation results are keyed on `(rule_id, rule_revision, rule_body, notes, diff_hash, model, prompt_version)` — the same diff against the same rule skips re-evaluation, while a rule edit, model change or prompt revision invalidates the entry. Entries expire after `cache.ttl`.
+- If the cache file is locked by another process the check runs without a cache and says so; a corrupt cache file is recreated.
 - The developer provides their own LLM (API key for Claude, local Ollama, etc.) via `.strspc/config.yaml`.
 - Graceful degradation: if no LLM is configured, only JSON Schema validation runs (structural checks, no behavioral evaluation).
 
