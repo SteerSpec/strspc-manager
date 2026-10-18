@@ -510,16 +510,26 @@ func TestProvider_Scenarios(t *testing.T) {
 		t.Run(sc.name, func(t *testing.T) {
 			var upstream http.RoundTripper
 			cfg := claude.Config{APIKey: "test-key"}
+			path := cassettePath(sc.name)
 			if mode == replay.ModeRecord {
 				if !sc.recordable {
 					t.Skipf("scenario %q only exists in synthetic form; regenerate with STRSPC_SYNTHESIZE=1", sc.name)
 				}
+				// Start from a fresh cassette: appending live responses after
+				// the synthetic ones would leave replay serving the synthetic
+				// answer first.
+				if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+					t.Fatal(err)
+				}
 				upstream = http.DefaultTransport
 				cfg.APIKey = key
 			}
-			rt, err := replay.New(cassettePath(sc.name), mode, upstream)
+			rt, err := replay.New(path, mode, upstream)
 			if err != nil {
 				t.Fatal(err) // missing cassette fails CI loudly
+			}
+			if mode == replay.ModeRecord {
+				rt.SetComment("Recorded from the live Anthropic API with STRSPC_RECORD=1 (model " + testModel + ").")
 			}
 			runScenario(t, sc, rt, cfg)
 			if mode == replay.ModeRecord {
