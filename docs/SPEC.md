@@ -499,7 +499,7 @@ The `fail_on` list references rule lifecycle state codes, not severity levels (s
 
 - CLI tool: `strspc init`, `strspc check`, `strspc sync`.
 - Resolved rules cached locally under `.strspc/cache/`; evaluation results in `.strspc/cache.db`, an embedded key-value store (no external database).
-- Evaluation results are keyed on `(rule_id, rule_revision, rule_body, notes, diff_hash, model, prompt_version)` — the same diff against the same rule skips re-evaluation, while a rule edit, model change or prompt revision invalidates the entry. Entries expire after `cache.ttl`.
+- Evaluation results are keyed on `(rule_id, rule_revision, rule_body, notes, source, scope, diff_hash, model, prompt_version)` — the same diff against the same rule skips re-evaluation, while a rule edit, model change or prompt revision invalidates the entry. Entries expire after `cache.ttl`.
 - If the cache file is locked by another process the check runs without a cache and says so; a corrupt cache file is recreated.
 - The developer provides their own LLM (API key for Claude, local Ollama, etc.) via `.strspc/config.yaml`.
 - Graceful degradation: if no LLM is configured, only JSON Schema validation runs (structural checks, no behavioral evaluation).

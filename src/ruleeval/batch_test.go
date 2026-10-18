@@ -454,6 +454,16 @@ func TestCacheKey(t *testing.T) {
 	if ruleeval.CacheKey(base, "d1", "m", "v2") == k1 {
 		t.Error("prompt version must affect key")
 	}
+	src := base
+	src.Source = "./rules/"
+	if ruleeval.CacheKey(src, "d1", "m", "v1") == k1 {
+		t.Error("source must affect key")
+	}
+	scoped := src
+	scoped.Scope = "local"
+	if ruleeval.CacheKey(scoped, "d1", "m", "v1") == ruleeval.CacheKey(src, "d1", "m", "v1") {
+		t.Error("scope must affect key: a local rule made global must be re-evaluated")
+	}
 
 	// Note order must not matter.
 	two := base
