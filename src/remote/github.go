@@ -149,6 +149,14 @@ func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
 	if ref.Owner == "" || ref.Repo == "" || ref.Ref == "" {
 		return "", fmt.Errorf("remote: incomplete reference %q", ref.String())
 	}
+	for _, c := range []string{ref.Owner, ref.Repo, ref.Ref} {
+		if c == "." || c == ".." || strings.ContainsAny(c, `/\`) {
+			return "", fmt.Errorf("remote: illegal component %q in reference %q", c, ref.String())
+		}
+	}
+	if hasDotDot(ref.Path) || strings.Contains(ref.Path, `\`) {
+		return "", fmt.Errorf("remote: illegal path in reference %q", ref.String())
+	}
 
 	repoDir, err := filepath.Abs(filepath.Join(f.CacheDir, "github", ref.Owner, ref.Repo))
 	if err != nil {

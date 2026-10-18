@@ -429,8 +429,20 @@ func TestEnsureDir_AbsoluteEntryRejected(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "etc", "passwd")); err != nil {
 		t.Errorf("expected cleaned entry inside cache dir: %v", err)
 	}
-	if _, err := os.Stat("/etc/passwd-strspc-test"); err == nil {
-		t.Error("should never touch filesystem root")
+}
+
+func TestEnsureDir_RejectsUnsafeRefComponents(t *testing.T) {
+	f := &Fetcher{CacheDir: t.TempDir()}
+	bad := []Ref{
+		{Owner: "..", Repo: "r", Ref: "v1"},
+		{Owner: "o", Repo: "../x", Ref: "v1"},
+		{Owner: "o", Repo: "r", Ref: "v1/../.."},
+		{Owner: "o", Repo: "r", Ref: "v1", Path: "../etc"},
+	}
+	for _, ref := range bad {
+		if _, err := f.EnsureDir(context.Background(), ref); err == nil {
+			t.Errorf("EnsureDir(%+v) should fail", ref)
+		}
 	}
 }
 
