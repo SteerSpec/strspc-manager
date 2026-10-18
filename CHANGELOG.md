@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.0](https://github.com/SteerSpec/strspc-manager/compare/v1.14.1...v1.15.0) (2026-10-18)
+
+
+### Features
+
+* **resolve:** github:// rule sources and remote realm dependencies ([#70](https://github.com/SteerSpec/strspc-manager/issues/70)) ([778e056](https://github.com/SteerSpec/strspc-manager/commit/778e056abf70f9ad668fd2271e8bf560ab17dd6e))
+* **ruleeval:** Claude evaluator, batching, evaluation cache ([#71](https://github.com/SteerSpec/strspc-manager/issues/71)) ([cba41c4](https://github.com/SteerSpec/strspc-manager/commit/cba41c446bd067c008c359d85f76d568ede41939))
+
 ## [1.14.1](https://github.com/SteerSpec/strspc-manager/compare/v1.14.0...v1.14.1) (2026-03-28)
 
 
