@@ -379,9 +379,9 @@ func scenarios() []scenario {
 			// budget forces one request per file.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
 			cfg: func(c *claude.Config) {
-				// system ≈ 575 tokens + rules ≈ 50 + overhead 256 = 881; the
+				// system ≈ 748 tokens + rules ≈ 50 + overhead 256 = 1054; the
 				// remaining 200 tokens (600 bytes) fit one ~400-byte file per chunk.
-				c.MaxInputTokens = 1081
+				c.MaxInputTokens = 1254
 			},
 			script: func(w http.ResponseWriter, body string, _ int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
@@ -420,7 +420,7 @@ func scenarios() []scenario {
 			// violation from the second chunk must still win, and the omission
 			// must be reported so the evaluator warns and does not cache.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1081 },
+			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1254 },
 			script: func(w http.ResponseWriter, body string, _ int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
 					writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{
@@ -450,7 +450,7 @@ func scenarios() []scenario {
 			name:   "oversize_hunk",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong + bigHunkDiff("src/generated/big.go", 60),
-			cfg:    func(c *claude.Config) { c.MaxInputTokens = 1081 },
+			cfg:    func(c *claude.Config) { c.MaxInputTokens = 1254 },
 			script: ok,
 			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if err != nil {
@@ -670,7 +670,7 @@ func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 // A rule whose body alone exceeds the rules budget is reported instead of
 // zeroing the diff budget and rejecting every hunk; no request is made.
 func TestEvaluateBatch_RuleTooLargeForBudget(t *testing.T) {
-	p, err := claude.New(claude.Config{APIKey: "k", MaxInputTokens: 1081, HTTPClient: &http.Client{Transport: failingTransport{}}})
+	p, err := claude.New(claude.Config{APIKey: "k", MaxInputTokens: 1254, HTTPClient: &http.Client{Transport: failingTransport{}}})
 	if err != nil {
 		t.Fatal(err)
 	}
