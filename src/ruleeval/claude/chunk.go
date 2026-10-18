@@ -9,7 +9,12 @@ import (
 // estimateTokens approximates the token count of s as bytes/3, a
 // deliberately conservative figure for code and diffs.
 func estimateTokens(s string) int {
-	return (len(s) + 2) / 3
+	return estimateTokensForBytes(len(s))
+}
+
+// estimateTokensForBytes is estimateTokens for a known byte count.
+func estimateTokensForBytes(n int) int {
+	return (n + 2) / 3
 }
 
 // oversizeHunk describes a hunk that cannot fit in a single request.

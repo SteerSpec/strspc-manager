@@ -210,7 +210,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	for _, o := range oversize {
 		out.Errors = append(out.Errors, fmt.Errorf(
 			"hunk in %s (%d bytes, ~%d tokens) exceeds the input budget of ~%d tokens and was not evaluated",
-			o.File, o.Bytes, estimateTokens(string(make([]byte, o.Bytes))), budgetTokens))
+			o.File, o.Bytes, estimateTokensForBytes(o.Bytes), budgetTokens))
 	}
 	if len(chunks) == 0 {
 		return out, nil

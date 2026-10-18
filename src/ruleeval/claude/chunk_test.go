@@ -167,6 +167,11 @@ func TestEstimateTokens(t *testing.T) {
 	if estimateTokens("") != 0 || estimateTokens("abc") != 1 || estimateTokens("abcd") != 2 {
 		t.Errorf("estimateTokens: %d %d %d", estimateTokens(""), estimateTokens("abc"), estimateTokens("abcd"))
 	}
+	for _, n := range []int{0, 1, 2, 3, 4, 5, 6, 3907, 1 << 20} {
+		if got, want := estimateTokensForBytes(n), estimateTokens(strings.Repeat("x", n)); got != want {
+			t.Errorf("estimateTokensForBytes(%d) = %d, want %d", n, got, want)
+		}
+	}
 }
 
 func TestFirstError_PrefersCauseOverCancellation(t *testing.T) {
