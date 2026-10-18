@@ -79,14 +79,17 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v1" {
-		t.Fatalf("Version = %q, want v1", prompt.Version)
+	if prompt.Version != "v2" {
+		t.Fatalf("Version = %q, want v2", prompt.Version)
 	}
 }
 
 func TestSystem_Golden(t *testing.T) {
 	s := prompt.System()
-	for _, want := range []string{"not_applicable", "applies_to", "local", "@@", "exactly one verdict"} {
+	for _, want := range []string{"not_applicable", "applies_to", "local", "@@", "exactly one verdict",
+		// v2: regressions caused by removals count, pre-existing problems do not,
+		// and a removed line is cited at the nearest surviving new-file line.
+		`beginning with "-"`, "removal", "pre-existing", "nearest surviving line"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("system prompt should mention %q", want)
 		}
