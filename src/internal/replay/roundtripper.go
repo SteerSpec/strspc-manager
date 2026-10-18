@@ -253,6 +253,14 @@ func (t *Transport) record(req *http.Request, key string, body []byte) (*http.Re
 	return resp, nil
 }
 
+// SetComment sets the free-text comment stored at the top of the cassette,
+// for example to mark it as synthetic.
+func (t *Transport) SetComment(c string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.cassette.Comment = c
+}
+
 // Save writes the cassette to disk (record mode). It is a no-op in replay
 // mode.
 func (t *Transport) Save() error {
