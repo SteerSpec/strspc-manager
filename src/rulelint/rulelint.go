@@ -1,6 +1,6 @@
 // Package rulelint provides stateless validation of SteerSpec entity files.
-// It checks a single entity file against the JSON schema and 13 business
-// rules defined in the Rule Manager Spec §7.1.
+// It checks a single entity file against the JSON schema and the business
+// rules defined in the Rule Manager Spec §7.1 (RL001–RL014).
 package rulelint
 
 import (
@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -28,7 +29,21 @@ var (
 	noteIDRe = regexp.MustCompile(`^([A-Za-z0-9]+-\d{3})/(\d{2})$`)
 	semverRe = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 	hashRe   = regexp.MustCompile(`^blake3:[a-f0-9]{64}$`)
+
+	// crossRefRe finds rule references inside note content, optionally
+	// qualified with a realm ID (`dev.steerspec.core:ENT-001`, or a
+	// single-component ID such as `core:ENT-001`, per RLM-008). Group 1 is
+	// the EUID, group 2 the three-digit sequence number.
+	crossRefRe = regexp.MustCompile(`\b(?:[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*:)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
 )
+
+// relationNoteTypes are the note types whose content is expected to
+// reference other rules (checked by RL014).
+var relationNoteTypes = map[string]bool{
+	"supersedes": true,
+	"extends":    true,
+	"related":    true,
+}
 
 var validNoteTypes = map[string]bool{
 	"rationale":          true,
@@ -108,27 +123,41 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 
 // LintBytes parses raw JSON and validates the entity file.
 func (l *Linter) LintBytes(data []byte) *result.Result {
-	res, _ := l.lintBytesInternal(data)
-	return res
+	f, res := l.parseAndValidate(data)
+	if f == nil {
+		return res
+	}
+	return l.lintParsed(f, data)
 }
 
-// lintBytesInternal parses, validates, and returns both the result and the
-// parsed entity file (nil on parse failure) so callers like LintDir can
-// reuse the parsed struct without re-parsing.
-func (l *Linter) lintBytesInternal(data []byte) (*result.Result, *entity.File) {
+// parseAndValidate parses raw JSON (RL001). On failure it returns a nil
+// file and a result holding the RL001 diagnostic.
+func (l *Linter) parseAndValidate(data []byte) (*entity.File, *result.Result) {
 	res := &result.Result{}
-
-	// RL001: Valid JSON.
 	f, err := entity.Parse(data)
 	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RL001",
-			Severity: result.Error,
-			Message:  err.Error(),
-		})
-		return res, nil
+		res.Add(parseDiagnostic(err))
+		return nil, res
 	}
+	return f, res
+}
+
+// parseDiagnostic builds the RL001 diagnostic for a JSON parse failure.
+func parseDiagnostic(err error) result.Diagnostic {
+	return result.Diagnostic{
+		Module:   module,
+		Code:     "RL001",
+		Severity: result.Error,
+		Message:  err.Error(),
+	}
+}
+
+// lintParsed runs every per-file check on an already-parsed entity file.
+// data must be the raw bytes f was parsed from: RL002 (schema) and RL011
+// (hash) need them. Callers that already hold a parsed file, such as the
+// directory walker, use this to avoid parsing twice.
+func (l *Linter) lintParsed(f *entity.File, data []byte) *result.Result {
+	res := &result.Result{}
 
 	// RL002: JSON Schema validation (requires raw bytes).
 	l.checkSchema(data, res)
@@ -142,7 +171,7 @@ func (l *Linter) lintBytesInternal(data []byte) (*result.Result, *entity.File) {
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}
-	return res, f
+	return res
 }
 
 // dirEntry holds a parsed entity file from a directory scan.
@@ -158,12 +187,10 @@ func (l *Linter) LintDir(dir string) *result.Result {
 }
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
-// and runs cross-entity reference checks (RL012).
+// and runs cross-entity reference checks (RL012, RL014).
 // When the realm declares sub_realms, each sub-realm directory is linted
-// separately, and RL012 cross-references are validated globally across the
+// separately, and cross-references are validated globally across the
 // parent realm and all sub-realms.
-// TODO: Add RL014 for cross-entity relation note references once the
-// cross-entity reference format in note content is well-defined.
 func (l *Linter) LintRealm(dir string) *result.Result {
 	// Try to load realm.json to check for sub_realms.
 	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
@@ -178,7 +205,7 @@ func (l *Linter) LintRealm(dir string) *result.Result {
 }
 
 // lintRealmWithSubs lints the parent realm and each sub-realm separately,
-// then validates RL012 cross-references across the combined rule ID set.
+// then validates RL012/RL014 cross-references across the combined rule ID set.
 func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Result {
 	res := &result.Result{}
 
@@ -195,7 +222,7 @@ func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Resul
 		l.lintDirCollect(subDir, res, allRuleIDs, &allParsed)
 	}
 
-	// Cross-file supersedes/relation references (RL012) across entire realm tree.
+	// Cross-file supersedes/relation references (RL012, RL014) across entire realm tree.
 	for _, de := range allParsed {
 		checkCrossRefs(de.file, de.path, allRuleIDs, res, l.cfg.Strict)
 	}
@@ -214,21 +241,16 @@ func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[s
 					Message: fmt.Sprintf("reading file: %s", parseErr), Path: fpath,
 				})
 			} else {
-				fileRes, _ := l.lintBytesInternal(data)
-				for _, d := range fileRes.Diagnostics {
-					if d.Path == "" {
-						d.Path = fpath
-					} else {
-						d.Path = fpath + ": " + d.Path
-					}
-					res.Add(d)
-				}
+				// RL001: the walker already tried entity.Parse; report its error.
+				d := parseDiagnostic(parseErr)
+				d.Path = fpath
+				res.Add(d)
 			}
 			return nil
 		}
 
-		fileRes, _ := l.lintBytesInternal(data)
-		for _, d := range fileRes.Diagnostics {
+		// Reuse the walker's parsed file instead of parsing a second time.
+		for _, d := range l.lintParsed(ef, data).Diagnostics {
 			if d.Path == "" {
 				d.Path = fpath
 			} else {
@@ -251,8 +273,6 @@ func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[s
 
 // lintDir is the internal implementation used by LintDir and LintRealm; recursion
 // behavior is controlled via the provided entity.WalkOption values.
-// TODO(#54): lintBytesInternal re-parses JSON that the walker already parsed.
-// Split schema/hash checks from parsing to reuse the walker-provided *File.
 func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
 	allRuleIDs := make(map[string]string)
@@ -260,7 +280,7 @@ func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Resu
 
 	l.lintDirCollect(dir, res, allRuleIDs, &parsed, walkOpts...)
 
-	// Second pass: cross-file supersedes/relation references (RL012).
+	// Second pass: cross-file supersedes/relation references (RL012, RL014).
 	for _, de := range parsed {
 		checkCrossRefs(de.file, de.path, allRuleIDs, res, l.cfg.Strict)
 	}
@@ -607,7 +627,8 @@ func checkSemver(ef *entity.File, res *result.Result, path string) {
 	}
 }
 
-// RL012: Cross-file supersedes/relation references.
+// RL012: Cross-file supersedes references.
+// RL014: Rule references in relation notes (supersedes, extends, related).
 func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string, res *result.Result, strict bool) {
 	sev := result.Warning
 	if strict {
@@ -630,8 +651,42 @@ func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string,
 		}
 	}
 
+	checkNoteCrossRefs(ef, fpath, allRuleIDs, res, sev)
+
 	for i := range ef.SubEntities {
 		checkCrossRefs(&ef.SubEntities[i], fpath, allRuleIDs, res, strict)
+	}
+}
+
+// checkNoteCrossRefs implements RL014: every unqualified rule reference
+// (<EUID>-<NNN>) found in the content of a supersedes/extends/related note
+// must resolve to a rule in the scanned set. Qualified references
+// (<realm-id>:<EUID>-<NNN>) point outside this realm and are not checked.
+func checkNoteCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string, res *result.Result, sev result.Severity) {
+	for _, n := range ef.Notes {
+		if !relationNoteTypes[n.Type] {
+			continue
+		}
+		reported := make(map[string]bool)
+		for _, m := range crossRefRe.FindAllStringSubmatch(n.Content, -1) {
+			if strings.Contains(m[0], ":") {
+				continue // cross-realm reference; resolved by realm-resolve
+			}
+			ref := m[1] + "-" + m[2]
+			if reported[ref] {
+				continue
+			}
+			if _, ok := allRuleIDs[ref]; !ok {
+				reported[ref] = true
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RL014",
+					Severity: sev,
+					Message:  fmt.Sprintf("note %s (%s) references %q which was not found in scanned files", n.ID, n.Type, ref),
+					Path:     fpath,
+				})
+			}
+		}
 	}
 }
 

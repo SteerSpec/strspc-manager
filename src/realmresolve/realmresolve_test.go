@@ -195,38 +195,6 @@ func TestResolve_EmptySource(t *testing.T) {
 	}
 }
 
-func TestResolve_RemoteSourceSkipped(t *testing.T) {
-	rf := &entity.RealmFile{
-		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
-		Dependencies: []entity.RealmDep{
-			{RealmID: "dev.remote", Version: "1.0.0", Source: "github://org/repo"},
-		},
-	}
-	baseDir := absTestdata(t, "parent")
-
-	resolver := New()
-	got, res := resolver.Resolve(context.Background(), rf, baseDir)
-
-	// Should not produce errors, only info.
-	if !res.OK() {
-		t.Fatalf("expected no errors, got: %v", res.Diagnostics)
-	}
-	if len(got.Dependencies) != 0 {
-		t.Errorf("expected 0 resolved dependencies (remote skipped), got %d", len(got.Dependencies))
-	}
-
-	// Should have an info diagnostic (no error code).
-	var hasInfo bool
-	for _, d := range res.Diagnostics {
-		if d.Severity == result.Info {
-			hasInfo = true
-		}
-	}
-	if !hasInfo {
-		t.Fatal("expected Info diagnostic for skipped remote source")
-	}
-}
-
 func TestResolve_AbsolutePathRejected(t *testing.T) {
 	rf := &entity.RealmFile{
 		Realm: entity.RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"},
@@ -428,5 +396,84 @@ func TestResolve_ContextCancellation(t *testing.T) {
 	}
 	if !hasDiagCode(res, "RR000") {
 		t.Errorf("expected RR000 diagnostic for cancelled context, got: %v", res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_OwnDependencyResolvedAndChecked(t *testing.T) {
+	rf := loadTestRealm(t, "sub-with-own-dep")
+	baseDir := absTestdata(t, "sub-with-own-dep")
+
+	got, res := New().Resolve(context.Background(), rf, baseDir)
+
+	// The parent declares no deps; the sub-realm's own dep (dev.dep.b)
+	// must be resolved relative to the sub-realm directory ...
+	if len(got.SubRealms) != 1 {
+		t.Fatalf("expected 1 sub-realm, got %d", len(got.SubRealms))
+	}
+	sub := got.SubRealms[0]
+	if len(sub.Dependencies) != 1 || sub.Dependencies[0].Realm.Realm.ID != "dev.dep.b" {
+		t.Fatalf("expected sub-realm dep dev.dep.b resolved, got %+v", sub.Dependencies)
+	}
+	if len(sub.Realm.Dependencies) != 1 {
+		t.Errorf("effective dep list should have 1 entry, got %d", len(sub.Realm.Dependencies))
+	}
+	// ... and its EUIDs checked against the sub-realm (DEP collides).
+	if !hasDiagCode(res, "RR011") {
+		t.Errorf("expected RR011 for sub-realm vs own dependency collision, got: %v", res.Diagnostics)
+	}
+	// The parent itself has no dependencies.
+	if len(got.Dependencies) != 0 {
+		t.Errorf("parent should have 0 deps, got %d", len(got.Dependencies))
+	}
+}
+
+func TestResolve_SubRealm_InheritsParentDependencyResolution(t *testing.T) {
+	rf := loadTestRealm(t, "sub-collision-dep")
+	baseDir := absTestdata(t, "sub-collision-dep")
+
+	got, res := New().Resolve(context.Background(), rf, baseDir)
+
+	if len(got.SubRealms) != 1 || len(got.Dependencies) != 1 {
+		t.Fatalf("expected 1 sub-realm and 1 parent dep, got %d/%d", len(got.SubRealms), len(got.Dependencies))
+	}
+	sub := got.SubRealms[0]
+	if len(sub.Dependencies) != 1 || sub.Dependencies[0] != got.Dependencies[0] {
+		t.Errorf("sub-realm should reuse the parent's resolved dependency, got %+v", sub.Dependencies)
+	}
+	// Exactly one RR011 (sub DEP vs inherited dep DEP); no duplicate reports.
+	count := 0
+	for _, d := range res.Diagnostics {
+		if d.Code == "RR011" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 RR011, got %d: %v", count, res.Diagnostics)
+	}
+}
+
+func TestResolve_SubRealm_OwnDepVsInheritedDepIsRR005(t *testing.T) {
+	rf := loadTestRealm(t, "sub-dep-vs-inherited-dep")
+	baseDir := absTestdata(t, "sub-dep-vs-inherited-dep")
+
+	got, res := New().Resolve(context.Background(), rf, baseDir)
+
+	// Parent dep dev.dep.a and the sub-realm's own dep dev.dep.b both
+	// define DEP; the sub-realm itself does not, so RR011 must not fire
+	// but the dependency-vs-dependency collision must (RR005).
+	if len(got.SubRealms) != 1 || len(got.SubRealms[0].Dependencies) != 2 {
+		t.Fatalf("expected 1 sub-realm with 2 effective deps, got %+v", got.SubRealms)
+	}
+	if hasDiagCode(res, "RR011") {
+		t.Errorf("unexpected RR011: %v", res.Diagnostics)
+	}
+	count := 0
+	for _, d := range res.Diagnostics {
+		if d.Code == "RR005" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 RR005, got %d: %v", count, res.Diagnostics)
 	}
 }

@@ -164,10 +164,28 @@ func TestResolve_Recursive(t *testing.T) {
 
 func TestResolve_UnsupportedScheme(t *testing.T) {
 	_, err := New([]SourceEntry{
+		{Source: "s3://bucket/rules", Scope: ScopeGlobal},
+	})
+	if err == nil {
+		t.Error("expected error for s3:// scheme")
+	}
+}
+
+func TestResolve_GitHubRequiresCacheDir(t *testing.T) {
+	_, err := New([]SourceEntry{
 		{Source: "github://SteerSpec/rules@v1", Scope: ScopeGlobal},
 	})
 	if err == nil {
-		t.Error("expected error for github:// scheme")
+		t.Error("expected error for github:// source without cache dir")
+	}
+}
+
+func TestResolve_GitHubInvalidURI(t *testing.T) {
+	_, err := New([]SourceEntry{
+		{Source: "github://SteerSpec/rules", Scope: ScopeGlobal},
+	}, WithCacheDir(t.TempDir()))
+	if err == nil {
+		t.Error("expected error for github:// source without @ref")
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -23,17 +24,28 @@ type ResolveResult struct {
 	SubRealms    []*ResolvedRealm
 }
 
-// ResolvedRealm represents a single resolved dependency.
+// ResolvedRealm represents a single resolved dependency or sub-realm.
 type ResolvedRealm struct {
 	Realm *entity.RealmFile
 	Dir   string            // absolute path to resolved realm directory
 	EUIDs map[string]string // EUID → absolute file path
+
+	// Dependencies holds the resolved effective dependencies of a
+	// sub-realm (inherited from the parent plus its own). Nil for
+	// dependencies themselves.
+	Dependencies []*ResolvedRealm
 }
 
 // Config holds options for the RealmResolver.
 type Config struct {
-	CacheTTL time.Duration // cache time-to-live (default: 24h)
-	CacheDir string        // path to cache directory
+	CacheTTL time.Duration // cache time-to-live for mutable remote refs such as @latest (default: 24h)
+	CacheDir string        // path to cache directory; remote dependencies land under <CacheDir>/github/
+
+	// Fetcher downloads github:// dependency sources. When nil and CacheDir
+	// is set, New builds one from CacheDir, CacheTTL and the
+	// GITHUB_TOKEN/GH_TOKEN environment variables. When nil and no cache
+	// dir is configured, remote dependencies fail with RR012.
+	Fetcher *remote.Fetcher
 }
 
 // Option configures the RealmResolver.
@@ -49,6 +61,12 @@ func WithCacheDir(dir string) Option {
 	return func(c *Config) { c.CacheDir = dir }
 }
 
+// WithRemoteFetcher supplies the fetcher used for github:// dependency
+// sources, overriding the one New would build from CacheDir/CacheTTL.
+func WithRemoteFetcher(f *remote.Fetcher) Option {
+	return func(c *Config) { c.Fetcher = f }
+}
+
 // RealmResolver resolves Realm dependencies.
 type RealmResolver struct {
 	cfg Config
@@ -59,6 +77,13 @@ func New(opts ...Option) *RealmResolver {
 	cfg := Config{CacheTTL: 24 * time.Hour}
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+	if cfg.Fetcher == nil && cfg.CacheDir != "" {
+		cfg.Fetcher = &remote.Fetcher{
+			Token:    remote.TokenFromEnv(),
+			CacheDir: cfg.CacheDir,
+			TTL:      cfg.CacheTTL,
+		}
 	}
 	return &RealmResolver{cfg: cfg}
 }
@@ -91,6 +116,8 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 
 	// Track all dependency EUIDs for dep-vs-dep collision detection.
 	allDepEUIDs := make(map[string]string) // EUID → realm_id
+	// Resolved parent dependencies by realm_id, reused by sub-realms.
+	parentResolved := make(map[string]*ResolvedRealm)
 
 	for _, dep := range rf.Dependencies {
 		if err := ctx.Err(); err != nil {
@@ -116,59 +143,11 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			continue
 		}
 
-		// RR001: empty source.
-		if dep.Source == "" {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR001",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("dependency %q has empty source", dep.RealmID),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// RR001: absolute paths not allowed.
-		if filepath.IsAbs(dep.Source) {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR001",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("dependency %q has absolute source path %q; only relative paths are allowed", dep.RealmID, dep.Source),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// Skip remote sources (future Phase 2).
-		if strings.Contains(dep.Source, "://") {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Severity: result.Info,
-				Message:  fmt.Sprintf("skipping remote dependency %q (source %q): remote resolution not yet supported", dep.RealmID, dep.Source),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		// Resolve local path.
-		resolvedDir := filepath.Join(baseDir, dep.Source)
-		resolvedDir, err := filepath.Abs(resolvedDir)
-		if err != nil {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RR002",
-				Severity: result.Error,
-				Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
-				Path:     baseDir,
-			})
-			continue
-		}
-
-		resolved := resolveLocalDep(ctx, dep, resolvedDir, res)
+		resolved := r.resolveDep(ctx, dep, baseDir, res)
 		if resolved == nil {
 			continue
 		}
+		resolvedDir := resolved.Dir
 
 		// RR005: EUID collisions — parent vs dependency.
 		for euid, depPath := range resolved.EUIDs {
@@ -197,6 +176,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			allDepEUIDs[euid] = dep.RealmID
 		}
 
+		parentResolved[dep.RealmID] = resolved
 		out.Dependencies = append(out.Dependencies, resolved)
 	}
 
@@ -325,34 +305,181 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			}
 		}
 
-		// RR011: EUID collision — sub-realm vs dependency.
-		// TODO: Once sub-realm dep resolution is implemented (Phase 2-4),
-		// this should check against the sub-realm's effective dep EUIDs
-		// (after mergeDepLists), not the parent's dep EUIDs.
-		for euid, subPath := range subEUIDs {
-			if depRealm, ok := allDepEUIDs[euid]; ok {
-				res.Add(result.Diagnostic{
-					Module:   module,
-					Code:     "RR011",
-					Severity: result.Error,
-					Message:  fmt.Sprintf("EUID collision: %q exists in sub-realm %q (%s) and dependency %q", euid, subRealmName, subPath, depRealm),
-					Path:     subDir,
-				})
+		// Dependency inheritance: merge parent deps with sub-realm's own,
+		// then resolve the effective list. Inherited deps reuse the parent's
+		// resolution; the sub-realm's own deps are resolved relative to its
+		// directory.
+		ownIDs := make(map[string]struct{}, len(subRF.Dependencies))
+		for _, d := range subRF.Dependencies {
+			ownIDs[d.RealmID] = struct{}{}
+		}
+		subRF.Dependencies = mergeDepLists(rf.Dependencies, subRF.Dependencies)
+		subDeps := r.resolveSubRealmDeps(ctx, subRF, subDir, ownIDs, parentResolved, res)
+
+		// RR011: EUID collision — sub-realm vs its effective dependencies.
+		for _, dep := range subDeps {
+			for euid, depPath := range dep.EUIDs {
+				if subPath, ok := subEUIDs[euid]; ok {
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RR011",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("EUID collision: %q exists in sub-realm %q (%s) and dependency %q (%s)", euid, subRealmName, subPath, dep.Realm.Realm.ID, depPath),
+						Path:     subDir,
+					})
+				}
 			}
 		}
 
-		// Dependency inheritance: merge parent deps with sub-realm's own.
-		effectiveDeps := mergeDepLists(rf.Dependencies, subRF.Dependencies)
-		subRF.Dependencies = effectiveDeps
-
 		out.SubRealms = append(out.SubRealms, &ResolvedRealm{
-			Realm: subRF,
-			Dir:   subDir,
-			EUIDs: subEUIDs,
+			Realm:        subRF,
+			Dir:          subDir,
+			EUIDs:        subEUIDs,
+			Dependencies: subDeps,
 		})
 	}
 
 	return out, res
+}
+
+// resolveSubRealmDeps resolves a sub-realm's effective (merged) dependency
+// list. Dependencies inherited from the parent (realm IDs not in ownIDs)
+// reuse the parent's resolution and are skipped when the parent failed to
+// resolve them, avoiding duplicate diagnostics. Dependencies the sub-realm
+// declares itself (including overrides) are resolved against subDir and
+// checked for EUID collisions with the dependencies already collected
+// (RR005); parent-only collisions are reported once by the parent loop.
+func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.RealmFile, subDir string, ownIDs map[string]struct{}, parentResolved map[string]*ResolvedRealm, res *result.Result) []*ResolvedRealm {
+	var deps []*ResolvedRealm
+	for _, dep := range subRF.Dependencies {
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR000",
+				Severity: result.Error,
+				Message:  err.Error(),
+				Path:     subDir,
+			})
+			return deps
+		}
+		if _, own := ownIDs[dep.RealmID]; !own {
+			if parent, ok := parentResolved[dep.RealmID]; ok {
+				deps = append(deps, parent)
+			}
+			continue
+		}
+		if dep.RealmID == subRF.Realm.ID {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR006",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("self-referencing dependency: realm_id %q matches sub-realm", dep.RealmID),
+				Path:     subDir,
+			})
+			continue
+		}
+		resolved := r.resolveDep(ctx, dep, subDir, res)
+		if resolved == nil {
+			continue
+		}
+		// RR005: EUID collisions — own dependency vs the effective
+		// dependencies collected so far (inherited first, then own).
+		for euid, depPath := range resolved.EUIDs {
+			for _, prev := range deps {
+				if _, ok := prev.EUIDs[euid]; ok {
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RR005",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("EUID collision: %q exists in dependency %q and dependency %q (%s) of sub-realm %q", euid, prev.Realm.Realm.ID, dep.RealmID, depPath, subRF.Realm.ID),
+						Path:     resolved.Dir,
+					})
+					break
+				}
+			}
+		}
+		deps = append(deps, resolved)
+	}
+	return deps
+}
+
+// resolveDep validates a dependency's source and resolves it, locally or
+// through the remote fetcher. Relative paths are taken against baseDir.
+// Returns nil when the dependency cannot be resolved (diagnostics added).
+func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, baseDir string, res *result.Result) *ResolvedRealm {
+	// RR001: empty source.
+	if dep.Source == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has empty source", dep.RealmID),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
+	// RR001: absolute paths not allowed.
+	if filepath.IsAbs(dep.Source) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has absolute source path %q; only relative paths are allowed", dep.RealmID, dep.Source),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
+	// Remote source: fetch into the cache, then treat as local.
+	if strings.Contains(dep.Source, "://") {
+		dir, err := r.fetchRemote(ctx, dep)
+		if err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR012",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("dependency %q: %v", dep.RealmID, err),
+				Path:     dep.Source,
+			})
+			return nil
+		}
+		return resolveLocalDep(ctx, dep, dir, res)
+	}
+
+	// Resolve local path.
+	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
+	if err != nil {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR002",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
+			Path:     baseDir,
+		})
+		return nil
+	}
+	return resolveLocalDep(ctx, dep, resolvedDir, res)
+}
+
+// fetchRemote materialises a remote dependency source in the cache and
+// returns the local directory holding it.
+func (r *RealmResolver) fetchRemote(ctx context.Context, dep entity.RealmDep) (string, error) {
+	if !strings.HasPrefix(dep.Source, remote.Scheme) {
+		return "", fmt.Errorf("unsupported remote source scheme in %q (only %s is supported)", dep.Source, remote.Scheme)
+	}
+	ref, err := remote.ParseGitHub(dep.Source)
+	if err != nil {
+		return "", err
+	}
+	if r.cfg.Fetcher == nil {
+		return "", fmt.Errorf("remote source %s requires a cache directory (WithCacheDir) or fetcher (WithRemoteFetcher)", ref.String())
+	}
+	dir, err := r.cfg.Fetcher.EnsureDir(ctx, ref)
+	if err != nil {
+		return "", fmt.Errorf("fetching %s: %w", ref.String(), err)
+	}
+	return dir, nil
 }
 
 // mergeDepLists merges parent and child dependency lists.
