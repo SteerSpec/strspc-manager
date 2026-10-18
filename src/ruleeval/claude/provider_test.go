@@ -393,6 +393,40 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "two_chunk_missing_verdict",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// Same two-chunk split as above, but the first chunk's response omits
+			// the rule entirely (an empty verdicts array is schema-valid). The
+			// violation from the second chunk must still win, and the omission
+			// must be reported so the evaluator warns and does not cache.
+			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
+			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1081 },
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if strings.Contains(body, "src/cmd/sync.go") {
+					writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{
+						RuleID: "CMD-001", Verdict: "violated", Confidence: 0.9, Explanation: "sync command lacks Long.",
+						Evidence: []locationJSON{{File: "src/cmd/sync.go", Line: 12, Excerpt: "return &cobra.Command{"}},
+					}), nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", verdictsText(), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Fatalf("expected 2 requests, got %d", rt.Requests())
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("merged verdict = %+v, want violated", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-001") {
+					t.Fatalf("expected one error reporting the omitted verdict for CMD-001, got %v", resp.Errors)
+				}
+			},
+		},
+		{
 			name:   "oversize_hunk",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong + bigHunkDiff("src/generated/big.go", 60),

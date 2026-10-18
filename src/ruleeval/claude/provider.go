@@ -258,12 +258,24 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		for _, in := range groups[it.group] {
 			requested[in.Rule.ID] = true
 		}
+		seen := map[string]bool{}
 		for _, v := range results[i].Verdicts {
 			if !requested[v.RuleID] {
 				out.Errors = append(out.Errors, fmt.Errorf("provider returned a verdict for unrequested rule %q (ignored)", v.RuleID))
 				continue
 			}
+			seen[v.RuleID] = true
 			mergeVerdict(out.Verdicts, v.RuleID, v.toResponse())
+		}
+		// Every chunk must answer for every rule it was asked about. An
+		// omission (an empty verdicts array is schema-valid) means part of
+		// the diff was never judged, so report it rather than let another
+		// chunk's verdict stand as complete.
+		for _, in := range groups[it.group] {
+			if !seen[in.Rule.ID] {
+				out.Errors = append(out.Errors, fmt.Errorf(
+					"provider returned no verdict for rule %s in diff chunk %d of %d", in.Rule.ID, it.chunk+1, len(chunks)))
+			}
 		}
 	}
 	return out, nil
