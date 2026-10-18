@@ -662,3 +662,25 @@ type failingTransport struct{}
 func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return nil, errors.New("unexpected network call")
 }
+
+// A rule whose body alone exceeds the rules budget is reported instead of
+// zeroing the diff budget and rejecting every hunk; no request is made.
+func TestEvaluateBatch_RuleTooLargeForBudget(t *testing.T) {
+	p, err := claude.New(claude.Config{APIKey: "k", MaxInputTokens: 1081, HTTPClient: &http.Client{Transport: failingTransport{}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	huge := rule("CMD-002", strings.Repeat("every command must ", 200))
+	resp, err := p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{
+		EntityID: "CMD", Inputs: []ruleeval.RuleInput{huge}, Diff: diffWithLong,
+	})
+	if err != nil {
+		t.Fatalf("oversize rule must not fail the batch: %v", err)
+	}
+	if len(resp.Verdicts) != 0 {
+		t.Errorf("no verdict expected, got %v", resp.Verdicts)
+	}
+	if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-002") || !strings.Contains(resp.Errors[0].Error(), "rules budget") {
+		t.Fatalf("expected one rules-budget error naming CMD-002, got %v", resp.Errors)
+	}
+}

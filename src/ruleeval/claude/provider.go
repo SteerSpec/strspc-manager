@@ -196,7 +196,20 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		return out, nil
 	}
 
-	groups := groupRules(req.Inputs, p.cfg.MaxRulesPerRequest)
+	// Tokens left once the system prompt and framing are paid for are shared
+	// between the rules block and the diff. Rules get at most half so that
+	// a token-heavy group can never starve the diff of its budget.
+	available := p.cfg.MaxInputTokens - estimateTokens(prompt.System()) - requestOverheadTokens
+	rulesBudget := available / 2
+	groups, tooLarge := groupRules(req.Inputs, p.cfg.MaxRulesPerRequest, rulesBudget)
+	for _, in := range tooLarge {
+		out.Errors = append(out.Errors, fmt.Errorf(
+			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
+			in.Rule.ID, ruleTokens(in), rulesBudget))
+	}
+	if len(groups) == 0 {
+		return out, nil
+	}
 	rulesBlocks := make([]string, len(groups))
 	maxRulesTokens := 0
 	for i, g := range groups {
@@ -205,7 +218,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 			maxRulesTokens = n
 		}
 	}
-	budgetTokens := p.cfg.MaxInputTokens - estimateTokens(prompt.System()) - maxRulesTokens - requestOverheadTokens
+	budgetTokens := available - maxRulesTokens
 	chunks, oversize := chunkDiff(req.Diff, budgetTokens*3)
 	for _, o := range oversize {
 		out.Errors = append(out.Errors, fmt.Errorf(
@@ -306,13 +319,37 @@ func firstError(errs []error) error {
 	return cancelled
 }
 
-func groupRules(inputs []ruleeval.RuleInput, size int) [][]ruleeval.RuleInput {
-	var groups [][]ruleeval.RuleInput
-	for start := 0; start < len(inputs); start += size {
-		end := min(start+size, len(inputs))
-		groups = append(groups, inputs[start:end])
+// ruleTokens estimates the prompt cost of one rule with its notes.
+func ruleTokens(in ruleeval.RuleInput) int {
+	return estimateTokens(prompt.RulesBlock([]ruleeval.RuleInput{in}))
+}
+
+// groupRules packs inputs, in order, into groups of at most maxCount rules
+// whose estimated prompt size stays within tokenBudget. A single rule that
+// exceeds the budget on its own cannot be sent and is returned in tooLarge.
+func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups [][]ruleeval.RuleInput, tooLarge []ruleeval.RuleInput) {
+	var cur []ruleeval.RuleInput
+	curTokens := 0
+	flush := func() {
+		if len(cur) > 0 {
+			groups = append(groups, cur)
+			cur, curTokens = nil, 0
+		}
 	}
-	return groups
+	for _, in := range inputs {
+		n := ruleTokens(in)
+		if n > tokenBudget {
+			tooLarge = append(tooLarge, in)
+			continue
+		}
+		if len(cur) >= maxCount || curTokens+n > tokenBudget {
+			flush()
+		}
+		cur = append(cur, in)
+		curTokens += n
+	}
+	flush()
+	return groups, tooLarge
 }
 
 // Wire format of the structured response (see prompt.ResponseSchema).

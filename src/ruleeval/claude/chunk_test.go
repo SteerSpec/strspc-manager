@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 )
 
@@ -198,5 +199,39 @@ func TestFirstError_PrefersCauseOverCancellation(t *testing.T) {
 	}
 	if got := firstError([]error{nil, nil}); got != nil {
 		t.Errorf("no errors → nil, got %v", got)
+	}
+}
+
+func ruleWithBody(id string, n int) ruleeval.RuleInput {
+	return ruleeval.RuleInput{Rule: entity.Rule{ID: id, Revision: 1, State: "I", Body: strings.Repeat("x", n)}}
+}
+
+func TestGroupRules_ByCountAndTokens(t *testing.T) {
+	small := []ruleeval.RuleInput{ruleWithBody("S-001", 30), ruleWithBody("S-002", 30), ruleWithBody("S-003", 30)}
+	groups, tooLarge := groupRules(small, 2, 1<<20)
+	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 || len(groups[1]) != 1 {
+		t.Fatalf("count split: groups=%d tooLarge=%d", len(groups), len(tooLarge))
+	}
+
+	// Each rule costs ~ruleTokens; a budget that fits two but not three
+	// splits on tokens even though the count limit would allow all three.
+	per := ruleTokens(small[0])
+	groups, tooLarge = groupRules(small, 10, per*2)
+	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 {
+		t.Fatalf("token split: groups=%v tooLarge=%d", len(groups), len(tooLarge))
+	}
+
+	// A rule bigger than the whole budget is reported, the others proceed.
+	mixed := []ruleeval.RuleInput{ruleWithBody("B-001", 5000), small[0], small[1]}
+	groups, tooLarge = groupRules(mixed, 10, per*2)
+	if len(tooLarge) != 1 || tooLarge[0].Rule.ID != "B-001" {
+		t.Fatalf("expected B-001 too large, got %+v", tooLarge)
+	}
+	if len(groups) != 1 || len(groups[0]) != 2 {
+		t.Fatalf("remaining rules should form one group, got %d groups", len(groups))
+	}
+
+	if groups, tooLarge = groupRules(nil, 10, 100); len(groups) != 0 || len(tooLarge) != 0 {
+		t.Fatal("empty input → no groups")
 	}
 }
