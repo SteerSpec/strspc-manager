@@ -99,6 +99,8 @@ Rules are organized into **Realms** — namespaces where Entity Unique Identifie
 - `strspc-rules/rules/core/` — the **core** Realm (ships with SteerSpec)
 - An org spec repo — an **organizational** Realm
 - `./rules/` in a consumer project — a **local** Realm
+- `rules/` in this repository — `dev.steerspec.manager`, the engine's own rules,
+  validated and evaluated in CI with the released CLI
 
 See [strspc-rules#19](https://github.com/SteerSpec/strspc-rules/issues/19)
 for the full Realm architecture.
