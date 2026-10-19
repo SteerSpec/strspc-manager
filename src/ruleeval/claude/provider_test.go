@@ -504,6 +504,82 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "detail_request_fails",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffMissingLong,
+			// The verdict request succeeds; the detail request is truncated.
+			// The violation must survive without its explanation, reported in
+			// Errors so the evaluator does not cache the batch.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isDetailRequest(body) {
+					writeJSON(w, 200, message("max_tokens", `{"explanation":"newLintCmd`, nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected a verdict and a detail request, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("verdict = %+v, want violated kept despite the detail failure", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-001") || !errors.Is(resp.Errors[0], claude.ErrTruncated) {
+					t.Fatalf("expected one error naming CMD-001 wrapping ErrTruncated, got %v", resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "bad_request_workspace",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error",
+					"This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if !errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want ErrUnavailable for an organisation-level key", err)
+				}
+				if rt.Requests() != 1 {
+					t.Errorf("400 must not be retried; transport saw %d requests", rt.Requests())
+				}
+			},
+		},
+		{
+			name:   "bad_request_api_key",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error", "Invalid API key format."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if !errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want ErrUnavailable for a rejected key", err)
+				}
+			},
+		},
+		{
+			name:   "bad_request_other",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error", "output_config.format.schema: The compiled grammar is too large."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err == nil || errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want an ordinary request failure, not ErrUnavailable", err)
+				}
+				if !strings.Contains(err.Error(), "HTTP 400") {
+					t.Errorf("error should carry the status, got %q", err)
+				}
+			},
+		},
+		{
 			name:   "unauthorized",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,

@@ -277,6 +277,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	}
 
 	for i, it := range items {
+		out.Errors = append(out.Errors, results[i].Errors...)
 		requested := map[string]bool{}
 		for _, in := range groups[it.group] {
 			requested[in.Rule.ID] = true
@@ -363,9 +364,11 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 }
 
 // wireResponse is the merged result of one chunk×group request: a verdict
-// per rule, with details for the violated ones.
+// per rule, with details for the violated ones. Errors lists violated rules
+// whose detail request failed recoverably; their verdict is kept.
 type wireResponse struct {
 	Verdicts []wireVerdict
+	Errors   []error
 }
 
 type wireVerdict struct {
@@ -442,10 +445,17 @@ func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.Rule
 		wv := wireVerdict{RuleID: id, Verdict: v}
 		if ruleeval.Verdict(v) == ruleeval.Violated {
 			d, err := p.detail(ctx, chunk, byID[id])
-			if err != nil {
+			switch {
+			case err == nil:
+				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
+			case errors.Is(err, ruleeval.ErrUnavailable) || ctx.Err() != nil:
 				return nil, err
+			default:
+				// The violation stands even without its explanation: dropping
+				// it would let an Implemented-rule violation pass as a
+				// warning. The error keeps the batch out of the cache.
+				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged violated but its details could not be retrieved: %w", id, err))
 			}
-			wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
 		}
 		out.Verdicts = append(out.Verdicts, wv)
 	}

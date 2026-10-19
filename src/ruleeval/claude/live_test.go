@@ -40,7 +40,8 @@ func TestLive_Smoke(t *testing.T) {
 	}
 	u := p.Usage()
 	t.Logf("usage=%+v", u)
-	if u.Requests != 1 || u.InputTokens == 0 {
+	// A violated verdict costs two requests: the verdicts, then its details.
+	if u.Requests != 2 || u.InputTokens == 0 {
 		t.Errorf("usage not accumulated: %+v", u)
 	}
 }

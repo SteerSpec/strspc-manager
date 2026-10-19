@@ -13,9 +13,9 @@
           "headers": {
             "anthropic-ratelimit-requests-remaining": "9999",
             "content-type": "application/json",
-            "request-id": "req_011CgCEgppqSpK5RPi9d7mK2"
+            "request-id": "req_011CgCFTBMaoSA12DUwhZ4KZ"
           },
-          "body": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011CgCEgqEeUYb1NSn5vSvrj\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"confidence\\\":0.97,\\\"evidence\\\":[{\\\"excerpt\\\":\\\"Short: \\\\\\\"Lint entity files\\\\\\\",\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":15}],\\\"explanation\\\":\\\"The newly added cobra.Command in newLintCmd sets only Use and Short and omits the required Long description, violating CMD-001 for a Go file under src/cmd/.\\\"}\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":167,\"cache_creation_input_tokens\":1435,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":1435,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":121,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}"
+          "body": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011CgCFTBfCPC2UxGoMJxhvn\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"confidence\\\":0.97,\\\"evidence\\\":[{\\\"excerpt\\\":\\\"Short: \\\\\\\"Lint entity files\\\\\\\",\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":15},{\\\"excerpt\\\":\\\"return \u0026cobra.Command{\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":12}],\\\"explanation\\\":\\\"The diff adds newLintCmd in src/cmd/lint.go, which constructs a cobra.Command with only Use and Short set. No Long description is provided, which CMD-001 requires for every cobra command under src/cmd/.\\\"}\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":167,\"cache_creation_input_tokens\":1435,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":1435,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":176,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}"
         }
       ]
     },
@@ -31,9 +31,9 @@
           "headers": {
             "anthropic-ratelimit-requests-remaining": "9999",
             "content-type": "application/json",
-            "request-id": "req_011CgCEgidmFwEKg7jWUjpUd"
+            "request-id": "req_011CgCFT71Pwe3KouXjFVi4n"
           },
-          "body": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011CgCEgj6o4VXK4yb2rKA59\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"CMD-001\\\":\\\"violated\\\"}\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":126,\"cache_creation_input_tokens\":220,\"cache_read_input_tokens\":973,\"cache_creation\":{\"ephemeral_5m_input_tokens\":220,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":15,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}"
+          "body": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011CgCFT7QxZyLqRPN6JthfP\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"CMD-001\\\":\\\"violated\\\"}\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":126,\"cache_creation_input_tokens\":220,\"cache_read_input_tokens\":973,\"cache_creation\":{\"ephemeral_5m_input_tokens\":220,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":15,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}"
         }
       ]
     }
