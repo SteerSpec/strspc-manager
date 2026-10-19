@@ -273,7 +273,7 @@ func TestRebaseOnOrigin(t *testing.T) {
 	root := filepath.Join(string(filepath.Separator), "cache", "cli")
 	cases := []struct {
 		name, source, base, want string
-		escapes            bool
+		escapes                  bool
 	}{
 		{"sibling from root", "../core/", root, "github://o/r@v1/rules/core", false},
 		{"sibling from child", "../../core/", filepath.Join(root, "child"), "github://o/r@v1/rules/core", false},
