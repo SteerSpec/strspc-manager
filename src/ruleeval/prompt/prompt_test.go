@@ -79,8 +79,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v2" {
-		t.Fatalf("Version = %q, want v2", prompt.Version)
+	if prompt.Version != "v3" {
+		t.Fatalf("Version = %q, want v3", prompt.Version)
 	}
 }
 
@@ -144,50 +144,76 @@ func TestRulesBlock_Empty(t *testing.T) {
 	}
 }
 
-func TestResponseSchema_Golden(t *testing.T) {
-	s := prompt.ResponseSchema()
+func TestVerdictSchema_Golden(t *testing.T) {
+	s := prompt.VerdictSchema([]string{"CMD-001", "ERR-002"})
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	golden(t, "response_schema", string(b)+"\n")
+	golden(t, "verdict_schema", string(b)+"\n")
+	assertStrict(t, "$", s)
 
-	// Every object must be strict: additionalProperties false and all
-	// properties required. Verdict is a closed enum.
-	var walk func(path string, node map[string]any)
-	walk = func(path string, node map[string]any) {
-		if node["type"] == "object" {
-			if ap, ok := node["additionalProperties"].(bool); !ok || ap {
-				t.Errorf("%s: additionalProperties must be false", path)
-			}
-			props, _ := node["properties"].(map[string]any)
-			req, _ := node["required"].([]string)
-			if len(req) != len(props) {
-				t.Errorf("%s: required (%d) must list every property (%d)", path, len(req), len(props))
-			}
-			for name, p := range props {
-				if pm, ok := p.(map[string]any); ok {
-					walk(path+"."+name, pm)
-				}
-			}
-		}
-		if node["type"] == "array" {
-			if items, ok := node["items"].(map[string]any); ok {
-				walk(path+"[]", items)
-			}
-		}
+	req, _ := s["required"].([]string)
+	if strings.Join(req, ",") != "CMD-001,ERR-002" {
+		t.Errorf("required = %v, want every rule id", req)
 	}
-	walk("$", s)
-
-	verdict := s["properties"].(map[string]any)["verdicts"].(map[string]any)["items"].(map[string]any)["properties"].(map[string]any)["verdict"].(map[string]any)
-	enum, _ := verdict["enum"].([]string)
+	v := s["properties"].(map[string]any)["CMD-001"].(map[string]any)
+	enum, _ := v["enum"].([]string)
 	if strings.Join(enum, ",") != "compliant,violated,not_applicable" {
 		t.Errorf("verdict enum = %v", enum)
 	}
 
 	// Callers may mutate the returned map; each call must be independent.
 	s["properties"] = nil
-	if prompt.ResponseSchema()["properties"] == nil {
-		t.Error("ResponseSchema must return a fresh map on every call")
+	if prompt.VerdictSchema([]string{"CMD-001"})["properties"] == nil {
+		t.Error("VerdictSchema must return a fresh map on every call")
+	}
+}
+
+func TestDetailSchema_Golden(t *testing.T) {
+	s := prompt.DetailSchema()
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	golden(t, "detail_schema", string(b)+"\n")
+	assertStrict(t, "$", s)
+
+	s["properties"] = nil
+	if prompt.DetailSchema()["properties"] == nil {
+		t.Error("DetailSchema must return a fresh map on every call")
+	}
+}
+
+func TestDetailInstruction(t *testing.T) {
+	got := prompt.DetailInstruction("CMD-001")
+	if !strings.Contains(got, "CMD-001") || !strings.Contains(got, "violated") {
+		t.Errorf("instruction should name the rule and the verdict: %q", got)
+	}
+}
+
+// assertStrict checks that every object in a schema is strict:
+// additionalProperties false and all properties required.
+func assertStrict(t *testing.T, path string, node map[string]any) {
+	t.Helper()
+	if node["type"] == "object" {
+		if ap, ok := node["additionalProperties"].(bool); !ok || ap {
+			t.Errorf("%s: additionalProperties must be false", path)
+		}
+		props, _ := node["properties"].(map[string]any)
+		req, _ := node["required"].([]string)
+		if len(req) != len(props) {
+			t.Errorf("%s: required (%d) must list every property (%d)", path, len(req), len(props))
+		}
+		for name, p := range props {
+			if pm, ok := p.(map[string]any); ok {
+				assertStrict(t, path+"."+name, pm)
+			}
+		}
+	}
+	if node["type"] == "array" {
+		if items, ok := node["items"].(map[string]any); ok {
+			assertStrict(t, path+"[]", items)
+		}
 	}
 }

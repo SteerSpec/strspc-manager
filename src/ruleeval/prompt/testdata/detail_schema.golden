@@ -1,0 +1,45 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confidence": {
+      "description": "Certainty from 0 (guess) to 1 (certain).",
+      "type": "number"
+    },
+    "evidence": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "excerpt": {
+            "description": "Short excerpt of the offending line.",
+            "type": "string"
+          },
+          "file": {
+            "description": "Path of the file as written in the diff header.",
+            "type": "string"
+          },
+          "line": {
+            "description": "Line number in the new version of the file.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "excerpt"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "explanation": {
+      "description": "One or two sentences justifying the verdict.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "explanation",
+    "confidence",
+    "evidence"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,26 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "CMD-001": {
+      "enum": [
+        "compliant",
+        "violated",
+        "not_applicable"
+      ],
+      "type": "string"
+    },
+    "ERR-002": {
+      "enum": [
+        "compliant",
+        "violated",
+        "not_applicable"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "CMD-001",
+    "ERR-002"
+  ],
+  "type": "object"
+}
