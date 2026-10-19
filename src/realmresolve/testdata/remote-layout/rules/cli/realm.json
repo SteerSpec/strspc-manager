@@ -1,0 +1,7 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": { "id": "dev.remote.cli", "title": "Remote CLI Realm", "version": "0.1.0" },
+  "dependencies": [{ "realm_id": "dev.remote.core", "version": "0.1.0", "source": "../core/" }],
+  "sub_realms": ["child"],
+  "rule_identifier_format": null
+}
