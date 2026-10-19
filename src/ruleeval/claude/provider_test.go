@@ -576,6 +576,65 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name: "multi_rule_batch",
+			// Three rules in one verdict request: two violated, one compliant.
+			// Every verdict must survive, each violation must get its own
+			// details, and the compliant rule must not trigger a detail call.
+			inputs: []ruleeval.RuleInput{
+				rule("CMD-001", cobraLongRule),
+				rule("CMD-002", "Every cobra command MUST set a Short description."),
+				rule("CMD-003", "Every cobra command MUST register itself in init()."),
+			},
+			diff: diffMissingLong,
+			script: func(w http.ResponseWriter, body string, _ int) {
+				switch {
+				case isDetailRequest(body) && strings.Contains(body, "### CMD-001"):
+					writeJSON(w, 200, message("end_turn", detailText("No Long description.", 0.9,
+						locationJSON{File: "src/cmd/lint.go", Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+				case isDetailRequest(body) && strings.Contains(body, "### CMD-003"):
+					writeJSON(w, 200, message("end_turn", detailText("Not registered in init().", 0.7,
+						locationJSON{File: "src/cmd/lint.go", Line: 10, Excerpt: "func newLintCmd() *cobra.Command {"}), nil))
+				case isDetailRequest(body):
+					writeJSON(w, 400, apiError(400, "invalid_request_error", "unexpected detail request"))
+				default:
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated", "CMD-002", "compliant", "CMD-003", "violated"), nil))
+				}
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 3 {
+					t.Errorf("expected 1 verdict + 2 detail requests, transport saw %d", rt.Requests())
+				}
+				if len(resp.Errors) != 0 {
+					t.Errorf("unexpected errors: %v", resp.Errors)
+				}
+				want := map[string]struct {
+					verdict     ruleeval.Verdict
+					explanation string
+					line        int
+				}{
+					"CMD-001": {ruleeval.Violated, "No Long description.", 12},
+					"CMD-002": {ruleeval.Compliant, "", 0},
+					"CMD-003": {ruleeval.Violated, "Not registered in init().", 10},
+				}
+				for id, w := range want {
+					v := resp.Verdicts[id]
+					if v == nil || v.Verdict != w.verdict || v.Explanation != w.explanation {
+						t.Errorf("%s = %+v, want %s %q", id, v, w.verdict, w.explanation)
+						continue
+					}
+					if w.line != 0 && (len(v.Evidence) != 1 || v.Evidence[0].Line != w.line) {
+						t.Errorf("%s evidence = %+v, want line %d", id, v.Evidence, w.line)
+					}
+					if w.line == 0 && (len(v.Evidence) != 0 || v.Confidence != 0) {
+						t.Errorf("%s should carry no details, got %+v", id, v)
+					}
+				}
+			},
+		},
+		{
 			name:   "bad_request_workspace",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,
