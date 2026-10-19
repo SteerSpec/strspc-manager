@@ -7,9 +7,11 @@ rules:
   - source: github://SteerSpec/strspc-rules@v1.6.0/rules/core
     scope: global
 
-  # This repository's own rules (dev.steerspec.manager realm)
+  # This repository's own rules (dev.steerspec.manager realm). They govern
+  # the Go sources, so the scope is global: "local" would limit them to
+  # files under rules/ itself.
   - source: ./rules/
-    scope: local
+    scope: global
 
   # Local rules (uncomment after strspc realm init)
   # - source: ./rules/
