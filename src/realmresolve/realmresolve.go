@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -46,6 +47,15 @@ type Config struct {
 	// GITHUB_TOKEN/GH_TOKEN environment variables. When nil and no cache
 	// dir is configured, remote dependencies fail with RR012.
 	Fetcher *remote.Fetcher
+
+	// Origin is the github:// reference the resolved realm was fetched
+	// from, when it is not a local realm. The fetcher extracts only the
+	// requested subtree, so a relative dependency that leaves that subtree
+	// (`../core/` next to `rules/cli`) does not exist on disk although it
+	// does in the repository; with Origin set such sources are rewritten
+	// to github:// references on the same repository and ref, for the
+	// realm and its sub-realms alike.
+	Origin *remote.Ref
 }
 
 // Option configures the RealmResolver.
@@ -59,6 +69,14 @@ func WithCacheTTL(ttl time.Duration) Option {
 // WithCacheDir sets the cache directory path.
 func WithCacheDir(dir string) Option {
 	return func(c *Config) { c.CacheDir = dir }
+}
+
+// WithOrigin declares that the realm passed to Resolve is the subtree
+// ref.Path of a remote repository, materialised at baseDir. Relative
+// dependency sources that leave the subtree are resolved against the
+// repository at that ref instead of the local cache layout.
+func WithOrigin(ref remote.Ref) Option {
+	return func(c *Config) { c.Origin = &ref }
 }
 
 // WithRemoteFetcher supplies the fetcher used for github:// dependency
@@ -105,6 +123,13 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		return out, res
 	}
 
+	// Sub-realm dependencies are resolved relative to their own directory;
+	// rootDir anchors them to the realm root for origin rebasing.
+	rootDir, err := filepath.Abs(baseDir)
+	if err != nil {
+		rootDir = baseDir
+	}
+
 	// Collect parent realm EUIDs. When sub-realms are declared, exclude
 	// their directories so their entities don't appear in the parent's
 	// EUID set (they are checked separately).
@@ -143,7 +168,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			continue
 		}
 
-		resolved := r.resolveDep(ctx, dep, baseDir, res)
+		resolved := r.resolveDep(ctx, dep, baseDir, rootDir, res)
 		if resolved == nil {
 			continue
 		}
@@ -314,7 +339,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			ownIDs[d.RealmID] = struct{}{}
 		}
 		subRF.Dependencies = mergeDepLists(rf.Dependencies, subRF.Dependencies)
-		subDeps := r.resolveSubRealmDeps(ctx, subRF, subDir, ownIDs, parentResolved, res)
+		subDeps := r.resolveSubRealmDeps(ctx, subRF, subDir, rootDir, ownIDs, parentResolved, res)
 
 		// RR011: EUID collision — sub-realm vs its effective dependencies.
 		for _, dep := range subDeps {
@@ -349,7 +374,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 // declares itself (including overrides) are resolved against subDir and
 // checked for EUID collisions with the dependencies already collected
 // (RR005); parent-only collisions are reported once by the parent loop.
-func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.RealmFile, subDir string, ownIDs map[string]struct{}, parentResolved map[string]*ResolvedRealm, res *result.Result) []*ResolvedRealm {
+func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.RealmFile, subDir, rootDir string, ownIDs map[string]struct{}, parentResolved map[string]*ResolvedRealm, res *result.Result) []*ResolvedRealm {
 	var deps []*ResolvedRealm
 	for _, dep := range subRF.Dependencies {
 		if err := ctx.Err(); err != nil {
@@ -378,7 +403,7 @@ func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.R
 			})
 			continue
 		}
-		resolved := r.resolveDep(ctx, dep, subDir, res)
+		resolved := r.resolveDep(ctx, dep, subDir, rootDir, res)
 		if resolved == nil {
 			continue
 		}
@@ -404,9 +429,11 @@ func (r *RealmResolver) resolveSubRealmDeps(ctx context.Context, subRF *entity.R
 }
 
 // resolveDep validates a dependency's source and resolves it, locally or
-// through the remote fetcher. Relative paths are taken against baseDir.
+// through the remote fetcher. Relative paths are taken against baseDir;
+// when the resolver has an Origin, relative paths that leave the fetched
+// subtree (rootDir) are rebased onto the origin repository first.
 // Returns nil when the dependency cannot be resolved (diagnostics added).
-func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, baseDir string, res *result.Result) *ResolvedRealm {
+func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, baseDir, rootDir string, res *result.Result) *ResolvedRealm {
 	// RR001: empty source.
 	if dep.Source == "" {
 		res.Add(result.Diagnostic{
@@ -429,6 +456,25 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 			Path:     baseDir,
 		})
 		return nil
+	}
+
+	// Relative source of a remote realm: rebase onto the origin repository
+	// when it leaves the subtree that was fetched.
+	if r.cfg.Origin != nil && !strings.Contains(dep.Source, "://") {
+		rebased, escapes := rebaseOnOrigin(*r.cfg.Origin, dep.Source, baseDir, rootDir)
+		if escapes {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RR001",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("dependency %q source %q escapes the repository root of %s", dep.RealmID, dep.Source, r.cfg.Origin.String()),
+				Path:     baseDir,
+			})
+			return nil
+		}
+		if rebased != "" {
+			dep.Source = rebased
+		}
 	}
 
 	// Remote source: fetch into the cache, then treat as local.
@@ -460,6 +506,31 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		return nil
 	}
 	return resolveLocalDep(ctx, dep, resolvedDir, res)
+}
+
+// rebaseOnOrigin maps a relative dependency source, declared in baseDir of
+// a realm whose root rootDir holds origin.Path of the repository, to its
+// repository path. It returns the github:// reference when that path lies
+// outside the fetched subtree (so it is absent from the cache), "" when the
+// source stays inside the subtree and local resolution applies, and
+// escapes=true when the path leaves the repository root.
+func rebaseOnOrigin(origin remote.Ref, source, baseDir, rootDir string) (rebased string, escapes bool) {
+	rel, err := filepath.Rel(rootDir, baseDir)
+	if err != nil || rel == "." {
+		rel = ""
+	}
+	joined := path.Clean(path.Join(origin.Path, filepath.ToSlash(rel), filepath.ToSlash(source)))
+	if joined == ".." || strings.HasPrefix(joined, "../") {
+		return "", true
+	}
+	if joined == "." {
+		joined = ""
+	}
+	inside := origin.Path == "" || joined == origin.Path || strings.HasPrefix(joined, origin.Path+"/")
+	if inside {
+		return "", false
+	}
+	return remote.Ref{Owner: origin.Owner, Repo: origin.Repo, Ref: origin.Ref, Path: joined}.String(), false
 }
 
 // fetchRemote materialises a remote dependency source in the cache and

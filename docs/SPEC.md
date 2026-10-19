@@ -413,7 +413,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 **Authentication.** Private repositories and higher rate limits need a token. The resolvers read `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment and send it as `Authorization: Bearer <token>`. A 404 without a token is reported as "private repo or missing token".
 
-**Validation after download.** A fetched directory is treated exactly like a local one: `rule-resolve` parses every entity file and verifies `rule_set.hash` (RSV003, RSV004); `realm-resolve` loads its `realm.json` and enforces the declared `realm_id` and `version` (RR003, RR004). Download failures are reported as RSV007 (rule sources) or RR012 (realm dependencies).
+**Validation after download.** A fetched directory is treated exactly like a local one: `rule-resolve` parses every entity file and verifies `rule_set.hash` (RSV003, RSV004); `realm-resolve` loads its `realm.json` and enforces the declared `realm_id` and `version` (RR003, RR004). Download failures are reported as RSV007 (rule sources) or RR012 (realm dependencies). A fetched directory holds only the requested subtree, so a relative dependency of a remote Realm that leaves it (`../core/` next to `rules/cli`, declared by the Realm or by one of its sub-realms) is rebased by `realm-resolve` onto the same repository and ref (`github://owner/repo@ref/rules/core`) when the consumer declares the Realm's origin (`WithOrigin`); a relative source that leaves the repository root is rejected (RR001).
 
 ---
 

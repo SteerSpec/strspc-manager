@@ -1,0 +1,6 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": { "id": "dev.remote.core", "title": "Remote Core Realm", "version": "0.1.0" },
+  "dependencies": [],
+  "rule_identifier_format": null
+}
