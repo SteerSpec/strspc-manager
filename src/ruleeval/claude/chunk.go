@@ -230,6 +230,11 @@ func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.
 		if v.Confidence > cur.Confidence {
 			cur.Confidence = v.Confidence
 		}
+		// A chunk whose detail request failed carries no explanation; a
+		// later chunk's explanation fills it rather than being dropped.
+		if cur.Explanation == "" {
+			cur.Explanation = v.Explanation
+		}
 	}
 }
 

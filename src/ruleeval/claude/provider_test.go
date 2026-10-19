@@ -534,6 +534,48 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "two_chunk_detail_fails_then_ok",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// Violated in both chunks; the first chunk's detail request is
+			// truncated, the second succeeds. The merged verdict must carry
+			// the second chunk's explanation and the first chunk's failure.
+			diff: strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/a.go") +
+				strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/b.go"),
+			cfg: func(c *claude.Config) { c.MaxInputTokens = 1254 },
+			script: func(w http.ResponseWriter, body string, _ int) {
+				switch {
+				case isDetailRequest(body) && strings.Contains(body, "src/cmd/a.go"):
+					writeJSON(w, 200, message("max_tokens", `{"explanation":"a.go`, nil))
+				case isDetailRequest(body):
+					writeJSON(w, 200, message("end_turn", detailText("b.go constructs a cobra.Command without Long.", 0.9,
+						locationJSON{File: "src/cmd/b.go", Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+				default:
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+				}
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 4 {
+					t.Errorf("expected 2 verdict + 2 detail requests, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("verdict = %+v, want violated", v)
+				}
+				if v.Explanation != "b.go constructs a cobra.Command without Long." {
+					t.Errorf("explanation = %q, want the later chunk's", v.Explanation)
+				}
+				if len(v.Evidence) != 1 || v.Evidence[0].File != "src/cmd/b.go" {
+					t.Errorf("evidence = %+v", v.Evidence)
+				}
+				if len(resp.Errors) != 1 || !errors.Is(resp.Errors[0], claude.ErrTruncated) {
+					t.Errorf("expected the first chunk's detail failure to be reported, got %v", resp.Errors)
+				}
+			},
+		},
+		{
 			name:   "bad_request_workspace",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,
