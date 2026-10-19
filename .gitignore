@@ -23,3 +23,4 @@ vendor/
 .dolt/
 *.db
 .beads/.beads-credential-key
+.strspc/cache.db

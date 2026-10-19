@@ -42,6 +42,25 @@ jobs:
         with:
           version: v2.11.3
 
+  # Dogfood: the released CLI validates this repository's realm (rules/)
+  # and evaluates the change through the org reusable workflows
+  # (SteerSpec/.github). Without ANTHROPIC_API_KEY the check is static-only.
+  rules:
+    uses: SteerSpec/.github/.github/workflows/strspc-lint.yml@main
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      path: rules/
+
+  check:
+    uses: SteerSpec/.github/.github/workflows/strspc-check.yml@main
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
   lint-commits:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
