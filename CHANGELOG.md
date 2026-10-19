@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/SteerSpec/strspc-manager/compare/v1.15.0...v1.15.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* **realmresolve:** rebase relative dependencies of remote realms onto their origin ([#74](https://github.com/SteerSpec/strspc-manager/issues/74)) ([9b0f02f](https://github.com/SteerSpec/strspc-manager/commit/9b0f02f32ff57fce3ff5daa0066e26247c8b0805))
+
 ## [1.15.0](https://github.com/SteerSpec/strspc-manager/compare/v1.14.1...v1.15.0) (2026-10-18)
 
 
