@@ -423,7 +423,7 @@ func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.Rule
 	}
 	var verdicts map[string]string
 	if err := json.Unmarshal([]byte(text), &verdicts); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
+		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
 	// Structured outputs should guarantee the enum, but a proxy or schema
 	// drift must not turn an unknown value into a silently ignored verdict.
@@ -480,7 +480,7 @@ func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInp
 	}
 	var d wireDetail
 	if err := json.Unmarshal([]byte(text), &d); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
+		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
 	return &d, nil
 }
@@ -554,7 +554,7 @@ func classify(err error) error {
 			// no request will ever succeed, so report the provider as
 			// unavailable instead of failing every rule one by one.
 			if msg := strings.ToLower(err.Error()); strings.Contains(msg, "workspace") || strings.Contains(msg, "api key") {
-				return fmt.Errorf("%w: HTTP %d %s: %v", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
+				return fmt.Errorf("%w: HTTP %d %s: %w", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
 			}
 			return fmt.Errorf("claude: HTTP %d %s: %w", apierr.StatusCode, apierr.Type(), err)
 		default:

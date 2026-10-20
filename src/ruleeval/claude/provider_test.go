@@ -19,6 +19,7 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/claude"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
+	"github.com/anthropics/anthropic-sdk-go"
 )
 
 // Provider tests run against HTTP cassettes in testdata/cassettes/ and
@@ -339,6 +340,11 @@ func scenarios() []scenario {
 				if !errors.Is(err, claude.ErrMalformed) {
 					t.Fatalf("err = %v, want ErrMalformed", err)
 				}
+				// GOCONV-004: the decode error stays reachable as a cause.
+				var syntaxErr *json.SyntaxError
+				if !errors.As(err, &syntaxErr) {
+					t.Errorf("err = %v, want the *json.SyntaxError cause wrapped", err)
+				}
 			},
 		},
 		{
@@ -645,6 +651,11 @@ func scenarios() []scenario {
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if !errors.Is(err, ruleeval.ErrUnavailable) {
 					t.Fatalf("err = %v, want ErrUnavailable for an organisation-level key", err)
+				}
+				// GOCONV-004: the SDK error stays reachable as a cause.
+				var apiErr *anthropic.Error
+				if !errors.As(err, &apiErr) || apiErr.StatusCode != 400 {
+					t.Errorf("err = %v, want the *anthropic.Error cause wrapped", err)
 				}
 				if rt.Requests() != 1 {
 					t.Errorf("400 must not be retried; transport saw %d requests", rt.Requests())
