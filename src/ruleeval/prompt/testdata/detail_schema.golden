@@ -34,9 +34,19 @@
     "explanation": {
       "description": "One or two sentences justifying the verdict.",
       "type": "string"
+    },
+    "verdict": {
+      "description": "The verdict after re-reading the diff: \"violated\" confirms it, any other value withdraws it.",
+      "enum": [
+        "violated",
+        "compliant",
+        "not_applicable"
+      ],
+      "type": "string"
     }
   },
   "required": [
+    "verdict",
     "explanation",
     "confidence",
     "evidence"

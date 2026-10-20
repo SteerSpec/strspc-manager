@@ -79,8 +79,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v3" {
-		t.Fatalf("Version = %q, want v3", prompt.Version)
+	if prompt.Version != "v4" {
+		t.Fatalf("Version = %q, want v4", prompt.Version)
 	}
 }
 
