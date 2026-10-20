@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.16.0](https://github.com/SteerSpec/strspc-manager/compare/v1.15.1...v1.16.0) (2026-10-20)
+
+
+### Features
+
+* **rules:** add the dev.steerspec.manager realm and dogfood CI ([#76](https://github.com/SteerSpec/strspc-manager/issues/76)) ([2874aff](https://github.com/SteerSpec/strspc-manager/commit/2874aff2a21d75cb305aadb6c515bcef7fecb3d6))
+
+
+### Bug Fixes
+
+* **ruleeval:** key verdicts by rule id so every rule gets one ([#78](https://github.com/SteerSpec/strspc-manager/issues/78)) ([7e4574c](https://github.com/SteerSpec/strspc-manager/commit/7e4574c606540e7fa846469497b389d307875c2b))
+
 ## [1.15.1](https://github.com/SteerSpec/strspc-manager/compare/v1.15.0...v1.15.1) (2026-10-19)
 
 
