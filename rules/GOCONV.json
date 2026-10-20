@@ -7,8 +7,8 @@
   },
   "rule_set": {
     "version": "0.2.0",
-    "timestamp": "2026-10-20T09:14:40Z",
-    "hash": "blake3:0cd73d2105cefdec04a5277d75f708421571b531d4b98ca85b7656c437738d75"
+    "timestamp": "2026-10-20T09:20:20Z",
+    "hash": "blake3:cf930b8341a4e6321a8d17f2af8ee4b03ce4bf083fc08f2af42648be09d09af8"
   },
   "rules": [
     {
@@ -41,7 +41,7 @@
     {
       "id": "GOCONV-004",
       "revision": 0,
-      "state": "P",
+      "state": "D",
       "body": "MUST wrap the underlying error with %w when returning an error that carries a cause.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -50,7 +50,7 @@
     {
       "id": "GOCONV-005",
       "revision": 0,
-      "state": "P",
+      "state": "D",
       "body": "Functions that perform network or long-running work MUST accept a context.Context as their first parameter.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -68,7 +68,7 @@
     {
       "id": "GOCONV-007",
       "revision": 0,
-      "state": "P",
+      "state": "D",
       "body": "Exported identifiers MUST carry a doc comment starting with their name.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
