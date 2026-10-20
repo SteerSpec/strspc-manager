@@ -122,29 +122,34 @@ var diffReadme = strings.Join([]string{
 
 // --- synthetic Messages API responses -------------------------------------
 
-type verdictJSON struct {
-	RuleID      string         `json:"rule_id"`
-	Verdict     string         `json:"verdict"`
-	Explanation string         `json:"explanation"`
-	Confidence  float64        `json:"confidence"`
-	Evidence    []locationJSON `json:"evidence"`
-}
-
 type locationJSON struct {
 	File    string `json:"file"`
 	Line    int    `json:"line"`
 	Excerpt string `json:"excerpt"`
 }
 
-func verdictsText(vs ...verdictJSON) string {
-	for i := range vs {
-		if vs[i].Evidence == nil {
-			vs[i].Evidence = []locationJSON{}
-		}
+// verdictsText renders a verdict response: an object keyed by rule id.
+func verdictsText(kv ...string) string {
+	m := map[string]string{}
+	for i := 0; i+1 < len(kv); i += 2 {
+		m[kv[i]] = kv[i+1]
 	}
-	b, _ := json.Marshal(map[string]any{"verdicts": vs})
+	b, _ := json.Marshal(m)
 	return string(b)
 }
+
+// detailText renders a detail response for one violated rule.
+func detailText(explanation string, confidence float64, evidence ...locationJSON) string {
+	if evidence == nil {
+		evidence = []locationJSON{}
+	}
+	b, _ := json.Marshal(map[string]any{"explanation": explanation, "confidence": confidence, "evidence": evidence})
+	return string(b)
+}
+
+// isDetailRequest reports whether a request body carries the detail schema
+// (the only one with an evidence excerpt) rather than the verdict schema.
+func isDetailRequest(body string) bool { return strings.Contains(body, `"excerpt"`) }
 
 // message renders a Messages API response in the documented shape.
 func message(stopReason, text string, extra map[string]any) string {
@@ -193,7 +198,20 @@ func apiError(status int, typ, msg string) string {
 
 func scenarios() []scenario {
 	ok := func(w http.ResponseWriter, _ string, _ int) {
-		writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{RuleID: "CMD-001", Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.95}), nil))
+		writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "compliant"), nil))
+	}
+	// violated answers the verdict request with "violated" and the detail
+	// request with explanation and evidence in file.
+	violated := func(file string) func(w http.ResponseWriter, body string, call int) {
+		return func(w http.ResponseWriter, body string, _ int) {
+			if isDetailRequest(body) {
+				writeJSON(w, 200, message("end_turn", detailText(
+					"newLintCmd constructs a cobra.Command with Use and Short but no Long description.", 0.9,
+					locationJSON{File: file, Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+				return
+			}
+			writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+		}
 	}
 	return []scenario{
 		{
@@ -238,15 +256,9 @@ func scenarios() []scenario {
 				entity.Note{ID: "CMD-001/01", RuleRef: "CMD-001", Type: "applies_to", Content: "Go files under src/cmd/ constructing cobra.Command values."},
 				entity.Note{ID: "CMD-001/02", RuleRef: "CMD-001", Type: "rationale", Content: "Long descriptions feed --help and the docs site."},
 			)},
-			diff: diffMissingLong,
-			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{
-					RuleID: "CMD-001", Verdict: "violated", Confidence: 0.9,
-					Explanation: "newLintCmd constructs a cobra.Command with Use and Short but no Long description.",
-					Evidence:    []locationJSON{{File: "src/cmd/lint.go", Line: 12, Excerpt: "return &cobra.Command{"}},
-				}), nil))
-			},
-			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+			diff:   diffMissingLong,
+			script: violated("src/cmd/lint.go"),
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -260,6 +272,9 @@ func scenarios() []scenario {
 				if v.Explanation == "" || v.Confidence <= 0 {
 					t.Errorf("expected explanation and confidence, got %+v", v)
 				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected a verdict request and a detail request, transport saw %d", rt.Requests())
+				}
 			},
 		},
 		{
@@ -268,7 +283,7 @@ func scenarios() []scenario {
 			inputs:     []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:       diffReadme,
 			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{RuleID: "CMD-001", Verdict: "not_applicable", Explanation: "The diff only touches README.md.", Confidence: 0.98}), nil))
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "not_applicable"), nil))
 			},
 			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
 				if err != nil {
@@ -305,7 +320,7 @@ func scenarios() []scenario {
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffMissingLong,
 			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("max_tokens", `{"verdicts":[{"rule_id":"CMD-001","verdict":"viol`, nil))
+				writeJSON(w, 200, message("max_tokens", `{"CMD-001":"viol`, nil))
 			},
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
 				if !errors.Is(err, claude.ErrTruncated) {
@@ -334,7 +349,7 @@ func scenarios() []scenario {
 				// Well-formed JSON whose verdict is outside the enum; the API
 				// would reject this under structured outputs, but a proxy or a
 				// future schema drift must not slip through as "seen".
-				writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{RuleID: "CMD-001", Verdict: "maybe", Explanation: "unsure", Confidence: 0.3}), nil))
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "maybe"), nil))
 			},
 			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
 				if !errors.Is(err, claude.ErrMalformed) || resp != nil {
@@ -383,12 +398,9 @@ func scenarios() []scenario {
 				// remaining 200 tokens (600 bytes) fit one ~400-byte file per chunk.
 				c.MaxInputTokens = 1254
 			},
-			script: func(w http.ResponseWriter, body string, _ int) {
+			script: func(w http.ResponseWriter, body string, call int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
-					writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{
-						RuleID: "CMD-001", Verdict: "violated", Confidence: 0.9, Explanation: "sync command lacks Long.",
-						Evidence: []locationJSON{{File: "src/cmd/sync.go", Line: 12, Excerpt: "return &cobra.Command{"}},
-					}), nil))
+					violated("src/cmd/sync.go")(w, body, call)
 					return
 				}
 				ok(w, body, 0)
@@ -397,8 +409,8 @@ func scenarios() []scenario {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if rt.Requests() != 2 || p.Usage().Requests != 2 {
-					t.Fatalf("expected 2 requests (one per chunk), transport=%d usage=%d", rt.Requests(), p.Usage().Requests)
+				if rt.Requests() != 3 || p.Usage().Requests != 3 {
+					t.Fatalf("expected 3 requests (one per chunk plus one detail), transport=%d usage=%d", rt.Requests(), p.Usage().Requests)
 				}
 				v := resp.Verdicts["CMD-001"]
 				if v == nil || v.Verdict != ruleeval.Violated {
@@ -416,17 +428,14 @@ func scenarios() []scenario {
 			name:   "two_chunk_missing_verdict",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			// Same two-chunk split as above, but the first chunk's response omits
-			// the rule entirely (an empty verdicts array is schema-valid). The
+			// the rule entirely (as a proxy or schema drift could). The
 			// violation from the second chunk must still win, and the omission
 			// must be reported so the evaluator warns and does not cache.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
 			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1254 },
-			script: func(w http.ResponseWriter, body string, _ int) {
+			script: func(w http.ResponseWriter, body string, call int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
-					writeJSON(w, 200, message("end_turn", verdictsText(verdictJSON{
-						RuleID: "CMD-001", Verdict: "violated", Confidence: 0.9, Explanation: "sync command lacks Long.",
-						Evidence: []locationJSON{{File: "src/cmd/sync.go", Line: 12, Excerpt: "return &cobra.Command{"}},
-					}), nil))
+					violated("src/cmd/sync.go")(w, body, call)
 					return
 				}
 				writeJSON(w, 200, message("end_turn", verdictsText(), nil))
@@ -435,8 +444,8 @@ func scenarios() []scenario {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if rt.Requests() != 2 {
-					t.Fatalf("expected 2 requests, got %d", rt.Requests())
+				if rt.Requests() != 3 {
+					t.Fatalf("expected 3 requests, got %d", rt.Requests())
 				}
 				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Violated {
 					t.Fatalf("merged verdict = %+v, want violated", v)
@@ -472,14 +481,16 @@ func scenarios() []scenario {
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,
 			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("end_turn", verdictsText(
-					verdictJSON{RuleID: "CMD-001", Verdict: "compliant", Explanation: "ok", Confidence: 0.9},
-					verdictJSON{RuleID: "CMD-999", Verdict: "violated", Explanation: "hallucinated", Confidence: 0.5},
-				), nil))
+				// An unrequested id must be reported and never trigger a
+				// detail request, even when it claims a violation.
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "compliant", "CMD-999", "violated"), nil))
 			},
-			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if err != nil {
 					t.Fatal(err)
+				}
+				if rt.Requests() != 1 {
+					t.Errorf("no detail request for an unrequested id; transport saw %d", rt.Requests())
 				}
 				if _, leaked := resp.Verdicts["CMD-999"]; leaked {
 					t.Error("unrequested rule id must not be returned")
@@ -489,6 +500,183 @@ func scenarios() []scenario {
 				}
 				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-999") {
 					t.Errorf("expected one error naming CMD-999, got %v", resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "detail_request_fails",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffMissingLong,
+			// The verdict request succeeds; the detail request is truncated.
+			// The violation must survive without its explanation, reported in
+			// Errors so the evaluator does not cache the batch.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isDetailRequest(body) {
+					writeJSON(w, 200, message("max_tokens", `{"explanation":"newLintCmd`, nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected a verdict and a detail request, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("verdict = %+v, want violated kept despite the detail failure", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "CMD-001") || !errors.Is(resp.Errors[0], claude.ErrTruncated) {
+					t.Fatalf("expected one error naming CMD-001 wrapping ErrTruncated, got %v", resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "two_chunk_detail_fails_then_ok",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// Violated in both chunks; the first chunk's detail request is
+			// truncated, the second succeeds. The merged verdict must carry
+			// the second chunk's explanation and the first chunk's failure.
+			diff: strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/a.go") +
+				strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/b.go"),
+			cfg: func(c *claude.Config) { c.MaxInputTokens = 1254 },
+			script: func(w http.ResponseWriter, body string, _ int) {
+				switch {
+				case isDetailRequest(body) && strings.Contains(body, "src/cmd/a.go"):
+					writeJSON(w, 200, message("max_tokens", `{"explanation":"a.go`, nil))
+				case isDetailRequest(body):
+					writeJSON(w, 200, message("end_turn", detailText("b.go constructs a cobra.Command without Long.", 0.9,
+						locationJSON{File: "src/cmd/b.go", Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+				default:
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+				}
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 4 {
+					t.Errorf("expected 2 verdict + 2 detail requests, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("verdict = %+v, want violated", v)
+				}
+				if v.Explanation != "b.go constructs a cobra.Command without Long." {
+					t.Errorf("explanation = %q, want the later chunk's", v.Explanation)
+				}
+				if len(v.Evidence) != 1 || v.Evidence[0].File != "src/cmd/b.go" {
+					t.Errorf("evidence = %+v", v.Evidence)
+				}
+				if len(resp.Errors) != 1 || !errors.Is(resp.Errors[0], claude.ErrTruncated) {
+					t.Errorf("expected the first chunk's detail failure to be reported, got %v", resp.Errors)
+				}
+			},
+		},
+		{
+			name: "multi_rule_batch",
+			// Three rules in one verdict request: two violated, one compliant.
+			// Every verdict must survive, each violation must get its own
+			// details, and the compliant rule must not trigger a detail call.
+			inputs: []ruleeval.RuleInput{
+				rule("CMD-001", cobraLongRule),
+				rule("CMD-002", "Every cobra command MUST set a Short description."),
+				rule("CMD-003", "Every cobra command MUST register itself in init()."),
+			},
+			diff: diffMissingLong,
+			script: func(w http.ResponseWriter, body string, _ int) {
+				switch {
+				case isDetailRequest(body) && strings.Contains(body, "### CMD-001"):
+					writeJSON(w, 200, message("end_turn", detailText("No Long description.", 0.9,
+						locationJSON{File: "src/cmd/lint.go", Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+				case isDetailRequest(body) && strings.Contains(body, "### CMD-003"):
+					writeJSON(w, 200, message("end_turn", detailText("Not registered in init().", 0.7,
+						locationJSON{File: "src/cmd/lint.go", Line: 10, Excerpt: "func newLintCmd() *cobra.Command {"}), nil))
+				case isDetailRequest(body):
+					writeJSON(w, 400, apiError(400, "invalid_request_error", "unexpected detail request"))
+				default:
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated", "CMD-002", "compliant", "CMD-003", "violated"), nil))
+				}
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 3 {
+					t.Errorf("expected 1 verdict + 2 detail requests, transport saw %d", rt.Requests())
+				}
+				if len(resp.Errors) != 0 {
+					t.Errorf("unexpected errors: %v", resp.Errors)
+				}
+				want := map[string]struct {
+					verdict     ruleeval.Verdict
+					explanation string
+					line        int
+				}{
+					"CMD-001": {ruleeval.Violated, "No Long description.", 12},
+					"CMD-002": {ruleeval.Compliant, "", 0},
+					"CMD-003": {ruleeval.Violated, "Not registered in init().", 10},
+				}
+				for id, w := range want {
+					v := resp.Verdicts[id]
+					if v == nil || v.Verdict != w.verdict || v.Explanation != w.explanation {
+						t.Errorf("%s = %+v, want %s %q", id, v, w.verdict, w.explanation)
+						continue
+					}
+					if w.line != 0 && (len(v.Evidence) != 1 || v.Evidence[0].Line != w.line) {
+						t.Errorf("%s evidence = %+v, want line %d", id, v.Evidence, w.line)
+					}
+					if w.line == 0 && (len(v.Evidence) != 0 || v.Confidence != 0) {
+						t.Errorf("%s should carry no details, got %+v", id, v)
+					}
+				}
+			},
+		},
+		{
+			name:   "bad_request_workspace",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error",
+					"This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if !errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want ErrUnavailable for an organisation-level key", err)
+				}
+				if rt.Requests() != 1 {
+					t.Errorf("400 must not be retried; transport saw %d requests", rt.Requests())
+				}
+			},
+		},
+		{
+			name:   "bad_request_api_key",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error", "Invalid API key format."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if !errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want ErrUnavailable for a rejected key", err)
+				}
+			},
+		},
+		{
+			name:   "bad_request_other",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 400, apiError(400, "invalid_request_error", "output_config.format.schema: The compiled grammar is too large."))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err == nil || errors.Is(err, ruleeval.ErrUnavailable) {
+					t.Fatalf("err = %v, want an ordinary request failure, not ErrUnavailable", err)
+				}
+				if !strings.Contains(err.Error(), "HTTP 400") {
+					t.Errorf("error should carry the status, got %q", err)
 				}
 			},
 		},

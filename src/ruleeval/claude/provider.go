@@ -1,5 +1,8 @@
 // Package claude implements ruleeval.Provider and ruleeval.BatchProvider on
-// top of the Anthropic Messages API using structured outputs.
+// top of the Anthropic Messages API using structured outputs. Each request
+// asks for the verdicts of a group of rules as an object keyed by rule id;
+// a second, per-rule request then collects explanation and evidence for
+// every rule judged violated.
 //
 // One request carries the shared system prompt and the diff (both marked
 // as prompt-cache breakpoints) followed by up to MaxRulesPerRequest rules.
@@ -16,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/anthropics/anthropic-sdk-go"
@@ -257,7 +261,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		go func(i int, it work) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i], errs[i] = p.call(ctx, chunks[it.chunk], rulesBlocks[it.group])
+			results[i], errs[i] = p.call(ctx, chunks[it.chunk], groups[it.group], rulesBlocks[it.group])
 			if errs[i] != nil {
 				cancel() // no point finishing the batch; the evaluator reports it
 			}
@@ -273,6 +277,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	}
 
 	for i, it := range items {
+		out.Errors = append(out.Errors, results[i].Errors...)
 		requested := map[string]bool{}
 		for _, in := range groups[it.group] {
 			requested[in.Rule.ID] = true
@@ -358,14 +363,24 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 	return groups, tooLarge
 }
 
-// Wire format of the structured response (see prompt.ResponseSchema).
+// wireResponse is the merged result of one chunk×group request: a verdict
+// per rule, with details for the violated ones. Errors lists violated rules
+// whose detail request failed recoverably; their verdict is kept.
 type wireResponse struct {
-	Verdicts []wireVerdict `json:"verdicts"`
+	Verdicts []wireVerdict
+	Errors   []error
 }
 
 type wireVerdict struct {
-	RuleID      string         `json:"rule_id"`
-	Verdict     string         `json:"verdict"`
+	RuleID      string
+	Verdict     string
+	Explanation string
+	Confidence  float64
+	Evidence    []wireLocation
+}
+
+// wireDetail is the structured detail response (see prompt.DetailSchema).
+type wireDetail struct {
 	Explanation string         `json:"explanation"`
 	Confidence  float64        `json:"confidence"`
 	Evidence    []wireLocation `json:"evidence"`
@@ -389,8 +404,95 @@ func (v wireVerdict) toResponse() *ruleeval.EvalResponse {
 	return r
 }
 
-// call performs one Messages request and parses the structured response.
-func (p *Provider) call(ctx context.Context, chunk, rulesBlock string) (*wireResponse, error) {
+// call evaluates one diff chunk against one group of rules: a verdict
+// request keyed by rule id, then one detail request per violated rule.
+// Ids the model was not asked about are kept so that EvaluateBatch can
+// report them; they never trigger a detail request.
+func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.RuleInput, rulesBlock string) (*wireResponse, error) {
+	ids := make([]string, len(group))
+	byID := make(map[string]ruleeval.RuleInput, len(group))
+	for i, in := range group {
+		ids[i] = in.Rule.ID
+		byID[in.Rule.ID] = in
+	}
+	text, err := p.send(ctx, chunk, []anthropic.ContentBlockParamUnion{
+		anthropic.NewTextBlock(rulesBlock),
+	}, prompt.VerdictSchema(ids))
+	if err != nil {
+		return nil, err
+	}
+	var verdicts map[string]string
+	if err := json.Unmarshal([]byte(text), &verdicts); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
+	}
+	// Structured outputs should guarantee the enum, but a proxy or schema
+	// drift must not turn an unknown value into a silently ignored verdict.
+	for id, v := range verdicts {
+		switch ruleeval.Verdict(v) {
+		case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
+		default:
+			return nil, fmt.Errorf("%w: rule %s has unknown verdict %q", ErrMalformed, id, v)
+		}
+	}
+	out := &wireResponse{}
+	seen := map[string]bool{}
+	for _, id := range ids { // requested ids first, in order
+		v, ok := verdicts[id]
+		if !ok {
+			continue
+		}
+		seen[id] = true
+		wv := wireVerdict{RuleID: id, Verdict: v}
+		if ruleeval.Verdict(v) == ruleeval.Violated {
+			d, err := p.detail(ctx, chunk, byID[id])
+			switch {
+			case err == nil:
+				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
+			case errors.Is(err, ruleeval.ErrUnavailable) || ctx.Err() != nil:
+				return nil, err
+			default:
+				// The violation stands even without its explanation: dropping
+				// it would let an Implemented-rule violation pass as a
+				// warning. The error keeps the batch out of the cache.
+				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged violated but its details could not be retrieved: %w", id, err))
+			}
+		}
+		out.Verdicts = append(out.Verdicts, wv)
+	}
+	for id, v := range verdicts { // then anything unrequested, for reporting
+		if !seen[id] {
+			out.Verdicts = append(out.Verdicts, wireVerdict{RuleID: id, Verdict: v})
+		}
+	}
+	return out, nil
+}
+
+// detail asks for the explanation, confidence and evidence of a rule the
+// verdict request judged violated. The diff block is byte-identical to the
+// verdict request's so the prompt cache prefix is reused.
+func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInput) (*wireDetail, error) {
+	text, err := p.send(ctx, chunk, []anthropic.ContentBlockParamUnion{
+		anthropic.NewTextBlock(prompt.RulesBlock([]ruleeval.RuleInput{in})),
+		anthropic.NewTextBlock(prompt.DetailInstruction(in.Rule.ID)),
+	}, prompt.DetailSchema())
+	if err != nil {
+		return nil, err
+	}
+	var d wireDetail
+	if err := json.Unmarshal([]byte(text), &d); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
+	}
+	return &d, nil
+}
+
+// send performs one Messages request (system prompt, cached diff block, then
+// blocks) with the structured-output schema and returns the response text.
+// Usage is accumulated for every completed response.
+func (p *Provider) send(ctx context.Context, chunk string, blocks []anthropic.ContentBlockParamUnion, schema map[string]any) (string, error) {
+	content := append([]anthropic.ContentBlockParamUnion{{OfText: &anthropic.TextBlockParam{
+		Text:         prompt.DiffBlock(chunk),
+		CacheControl: anthropic.NewCacheControlEphemeralParam(),
+	}}}, blocks...)
 	params := anthropic.MessageNewParams{
 		Model:     p.cfg.Model,
 		MaxTokens: p.cfg.MaxTokens,
@@ -398,24 +500,16 @@ func (p *Provider) call(ctx context.Context, chunk, rulesBlock string) (*wireRes
 			Text:         prompt.System(),
 			CacheControl: anthropic.NewCacheControlEphemeralParam(),
 		}},
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(
-				anthropic.ContentBlockParamUnion{OfText: &anthropic.TextBlockParam{
-					Text:         prompt.DiffBlock(chunk),
-					CacheControl: anthropic.NewCacheControlEphemeralParam(),
-				}},
-				anthropic.NewTextBlock(rulesBlock),
-			),
-		},
+		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(content...)},
 		OutputConfig: anthropic.OutputConfigParam{
 			Effort: anthropic.OutputConfigEffort(p.cfg.Effort),
-			Format: anthropic.JSONOutputFormatParam{Schema: prompt.ResponseSchema()},
+			Format: anthropic.JSONOutputFormatParam{Schema: schema},
 		},
 	}
 
 	msg, err := p.client.Messages.New(ctx, params)
 	if err != nil {
-		return nil, classify(err)
+		return "", classify(err)
 	}
 
 	p.mu.Lock()
@@ -430,37 +524,19 @@ func (p *Provider) call(ctx context.Context, chunk, rulesBlock string) (*wireRes
 
 	switch msg.StopReason {
 	case anthropic.StopReasonRefusal:
-		return nil, fmt.Errorf("%w (category %q: %s)", ErrRefused, msg.StopDetails.Category, msg.StopDetails.Explanation)
+		return "", fmt.Errorf("%w (category %q: %s)", ErrRefused, msg.StopDetails.Category, msg.StopDetails.Explanation)
 	case anthropic.StopReasonMaxTokens:
-		return nil, fmt.Errorf("%w (max_tokens=%d)", ErrTruncated, p.cfg.MaxTokens)
+		return "", fmt.Errorf("%w (max_tokens=%d)", ErrTruncated, p.cfg.MaxTokens)
 	case anthropic.StopReasonModelContextWindowExceeded:
-		return nil, ErrContextExceeded
+		return "", ErrContextExceeded
 	}
 
-	var text string
 	for _, block := range msg.Content {
-		if tb, ok := block.AsAny().(anthropic.TextBlock); ok {
-			text = tb.Text
-			break
+		if tb, ok := block.AsAny().(anthropic.TextBlock); ok && tb.Text != "" {
+			return tb.Text, nil
 		}
 	}
-	if text == "" {
-		return nil, fmt.Errorf("%w: no text block in response (stop_reason %q)", ErrMalformed, msg.StopReason)
-	}
-	var parsed wireResponse
-	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrMalformed, err)
-	}
-	// Structured outputs should guarantee the enum, but a proxy or schema
-	// drift must not turn an unknown value into a silently ignored verdict.
-	for _, v := range parsed.Verdicts {
-		switch ruleeval.Verdict(v.Verdict) {
-		case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
-		default:
-			return nil, fmt.Errorf("%w: rule %s has unknown verdict %q", ErrMalformed, v.RuleID, v.Verdict)
-		}
-	}
-	return &parsed, nil
+	return "", fmt.Errorf("%w: no text block in response (stop_reason %q)", ErrMalformed, msg.StopReason)
 }
 
 // classify maps SDK errors: credential, permission and model errors become
@@ -472,6 +548,15 @@ func classify(err error) error {
 		switch apierr.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return fmt.Errorf("%w: HTTP %d %s", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type())
+		case http.StatusBadRequest:
+			// An organisation-level key without a workspace, or a key the
+			// endpoint does not accept, comes back as 400 invalid_request;
+			// no request will ever succeed, so report the provider as
+			// unavailable instead of failing every rule one by one.
+			if msg := strings.ToLower(err.Error()); strings.Contains(msg, "workspace") || strings.Contains(msg, "api key") {
+				return fmt.Errorf("%w: HTTP %d %s: %v", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
+			}
+			return fmt.Errorf("claude: HTTP %d %s: %w", apierr.StatusCode, apierr.Type(), err)
 		default:
 			return fmt.Errorf("claude: HTTP %d %s: %w", apierr.StatusCode, apierr.Type(), err)
 		}
