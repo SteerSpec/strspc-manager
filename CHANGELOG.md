@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.16.2](https://github.com/SteerSpec/strspc-manager/compare/v1.16.1...v1.16.2) (2026-10-20)
+
+
+### Bug Fixes
+
+* **claude:** let the detail step withdraw a verdict; name lifecycle states and fixtures in the prompt ([e2de160](https://github.com/SteerSpec/strspc-manager/commit/e2de1602d6e427b2d44c339a73ef064b2618dca9))
+* **claude:** let the detail step withdraw a verdict; name lifecycle states and fixtures in the prompt ([d1e6878](https://github.com/SteerSpec/strspc-manager/commit/d1e68781b8ca9c230fbe5626a389a0089fdd2008)), closes [#87](https://github.com/SteerSpec/strspc-manager/issues/87)
+* **claude:** reject a detail without a verdict; keep withdrawal details across chunks ([7de2a89](https://github.com/SteerSpec/strspc-manager/commit/7de2a895be27ebb6db5849a9243b9f2699a6f62e))
+
 ## [1.16.1](https://github.com/SteerSpec/strspc-manager/compare/v1.16.0...v1.16.1) (2026-10-20)
 
 
