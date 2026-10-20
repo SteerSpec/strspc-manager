@@ -1,0 +1,5 @@
+{
+  "$schema": "../_schema/realm.v1.schema.json",
+  "dependencies": [],
+  "rule_identifier_format": null
+}

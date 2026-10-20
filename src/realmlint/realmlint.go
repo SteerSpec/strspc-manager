@@ -500,6 +500,13 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 			continue
 		}
 
+		// A sub-realm is a Realm in its own right (RLM-003, RLM-004,
+		// RLMMNFST-002), so its manifest and layout get the same checks as
+		// the parent: RM002 schema, RM007 fields, RM003/RM004 _schema/.
+		l.checkRealmSchema(srData, srRealmPath, res)
+		checkRealmFields(srRF, srRealmPath, res)
+		checkSchemaDir(srDir, res)
+
 		// RM010: Sub-realm ID must be parentID + "." + dirname.
 		expectedID := rf.Realm.ID + "." + srName
 		if srRF.Realm.ID != expectedID {
