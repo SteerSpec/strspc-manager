@@ -6,8 +6,8 @@
   },
   "rule_set": {
     "version": "0.1.0",
-    "timestamp": "2026-03-22T00:00:00Z",
-    "hash": null
+    "timestamp": "2026-10-20T13:31:14Z",
+    "hash": "blake3:29443abee8b29858a4dd84a7f3ff33092c6bc19ce9cbcdbd4d3e8ea1261684b6"
   },
   "rules": [
     {
@@ -16,7 +16,8 @@
       "state": "A",
       "body": "IS a sync rule.",
       "added_by": "test",
-      "added_at": "2026-03-22"
+      "added_at": "2026-03-22",
+      "supersedes": null
     }
   ],
   "notes": []
