@@ -493,6 +493,14 @@ func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInp
 	if err := json.Unmarshal([]byte(text), &d); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
+	// The verdict is what lets the detail step withdraw a violation, so a
+	// response without one (an older detail shape from a proxy, say) must
+	// not pass as a confirmation.
+	switch ruleeval.Verdict(d.Verdict) {
+	case ruleeval.Violated, ruleeval.Compliant, ruleeval.NotApplicable:
+	default:
+		return nil, fmt.Errorf("%w: detail for rule %s has unknown verdict %q", ErrMalformed, in.Rule.ID, d.Verdict)
+	}
 	return &d, nil
 }
 

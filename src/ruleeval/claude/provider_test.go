@@ -406,7 +406,7 @@ func scenarios() []scenario {
 			// budget forces one request per file.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
 			cfg: func(c *claude.Config) {
-				// system ≈ 0 tokens + rules ≈ 50 + overhead 256 = 306; the
+				// system ≈ 1028 tokens + rules ≈ 50 + overhead 256 = 1334; the
 				// remaining ~170 tokens (510 bytes) fit one ~400-byte file per chunk.
 				c.MaxInputTokens = 1504
 			},
@@ -547,6 +547,71 @@ func scenarios() []scenario {
 				}
 				if p.Usage().Withdrawn != 1 {
 					t.Errorf("Usage().Withdrawn = %d, want 1", p.Usage().Withdrawn)
+				}
+			},
+		},
+		{
+			name:   "detail_missing_verdict",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffMissingLong,
+			// A detail response in the pre-v4 shape (no verdict) must not pass
+			// as a confirmation: the violation stands and the batch reports
+			// a malformed detail so it is not cached.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isDetailRequest(body) {
+					writeJSON(w, 200, message("end_turn", `{"explanation":"old shape","confidence":0.8,"evidence":[]}`, nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated || v.Explanation != "" {
+					t.Fatalf("verdict = %+v, want violated kept with no explanation", v)
+				}
+				if len(resp.Errors) != 1 || !errors.Is(resp.Errors[0], claude.ErrMalformed) || !strings.Contains(resp.Errors[0].Error(), "CMD-001") {
+					t.Fatalf("expected one ErrMalformed error naming CMD-001, got %v", resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "two_chunk_withdrawn",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// Same two-chunk split as two_chunk_diff. The first chunk is
+			// not_applicable with no details; the second is judged violated
+			// and then withdrawn to not_applicable with an explanation. The
+			// merged result must keep that explanation (strspc-manager#89).
+			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
+			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1504 },
+			script: func(w http.ResponseWriter, body string, _ int) {
+				switch {
+				case isDetailRequest(body):
+					writeJSON(w, 200, message("end_turn", withdrawnDetailText("not_applicable", "The sync command is a test double, not a cobra command.", 0.85), nil))
+				case strings.Contains(body, "src/cmd/sync.go"):
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+				default:
+					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "not_applicable"), nil))
+				}
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 3 {
+					t.Errorf("expected two verdict requests and one detail, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.NotApplicable {
+					t.Fatalf("merged verdict = %+v, want not_applicable", v)
+				}
+				if !strings.Contains(v.Explanation, "test double") || v.Confidence != 0.85 {
+					t.Errorf("merged result should carry the withdrawal's explanation and confidence, got %+v", v)
+				}
+				if p.Usage().Withdrawn != 1 || len(resp.Errors) != 0 {
+					t.Errorf("Withdrawn = %d, errors = %v", p.Usage().Withdrawn, resp.Errors)
 				}
 			},
 		},
