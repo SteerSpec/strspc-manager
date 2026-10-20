@@ -381,6 +381,7 @@ type wireVerdict struct {
 
 // wireDetail is the structured detail response (see prompt.DetailSchema).
 type wireDetail struct {
+	Verdict     string         `json:"verdict"`
 	Explanation string         `json:"explanation"`
 	Confidence  float64        `json:"confidence"`
 	Evidence    []wireLocation `json:"evidence"`
@@ -448,6 +449,16 @@ func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.Rule
 			switch {
 			case err == nil:
 				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
+				// The detail step re-reads the diff with the single rule in
+				// focus and may withdraw the verdict (strspc-manager#87). A
+				// withdrawn violation keeps its explanation so the caller can
+				// see why, but carries no evidence.
+				if w := ruleeval.Verdict(d.Verdict); w == ruleeval.Compliant || w == ruleeval.NotApplicable {
+					wv.Verdict, wv.Evidence = string(w), nil
+					p.mu.Lock()
+					p.usage.Withdrawn++
+					p.mu.Unlock()
+				}
 			case errors.Is(err, ruleeval.ErrUnavailable) || ctx.Err() != nil:
 				return nil, err
 			default:
@@ -481,6 +492,14 @@ func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInp
 	var d wireDetail
 	if err := json.Unmarshal([]byte(text), &d); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
+	}
+	// The verdict is what lets the detail step withdraw a violation, so a
+	// response without one (an older detail shape from a proxy, say) must
+	// not pass as a confirmation.
+	switch ruleeval.Verdict(d.Verdict) {
+	case ruleeval.Violated, ruleeval.Compliant, ruleeval.NotApplicable:
+	default:
+		return nil, fmt.Errorf("%w: detail for rule %s has unknown verdict %q", ErrMalformed, in.Rule.ID, d.Verdict)
 	}
 	return &d, nil
 }

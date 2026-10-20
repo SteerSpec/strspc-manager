@@ -17,7 +17,7 @@ import (
 
 // Version identifies the prompt revision. Bump it whenever a change to this
 // package could change verdicts so that cached results are invalidated.
-const Version = "v3"
+const Version = "v4"
 
 // noteOrder lists the note types sent to the evaluator, in the order they
 // are rendered. Other note types (changelog, reference, supersedes, …) are
@@ -32,7 +32,9 @@ How to evaluate:
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when the diff falls outside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule whose source has scope "local" applies only to files under that source's own directory. Files elsewhere in the diff make such a rule "not_applicable".
 - The verdict response is one JSON object with one key per rule id listed in the rules block and the verdict as its value. Every listed id is present, including when every verdict is "not_applicable".
-- When asked to detail a rule judged "violated", cite evidence: the file path from the "diff --git" (or "+++") header, the line number in the new file computed from the nearest "@@ -a,b +c,d @@" hunk header, and a short excerpt of the offending line. When the violation is a removal, the removed line has no new-file line number: cite the line in the new file where the removed content used to be (the nearest surviving line in that hunk, or the hunk's starting line "c" when nothing survives) and quote the removed line as the excerpt. Use an empty evidence list when there is nothing to cite, and set "confidence" between 0 and 1 to reflect how certain you are.
+- Rule states are lifecycle codes, not activity flags: D Draft, P Published, I Implemented, R Retired, T Terminated. A state never changes whether a rule applies to the diff; the consumer decides which states block a merge. Never treat "I" as inactive.
+- Files under a "testdata", "fixtures" or "__fixtures__" directory, and files whose name or path marks them as test fixtures, are inputs for tests. A fixture that is deliberately malformed does not violate a rule about the artefact it imitates; judge it only by rules that govern test data.
+- When asked to detail a rule judged "violated", re-read the diff against the rule first. If the verdict does not hold on that reading, answer with the verdict you now hold ("compliant" or "not_applicable") and explain why; otherwise confirm "violated" and cite evidence: the file path from the "diff --git" (or "+++") header, the line number in the new file computed from the nearest "@@ -a,b +c,d @@" hunk header, and a short excerpt of the offending line. When the violation is a removal, the removed line has no new-file line number: cite the line in the new file where the removed content used to be (the nearest surviving line in that hunk, or the hunk's starting line "c" when nothing survives) and quote the removed line as the excerpt. Use an empty evidence list when there is nothing to cite, and set "confidence" between 0 and 1 to reflect how certain you are.
 `
 
 // System returns the system prompt.
@@ -141,8 +143,9 @@ func DetailSchema() map[string]any {
 	return map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
-		"required":             []string{"explanation", "confidence", "evidence"},
+		"required":             []string{"verdict", "explanation", "confidence", "evidence"},
 		"properties": map[string]any{
+			"verdict":     map[string]any{"type": "string", "enum": []string{"violated", "compliant", "not_applicable"}, "description": "The verdict after re-reading the diff: \"violated\" confirms it, any other value withdraws it."},
 			"explanation": map[string]any{"type": "string", "description": "One or two sentences justifying the verdict."},
 			"confidence":  map[string]any{"type": "number", "description": "Certainty from 0 (guess) to 1 (certain)."},
 			"evidence":    map[string]any{"type": "array", "items": evidence},
@@ -153,5 +156,5 @@ func DetailSchema() map[string]any {
 // DetailInstruction is the user turn that follows the diff and the single
 // rule when asking for the details of a verdict already given.
 func DetailInstruction(ruleID string) string {
-	return "Rule " + ruleID + " was judged \"violated\" against this diff. Give the explanation, your confidence and the evidence locations."
+	return "Rule " + ruleID + " was judged \"violated\" against this diff. Re-read the diff against the rule: confirm or withdraw that verdict, then give the explanation, your confidence and the evidence locations."
 }

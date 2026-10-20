@@ -62,12 +62,16 @@ type Usage struct {
 	CacheReadTokens  int64
 	CacheWriteTokens int64
 	Requests         int
+	// Withdrawn counts violations the detail step took back after
+	// re-reading the diff with the single rule in focus.
+	Withdrawn int
 }
 
 // Add accumulates o into u.
 func (u *Usage) Add(o Usage) {
 	u.InputTokens += o.InputTokens
 	u.OutputTokens += o.OutputTokens
+	u.Withdrawn += o.Withdrawn
 	u.CacheReadTokens += o.CacheReadTokens
 	u.CacheWriteTokens += o.CacheWriteTokens
 	u.Requests += o.Requests

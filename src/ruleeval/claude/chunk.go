@@ -235,6 +235,13 @@ func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.
 		if cur.Explanation == "" {
 			cur.Explanation = v.Explanation
 		}
+	case precedence(v.Verdict) == precedence(cur.Verdict):
+		// Equal non-violating verdicts: a chunk whose detail step withdrew a
+		// violation carries an explanation and a confidence that a plain
+		// verdict-only chunk lacks; keep them rather than the empty ones.
+		if cur.Explanation == "" && v.Explanation != "" {
+			cur.Explanation, cur.Confidence = v.Explanation, v.Confidence
+		}
 	}
 }
 
