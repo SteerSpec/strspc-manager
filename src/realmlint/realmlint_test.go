@@ -422,6 +422,38 @@ func TestRM011_SubRealmNested(t *testing.T) {
 	}
 }
 
+func TestRM007_SubRealmManifestMissingFields(t *testing.T) {
+	// A child manifest with the expected id but no title or version used to
+	// pass: RM007 ran only on the parent (strspc-manager#83).
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_bad_manifest")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM007")
+	if res.OK() {
+		t.Error("expected errors for sub-realm manifest without title and version")
+	}
+	for _, d := range res.Diagnostics {
+		if d.Code == "RM007" && !strings.HasSuffix(d.Path, filepath.Join("sync", "realm.json")) {
+			t.Errorf("RM007 should point at the sub-realm manifest, got path %q", d.Path)
+		}
+	}
+	if hasCode(res, "RM010") {
+		t.Error("the id is correct, so RM010 must not fire")
+	}
+}
+
+func TestRM003_SubRealmMissingSchemaDir(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_no_schema_dir")
+	linter := New()
+	res := linter.Lint(dir)
+
+	assertHasCode(t, res, "RM003")
+	if res.OK() {
+		t.Error("expected errors for sub-realm without _schema/")
+	}
+}
+
 func TestRM012_SubRealmEUIDCollision(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_euid_collision")
 	linter := New()
