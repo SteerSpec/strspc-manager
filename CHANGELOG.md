@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.16.1](https://github.com/SteerSpec/strspc-manager/compare/v1.16.0...v1.16.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **claude:** keep the decode and SDK errors reachable as wrapped causes ([2d8c7c5](https://github.com/SteerSpec/strspc-manager/commit/2d8c7c59edecef028371b2fb47672066ea989f05))
+* **claude:** keep the decode and SDK errors reachable as wrapped causes ([d64f943](https://github.com/SteerSpec/strspc-manager/commit/d64f9437f41190c573b92e9273f6f8aa458db613)), closes [#82](https://github.com/SteerSpec/strspc-manager/issues/82)
+* **realmlint:** validate sub-realm manifests and _schema/ like the parent ([7418c56](https://github.com/SteerSpec/strspc-manager/commit/7418c56b37e8d8fdd62a5c6f87651e6e18c7c870))
+* **realmlint:** validate sub-realm manifests and _schema/ like the parent ([74a8013](https://github.com/SteerSpec/strspc-manager/commit/74a8013374580f34a7ab2c6b6f08039568b784b6)), closes [#83](https://github.com/SteerSpec/strspc-manager/issues/83)
+
 ## [1.16.0](https://github.com/SteerSpec/strspc-manager/compare/v1.15.1...v1.16.0) (2026-10-20)
 
 
