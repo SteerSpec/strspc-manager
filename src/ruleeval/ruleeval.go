@@ -106,9 +106,11 @@ func RuleInputsFromFile(f *entity.File) []RuleInput {
 // as the batch path does.
 type EvalRequest struct {
 	// Rule is the rule to evaluate.
-	Rule  entity.Rule
-	Notes []entity.Note // contextual notes (rationale, examples, applies_to, …)
-	Diff  string        // code diff to evaluate
+	Rule entity.Rule
+	// Notes are the contextual notes (rationale, examples, applies_to, …).
+	Notes []entity.Note
+	// Diff is the code diff to evaluate.
+	Diff string
 	// EntityID is the ID of the entity that owns Rule.
 	EntityID string
 	// Source is the configured rule source the rule came from.
@@ -141,12 +143,18 @@ type Provider interface {
 
 // Config holds options for the Evaluator.
 type Config struct {
-	StaticOnly     bool            // skip AI evaluation, structural checks only
-	FailOn         map[string]bool // state codes that produce Error severity on violation
-	EvaluateStates map[string]bool // state codes that are evaluated at all
-	Cache          Cache           // optional verdict cache
-	Concurrency    int             // max concurrent provider calls (default 1)
-	Observer       Observer        // optional progress observer
+	// StaticOnly skips AI evaluation and runs structural checks only.
+	StaticOnly bool
+	// FailOn lists the state codes that produce Error severity on violation.
+	FailOn map[string]bool
+	// EvaluateStates lists the state codes that are evaluated at all.
+	EvaluateStates map[string]bool
+	// Cache is the optional verdict cache.
+	Cache Cache
+	// Concurrency is the max number of concurrent provider calls (default 1).
+	Concurrency int
+	// Observer is the optional progress observer.
+	Observer Observer
 }
 
 // Option configures the Evaluator.

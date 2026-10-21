@@ -38,8 +38,11 @@ const (
 
 // Config holds options for the Fetcher.
 type Config struct {
-	CacheDir string // local cache directory (default: os.UserCacheDir()/strspc/schemas)
-	BaseURL  string // base URL for schema fetches (default: BaseURL)
+	// CacheDir is the local cache directory (default:
+	// os.UserCacheDir()/strspc/schemas).
+	CacheDir string
+	// BaseURL is the base URL for schema fetches (default: BaseURL).
+	BaseURL string
 	// Client is the HTTP client used for fetches; nil selects one with a
 	// 30-second timeout.
 	Client *http.Client

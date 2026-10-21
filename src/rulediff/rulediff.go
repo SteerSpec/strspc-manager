@@ -16,7 +16,8 @@ const module = "rule-diff"
 
 // Config holds options for the Differ.
 type Config struct {
-	Strict bool // treat warnings as errors
+	// Strict treats warnings as errors.
+	Strict bool
 }
 
 // Option configures the Differ.

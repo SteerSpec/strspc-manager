@@ -62,8 +62,8 @@ type Cassette struct {
 	// Comment is optional free text describing the cassette, set with
 	// SetComment.
 	Comment string `json:"comment,omitempty"`
-	// Interactions lists the recorded request shapes with their responses, in
-	// first-seen order.
+	// Interactions lists the recorded request shapes with their responses,
+	// sorted by method, path and body when the cassette is saved.
 	Interactions []Interaction `json:"interactions"`
 }
 

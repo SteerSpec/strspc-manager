@@ -78,18 +78,25 @@ var validEfforts = map[string]bool{"low": true, "medium": true, "high": true, "x
 
 // Config configures the provider. Zero fields take the Default* values.
 type Config struct {
-	APIKey string // defaults to $ANTHROPIC_API_KEY
+	// APIKey defaults to $ANTHROPIC_API_KEY.
+	APIKey string
 	// Model is the Claude model ID to call.
-	Model          string
-	BaseURL        string // custom endpoint; empty for the Anthropic API
-	Effort         string // low | medium | high | xhigh | max
-	MaxTokens      int64  // response token cap
-	MaxInputTokens int    // budget per request; drives diff chunking
+	Model string
+	// BaseURL is a custom endpoint; empty for the Anthropic API.
+	BaseURL string
+	// Effort is one of low | medium | high | xhigh | max.
+	Effort string
+	// MaxTokens is the response token cap.
+	MaxTokens int64
+	// MaxInputTokens is the budget per request; it drives diff chunking.
+	MaxInputTokens int
 	// MaxRulesPerRequest bounds how many rules of one entity share a single
 	// request.
 	MaxRulesPerRequest int
-	Concurrency        int // concurrent requests within one batch
-	MaxRetries         int // SDK retries for 429/5xx
+	// Concurrency is the number of concurrent requests within one batch.
+	Concurrency int
+	// MaxRetries is the number of SDK retries for 429/5xx.
+	MaxRetries int
 
 	// HTTPClient overrides the transport (tests use a record/replay one).
 	HTTPClient *http.Client

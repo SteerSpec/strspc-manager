@@ -57,7 +57,7 @@ func (r *MarkdownRenderer) getTemplate() (*template.Template, error) {
 // renderContext holds the data passed to the template.
 type renderContext struct {
 	entity.File
-	// Depth is the nesting level of the entity, 0 for the top-level file;
+	// Depth is the nesting level of the entity, 1 for the top-level file;
 	// heading levels derive from it.
 	Depth int
 	// NotesByRule groups the file's notes by the rule ID they reference.

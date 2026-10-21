@@ -61,9 +61,12 @@ var validNoteTypes = map[string]bool{
 
 // Config holds options for the Linter.
 type Config struct {
-	SchemaVersion string          // schema version to validate against (default: "v1")
-	Strict        bool            // treat warnings as errors
-	SchemaFetcher *schema.Fetcher // fetcher for JSON schemas (nil = skip schema check)
+	// SchemaVersion is the schema version to validate against (default: "v1").
+	SchemaVersion string
+	// Strict treats warnings as errors.
+	Strict bool
+	// SchemaFetcher is the fetcher for JSON schemas (nil = skip schema check).
+	SchemaFetcher *schema.Fetcher
 }
 
 // Option configures the Linter.

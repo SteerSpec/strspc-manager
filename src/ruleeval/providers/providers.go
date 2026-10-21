@@ -27,11 +27,16 @@ var (
 
 // Options carries the evaluator settings from .strspc/config.yaml.
 type Options struct {
-	APIKey      string // defaults to the provider's environment variable
-	Model       string // provider default when empty
-	Endpoint    string // custom base URL; empty for the provider default
-	Effort      string // provider default when empty
-	Concurrency int    // provider default when zero
+	// APIKey defaults to the provider's environment variable.
+	APIKey string
+	// Model takes the provider default when empty.
+	Model string
+	// Endpoint is a custom base URL; empty for the provider default.
+	Endpoint string
+	// Effort takes the provider default when empty.
+	Effort string
+	// Concurrency takes the provider default when zero.
+	Concurrency int
 
 	// HTTPClient overrides the transport (tests).
 	HTTPClient *http.Client

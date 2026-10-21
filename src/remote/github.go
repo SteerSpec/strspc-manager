@@ -64,8 +64,10 @@ type Ref struct {
 	Owner string
 	// Repo is the repository name.
 	Repo string
-	Ref  string // tag, commit SHA, or "latest"
-	Path string // slash-separated path inside the repository, "" for root
+	// Ref is the tag, commit SHA, or "latest".
+	Ref string
+	// Path is the slash-separated path inside the repository, "" for root.
+	Path string
 }
 
 // String renders the reference in normalised github:// form.
@@ -134,12 +136,19 @@ func TokenFromEnv() string {
 // Fetcher downloads github:// references into a local cache directory.
 // The zero value is usable once CacheDir is set.
 type Fetcher struct {
-	Client   *http.Client  // nil → default client with a 60s timeout
-	Token    string        // bearer token sent as Authorization when non-empty
-	BaseURL  string        // API root, "" → DefaultBaseURL
-	CacheDir string        // required; content lands under <CacheDir>/github/
-	TTL      time.Duration // how long a resolved "latest" tag is trusted, 0 → DefaultTTL
-	Force    bool          // ignore cached content and re-download
+	// Client is the HTTP client; nil selects a default client with a 60s
+	// timeout.
+	Client *http.Client
+	// Token is the bearer token sent as Authorization when non-empty.
+	Token string
+	// BaseURL is the API root; "" selects DefaultBaseURL.
+	BaseURL string
+	// CacheDir is required; content lands under <CacheDir>/github/.
+	CacheDir string
+	// TTL is how long a resolved "latest" tag is trusted; 0 selects DefaultTTL.
+	TTL time.Duration
+	// Force ignores cached content and re-downloads.
+	Force bool
 
 	now func() time.Time // test hook
 }
