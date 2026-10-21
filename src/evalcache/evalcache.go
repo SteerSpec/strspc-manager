@@ -8,6 +8,7 @@
 package evalcache
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -94,8 +95,10 @@ type entry struct {
 
 // Open opens or creates the cache at path, creating parent directories as
 // needed. A corrupt file is removed and recreated; Diagnostics then
-// reports an Info diagnostic so the caller can tell the user.
-func Open(path string, opts ...Option) (*Store, error) {
+// reports an Info diagnostic so the caller can tell the user. ctx bounds
+// the wait for the file lock (and the recovery lock): when it is cancelled
+// or expires before the lock is acquired, Open returns the context error.
+func Open(ctx context.Context, path string, opts ...Option) (*Store, error) {
 	cfg := config{now: time.Now, lockTimeout: defaultLockTimeout}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -106,7 +109,7 @@ func Open(path string, opts ...Option) (*Store, error) {
 
 	s := &Store{cfg: cfg, diags: &result.Result{}}
 
-	db, err := open(path, cfg.lockTimeout)
+	db, err := open(ctx, path, cfg.lockTimeout)
 	if err == nil {
 		s.db = db
 		return s, nil
@@ -123,7 +126,7 @@ func Open(path string, opts ...Option) (*Store, error) {
 	// corrupt one. Otherwise two processes that both saw the corruption
 	// could race and one would unlink the healthy database the other had
 	// just recreated and locked.
-	db, recovered, err := recoverCorrupt(path, cfg.lockTimeout, err)
+	db, recovered, err := recoverCorrupt(ctx, path, cfg.lockTimeout, err)
 	if err != nil {
 		return nil, err
 	}
@@ -150,15 +153,15 @@ const recoverLockStale = 30 * time.Second
 // error when a new file was created, nil when another process already
 // recreated the database (in which case db may still fail to open with
 // ErrLocked, which is returned as err).
-func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bolt.DB, recovered error, err error) {
-	unlock, err := acquireRecoverLock(path+".recover.lock", lockTimeout)
+func recoverCorrupt(ctx context.Context, path string, lockTimeout time.Duration, cause error) (db *bolt.DB, recovered error, err error) {
+	unlock, err := acquireRecoverLock(ctx, path+".recover.lock", lockTimeout)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer unlock()
 
 	// Re-check under the lock: another process may have recreated it.
-	db, err = open(path, lockTimeout)
+	db, err = open(ctx, path, lockTimeout)
 	if err == nil {
 		return db, nil, nil
 	}
@@ -177,7 +180,7 @@ func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bo
 	// rename because Windows refuses to replace a file that is still open.
 	tmp := path + ".recover.tmp"
 	_ = os.Remove(tmp)
-	fresh, err := open(tmp, lockTimeout)
+	fresh, err := open(ctx, tmp, lockTimeout)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%w): %w", path, cause, err)
 	}
@@ -192,7 +195,7 @@ func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bo
 		// to no cache instead of failing, and retries next run.
 		return nil, nil, fmt.Errorf("%w: replacing corrupt cache %s: %w", ErrLocked, path, renameErr)
 	}
-	db, err = open(path, lockTimeout)
+	db, err = open(ctx, path, lockTimeout)
 	if err != nil {
 		if errors.Is(err, bolterrors.ErrTimeout) {
 			// Another opener took the healthy replacement first; it has a
@@ -204,10 +207,11 @@ func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bo
 	return db, cause, nil
 }
 
-// acquireRecoverLock creates lockPath exclusively, retrying until timeout.
+// acquireRecoverLock creates lockPath exclusively, retrying until timeout
+// or until ctx is done.
 // A lock file older than recoverLockStale is treated as abandoned and
 // replaced. The returned function releases the lock.
-func acquireRecoverLock(lockPath string, timeout time.Duration) (func(), error) {
+func acquireRecoverLock(ctx context.Context, lockPath string, timeout time.Duration) (func(), error) {
 	deadline := time.Now().Add(timeout)
 	for {
 		f, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
@@ -226,22 +230,51 @@ func acquireRecoverLock(lockPath string, timeout time.Duration) (func(), error) 
 		if time.Now().After(deadline) {
 			return nil, fmt.Errorf("%w: recovery in progress (%s)", ErrLocked, lockPath)
 		}
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("evalcache: waiting for recovery lock %s: %w", lockPath, ctx.Err())
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 }
 
 // open opens the database and ensures the bucket exists. Any failure after
 // the file was opened is reported as-is so that Open can classify it.
-func open(path string, lockTimeout time.Duration) (*bolt.DB, error) {
-	db, err := bolt.Open(path, fileMode, &bolt.Options{Timeout: lockTimeout})
-	if err != nil {
+// bolt.Open polls for the file lock and cannot observe ctx itself, so it
+// runs in a goroutine: when ctx is done first, open returns ctx.Err() and
+// the goroutine closes the database if the lock is eventually acquired.
+func open(ctx context.Context, path string, lockTimeout time.Duration) (*bolt.DB, error) {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	err = db.Update(func(tx *bolt.Tx) error {
+	type opened struct {
+		db  *bolt.DB
+		err error
+	}
+	ch := make(chan opened, 1)
+	go func() {
+		db, err := bolt.Open(path, fileMode, &bolt.Options{Timeout: lockTimeout})
+		ch <- opened{db: db, err: err}
+	}()
+	var db *bolt.DB
+	select {
+	case o := <-ch:
+		if o.err != nil {
+			return nil, o.err
+		}
+		db = o.db
+	case <-ctx.Done():
+		go func() {
+			if o := <-ch; o.db != nil {
+				_ = o.db.Close()
+			}
+		}()
+		return nil, ctx.Err()
+	}
+	if err := db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(bucketName)
 		return err
-	})
-	if err != nil {
+	}); err != nil {
 		_ = db.Close()
 		return nil, err
 	}

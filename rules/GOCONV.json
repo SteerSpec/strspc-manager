@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.6.0",
-    "timestamp": "2026-10-21T15:01:57Z",
-    "hash": "blake3:9c43215c99f59e5be2dcdb8373e9c29bdfe8d1a4422005890bd0901ef2735fba"
+    "version": "0.7.0",
+    "timestamp": "2026-10-21T16:12:25Z",
+    "hash": "blake3:4736be7b4812115a2b520580fbf3b84a7666ce23d94486886a1103997c288d51"
   },
   "rules": [
     {
@@ -50,7 +50,7 @@
     {
       "id": "GOCONV-005",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "Functions that perform network or long-running work MUST accept a context.Context as their first parameter.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -73,6 +73,15 @@
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
+    },
+    {
+      "id": "GOCONV-008",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST pass golangci-lint v2 with every linter enabled in .golangci.yml.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-21",
+      "supersedes": "GOCONV-003"
     }
   ],
   "notes": []

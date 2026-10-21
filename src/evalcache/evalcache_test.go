@@ -1,6 +1,7 @@
 package evalcache_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func sample() *ruleeval.EvalResponse {
 
 func TestOpen_CreatesParentDirAndRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), ".strspc", "cache.db")
-	s, err := evalcache.Open(path)
+	s, err := evalcache.Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func TestOpen_CreatesParentDirAndRoundTrips(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	s2, err := evalcache.Open(path)
+	s2, err := evalcache.Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +74,7 @@ func TestStore_ImplementsCache(t *testing.T) {
 
 func TestTTL_ExpiresViaInjectedClock(t *testing.T) {
 	clock := &fakeClock{now: time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)}
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"),
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"),
 		evalcache.WithTTL(time.Hour), evalcache.WithClock(clock.Now))
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +96,7 @@ func TestTTL_ExpiresViaInjectedClock(t *testing.T) {
 
 func TestTTL_ZeroNeverExpires(t *testing.T) {
 	clock := &fakeClock{now: time.Unix(0, 0)}
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"), evalcache.WithClock(clock.Now))
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"), evalcache.WithClock(clock.Now))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +113,7 @@ func TestTTL_ZeroNeverExpires(t *testing.T) {
 
 func TestPrune_RemovesOnlyExpired(t *testing.T) {
 	clock := &fakeClock{now: time.Unix(1_000_000, 0)}
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"),
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"),
 		evalcache.WithTTL(10*time.Minute), evalcache.WithClock(clock.Now))
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +147,7 @@ func TestOpen_CorruptFileIsRecreated(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cache.db")
 	writeGarbage(t, path)
 
-	s, err := evalcache.Open(path)
+	s, err := evalcache.Open(context.Background(), path)
 	if err != nil {
 		t.Fatalf("Open on corrupt file should recreate, got %v", err)
 	}
@@ -166,14 +167,14 @@ func TestOpen_CorruptFileIsRecreated(t *testing.T) {
 
 func TestOpen_LockTimeout(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cache.db")
-	a, err := evalcache.Open(path)
+	a, err := evalcache.Open(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = a.Close() }()
 
 	start := time.Now()
-	_, err = evalcache.Open(path, evalcache.WithLockTimeout(100*time.Millisecond))
+	_, err = evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(100*time.Millisecond))
 	if !errors.Is(err, evalcache.ErrLocked) {
 		t.Fatalf("second Open should fail with ErrLocked, got %v", err)
 	}
@@ -183,7 +184,7 @@ func TestOpen_LockTimeout(t *testing.T) {
 
 	// Once the first holder closes, opening succeeds.
 	_ = a.Close()
-	b, err := evalcache.Open(path, evalcache.WithLockTimeout(100*time.Millisecond))
+	b, err := evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(100*time.Millisecond))
 	if err != nil {
 		t.Fatalf("Open after release: %v", err)
 	}
@@ -191,7 +192,7 @@ func TestOpen_LockTimeout(t *testing.T) {
 }
 
 func TestStore_AfterClose(t *testing.T) {
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"))
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +209,7 @@ func TestStore_AfterClose(t *testing.T) {
 }
 
 func TestPut_RejectsNil(t *testing.T) {
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"))
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +220,7 @@ func TestPut_RejectsNil(t *testing.T) {
 }
 
 func TestClose_ConcurrentWithOperations(t *testing.T) {
-	s, err := evalcache.Open(filepath.Join(t.TempDir(), "cache.db"))
+	s, err := evalcache.Open(context.Background(), filepath.Join(t.TempDir(), "cache.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +297,7 @@ func TestOpen_ConcurrentRecoveryKeepsOneDatabase(t *testing.T) {
 			go func(i int) {
 				defer wg.Done()
 				<-start
-				s, err := evalcache.Open(path, evalcache.WithLockTimeout(200*time.Millisecond))
+				s, err := evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(200*time.Millisecond))
 				results[i] = outcome{s, err}
 			}(i)
 		}
@@ -335,7 +336,7 @@ func TestOpen_ConcurrentRecoveryKeepsOneDatabase(t *testing.T) {
 
 		// The surviving file is the one the winner wrote to: a fresh open
 		// finds the entry and reports no recovery.
-		s, err := evalcache.Open(path)
+		s, err := evalcache.Open(context.Background(), path)
 		if err != nil {
 			t.Fatalf("round %d: reopen: %v", round, err)
 		}
@@ -363,7 +364,7 @@ func TestOpen_StaleRecoveryLockIsReclaimed(t *testing.T) {
 	if err := os.Chtimes(lock, old, old); err != nil {
 		t.Fatal(err)
 	}
-	s, err := evalcache.Open(path, evalcache.WithLockTimeout(300*time.Millisecond))
+	s, err := evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(300*time.Millisecond))
 	if err != nil {
 		t.Fatalf("stale recovery lock must be reclaimed, got %v", err)
 	}
@@ -379,8 +380,59 @@ func TestOpen_FreshRecoveryLockHeldElsewhere(t *testing.T) {
 	if err := os.WriteFile(path+".recover.lock", []byte("12345\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := evalcache.Open(path, evalcache.WithLockTimeout(150*time.Millisecond))
+	_, err := evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(150*time.Millisecond))
 	if !errors.Is(err, evalcache.ErrLocked) {
 		t.Fatalf("a fresh recovery lock held by another process should yield ErrLocked, got %v", err)
+	}
+}
+
+func TestOpen_ContextCancelledWhileLocked(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	a, err := evalcache.Open(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = a.Close() }()
+
+	// The lock timeout is far longer than the context: Open must give up
+	// when the context does, not when the lock wait expires.
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err = evalcache.Open(ctx, path, evalcache.WithLockTimeout(10*time.Second))
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Open with expired context should fail with DeadlineExceeded, got %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("Open took %v, expected to stop at the 50ms context deadline", elapsed)
+	}
+
+	// The holder is unaffected and a fresh context still opens after release.
+	_ = a.Close()
+	b, err := evalcache.Open(context.Background(), path, evalcache.WithLockTimeout(100*time.Millisecond))
+	if err != nil {
+		t.Fatalf("Open after release: %v", err)
+	}
+	_ = b.Close()
+}
+
+func TestOpen_ContextCancelledWhileRecoveryLockHeld(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	writeGarbage(t, path)
+	// A fresh recovery lock held by another process: Open would normally
+	// poll for it until the lock timeout.
+	if err := os.WriteFile(path+".recover.lock", []byte("12345\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err := evalcache.Open(ctx, path, evalcache.WithLockTimeout(10*time.Second))
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Open waiting on the recovery lock should fail with DeadlineExceeded, got %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("Open took %v, expected to stop at the 50ms context deadline", elapsed)
 	}
 }
