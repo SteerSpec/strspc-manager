@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.3.0",
-    "timestamp": "2026-10-21T06:41:52Z",
-    "hash": "blake3:49888c71552b785054c823173c9c07b1919741994783d570107e918c39560811"
+    "version": "0.4.0",
+    "timestamp": "2026-10-21T07:46:57Z",
+    "hash": "blake3:205e0db83cbcc9efc84ece81143a9d9142cef283dc6512cb10c555c827c724e6"
   },
   "rules": [
     {
@@ -59,7 +59,7 @@
     {
       "id": "MOD-006",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST describe every diagnostic code a module emits in docs/SPEC.md.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
