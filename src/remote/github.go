@@ -60,10 +60,12 @@ var ErrNotFound = errors.New("not found")
 
 // Ref is a parsed github:// reference.
 type Ref struct {
+	// Owner is the GitHub user or organisation that owns the repository.
 	Owner string
-	Repo  string
-	Ref   string // tag, commit SHA, or "latest"
-	Path  string // slash-separated path inside the repository, "" for root
+	// Repo is the repository name.
+	Repo string
+	Ref  string // tag, commit SHA, or "latest"
+	Path string // slash-separated path inside the repository, "" for root
 }
 
 // String renders the reference in normalised github:// form.
@@ -205,7 +207,10 @@ func pathKey(p string) string {
 }
 
 type latestRecord struct {
-	Tag        string    `json:"tag"`
+	// Tag is the release tag that "latest" resolved to.
+	Tag string `json:"tag"`
+	// ResolvedAt is when Tag was fetched; the pointer is trusted while younger
+	// than the TTL.
 	ResolvedAt time.Time `json:"resolved_at"`
 }
 

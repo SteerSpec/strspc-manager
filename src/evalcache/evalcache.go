@@ -85,8 +85,11 @@ type Store struct {
 
 // entry is the stored value.
 type entry struct {
-	CreatedAt time.Time              `json:"created_at"`
-	Response  *ruleeval.EvalResponse `json:"response"`
+	// CreatedAt is the UTC time the entry was written; the TTL is measured from
+	// it.
+	CreatedAt time.Time `json:"created_at"`
+	// Response is the cached verdict for the rule and diff the key identifies.
+	Response *ruleeval.EvalResponse `json:"response"`
 }
 
 // Open opens or creates the cache at path, creating parent directories as

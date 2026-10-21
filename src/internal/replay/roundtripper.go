@@ -32,8 +32,12 @@ type Mode int
 
 // Modes.
 const (
-	ModeReplay Mode = iota // serve responses from the cassette; never touch the network
-	ModeRecord             // forward to the upstream transport and save exchanges
+	// ModeReplay serves responses from the cassette and never touches the
+	// network.
+	ModeReplay Mode = iota
+	// ModeRecord forwards requests to the upstream transport and saves the
+	// exchanges.
+	ModeRecord
 )
 
 // EnvRecord is the environment variable that switches tests to record mode.
@@ -55,29 +59,42 @@ var responseHeaderAllowList = []string{
 
 // Cassette is the on-disk format.
 type Cassette struct {
-	Comment      string        `json:"comment,omitempty"`
+	// Comment is optional free text describing the cassette, set with
+	// SetComment.
+	Comment string `json:"comment,omitempty"`
+	// Interactions lists the recorded request shapes with their responses, in
+	// first-seen order.
 	Interactions []Interaction `json:"interactions"`
 }
 
 // Interaction is one request shape and the ordered responses it received.
 type Interaction struct {
-	Request   Request    `json:"request"`
+	// Request is the header-less request shape that keys this interaction.
+	Request Request `json:"request"`
+	// Responses holds the responses received for Request, in the order they
+	// were recorded.
 	Responses []Response `json:"responses"`
 }
 
 // Request is the stored, header-less request. Body holds the canonical
 // JSON (or the raw body when it is not JSON).
 type Request struct {
+	// Method is the HTTP method.
 	Method string `json:"method"`
-	Path   string `json:"path"`
-	Body   string `json:"body"`
+	// Path is the URL path of the request, without host or query string.
+	Path string `json:"path"`
+	// Body is the canonical JSON body, or the raw body when it is not JSON.
+	Body string `json:"body"`
 }
 
 // Response is a stored response.
 type Response struct {
-	Status  int               `json:"status"`
+	// Status is the HTTP status code.
+	Status int `json:"status"`
+	// Headers holds the allow-listed response headers.
 	Headers map[string]string `json:"headers,omitempty"`
-	Body    string            `json:"body"`
+	// Body is the raw response body.
+	Body string `json:"body"`
 }
 
 // Transport is the record/replay http.RoundTripper.

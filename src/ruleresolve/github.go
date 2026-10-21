@@ -13,6 +13,8 @@ import (
 // Fetcher and then delegates to LocalSource, so parse errors (RSV003) and
 // hash verification (RSV004) behave exactly as for local directories.
 type GitHubSource struct {
+	// Fetcher downloads and caches github:// sources; when nil every fetch
+	// fails with RSV007.
 	Fetcher *remote.Fetcher
 }
 

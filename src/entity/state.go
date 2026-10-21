@@ -4,12 +4,22 @@ import "fmt"
 
 // Rule lifecycle state constants.
 const (
-	StateDraft       = "D"
-	StateAbandoned   = "A"
-	StatePublished   = "P"
+	// StateDraft marks a rule that is being written and may still change
+	// freely.
+	StateDraft = "D"
+	// StateAbandoned marks a draft that was dropped before publication; the
+	// state is terminal.
+	StateAbandoned = "A"
+	// StatePublished marks a rule that is agreed upon but not yet implemented.
+	StatePublished = "P"
+	// StateImplemented marks a rule that is in force and enforced.
 	StateImplemented = "I"
-	StateRetired     = "R"
-	StateTerminated  = "T"
+	// StateRetired marks a rule that is no longer in force, typically because
+	// another rule supersedes it.
+	StateRetired = "R"
+	// StateTerminated marks a retired rule that is closed for good; the state
+	// is terminal.
+	StateTerminated = "T"
 )
 
 // validStates is the set of recognised rule lifecycle state codes.

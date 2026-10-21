@@ -21,12 +21,17 @@ const module = "realm-resolve"
 
 // ResolveResult holds the resolved dependencies and sub-realms for a realm.
 type ResolveResult struct {
+	// Dependencies holds the Realms declared in the manifest's dependencies, in
+	// declaration order.
 	Dependencies []*ResolvedRealm
-	SubRealms    []*ResolvedRealm
+	// SubRealms holds the child Realms named in the manifest's sub_realms, each
+	// with its effective dependencies.
+	SubRealms []*ResolvedRealm
 }
 
 // ResolvedRealm represents a single resolved dependency or sub-realm.
 type ResolvedRealm struct {
+	// Realm is the parsed realm.json manifest of the resolved Realm.
 	Realm *entity.RealmFile
 	Dir   string            // absolute path to resolved realm directory
 	EUIDs map[string]string // EUID → absolute file path

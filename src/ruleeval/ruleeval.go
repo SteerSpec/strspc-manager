@@ -21,10 +21,18 @@ const module = "rule-eval"
 
 // Diagnostic codes emitted by rule-eval.
 const (
-	CodeViolated      = "RE001" // rule violated
-	CodeProviderError = "RE002" // AI provider returned an error
-	CodeStaticOnly    = "RE003" // AI evaluation skipped (static-only mode)
-	CodeNoDiff        = "RE004" // nothing to evaluate: the diff is empty
+	// CodeViolated (RE001) reports that the diff violates a rule: Error when
+	// the rule's state is in fail_on, Warning otherwise.
+	CodeViolated = "RE001"
+	// CodeProviderError (RE002) reports that the AI provider failed for a rule
+	// or entity, or returned no usable verdict.
+	CodeProviderError = "RE002"
+	// CodeStaticOnly (RE003) reports that AI evaluation was skipped because the
+	// evaluator runs in static-only mode.
+	CodeStaticOnly = "RE003"
+	// CodeNoDiff (RE004) reports that the diff is empty and there is nothing to
+	// evaluate.
+	CodeNoDiff = "RE004"
 )
 
 // Verdict represents the evaluation outcome for a single rule.
@@ -32,8 +40,11 @@ type Verdict string
 
 // Verdict values for rule evaluation outcomes.
 const (
-	Compliant     Verdict = "compliant"
-	Violated      Verdict = "violated"
+	// Compliant means the diff touches the rule's subject and respects it.
+	Compliant Verdict = "compliant"
+	// Violated means an added or changed line breaks the rule.
+	Violated Verdict = "violated"
+	// NotApplicable means the diff does not touch the rule's subject at all.
 	NotApplicable Verdict = "not_applicable"
 )
 
@@ -46,11 +57,19 @@ const (
 // surfaced to the provider so that local rules are judged only against
 // files under their source directory.
 type RuleInput struct {
-	Rule     entity.Rule
-	Notes    []entity.Note
+	// Rule is the rule to evaluate.
+	Rule entity.Rule
+	// Notes lists the notes attached to Rule.
+	Notes []entity.Note
+	// EntityID is the ID of the entity that owns Rule; it groups rules into
+	// batch requests.
 	EntityID string
-	Source   string
-	Scope    string
+	// Source is the configured rule source the rule came from, such as a local
+	// path or a github:// reference.
+	Source string
+	// Scope is the source scope, "global" or "local"; local rules are judged
+	// only against files under their source directory.
+	Scope string
 }
 
 // RuleInputsFromFile extracts RuleInputs from an entity file, grouping
@@ -86,12 +105,16 @@ func RuleInputsFromFile(f *entity.File) []RuleInput {
 // provider can restrict a local-scope rule to its source directory exactly
 // as the batch path does.
 type EvalRequest struct {
-	Rule     entity.Rule
-	Notes    []entity.Note // contextual notes (rationale, examples, applies_to, …)
-	Diff     string        // code diff to evaluate
+	// Rule is the rule to evaluate.
+	Rule  entity.Rule
+	Notes []entity.Note // contextual notes (rationale, examples, applies_to, …)
+	Diff  string        // code diff to evaluate
+	// EntityID is the ID of the entity that owns Rule.
 	EntityID string
-	Source   string
-	Scope    string
+	// Source is the configured rule source the rule came from.
+	Source string
+	// Scope is the source scope, "global" or "local".
+	Scope string
 }
 
 // Input returns the RuleInput equivalent of the request.
@@ -101,10 +124,14 @@ func (r EvalRequest) Input() RuleInput {
 
 // EvalResponse contains the AI provider's evaluation of a single rule.
 type EvalResponse struct {
-	Verdict     Verdict    `json:"verdict"`
-	Explanation string     `json:"explanation"`
-	Confidence  float64    `json:"confidence,omitempty"`
-	Evidence    []Location `json:"evidence,omitempty"`
+	// Verdict is the evaluation outcome.
+	Verdict Verdict `json:"verdict"`
+	// Explanation is the provider's reasoning for the verdict.
+	Explanation string `json:"explanation"`
+	// Confidence is the provider's certainty from 0 to 1, when reported.
+	Confidence float64 `json:"confidence,omitempty"`
+	// Evidence lists the diff locations that support the verdict, when any.
+	Evidence []Location `json:"evidence,omitempty"`
 }
 
 // Provider is implemented by AI backends (Anthropic, OpenAI, Ollama, etc.).

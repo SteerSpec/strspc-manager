@@ -8,10 +8,14 @@ import (
 
 // RuleIDFormatter formats a rule's display identifier according to RLIFRMT rules.
 type RuleIDFormatter struct {
-	OpenBracket      string
-	CloseBracket     string
+	// OpenBracket is written before the rule ID.
+	OpenBracket string
+	// CloseBracket is written after the state code.
+	CloseBracket string
+	// RevisionSplitter separates the rule ID from the revision number.
 	RevisionSplitter string
-	StateSplitter    string
+	// StateSplitter separates the revision number from the state code.
+	StateSplitter string
 }
 
 // DefaultRuleIDFormatter returns a formatter with RLIFRMT default settings.

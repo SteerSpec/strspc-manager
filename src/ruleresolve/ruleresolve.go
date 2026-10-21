@@ -23,19 +23,26 @@ type Scope string
 
 // Rule source scope values.
 const (
+	// ScopeGlobal marks a source whose rules apply to the whole repository.
 	ScopeGlobal Scope = "global"
-	ScopeLocal  Scope = "local"
+	// ScopeLocal marks a source whose rules apply only to files under the
+	// source directory.
+	ScopeLocal Scope = "local"
 )
 
 // SourceEntry represents a single rule source from config.yaml.
 type SourceEntry struct {
 	Source string // URI: "./rules/", "github://...", etc.
-	Scope  Scope
+	// Scope says whether the source's rules apply globally or only under the
+	// source directory.
+	Scope Scope
 }
 
 // ResolvedFile wraps an entity.File with metadata from resolution.
 type ResolvedFile struct {
-	File           *entity.File
+	// File is the parsed entity file.
+	File *entity.File
+	// Origin is the config.yaml source entry the file was resolved from.
 	Origin         SourceEntry
 	Path           string // filesystem path (for diagnostics)
 	ResolvedSource string // absolute path or normalized URI of the source
@@ -43,6 +50,7 @@ type ResolvedFile struct {
 
 // SourceFile pairs a parsed entity file with the path it was loaded from.
 type SourceFile struct {
+	// File is the parsed entity file.
 	File *entity.File
 	Path string // filesystem path or URL
 }
