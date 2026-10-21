@@ -415,3 +415,24 @@ func TestOpen_ContextCancelledWhileLocked(t *testing.T) {
 	}
 	_ = b.Close()
 }
+
+func TestOpen_ContextCancelledWhileRecoveryLockHeld(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cache.db")
+	writeGarbage(t, path)
+	// A fresh recovery lock held by another process: Open would normally
+	// poll for it until the lock timeout.
+	if err := os.WriteFile(path+".recover.lock", []byte("12345\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err := evalcache.Open(ctx, path, evalcache.WithLockTimeout(10*time.Second))
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Open waiting on the recovery lock should fail with DeadlineExceeded, got %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("Open took %v, expected to stop at the 50ms context deadline", elapsed)
+	}
+}

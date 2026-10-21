@@ -7,8 +7,8 @@
   },
   "rule_set": {
     "version": "0.7.0",
-    "timestamp": "2026-10-21T16:05:08Z",
-    "hash": "blake3:a7682564c006d92ae4be141d274a3b0f55d49f45f72b7e3ec19440739cd2335e"
+    "timestamp": "2026-10-21T16:12:25Z",
+    "hash": "blake3:4736be7b4812115a2b520580fbf3b84a7666ce23d94486886a1103997c288d51"
   },
   "rules": [
     {
@@ -73,6 +73,15 @@
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
+    },
+    {
+      "id": "GOCONV-008",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST pass golangci-lint v2 with every linter enabled in .golangci.yml.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-21",
+      "supersedes": "GOCONV-003"
     }
   ],
   "notes": []
