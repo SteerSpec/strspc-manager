@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.0](https://github.com/SteerSpec/strspc-manager/compare/v1.17.0...v1.18.0) (2026-10-21)
+
+
+### Features
+
+* **evalcache:** accept a context in Open and enforce GOCONV-005 ([3e2da82](https://github.com/SteerSpec/strspc-manager/commit/3e2da8290681ffa2edfb71bca61a7e9b7047089b))
+* **evalcache:** accept a context in Open and enforce GOCONV-005 with contextcheck and noctx ([a2f077a](https://github.com/SteerSpec/strspc-manager/commit/a2f077a99ae4e2d473d28b539efa22a0482aff84))
+
 ## [1.17.0](https://github.com/SteerSpec/strspc-manager/compare/v1.16.5...v1.17.0) (2026-10-21)
 
 
