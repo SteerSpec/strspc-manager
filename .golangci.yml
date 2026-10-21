@@ -9,6 +9,8 @@ linters:
     - unused
     - misspell
     - revive
+    - contextcheck
+    - noctx
   settings:
     revive:
       rules:

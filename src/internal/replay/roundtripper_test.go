@@ -2,6 +2,7 @@ package replay_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 
 func post(t *testing.T, client *http.Client, url, body string) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +168,7 @@ func TestReplay_MissingInteraction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req, _ := http.NewRequest(http.MethodPost, "https://api.anthropic.com/v1/messages", strings.NewReader(`{"x":1}`))
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://api.anthropic.com/v1/messages", strings.NewReader(`{"x":1}`))
 	_, err = rp.RoundTrip(req)
 	if !errors.Is(err, replay.ErrMissingInteraction) {
 		t.Fatalf("expected ErrMissingInteraction, got %v", err)
@@ -214,7 +215,7 @@ func TestRecord_UpstreamError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req, _ := http.NewRequest(http.MethodGet, "https://x/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://x/", nil)
 	if _, err := rec.RoundTrip(req); err == nil || !strings.Contains(err.Error(), "connection refused") {
 		t.Fatalf("expected upstream error to propagate, got %v", err)
 	}
