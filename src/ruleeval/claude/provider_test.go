@@ -805,6 +805,11 @@ func scenarios() []scenario {
 				writeJSON(w, 401, apiError(401, "authentication_error", "invalid x-api-key"))
 			},
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				// GOCONV-004: the SDK error stays reachable behind ErrUnavailable.
+				var apiErr *anthropic.Error
+				if !errors.As(err, &apiErr) || apiErr.StatusCode != 401 {
+					t.Errorf("err = %v, want the *anthropic.Error cause wrapped", err)
+				}
 				if !errors.Is(err, ruleeval.ErrUnavailable) {
 					t.Fatalf("err = %v, want ErrUnavailable", err)
 				}
