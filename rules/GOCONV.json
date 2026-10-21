@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.4.0",
-    "timestamp": "2026-10-21T08:42:51Z",
-    "hash": "blake3:bb6b4b74fee839074ef89687a3475b40ee8b26030fb3ecc97d0548610781459d"
+    "version": "0.5.0",
+    "timestamp": "2026-10-21T09:15:53Z",
+    "hash": "blake3:7c42012dea846903f48edd41c1b84bcfdc883ff3d043513f89bfd7fc791f79a0"
   },
   "rules": [
     {
@@ -41,7 +41,7 @@
     {
       "id": "GOCONV-004",
       "revision": 0,
-      "state": "D",
+      "state": "P",
       "body": "MUST wrap the underlying error with %w when returning an error that carries a cause.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
