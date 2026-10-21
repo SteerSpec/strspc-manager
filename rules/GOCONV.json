@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.5.0",
-    "timestamp": "2026-10-21T09:15:53Z",
-    "hash": "blake3:7c42012dea846903f48edd41c1b84bcfdc883ff3d043513f89bfd7fc791f79a0"
+    "version": "0.6.0",
+    "timestamp": "2026-10-21T15:01:57Z",
+    "hash": "blake3:9c43215c99f59e5be2dcdb8373e9c29bdfe8d1a4422005890bd0901ef2735fba"
   },
   "rules": [
     {
@@ -50,7 +50,7 @@
     {
       "id": "GOCONV-005",
       "revision": 0,
-      "state": "D",
+      "state": "P",
       "body": "Functions that perform network or long-running work MUST accept a context.Context as their first parameter.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",

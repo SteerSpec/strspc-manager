@@ -1,6 +1,7 @@
 package realmlint
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -56,7 +57,7 @@ func assertHasCode(t *testing.T, res *result.Result, code string) {
 func TestLint_ValidRealm(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Error {
@@ -69,7 +70,7 @@ func TestLint_ValidRealmWithRuleLinter(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	rl := rulelint.New()
 	linter := New(WithRuleLinter(rl))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Error {
@@ -86,7 +87,7 @@ func TestLint_ValidRealmWithRuleLinter(t *testing.T) {
 func TestRM001_MissingRealmJSON(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "missing_realm_json")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM001")
 	if res.OK() {
@@ -97,7 +98,7 @@ func TestRM001_MissingRealmJSON(t *testing.T) {
 func TestRM001_BadRealmJSON(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "bad_realm_json")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM001")
 	if res.OK() {
@@ -108,7 +109,7 @@ func TestRM001_BadRealmJSON(t *testing.T) {
 func TestRM003_MissingSchemaDir(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "missing_schema_dir")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM003")
 	if res.OK() {
@@ -119,7 +120,7 @@ func TestRM003_MissingSchemaDir(t *testing.T) {
 func TestRM004_MissingEntitySchema(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "missing_entity_schema")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM004")
 	if res.OK() {
@@ -130,7 +131,7 @@ func TestRM004_MissingEntitySchema(t *testing.T) {
 func TestRM005_NoDelegation(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	linter := New() // no RuleLinter configured
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// Should emit an Info diagnostic that entity validation was skipped.
 	if !hasCodeWithSeverity(res, "RM005", result.Info) {
@@ -142,7 +143,7 @@ func TestLint_NestedEntityFiles(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	rl := rulelint.New()
 	linter := New(WithRuleLinter(rl))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Error {
@@ -173,7 +174,7 @@ func TestLint_NestedEntityFiles(t *testing.T) {
 func TestRM006_NestedDuplicateEUID(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "nested_duplicate_euid")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM006")
 	if res.OK() {
@@ -185,7 +186,7 @@ func TestScanEntityFiles_SkipsSchemaDir(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	rl := rulelint.New()
 	linter := New(WithRuleLinter(rl))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// No diagnostic should reference any path inside _schema/.
 	for _, d := range res.Diagnostics {
@@ -201,7 +202,7 @@ func TestScanEntityFiles_SkipsNestedRealmJSON(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	rl := rulelint.New()
 	linter := New(WithRuleLinter(rl))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if strings.HasSuffix(d.Path, filepath.Join("subdir", "realm.json")) {
@@ -213,7 +214,7 @@ func TestScanEntityFiles_SkipsNestedRealmJSON(t *testing.T) {
 func TestRM006_DuplicateEUID(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "duplicate_euid")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM006")
 	if res.OK() {
@@ -224,7 +225,7 @@ func TestRM006_DuplicateEUID(t *testing.T) {
 func TestRM007_BadRealmID(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "bad_realm_fields")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM007")
 	if res.OK() {
@@ -282,7 +283,7 @@ func TestRM002_SchemaValidationPass(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	fetcher := newTestFetcher(t)
 	linter := New(WithSchemaFetcher(fetcher))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// Should not have RM002 error.
 	if hasCodeWithSeverity(res, "RM002", result.Error) {
@@ -298,7 +299,7 @@ func TestRM002_SchemaValidationFail(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "schema_fail")
 	fetcher := newTestFetcher(t)
 	linter := New(WithSchemaFetcher(fetcher))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// realm.json is missing the required "realm" key, so schema validation fails.
 	if !hasCodeWithSeverity(res, "RM002", result.Error) {
@@ -310,7 +311,7 @@ func TestRM002_SchemaFetchError(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	fetcher := newBrokenFetcher(t)
 	linter := New(WithSchemaFetcher(fetcher))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// Should have RM002 error from failed fetch.
 	if !hasCodeWithSeverity(res, "RM002", result.Error) {
@@ -321,7 +322,7 @@ func TestRM002_SchemaFetchError(t *testing.T) {
 func TestRM002_NoSchemaFetcher(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid")
 	linter := New() // no SchemaFetcher configured
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	// Should emit an Info diagnostic that schema validation was skipped.
 	if !hasCodeWithSeverity(res, "RM002", result.Info) {
@@ -348,7 +349,7 @@ func TestStrict_PromotesWarnings(t *testing.T) {
 func TestLint_ValidSubRealm(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "valid_sub_realm")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Error {
@@ -372,7 +373,7 @@ func TestLint_ValidSubRealm(t *testing.T) {
 func TestRM008_SubRealmMissingDir(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_missing_dir")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM008")
 	if res.OK() {
@@ -383,7 +384,7 @@ func TestRM008_SubRealmMissingDir(t *testing.T) {
 func TestRM009_SubRealmNoManifest(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_no_manifest")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM009")
 	if res.OK() {
@@ -394,7 +395,7 @@ func TestRM009_SubRealmNoManifest(t *testing.T) {
 func TestRM010_SubRealmBadID(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_bad_id")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM010")
 	if res.OK() {
@@ -414,7 +415,7 @@ func TestRM010_SubRealmBadID(t *testing.T) {
 func TestRM011_SubRealmNested(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_nested")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM011")
 	if res.OK() {
@@ -427,7 +428,7 @@ func TestRM007_SubRealmManifestMissingFields(t *testing.T) {
 	// pass: RM007 ran only on the parent (strspc-manager#83).
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_bad_manifest")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM007")
 	if res.OK() {
@@ -448,7 +449,7 @@ func TestRM002_SubRealmSchemaValidationFail(t *testing.T) {
 	// diagnostic must point at the child, not the parent.
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_schema_fail")
 	linter := New(WithSchemaFetcher(newTestFetcher(t)))
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	found := false
 	for _, d := range res.Diagnostics {
@@ -464,7 +465,7 @@ func TestRM002_SubRealmSchemaValidationFail(t *testing.T) {
 func TestRM003_SubRealmMissingSchemaDir(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_no_schema_dir")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM003")
 	if res.OK() {
@@ -475,7 +476,7 @@ func TestRM003_SubRealmMissingSchemaDir(t *testing.T) {
 func TestRM012_SubRealmEUIDCollision(t *testing.T) {
 	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_euid_collision")
 	linter := New()
-	res := linter.Lint(dir)
+	res := linter.Lint(context.Background(), dir)
 
 	assertHasCode(t, res, "RM012")
 	if res.OK() {
@@ -520,5 +521,26 @@ func TestRealmIDRegex(t *testing.T) {
 				t.Errorf("realmIDRe.MatchString(%q) = %v, want %v", tt.id, got, tt.valid)
 			}
 		})
+	}
+}
+
+func TestRM002_ContextCancelled(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "valid")
+	linter := New(WithSchemaFetcher(newTestFetcher(t)))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	res := linter.Lint(ctx, dir)
+
+	// The cancelled context must reach the schema fetch: RM002 reports the
+	// cancellation instead of validating against a schema it never received.
+	found := false
+	for _, d := range res.Diagnostics {
+		if d.Code == "RM002" && d.Severity == result.Error && strings.Contains(d.Message, context.Canceled.Error()) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected RM002 error mentioning %q, got %+v", context.Canceled, res.Diagnostics)
 	}
 }

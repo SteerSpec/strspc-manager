@@ -124,13 +124,14 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 	return res
 }
 
-// LintBytes parses raw JSON and validates the entity file.
-func (l *Linter) LintBytes(data []byte) *result.Result {
+// LintBytes parses raw JSON and validates the entity file. ctx bounds the
+// JSON Schema fetch (RL002); a cancelled context reports RL002 as an error.
+func (l *Linter) LintBytes(ctx context.Context, data []byte) *result.Result {
 	f, res := l.parseAndValidate(data)
 	if f == nil {
 		return res
 	}
-	return l.lintParsed(f, data)
+	return l.lintParsed(ctx, f, data)
 }
 
 // parseAndValidate parses raw JSON (RL001). On failure it returns a nil
@@ -159,11 +160,11 @@ func parseDiagnostic(err error) result.Diagnostic {
 // data must be the raw bytes f was parsed from: RL002 (schema) and RL011
 // (hash) need them. Callers that already hold a parsed file, such as the
 // directory walker, use this to avoid parsing twice.
-func (l *Linter) lintParsed(f *entity.File, data []byte) *result.Result {
+func (l *Linter) lintParsed(ctx context.Context, f *entity.File, data []byte) *result.Result {
 	res := &result.Result{}
 
 	// RL002: JSON Schema validation (requires raw bytes).
-	l.checkSchema(data, res)
+	l.checkSchema(ctx, data, res)
 
 	// RL011: Blake3 hash verification (requires raw bytes).
 	l.checkHash(f, data, res)
@@ -185,31 +186,33 @@ type dirEntry struct {
 
 // LintDir validates all entity JSON files in a directory and runs cross-file
 // reference checks (RL012). Only immediate children are scanned (shallow).
-func (l *Linter) LintDir(dir string) *result.Result {
-	return l.lintDir(dir, entity.WithRecursive(false))
+// ctx bounds the JSON Schema fetch (RL002).
+func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
+	return l.lintDir(ctx, dir, entity.WithRecursive(false))
 }
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
-// and runs cross-entity reference checks (RL012, RL014).
+// and runs cross-entity reference checks (RL012, RL014). ctx bounds the JSON
+// Schema fetch (RL002).
 // When the realm declares sub_realms, each sub-realm directory is linted
 // separately, and cross-references are validated globally across the
 // parent realm and all sub-realms.
-func (l *Linter) LintRealm(dir string) *result.Result {
+func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 	// Try to load realm.json to check for sub_realms.
 	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
 	if err != nil || len(rf.SubRealms) == 0 {
 		// No realm.json or no sub-realms: fall back to recursive walk.
-		return l.lintDir(dir)
+		return l.lintDir(ctx, dir)
 	}
 
 	// Sub-realm-aware linting: lint parent excluding sub-realm dirs,
 	// then lint each sub-realm dir, and validate cross-refs globally.
-	return l.lintRealmWithSubs(dir, rf.SubRealms)
+	return l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
 }
 
 // lintRealmWithSubs lints the parent realm and each sub-realm separately,
 // then validates RL012/RL014 cross-references across the combined rule ID set.
-func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Result {
+func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []string) *result.Result {
 	res := &result.Result{}
 
 	// Shared state for global RL012 cross-ref validation.
@@ -217,12 +220,12 @@ func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Resul
 	var allParsed []dirEntry
 
 	// Lint parent dir, excluding sub-realm directories.
-	l.lintDirCollect(dir, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
+	l.lintDirCollect(ctx, dir, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
 
 	// Lint each sub-realm directory.
 	for _, sub := range subRealms {
 		subDir := filepath.Join(dir, sub)
-		l.lintDirCollect(subDir, res, allRuleIDs, &allParsed)
+		l.lintDirCollect(ctx, subDir, res, allRuleIDs, &allParsed)
 	}
 
 	// Cross-file supersedes/relation references (RL012, RL014) across entire realm tree.
@@ -235,7 +238,7 @@ func (l *Linter) lintRealmWithSubs(dir string, subRealms []string) *result.Resul
 
 // lintDirCollect lints entity files in dir and appends results to shared
 // collections (allRuleIDs, allParsed) for later cross-ref validation.
-func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[string]string, allParsed *[]dirEntry, walkOpts ...entity.WalkOption) {
+func (l *Linter) lintDirCollect(ctx context.Context, dir string, res *result.Result, allRuleIDs map[string]string, allParsed *[]dirEntry, walkOpts ...entity.WalkOption) {
 	walkErr := entity.WalkEntityFiles(dir, func(fpath string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
 			if data == nil {
@@ -253,7 +256,7 @@ func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[s
 		}
 
 		// Reuse the walker's parsed file instead of parsing a second time.
-		for _, d := range l.lintParsed(ef, data).Diagnostics {
+		for _, d := range l.lintParsed(ctx, ef, data).Diagnostics {
 			if d.Path == "" {
 				d.Path = fpath
 			} else {
@@ -276,12 +279,12 @@ func (l *Linter) lintDirCollect(dir string, res *result.Result, allRuleIDs map[s
 
 // lintDir is the internal implementation used by LintDir and LintRealm; recursion
 // behavior is controlled via the provided entity.WalkOption values.
-func (l *Linter) lintDir(dir string, walkOpts ...entity.WalkOption) *result.Result {
+func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
 	allRuleIDs := make(map[string]string)
 	var parsed []dirEntry
 
-	l.lintDirCollect(dir, res, allRuleIDs, &parsed, walkOpts...)
+	l.lintDirCollect(ctx, dir, res, allRuleIDs, &parsed, walkOpts...)
 
 	// Second pass: cross-file supersedes/relation references (RL012, RL014).
 	for _, de := range parsed {
@@ -321,7 +324,7 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 // successful call the result is cached. Transient failures are retried
 // on subsequent calls so a temporary network issue doesn't permanently
 // disable RL002. All access is synchronized via mutex.
-func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
+func (l *Linter) getCompiledSchema(ctx context.Context) (*jsonschema.Schema, error) {
 	l.schemaMu.Lock()
 	defer l.schemaMu.Unlock()
 
@@ -329,7 +332,7 @@ func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
 		return l.compiled, nil
 	}
 
-	compiled, err := l.compileSchema()
+	compiled, err := l.compileSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -338,13 +341,13 @@ func (l *Linter) getCompiledSchema() (*jsonschema.Schema, error) {
 }
 
 // compileSchema fetches and compiles the entity JSON Schema.
-func (l *Linter) compileSchema() (*jsonschema.Schema, error) {
+func (l *Linter) compileSchema(ctx context.Context) (*jsonschema.Schema, error) {
 	schemaPath := schema.EntityV1Path
 	if l.cfg.SchemaVersion != "" && l.cfg.SchemaVersion != "v1" {
 		schemaPath = "entity/" + l.cfg.SchemaVersion + ".json"
 	}
 
-	schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schemaPath)
+	schemaData, err := l.cfg.SchemaFetcher.Fetch(ctx, schemaPath)
 	if err != nil {
 		return nil, fmt.Errorf("fetching schema: %w", err)
 	}
@@ -363,7 +366,7 @@ func (l *Linter) compileSchema() (*jsonschema.Schema, error) {
 }
 
 // RL002: JSON Schema validation.
-func (l *Linter) checkSchema(data []byte, res *result.Result) {
+func (l *Linter) checkSchema(ctx context.Context, data []byte, res *result.Result) {
 	if l.cfg.SchemaFetcher == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -374,7 +377,7 @@ func (l *Linter) checkSchema(data []byte, res *result.Result) {
 		return
 	}
 
-	compiled, err := l.getCompiledSchema()
+	compiled, err := l.getCompiledSchema(ctx)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
