@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.16.3](https://github.com/SteerSpec/strspc-manager/compare/v1.16.2...v1.16.3) (2026-10-21)
+
+
+### Documentation
+
+* **spec:** describe every diagnostic code and test that none is missing ([795f09b](https://github.com/SteerSpec/strspc-manager/commit/795f09b0682a7c7bddad69a235f926c95026ee9e))
+* **spec:** describe every diagnostic code and test that none is missing ([5a8f5eb](https://github.com/SteerSpec/strspc-manager/commit/5a8f5eb6d2a2d4b10327c5b0939f085eda0546ce)), closes [#81](https://github.com/SteerSpec/strspc-manager/issues/81)
+* **spec:** document the eval-cache EC001 diagnostic ([0a11224](https://github.com/SteerSpec/strspc-manager/commit/0a1122481a58522b2760a0bf752405259fe617de))
+* **spec:** point the dependencies row at the renumbered Remote Sources section ([6fa33e6](https://github.com/SteerSpec/strspc-manager/commit/6fa33e61c1cc3d5662428f08eed84d323e3c2eae))
+
 ## [1.16.2](https://github.com/SteerSpec/strspc-manager/compare/v1.16.1...v1.16.2) (2026-10-20)
 
 
