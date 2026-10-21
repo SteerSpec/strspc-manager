@@ -21,15 +21,22 @@ const module = "realm-resolve"
 
 // ResolveResult holds the resolved dependencies and sub-realms for a realm.
 type ResolveResult struct {
+	// Dependencies holds the Realms declared in the manifest's dependencies, in
+	// declaration order.
 	Dependencies []*ResolvedRealm
-	SubRealms    []*ResolvedRealm
+	// SubRealms holds the child Realms named in the manifest's sub_realms, each
+	// with its effective dependencies.
+	SubRealms []*ResolvedRealm
 }
 
 // ResolvedRealm represents a single resolved dependency or sub-realm.
 type ResolvedRealm struct {
+	// Realm is the parsed realm.json manifest of the resolved Realm.
 	Realm *entity.RealmFile
-	Dir   string            // absolute path to resolved realm directory
-	EUIDs map[string]string // EUID → absolute file path
+	// Dir is the absolute path to the resolved realm directory.
+	Dir string
+	// EUIDs maps each EUID to its absolute file path.
+	EUIDs map[string]string
 
 	// Dependencies holds the resolved effective dependencies of a
 	// sub-realm (inherited from the parent plus its own). Nil for
@@ -39,8 +46,12 @@ type ResolvedRealm struct {
 
 // Config holds options for the RealmResolver.
 type Config struct {
-	CacheTTL time.Duration // cache time-to-live for mutable remote refs such as @latest (default: 24h)
-	CacheDir string        // path to cache directory; remote dependencies land under <CacheDir>/github/
+	// CacheTTL is the cache time-to-live for mutable remote refs such as
+	// @latest (default: 24h).
+	CacheTTL time.Duration
+	// CacheDir is the path to the cache directory; remote dependencies land
+	// under <CacheDir>/github/.
+	CacheDir string
 
 	// Fetcher downloads github:// dependency sources. When nil and CacheDir
 	// is set, New builds one from CacheDir, CacheTTL and the

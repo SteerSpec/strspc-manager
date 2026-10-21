@@ -13,6 +13,7 @@ type Format string
 
 // Supported output formats.
 const (
+	// FormatMarkdown renders entity files as Markdown.
 	FormatMarkdown Format = "markdown"
 )
 

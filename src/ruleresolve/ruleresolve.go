@@ -23,28 +23,40 @@ type Scope string
 
 // Rule source scope values.
 const (
+	// ScopeGlobal marks a source whose rules apply to the whole repository.
 	ScopeGlobal Scope = "global"
-	ScopeLocal  Scope = "local"
+	// ScopeLocal marks a source whose rules apply only to files under the
+	// source directory.
+	ScopeLocal Scope = "local"
 )
 
 // SourceEntry represents a single rule source from config.yaml.
 type SourceEntry struct {
-	Source string // URI: "./rules/", "github://...", etc.
-	Scope  Scope
+	// Source is the URI: "./rules/", "github://...", etc.
+	Source string
+	// Scope says whether the source's rules apply globally or only under the
+	// source directory.
+	Scope Scope
 }
 
 // ResolvedFile wraps an entity.File with metadata from resolution.
 type ResolvedFile struct {
-	File           *entity.File
-	Origin         SourceEntry
-	Path           string // filesystem path (for diagnostics)
-	ResolvedSource string // absolute path or normalized URI of the source
+	// File is the parsed entity file.
+	File *entity.File
+	// Origin is the config.yaml source entry the file was resolved from.
+	Origin SourceEntry
+	// Path is the filesystem path (for diagnostics).
+	Path string
+	// ResolvedSource is the absolute path or normalized URI of the source.
+	ResolvedSource string
 }
 
 // SourceFile pairs a parsed entity file with the path it was loaded from.
 type SourceFile struct {
+	// File is the parsed entity file.
 	File *entity.File
-	Path string // filesystem path or URL
+	// Path is the filesystem path or URL.
+	Path string
 }
 
 // Source represents a location rules can be fetched from.
@@ -61,10 +73,16 @@ type sourceBinding struct {
 
 // Config holds options for the Resolver.
 type Config struct {
-	CacheTTL  time.Duration // cache time-to-live for mutable remote refs such as @latest (default: 24h)
-	ForceSync bool          // bypass the remote cache and re-download
-	CacheDir  string        // path to cache directory; remote sources land under <CacheDir>/github/
-	BaseDir   string        // base directory for resolving relative source paths
+	// CacheTTL is the cache time-to-live for mutable remote refs such as
+	// @latest (default: 24h).
+	CacheTTL time.Duration
+	// ForceSync bypasses the remote cache and re-downloads.
+	ForceSync bool
+	// CacheDir is the path to the cache directory; remote sources land under
+	// <CacheDir>/github/.
+	CacheDir string
+	// BaseDir is the base directory for resolving relative source paths.
+	BaseDir string
 
 	// Fetcher downloads github:// sources. When nil, New builds one from
 	// CacheDir, CacheTTL, ForceSync and the GITHUB_TOKEN/GH_TOKEN

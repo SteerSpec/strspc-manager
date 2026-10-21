@@ -27,16 +27,25 @@ const defaultTimeout = 30 * time.Second
 
 // Well-known schema paths relative to BaseURL.
 const (
-	EntityV1Path  = "entity/v1.json"
-	RealmV1Path   = "realm/v1.json"
+	// EntityV1Path is the path of the entity.v1 schema below BaseURL.
+	EntityV1Path = "entity/v1.json"
+	// RealmV1Path is the path of the realm.v1 schema below BaseURL.
+	RealmV1Path = "realm/v1.json"
+	// BootstrapPath is the path of the minimal structural entity schema (the
+	// bootstrap axiom) below BaseURL.
 	BootstrapPath = "entity/bootstrap.json"
 )
 
 // Config holds options for the Fetcher.
 type Config struct {
-	CacheDir string // local cache directory (default: os.UserCacheDir()/strspc/schemas)
-	BaseURL  string // base URL for schema fetches (default: BaseURL)
-	Client   *http.Client
+	// CacheDir is the local cache directory (default:
+	// os.UserCacheDir()/strspc/schemas).
+	CacheDir string
+	// BaseURL is the base URL for schema fetches (default: BaseURL).
+	BaseURL string
+	// Client is the HTTP client used for fetches; nil selects one with a
+	// 30-second timeout.
+	Client *http.Client
 }
 
 // Option configures the Fetcher.

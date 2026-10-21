@@ -31,13 +31,24 @@ import (
 
 // Defaults applied by New when the corresponding Config field is zero.
 const (
-	DefaultModel              = "claude-sonnet-5-5"
-	DefaultEffort             = "medium"
-	DefaultMaxTokens          = 8192
-	DefaultMaxInputTokens     = 60000
+	// DefaultModel is the Claude model called when Config.Model is empty.
+	DefaultModel = "claude-sonnet-5-5"
+	// DefaultEffort is the reasoning effort used when Config.Effort is empty.
+	DefaultEffort = "medium"
+	// DefaultMaxTokens caps the response size when Config.MaxTokens is zero.
+	DefaultMaxTokens = 8192
+	// DefaultMaxInputTokens is the per-request input budget, which drives diff
+	// chunking, when Config.MaxInputTokens is zero.
+	DefaultMaxInputTokens = 60000
+	// DefaultMaxRulesPerRequest bounds how many rules share one request when
+	// Config.MaxRulesPerRequest is zero.
 	DefaultMaxRulesPerRequest = 40
-	DefaultConcurrency        = 3
-	DefaultMaxRetries         = 4
+	// DefaultConcurrency is the number of concurrent requests within one batch
+	// when Config.Concurrency is zero.
+	DefaultConcurrency = 3
+	// DefaultMaxRetries is the number of SDK retries on 429 and 5xx responses
+	// when Config.MaxRetries is zero.
+	DefaultMaxRetries = 4
 
 	// EnvAPIKey is the environment variable consulted when Config.APIKey is
 	// empty.
@@ -67,15 +78,25 @@ var validEfforts = map[string]bool{"low": true, "medium": true, "high": true, "x
 
 // Config configures the provider. Zero fields take the Default* values.
 type Config struct {
-	APIKey             string // defaults to $ANTHROPIC_API_KEY
-	Model              string
-	BaseURL            string // custom endpoint; empty for the Anthropic API
-	Effort             string // low | medium | high | xhigh | max
-	MaxTokens          int64  // response token cap
-	MaxInputTokens     int    // budget per request; drives diff chunking
+	// APIKey defaults to $ANTHROPIC_API_KEY.
+	APIKey string
+	// Model is the Claude model ID to call.
+	Model string
+	// BaseURL is a custom endpoint; empty for the Anthropic API.
+	BaseURL string
+	// Effort is one of low | medium | high | xhigh | max.
+	Effort string
+	// MaxTokens is the response token cap.
+	MaxTokens int64
+	// MaxInputTokens is the budget per request; it drives diff chunking.
+	MaxInputTokens int
+	// MaxRulesPerRequest bounds how many rules of one entity share a single
+	// request.
 	MaxRulesPerRequest int
-	Concurrency        int // concurrent requests within one batch
-	MaxRetries         int // SDK retries for 429/5xx
+	// Concurrency is the number of concurrent requests within one batch.
+	Concurrency int
+	// MaxRetries is the number of SDK retries for 429/5xx.
+	MaxRetries int
 
 	// HTTPClient overrides the transport (tests use a record/replay one).
 	HTTPClient *http.Client
@@ -367,29 +388,45 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 // per rule, with details for the violated ones. Errors lists violated rules
 // whose detail request failed recoverably; their verdict is kept.
 type wireResponse struct {
+	// Verdicts holds one entry per evaluated rule.
 	Verdicts []wireVerdict
-	Errors   []error
+	// Errors lists recoverable detail-request failures for violated rules.
+	Errors []error
 }
 
 type wireVerdict struct {
-	RuleID      string
-	Verdict     string
+	// RuleID is the rule the verdict is for.
+	RuleID string
+	// Verdict is the raw verdict string returned by the model.
+	Verdict string
+	// Explanation is the model's reasoning, filled by the detail step for
+	// violated rules.
 	Explanation string
-	Confidence  float64
-	Evidence    []wireLocation
+	// Confidence is the model's certainty from 0 to 1, filled by the detail
+	// step.
+	Confidence float64
+	// Evidence lists the diff locations cited by the detail step.
+	Evidence []wireLocation
 }
 
 // wireDetail is the structured detail response (see prompt.DetailSchema).
 type wireDetail struct {
-	Verdict     string         `json:"verdict"`
-	Explanation string         `json:"explanation"`
-	Confidence  float64        `json:"confidence"`
-	Evidence    []wireLocation `json:"evidence"`
+	// Verdict is the verdict the model holds after re-reading the diff.
+	Verdict string `json:"verdict"`
+	// Explanation is the model's reasoning for the verdict.
+	Explanation string `json:"explanation"`
+	// Confidence is the model's certainty from 0 (guess) to 1 (certain).
+	Confidence float64 `json:"confidence"`
+	// Evidence lists the diff locations supporting the verdict.
+	Evidence []wireLocation `json:"evidence"`
 }
 
 type wireLocation struct {
-	File    string `json:"file"`
-	Line    int    `json:"line"`
+	// File is the file path from the diff header.
+	File string `json:"file"`
+	// Line is the line number in the new version of the file.
+	Line int `json:"line"`
+	// Excerpt is a short quote of the offending line.
 	Excerpt string `json:"excerpt"`
 }
 

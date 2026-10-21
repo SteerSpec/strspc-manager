@@ -9,9 +9,12 @@ type Severity int
 
 // Severity levels for diagnostic findings.
 const (
-	Error   Severity = iota // must fix — blocks CI
-	Warning                 // should fix — does not block
-	Info                    // informational
+	// Error marks a finding that must be fixed; it blocks CI.
+	Error Severity = iota
+	// Warning marks a finding that should be fixed but does not block.
+	Warning
+	// Info marks a purely informational finding.
+	Info
 )
 
 // String returns the severity name.
@@ -30,12 +33,18 @@ func (s Severity) String() string {
 
 // Diagnostic represents a single finding from any module.
 type Diagnostic struct {
-	Module   string   // originating module: "rule-lint", "rule-diff", etc.
-	Code     string   // diagnostic code: "RL001", "RD003", etc.
-	Severity Severity // error, warning, or info
-	Message  string   // human-readable description
-	Path     string   // file path or JSON pointer
-	Line     int      // source line (0 if not applicable)
+	// Module is the originating module: "rule-lint", "rule-diff", etc.
+	Module string
+	// Code is the diagnostic code: "RL001", "RD003", etc.
+	Code string
+	// Severity is error, warning, or info.
+	Severity Severity
+	// Message is the human-readable description.
+	Message string
+	// Path is the file path or JSON pointer.
+	Path string
+	// Line is the source line (0 if not applicable).
+	Line int
 }
 
 // String returns a formatted diagnostic message.
@@ -48,6 +57,7 @@ func (d Diagnostic) String() string {
 
 // Result aggregates diagnostics from a module run.
 type Result struct {
+	// Diagnostics lists the findings in the order they were added.
 	Diagnostics []Diagnostic
 }
 

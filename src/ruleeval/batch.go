@@ -18,17 +18,24 @@ var ErrUnavailable = errors.New("ruleeval: provider unavailable")
 
 // Location points at a place in the diff that supports a verdict.
 type Location struct {
-	File    string `json:"file"`
-	Line    int    `json:"line"`
+	// File is the path of the file, as given in the diff header.
+	File string `json:"file"`
+	// Line is the line number in the new version of the file.
+	Line int `json:"line"`
+	// Excerpt is a short quote of the offending line, if any.
 	Excerpt string `json:"excerpt,omitempty"`
 }
 
 // BatchRequest asks a provider to evaluate several rules of one entity
 // against the same diff in a single round trip.
 type BatchRequest struct {
+	// EntityID identifies the entity whose rules are evaluated.
 	EntityID string
-	Inputs   []RuleInput
-	Diff     string
+	// Inputs lists the rules of the entity to evaluate, with their notes and
+	// source metadata.
+	Inputs []RuleInput
+	// Diff is the unified diff every rule is evaluated against.
+	Diff string
 }
 
 // BatchResponse carries one verdict per requested rule ID. Errors holds
@@ -36,8 +43,11 @@ type BatchRequest struct {
 // that the evaluator reports as RE002 warnings without discarding the
 // verdicts that were obtained.
 type BatchResponse struct {
+	// Verdicts maps each evaluated rule ID to its response.
 	Verdicts map[string]*EvalResponse
-	Errors   []error
+	// Errors lists non-fatal partial failures that did not prevent the verdicts
+	// above.
+	Errors []error
 }
 
 // BatchProvider is an optional capability of a Provider. When the provider
@@ -57,11 +67,18 @@ type Cache interface {
 
 // Usage accumulates token and request counts across provider calls.
 type Usage struct {
-	InputTokens      int64
-	OutputTokens     int64
-	CacheReadTokens  int64
+	// InputTokens counts prompt tokens sent to the provider.
+	InputTokens int64
+	// OutputTokens counts completion tokens returned by the provider.
+	OutputTokens int64
+	// CacheReadTokens counts prompt tokens served from the provider's prompt
+	// cache.
+	CacheReadTokens int64
+	// CacheWriteTokens counts prompt tokens written to the provider's prompt
+	// cache.
 	CacheWriteTokens int64
-	Requests         int
+	// Requests counts the provider calls made.
+	Requests int
 	// Withdrawn counts violations the detail step took back after
 	// re-reading the diff with the single rule in focus.
 	Withdrawn int
@@ -95,20 +112,34 @@ type EventKind int
 
 // Event kinds emitted by the Evaluator.
 const (
-	EventCacheHit     EventKind = iota // RuleID set
-	EventCacheMiss                     // RuleID set
-	EventCacheError                    // RuleID and Err set
-	EventProviderCall                  // EntityID, RuleIDs and (on failure) Err set
-	EventSkipped                       // RuleID set; rule state not in evaluate set
+	// EventCacheHit reports that a verdict was served from the cache; RuleID is
+	// set.
+	EventCacheHit EventKind = iota
+	// EventCacheMiss reports that no cached verdict was found; RuleID is set.
+	EventCacheMiss
+	// EventCacheError reports a cache read or write failure; RuleID and Err are
+	// set.
+	EventCacheError
+	// EventProviderCall reports a provider request; EntityID and RuleIDs are
+	// set, and Err on failure.
+	EventProviderCall
+	// EventSkipped reports a rule left unevaluated because its state is not in
+	// the evaluate set; RuleID is set.
+	EventSkipped
 )
 
 // Event describes something the Evaluator did.
 type Event struct {
-	Kind     EventKind
+	// Kind says what happened.
+	Kind EventKind
+	// EntityID is the entity concerned, when known.
 	EntityID string
-	RuleID   string
-	RuleIDs  []string
-	Err      error
+	// RuleID is the single rule concerned, for per-rule events.
+	RuleID string
+	// RuleIDs lists the rules sent in one provider call.
+	RuleIDs []string
+	// Err is the failure, if any.
+	Err error
 }
 
 // Observer receives Events as evaluation progresses. Implementations must

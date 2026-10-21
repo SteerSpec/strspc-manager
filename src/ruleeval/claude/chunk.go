@@ -20,7 +20,10 @@ func estimateTokensForBytes(n int) int {
 
 // oversizeHunk describes a hunk that cannot fit in a single request.
 type oversizeHunk struct {
-	File  string
+	// File is the path of the file the hunk belongs to, taken from the diff
+	// header.
+	File string
+	// Bytes is the size of the hunk, including its file header, in bytes.
 	Bytes int
 }
 
