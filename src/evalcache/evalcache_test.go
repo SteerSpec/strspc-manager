@@ -320,8 +320,13 @@ func TestOpen_ConcurrentRecoveryKeepsOneDatabase(t *testing.T) {
 		if winner == nil {
 			t.Fatalf("round %d: nobody recovered the corrupt file", round)
 		}
-		if diags := winner.Diagnostics().Diagnostics; len(diags) != 1 || diags[0].Code != evalcache.CodeRecreated {
-			t.Errorf("round %d: winner should report recovery, got %v", round, diags)
+		// The winner is usually the opener that rebuilt the file and reports
+		// the recovery; it may also be an opener that found the healthy
+		// replacement first (then the rebuilder lost its reopen race and
+		// degraded with ErrLocked). Either way exactly one store is open
+		// and it must not report anything but the recovery.
+		if diags := winner.Diagnostics().Diagnostics; len(diags) > 1 || (len(diags) == 1 && diags[0].Code != evalcache.CodeRecreated) {
+			t.Errorf("round %d: unexpected diagnostics on the winner: %v", round, diags)
 		}
 		if err := winner.Put("k", sample()); err != nil {
 			t.Fatalf("round %d: winner Put: %v", round, err)

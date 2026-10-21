@@ -169,12 +169,37 @@ func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bo
 		return nil, nil, fmt.Errorf("evalcache: open %s: %w", path, err)
 	}
 
-	if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
-		return nil, nil, fmt.Errorf("evalcache: remove corrupt cache %s: %w", path, rmErr)
+	// Build the replacement next to the corrupt file, close it, rename it
+	// into place, then reopen. Removing the file first and reopening the
+	// path left a window in which another opener's first bolt.Open created
+	// and grabbed the new file, so the recovering process timed out on its
+	// own recreation (#98). The temporary database is closed before the
+	// rename because Windows refuses to replace a file that is still open.
+	tmp := path + ".recover.tmp"
+	_ = os.Remove(tmp)
+	fresh, err := open(tmp, lockTimeout)
+	if err != nil {
+		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%w): %w", path, cause, err)
+	}
+	if closeErr := fresh.Close(); closeErr != nil {
+		_ = os.Remove(tmp)
+		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%w): %w", path, cause, closeErr)
+	}
+	if renameErr := os.Rename(tmp, path); renameErr != nil {
+		_ = os.Remove(tmp)
+		// On Windows a racing opener still reading the corrupt file blocks
+		// the replacement; report it as a lost race so the caller degrades
+		// to no cache instead of failing, and retries next run.
+		return nil, nil, fmt.Errorf("%w: replacing corrupt cache %s: %w", ErrLocked, path, renameErr)
 	}
 	db, err = open(path, lockTimeout)
 	if err != nil {
-		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%v): %w", path, cause, err)
+		if errors.Is(err, bolterrors.ErrTimeout) {
+			// Another opener took the healthy replacement first; it has a
+			// working cache and this one degrades.
+			return nil, nil, fmt.Errorf("%w: %s", ErrLocked, path)
+		}
+		return nil, nil, fmt.Errorf("evalcache: reopen %s after recovery (%w): %w", path, cause, err)
 	}
 	return db, cause, nil
 }
