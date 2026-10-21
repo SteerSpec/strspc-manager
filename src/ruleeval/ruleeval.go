@@ -138,6 +138,7 @@ type EvalResponse struct {
 
 // Provider is implemented by AI backends (Anthropic, OpenAI, Ollama, etc.).
 type Provider interface {
+	// Evaluate judges one rule against the diff in req.
 	Evaluate(ctx context.Context, req EvalRequest) (*EvalResponse, error)
 }
 

@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.3.0",
-    "timestamp": "2026-10-20T10:31:12Z",
-    "hash": "blake3:d6d58712f581f975130982e4485455b8f43119fc970d502850f808660c7947d3"
+    "version": "0.4.0",
+    "timestamp": "2026-10-21T08:42:51Z",
+    "hash": "blake3:bb6b4b74fee839074ef89687a3475b40ee8b26030fb3ecc97d0548610781459d"
   },
   "rules": [
     {
@@ -68,7 +68,7 @@
     {
       "id": "GOCONV-007",
       "revision": 0,
-      "state": "D",
+      "state": "P",
       "body": "Exported identifiers MUST carry a doc comment starting with their name.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",

@@ -19,6 +19,7 @@ const (
 
 // Renderer converts an entity file to a specific output format.
 type Renderer interface {
+	// Render writes ef to w in the renderer's format.
 	Render(w io.Writer, ef *entity.File) error
 }
 

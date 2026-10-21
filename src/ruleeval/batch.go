@@ -54,6 +54,8 @@ type BatchResponse struct {
 // passed to New implements it, the Evaluator sends one request per entity
 // instead of one per rule.
 type BatchProvider interface {
+	// EvaluateBatch judges every rule in req against the diff in one or
+	// more provider calls and returns a verdict per rule.
 	EvaluateBatch(ctx context.Context, req BatchRequest) (*BatchResponse, error)
 }
 
@@ -61,7 +63,9 @@ type BatchProvider interface {
 // be safe for concurrent use. Errors are reported to the Observer and never
 // abort evaluation.
 type Cache interface {
+	// Get returns the response stored under key; ok is false on a miss.
 	Get(key string) (resp *EvalResponse, ok bool, err error)
+	// Put stores resp under key.
 	Put(key string, resp *EvalResponse) error
 }
 
@@ -96,6 +100,7 @@ func (u *Usage) Add(o Usage) {
 
 // UsageReporter is an optional capability of a Provider that tracks usage.
 type UsageReporter interface {
+	// Usage returns the tokens and requests consumed so far.
 	Usage() Usage
 }
 
@@ -103,7 +108,9 @@ type UsageReporter interface {
 // model and prompt version in use. Both values are mixed into cache keys so
 // that a model or prompt change never serves stale verdicts.
 type Describer interface {
+	// Model names the model the provider sends requests to.
 	Model() string
+	// PromptVersion identifies the prompt revision in use.
 	PromptVersion() string
 }
 
@@ -145,6 +152,7 @@ type Event struct {
 // Observer receives Events as evaluation progresses. Implementations must
 // be safe for concurrent use.
 type Observer interface {
+	// Observe is called once per Event, possibly from several goroutines.
 	Observe(Event)
 }
 
