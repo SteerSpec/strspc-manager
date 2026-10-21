@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.16.4](https://github.com/SteerSpec/strspc-manager/compare/v1.16.3...v1.16.4) (2026-10-21)
+
+
+### Documentation
+
+* **code:** document interface methods and anonymous struct fields ([8a2600a](https://github.com/SteerSpec/strspc-manager/commit/8a2600a0f6e744dd93492f121c1f17ed3794a784))
+* **code:** give every exported constant and field a doc comment ([6519945](https://github.com/SteerSpec/strspc-manager/commit/651994527e4600cb818cd29e38632436d49ee35a))
+* **code:** give every exported constant and field a doc comment ([fe6489f](https://github.com/SteerSpec/strspc-manager/commit/fe6489f57da860b88911bd23f0127afc1db255e3)), closes [#82](https://github.com/SteerSpec/strspc-manager/issues/82)
+* **code:** make every field comment leading; fix two inaccurate comments ([1189b3f](https://github.com/SteerSpec/strspc-manager/commit/1189b3fbadab2574d125b2265064b541b17ba10a)), closes [#82](https://github.com/SteerSpec/strspc-manager/issues/82)
+
 ## [1.16.3](https://github.com/SteerSpec/strspc-manager/compare/v1.16.2...v1.16.3) (2026-10-21)
 
 
