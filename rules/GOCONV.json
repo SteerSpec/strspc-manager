@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.7.0",
-    "timestamp": "2026-10-21T16:12:25Z",
-    "hash": "blake3:4736be7b4812115a2b520580fbf3b84a7666ce23d94486886a1103997c288d51"
+    "version": "0.8.0",
+    "timestamp": "2026-10-21T16:19:51Z",
+    "hash": "blake3:e6452d957610993643136dd4ed7e6e213cb795e3f2090559a673983fe1e3c353"
   },
   "rules": [
     {
@@ -77,7 +77,7 @@
     {
       "id": "GOCONV-008",
       "revision": 0,
-      "state": "D",
+      "state": "P",
       "body": "MUST pass golangci-lint v2 with every linter enabled in .golangci.yml.",
       "added_by": "@pleberre",
       "added_at": "2026-10-21",
