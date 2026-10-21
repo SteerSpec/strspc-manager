@@ -169,12 +169,21 @@ func recoverCorrupt(path string, lockTimeout time.Duration, cause error) (db *bo
 		return nil, nil, fmt.Errorf("evalcache: open %s: %w", path, err)
 	}
 
-	if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
-		return nil, nil, fmt.Errorf("evalcache: remove corrupt cache %s: %w", path, rmErr)
-	}
-	db, err = open(path, lockTimeout)
+	// Build the replacement next to the corrupt file and rename it into
+	// place. Removing the file first and reopening the path left a window in
+	// which another opener's first bolt.Open created and grabbed the new
+	// file before this one, so the recovering process timed out on its own
+	// recreation and two openers could end up with a store (#98).
+	tmp := path + ".recover.tmp"
+	_ = os.Remove(tmp)
+	db, err = open(tmp, lockTimeout)
 	if err != nil {
-		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%v): %w", path, cause, err)
+		return nil, nil, fmt.Errorf("evalcache: recreate %s after corruption (%w): %w", path, cause, err)
+	}
+	if renameErr := os.Rename(tmp, path); renameErr != nil {
+		_ = db.Close()
+		_ = os.Remove(tmp)
+		return nil, nil, fmt.Errorf("evalcache: replace corrupt cache %s: %w", path, renameErr)
 	}
 	return db, cause, nil
 }
