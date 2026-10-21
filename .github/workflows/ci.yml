@@ -41,6 +41,10 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.11.3
+          # `config verify` downloads the JSON schema from golangci-lint.run
+          # on every run and has timed out three times in one day (lint
+          # itself never ran). The config is verified locally by `make lint`.
+          verify: false
 
   # Dogfood: the released CLI validates this repository's realm (rules/)
   # and evaluates the change through the org reusable workflows
