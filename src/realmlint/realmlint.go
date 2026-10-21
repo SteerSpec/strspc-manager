@@ -77,8 +77,9 @@ func New(opts ...Option) *RealmLinter {
 	return &RealmLinter{cfg: cfg}
 }
 
-// Lint validates a Realm directory at the given path.
-func (l *RealmLinter) Lint(dir string) *result.Result {
+// Lint validates a Realm directory at the given path. ctx bounds the JSON
+// Schema fetch (RM002) and is passed to the rule linter for entity files.
+func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	res := &result.Result{}
 
 	// RM001: Read and parse realm.json.
@@ -108,7 +109,7 @@ func (l *RealmLinter) Lint(dir string) *result.Result {
 	}
 
 	// RM002: JSON Schema validation.
-	l.checkRealmSchema(data, realmPath, res)
+	l.checkRealmSchema(ctx, data, realmPath, res)
 
 	// RM007: Realm field validation.
 	checkRealmFields(rf, realmPath, res)
@@ -117,10 +118,10 @@ func (l *RealmLinter) Lint(dir string) *result.Result {
 	checkSchemaDir(dir, res)
 
 	// RM008–RM011: Sub-realm validation.
-	subRealmEUIDs := l.checkSubRealms(dir, rf, realmPath, res)
+	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, res)
 
 	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
-	parentEUIDs := l.scanEntityFiles(dir, rf.SubRealms, res)
+	parentEUIDs := l.scanEntityFiles(ctx, dir, rf.SubRealms, res)
 
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
@@ -134,7 +135,7 @@ func (l *RealmLinter) Lint(dir string) *result.Result {
 // getCompiledSchema returns the cached compiled JSON Schema for realm.json.
 // Only successful compilations are cached; transient failures are retried
 // on subsequent calls. All access is synchronized via mutex.
-func (l *RealmLinter) getCompiledSchema() (*jsonschema.Schema, error) {
+func (l *RealmLinter) getCompiledSchema(ctx context.Context) (*jsonschema.Schema, error) {
 	l.schemaMu.Lock()
 	defer l.schemaMu.Unlock()
 
@@ -142,7 +143,7 @@ func (l *RealmLinter) getCompiledSchema() (*jsonschema.Schema, error) {
 		return l.compiled, nil
 	}
 
-	compiled, err := l.compileSchema()
+	compiled, err := l.compileSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +152,8 @@ func (l *RealmLinter) getCompiledSchema() (*jsonschema.Schema, error) {
 }
 
 // compileSchema fetches and compiles the realm JSON Schema.
-func (l *RealmLinter) compileSchema() (*jsonschema.Schema, error) {
-	schemaData, err := l.cfg.SchemaFetcher.Fetch(context.Background(), schema.RealmV1Path)
+func (l *RealmLinter) compileSchema(ctx context.Context) (*jsonschema.Schema, error) {
+	schemaData, err := l.cfg.SchemaFetcher.Fetch(ctx, schema.RealmV1Path)
 	if err != nil {
 		return nil, fmt.Errorf("fetching schema: %w", err)
 	}
@@ -171,7 +172,7 @@ func (l *RealmLinter) compileSchema() (*jsonschema.Schema, error) {
 }
 
 // RM002: JSON Schema validation of realm.json.
-func (l *RealmLinter) checkRealmSchema(data []byte, realmPath string, res *result.Result) {
+func (l *RealmLinter) checkRealmSchema(ctx context.Context, data []byte, realmPath string, res *result.Result) {
 	if l.cfg.SchemaFetcher == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -183,7 +184,7 @@ func (l *RealmLinter) checkRealmSchema(data []byte, realmPath string, res *resul
 		return
 	}
 
-	compiled, err := l.getCompiledSchema()
+	compiled, err := l.getCompiledSchema(ctx)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -299,7 +300,7 @@ func checkSchemaDir(dir string, res *result.Result) {
 // checking EUID uniqueness (RM006) and optionally delegating to rulelint (RM005).
 // The _schema/ subtree, realm.json files, and sub-realm directories are skipped.
 // Returns the EUID map (euid → file path) collected from the scanned files.
-func (l *RealmLinter) scanEntityFiles(dir string, excludeDirs []string, res *result.Result) map[string]string {
+func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDirs []string, res *result.Result) map[string]string {
 	if l.cfg.RuleLinter == nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -342,7 +343,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, excludeDirs []string, res *res
 			}
 			// Parse error — delegate to rulelint if configured.
 			if l.cfg.RuleLinter != nil {
-				fileRes := l.cfg.RuleLinter.LintBytes(data)
+				fileRes := l.cfg.RuleLinter.LintBytes(ctx, data)
 				copyDiagnostics(fileRes, path, res)
 			}
 			return nil
@@ -369,7 +370,7 @@ func (l *RealmLinter) scanEntityFiles(dir string, excludeDirs []string, res *res
 
 		// RM005: Delegate entity file validation to rulelint.
 		if l.cfg.RuleLinter != nil {
-			fileRes := l.cfg.RuleLinter.LintBytes(data)
+			fileRes := l.cfg.RuleLinter.LintBytes(ctx, data)
 			copyDiagnostics(fileRes, path, res)
 		}
 
@@ -424,7 +425,7 @@ func copyDiagnostics(from *result.Result, fpath string, to *result.Result) {
 
 // checkSubRealms validates all sub-realm entries declared in the parent realm.
 // Returns a map of sub-realm name → EUID map for cross-realm collision checks.
-func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath string, res *result.Result) map[string]map[string]string {
+func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity.RealmFile, realmPath string, res *result.Result) map[string]map[string]string {
 	if len(rf.SubRealms) == 0 {
 		return nil
 	}
@@ -506,7 +507,7 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 		// A sub-realm is a Realm in its own right (RLM-003, RLM-004,
 		// RLMMNFST-002), so its manifest and layout get the same checks as
 		// the parent: RM002 schema, RM007 fields, RM003/RM004 _schema/.
-		l.checkRealmSchema(srData, srRealmPath, res)
+		l.checkRealmSchema(ctx, srData, srRealmPath, res)
 		checkRealmFields(srRF, srRealmPath, res)
 		checkSchemaDir(srDir, res)
 
@@ -536,7 +537,7 @@ func (l *RealmLinter) checkSubRealms(dir string, rf *entity.RealmFile, realmPath
 		// Scan sub-realm entity files for EUID collection.
 		// If the sub-realm violates RM011 (nested sub_realms), exclude those
 		// dirs so their entities don't leak into this sub-realm's EUID set.
-		srEUIDs := l.scanEntityFiles(srDir, srRF.SubRealms, res)
+		srEUIDs := l.scanEntityFiles(ctx, srDir, srRF.SubRealms, res)
 		subRealmEUIDs[srName] = srEUIDs
 	}
 

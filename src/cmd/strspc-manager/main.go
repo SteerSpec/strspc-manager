@@ -92,7 +92,7 @@ func newRealmLintCmd() *cobra.Command {
 				realmlint.WithSchemaFetcher(fetcher),
 				realmlint.WithRuleLinter(rl),
 			)
-			res := linter.Lint(dir)
+			res := linter.Lint(cmd.Context(), dir)
 			printDiagnostics(cmd, res)
 			if !res.OK() {
 				return fmt.Errorf("realm validation failed with errors")

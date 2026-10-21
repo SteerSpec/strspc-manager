@@ -1,6 +1,7 @@
 package rulelint
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -33,7 +34,7 @@ func mustReadFile(t *testing.T, path string) []byte {
 func TestLintBytes_ValidBasic(t *testing.T) {
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	// Should have only the schema-skipped info diagnostic (RL002).
 	for _, d := range res.Diagnostics {
 		if d.Severity == result.Error {
@@ -59,7 +60,7 @@ func TestLintFile_ValidBasic(t *testing.T) {
 
 func TestLintBytes_InvalidJSON(t *testing.T) {
 	l := New()
-	res := l.LintBytes([]byte(`{not valid json`))
+	res := l.LintBytes(context.Background(), []byte(`{not valid json`))
 	if res.OK() {
 		t.Fatal("expected RL001 error for invalid JSON")
 	}
@@ -71,21 +72,21 @@ func TestLintBytes_InvalidJSON(t *testing.T) {
 func TestRL003_BadEUID(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_euid.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL003")
 }
 
 func TestRL004_BadRuleIDs(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_rule_ids.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL004")
 }
 
 func TestRL005_BadSequence(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_sequence.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL005")
 }
 
@@ -117,56 +118,56 @@ func TestRL005_LargeGap(t *testing.T) {
 func TestRL006_BadStates(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_states.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL006")
 }
 
 func TestRL007_BadParent(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_parent.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL007")
 }
 
 func TestRL008_BadNoteRefs(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_note_refs.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL008")
 }
 
 func TestRL009_BadNoteIDs(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_note_ids.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL009")
 }
 
 func TestRL010_BadNoteTypes(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_note_types.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL010")
 }
 
 func TestRL011_BadHash(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_hash.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL011")
 }
 
 func TestRL011_ValidHash(t *testing.T) {
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertNoCode(t, res, "RL011")
 }
 
 func TestRL011_HasPath(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_hash.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL011" {
 			if d.Path == "" {
@@ -181,14 +182,14 @@ func TestRL011_HasPath(t *testing.T) {
 func TestRL013_BadSemver(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_semver.json"))
 	l := New()
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL013")
 }
 
 func TestLintDir_CrossRefs(t *testing.T) {
 	dir := testdataPath("crossref")
 	l := New()
-	res := l.LintDir(dir)
+	res := l.LintDir(context.Background(), dir)
 
 	// Should have an RL012 warning for MISSING-001.
 	assertHasCode(t, res, "RL012")
@@ -208,7 +209,7 @@ func TestLintDir_CrossRefs(t *testing.T) {
 func TestLintDir_StrictPromotesWarnings(t *testing.T) {
 	dir := testdataPath("crossref")
 	l := New(WithStrict(true))
-	res := l.LintDir(dir)
+	res := l.LintDir(context.Background(), dir)
 
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL012" && d.Severity != result.Error {
@@ -272,7 +273,7 @@ func TestRL002_SchemaValidationPass(t *testing.T) {
 	fetcher := newTestFetcher(t, minimalEntitySchema, http.StatusOK)
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New(WithSchemaFetcher(fetcher))
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertNoCode(t, res, "RL002")
 }
 
@@ -294,7 +295,7 @@ func TestRL002_SchemaValidationFail(t *testing.T) {
 	fetcher := newTestFetcher(t, strictSchema, http.StatusOK)
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New(WithSchemaFetcher(fetcher))
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL002")
 }
 
@@ -302,14 +303,14 @@ func TestRL002_SchemaFetchError(t *testing.T) {
 	fetcher := newTestFetcher(t, "not found", http.StatusNotFound)
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New(WithSchemaFetcher(fetcher))
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	assertHasCode(t, res, "RL002")
 }
 
 func TestRL002_NoFetcherSkips(t *testing.T) {
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))
 	l := New() // no fetcher
-	res := l.LintBytes(data)
+	res := l.LintBytes(context.Background(), data)
 	// Should have Info-level RL002 (skipped), not Error.
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL002" && d.Severity == result.Error {
@@ -339,7 +340,7 @@ func assertNoCode(t *testing.T, res *result.Result, code string) {
 
 func TestLintRealm_CrossEntitySupersedes(t *testing.T) {
 	l := New()
-	res := l.LintRealm(testdataPath("realm"))
+	res := l.LintRealm(context.Background(), testdataPath("realm"))
 
 	// ENT-001 supersedes RUL-001 — valid cross-entity reference, no RL012 for it.
 	// SUB-001 supersedes MISSING-999 — invalid, should trigger RL012.
@@ -364,7 +365,7 @@ func TestLintRealm_SubRealmCrossRef(t *testing.T) {
 	// with SYN-001 that supersedes PAR-001. Since sub-realm EUID scope is global,
 	// the supersedes reference should resolve successfully (no RL012).
 	l := New()
-	res := l.LintRealm(testdataPath("realm_with_sub"))
+	res := l.LintRealm(context.Background(), testdataPath("realm_with_sub"))
 
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL012" {
@@ -378,7 +379,7 @@ func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
 	// IS in the same directory, so no RL012 for it. But subdir/SUB.json
 	// should NOT be scanned.
 	l := New()
-	res := l.LintDir(testdataPath("realm"))
+	res := l.LintDir(context.Background(), testdataPath("realm"))
 
 	// In shallow mode, allRuleIDs only has ENT-001 and RUL-001.
 	// ENT-001 supersedes RUL-001 — found, no RL012.
@@ -394,7 +395,7 @@ func TestLintRealm_BackwardsCompatLintDir(t *testing.T) {
 
 func TestLintDir_RL014_NoteCrossRefs(t *testing.T) {
 	dir := testdataPath("crossref")
-	res := New().LintDir(dir)
+	res := New().LintDir(context.Background(), dir)
 
 	var rl014 []result.Diagnostic
 	for _, d := range res.Diagnostics {
@@ -422,7 +423,7 @@ func TestLintDir_RL014_NoteCrossRefs(t *testing.T) {
 }
 
 func TestLintDir_RL014_StrictIsError(t *testing.T) {
-	res := New(WithStrict(true)).LintDir(testdataPath("crossref"))
+	res := New(WithStrict(true)).LintDir(context.Background(), testdataPath("crossref"))
 	found := false
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL014" {
@@ -475,7 +476,7 @@ func BenchmarkLintDir(b *testing.B) {
 	l := New()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_ = l.LintDir(dir)
+		_ = l.LintDir(context.Background(), dir)
 	}
 }
 
@@ -487,6 +488,28 @@ func BenchmarkLintBytes(b *testing.B) {
 	l := New()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_ = l.LintBytes(data)
+		_ = l.LintBytes(context.Background(), data)
+	}
+}
+
+func TestRL002_ContextCancelled(t *testing.T) {
+	fetcher := newTestFetcher(t, minimalEntitySchema, http.StatusOK)
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New(WithSchemaFetcher(fetcher))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	res := l.LintBytes(ctx, data)
+
+	// The cancelled context must reach the schema fetch: RL002 reports the
+	// cancellation instead of validating against a schema it never received.
+	found := false
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL002" && d.Severity == result.Error && strings.Contains(d.Message, context.Canceled.Error()) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected RL002 error mentioning %q, got %+v", context.Canceled, res.Diagnostics)
 	}
 }
