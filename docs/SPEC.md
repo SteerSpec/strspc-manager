@@ -490,6 +490,12 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 | RE003 | Info | AI evaluation skipped because the evaluator runs in static-only mode. |
 | RE004 | Info | The diff is empty; nothing to evaluate. |
 
+#### `eval-cache` (EC)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| EC001 | Info | The evaluation cache file was corrupt and has been discarded and recreated. |
+
 ### 6.4 Remote Sources (`github://`)
 
 Rule sources in a Configuration and dependency `source` fields in a Realm Manifest MAY point at a directory inside a GitHub repository:
