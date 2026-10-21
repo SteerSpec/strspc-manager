@@ -148,7 +148,7 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.id` | string | Reverse domain notation identifier. |
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.6.0/rules/core`, see §6.3). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.6.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults, or `null` to inherit (RLMMNFST-004). |
 
@@ -384,7 +384,119 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache. Shared by `rule-resolve` and `realm-resolve`. |
 
-### 6.3 Remote Sources (`github://`)
+### 6.3 Diagnostic Codes
+
+Every diagnostic code a module emits is listed below (MOD-006). The test `src/result/codes_doc_test.go`
+scans the module sources and fails when a code is missing from these tables, or listed here but no longer
+emitted. Severities are those assigned at emission: `rule-lint`, `rule-diff` and `realm-lint` promote every
+Warning to Error when run with `WithStrict`.
+
+#### `rule-lint` (RL)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RL000 | Error | The entity file is nil, or a file or directory cannot be read while scanning. |
+| RL001 | Error | The file is not valid JSON or does not parse into the entity structure. |
+| RL002 | Info / Error | Info if no schema fetcher is set; Error if the schema fails to load or validation fails. |
+| RL003 | Error | The EUID is not 3–18 alphanumeric characters. |
+| RL004 | Error | A rule ID is not `<EUID>-<NNN>`, or its prefix differs from the entity ID. |
+| RL005 | Error | Rule numbers are duplicated or not sequential from 001. |
+| RL006 | Error | A rule state is outside `D`, `A`, `P`, `I`, `R`, `T`. |
+| RL007 | Error | A sub-entity `parent` differs from the containing entity ID. |
+| RL008 | Error | A note `rule_ref` names a rule that does not exist in the same entity. |
+| RL009 | Error | A note ID is not `<rule_id>/<NN>`, or its prefix differs from `rule_ref`. |
+| RL010 | Error | A note type is outside the closed enum. |
+| RL011 | Error | `rule_set.hash` is malformed, cannot be computed, or differs from the Blake3 hash of the file. |
+| RL012 | Warning | A rule's `supersedes` names a rule ID not found in the scanned files. |
+| RL013 | Error | `rule_set.version` is not valid semver. |
+| RL014 | Warning | A `supersedes`/`extends`/`related` note references an unqualified rule ID that was not found. |
+
+#### `rule-diff` (RD)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed. |
+| RD001 | Error | A Draft rule body was edited without incrementing the revision, or together with a state change. |
+| RD002 | Error | The body of a rule that has left Draft was edited. |
+| RD003 | Error | A state transition is not allowed by the state machine (§3.2). |
+| RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
+| RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. |
+| RD006 | Warning | A superseding rule reached `I` but the superseded rule is missing or not in state `R`. |
+| RD007 | Error | `rule_set.version` is not valid semver or not strictly higher than the base version. |
+| RD008 | Error | `rule_set.hash` cannot be computed or differs from the Blake3 hash of the head file. |
+| RD009 | Error | `rule_set.timestamp` is unchanged from the base version. |
+| RD010 | Error | A new rule reuses a rule number present in the base version. |
+| RD011 | Error | A new rule or new note has an empty `added_by`. |
+| RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped. |
+
+#### `realm-lint` (RM)
+
+RM002, RM003, RM004 and RM007 fire for the parent manifest and for each sub-realm manifest.
+RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its strict-mode unit test.
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RM001 | Error | `realm.json` cannot be read or parsed. |
+| RM002 | Info / Error | Info if no schema fetcher is set; Error if the schema fails to load or validation fails. |
+| RM003 | Error | `_schema/` is missing, inaccessible, or not a directory. |
+| RM004 | Error | `_schema/entity.v1.schema.json` is missing or inaccessible. |
+| RM005 | Info / Error | Info if no rule linter is configured; Error if a path cannot be accessed or the walk fails. |
+| RM006 | Error | The same EUID appears in more than one entity or sub-entity of the realm. |
+| RM007 | Error | `realm.id` is missing or not reverse-domain notation, or `realm.version` is missing or not semver. |
+| RM008 | Error | A `sub_realms` entry is not a clean directory name, or its directory does not exist. |
+| RM009 | Error | A sub-realm has no `realm.json`, or it cannot be parsed. |
+| RM010 | Error | A sub-realm `realm.id` is not `<parent id>.<directory name>`. |
+| RM011 | Error | A sub-realm declares its own `sub_realms`. |
+| RM012 | Error | An EUID in a sub-realm collides with the parent realm or a sibling sub-realm. |
+
+#### `realm-resolve` (RR)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RR000 | Error | The context was cancelled or timed out during resolution. |
+| RR001 | Error | A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin. |
+| RR002 | Error | Dependency directory or `realm.json` cannot be loaded, or an entity file is unreadable or invalid. |
+| RR003 | Error | A dependency's `realm.id` differs from the declared `realm_id`. |
+| RR004 | Error | A dependency's `realm.version` differs from the declared `version`. |
+| RR005 | Error | An EUID collides between the parent realm and a dependency, or between two dependencies. |
+| RR006 | Error | A dependency's `realm_id` is the realm or sub-realm that declares it. |
+| RR007 | Error | A `sub_realms` entry is not a clean directory name, or its directory does not exist. |
+| RR008 | Error | A sub-realm's `realm.json` cannot be loaded. |
+| RR009 | Error | A sub-realm `realm.id` is not `<parent id>.<directory name>`. |
+| RR010 | Error | A sub-realm declares its own `sub_realms`. |
+| RR011 | Error | An EUID in a sub-realm collides with the parent, a sibling sub-realm, or an effective dependency. |
+| RR012 | Error | A `github://` dependency cannot be fetched (bad reference, no fetcher or cache dir, download error). |
+
+#### `rule-resolve` (RSV)
+
+RSV001 is unassigned. `rule-resolve` has no strict mode.
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RSV000 | Error | The context was cancelled or timed out during resolution. |
+| RSV002 | Error | A local source path cannot be resolved, is not a directory, or cannot be walked or read. |
+| RSV003 | Error | An entity file cannot be parsed, or its `entity.id` is empty. |
+| RSV004 | Error | `rule_set.hash` cannot be computed or differs from the Blake3 hash of the file. |
+| RSV005 | Error | The same EUID is provided by two different sources. |
+| RSV006 | Warning | A source directory yields no entity files and produced no errors. |
+| RSV007 | Error | A `github://` source cannot be parsed, has no fetcher, or cannot be downloaded. |
+
+#### `rule-eval` (RE)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RE001 | Warning / Error | The diff violates a rule; Error when the rule's state is in `fail_on`, Warning otherwise. |
+| RE002 | Warning | The AI provider failed for a rule or entity, or returned no verdict or an unrecognized one. |
+| RE003 | Info | AI evaluation skipped because the evaluator runs in static-only mode. |
+| RE004 | Info | The diff is empty; nothing to evaluate. |
+
+#### `eval-cache` (EC)
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| EC001 | Info | The evaluation cache file was corrupt and has been discarded and recreated. |
+
+### 6.4 Remote Sources (`github://`)
 
 Rule sources in a Configuration and dependency `source` fields in a Realm Manifest MAY point at a directory inside a GitHub repository:
 
