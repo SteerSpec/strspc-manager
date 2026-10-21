@@ -278,6 +278,7 @@ func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
 	}
 
 	var body struct {
+		// TagName is the git tag of the latest release.
 		TagName string `json:"tag_name"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&body); err != nil {
