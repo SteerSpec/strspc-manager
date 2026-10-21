@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.17.0](https://github.com/SteerSpec/strspc-manager/compare/v1.16.5...v1.17.0) (2026-10-21)
+
+
+### Features
+
+* **rulelint,realmlint:** accept a context in the lint entry points ([dd11bcc](https://github.com/SteerSpec/strspc-manager/commit/dd11bccc645f69f2cf5c7b169f3c8174b4658bfe))
+* **rulelint,realmlint:** accept a context in the lint entry points ([b8aedee](https://github.com/SteerSpec/strspc-manager/commit/b8aedee11157d7abc96a24aa5b3163c38b2f1ba1))
+
 ## [1.16.5](https://github.com/SteerSpec/strspc-manager/compare/v1.16.4...v1.16.5) (2026-10-21)
 
 
