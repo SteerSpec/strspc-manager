@@ -603,7 +603,7 @@ func classify(err error) error {
 	if errors.As(err, &apierr) {
 		switch apierr.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
-			return fmt.Errorf("%w: HTTP %d %s", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type())
+			return fmt.Errorf("%w: HTTP %d %s: %w", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
 		case http.StatusBadRequest:
 			// An organisation-level key without a workspace, or a key the
 			// endpoint does not accept, comes back as 400 invalid_request;
