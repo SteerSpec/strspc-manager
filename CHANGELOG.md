@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.16.5](https://github.com/SteerSpec/strspc-manager/compare/v1.16.4...v1.16.5) (2026-10-21)
+
+
+### Bug Fixes
+
+* **claude:** keep the SDK error reachable behind ErrUnavailable for 401/403/404 ([a91b67e](https://github.com/SteerSpec/strspc-manager/commit/a91b67e948f0835d99372af4595bd81804d0a7bd))
+* **claude:** keep the SDK error reachable behind ErrUnavailable for 401/403/404 ([e11581a](https://github.com/SteerSpec/strspc-manager/commit/e11581aa5ed8e35162c21c6c4d4255f4e9777ac0)), closes [#82](https://github.com/SteerSpec/strspc-manager/issues/82)
+* **evalcache:** close the replacement before renaming; lost reopen is ErrLocked ([32218e6](https://github.com/SteerSpec/strspc-manager/commit/32218e63d048223407cc460e7851722201d71063))
+* **evalcache:** recreate a corrupt cache through a temp file and rename ([d473d64](https://github.com/SteerSpec/strspc-manager/commit/d473d64b15db1b427fda2b179dc34d54a4d5103e))
+* **evalcache:** recreate a corrupt cache through a temp file and rename ([aafe4df](https://github.com/SteerSpec/strspc-manager/commit/aafe4df8ca64bdc2c97d112ee140c125f934f78c)), closes [#98](https://github.com/SteerSpec/strspc-manager/issues/98)
+
 ## [1.16.4](https://github.com/SteerSpec/strspc-manager/compare/v1.16.3...v1.16.4) (2026-10-21)
 
 
