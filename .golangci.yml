@@ -11,6 +11,7 @@ linters:
     - revive
     - contextcheck
     - noctx
+    - errorlint
   settings:
     revive:
       rules:
