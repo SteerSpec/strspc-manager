@@ -2,6 +2,9 @@
   "database": "dolt",
   "backend": "dolt",
   "dolt_mode": "server",
+  "dolt_server_port": 3308,
   "dolt_database": "strspc_manager",
-  "project_id": "cad54926-e097-4e9a-8db7-99b57c04c942"
+  "project_id": "028a5a14-8785-4675-928e-11913af92095",
+  "global_dolt_database": "beads_global",
+  "global_project_id": "00000000-0000-0000-0000-000000000000"
 }
