@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/SteerSpec/strspc-manager/compare/v1.18.0...v1.18.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **entity:** honour a wrapped fs.SkipAll in walkShallow; enable errorlint ([7935d2d](https://github.com/SteerSpec/strspc-manager/commit/7935d2ddf2d83202d20017c72a8233536ec290dd))
+* **entity:** honour a wrapped fs.SkipAll in walkShallow; enable errorlint; GOCONV-004/007 → Implemented ([7542bff](https://github.com/SteerSpec/strspc-manager/commit/7542bff8ed8d76d7fcb252aeda2f83c081eecc46))
+
 ## [1.18.0](https://github.com/SteerSpec/strspc-manager/compare/v1.17.0...v1.18.0) (2026-10-21)
 
 
