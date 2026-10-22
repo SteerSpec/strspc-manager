@@ -1,6 +1,9 @@
 package entity_test
 
 import (
+	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -177,5 +180,32 @@ func TestWalkEntityFiles_NonexistentDir(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("expected error for nonexistent directory")
+	}
+}
+
+func TestWalkEntityFiles_ShallowWrappedSkipAll(t *testing.T) {
+	// A callback may wrap fs.SkipAll (fmt.Errorf("...: %w", fs.SkipAll)); the
+	// shallow walk must still stop cleanly and not visit later entries.
+	dir := t.TempDir()
+	src, err := os.ReadFile(filepath.Join(walkTestDir, "ENT.json"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	for _, name := range []string{"A.json", "B.json", "C.json"} {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	calls := 0
+	err = entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
+		calls++
+		return fmt.Errorf("stop after %s: %w", filepath.Base(path), fs.SkipAll)
+	}, entity.WithRecursive(false))
+	if err != nil {
+		t.Fatalf("wrapped fs.SkipAll must end the walk cleanly, got %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("expected the walk to stop after the first entry, callback ran %d times", calls)
 	}
 }

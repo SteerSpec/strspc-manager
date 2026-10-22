@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -103,7 +104,7 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 			continue
 		}
 		if err := processEntry(filepath.Join(dir, entry.Name()), entry.Name(), fn); err != nil {
-			if err == fs.SkipAll {
+			if errors.Is(err, fs.SkipAll) {
 				return nil
 			}
 			return err
