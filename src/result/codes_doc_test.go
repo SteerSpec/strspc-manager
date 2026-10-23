@@ -13,7 +13,8 @@ import (
 // docs/SPEC.md. This test collects the codes from the module sources and
 // checks them against the "Diagnostic Codes" section of the spec, in both
 // directions: a code emitted but not documented fails, and so does a code
-// documented but no longer emitted.
+// documented but no longer emitted, unless the registry in
+// testdata/reserved_codes.txt marks it retired (MOD-003).
 
 // codeModules are the source directories, relative to the repository root,
 // whose diagnostic codes the spec must describe. Each is walked recursively.
@@ -54,6 +55,7 @@ func TestDiagnosticCodesAreDocumented(t *testing.T) {
 	}
 
 	documented := collectDocumentedCodes(t, filepath.Join(root, "docs", "SPEC.md"))
+	registry := loadReservedCodes(t, reservedCodesPath)
 
 	var missing, stale []string
 	for code := range emitted {
@@ -62,9 +64,13 @@ func TestDiagnosticCodesAreDocumented(t *testing.T) {
 		}
 	}
 	for code := range documented {
-		if _, ok := emitted[code]; !ok {
-			stale = append(stale, code)
+		if _, ok := emitted[code]; ok {
+			continue
 		}
+		if registry[code] == "retired" {
+			continue // MOD-003: a retired check keeps its row as a reservation.
+		}
+		stale = append(stale, code)
 	}
 	sort.Strings(missing)
 	sort.Strings(stale)
@@ -77,35 +83,48 @@ func TestDiagnosticCodesAreDocumented(t *testing.T) {
 	}
 }
 
-// collectEmittedCodes returns code -> first source file that emits it.
+// collectEmittedCodes returns code -> first source file that emits it,
+// across every module in codeModules.
 func collectEmittedCodes(t *testing.T, root string) map[string]string {
 	t.Helper()
 	codes := make(map[string]string)
 	for _, mod := range codeModules {
-		dir := filepath.Join(root, mod)
-		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
+		for code, file := range collectCodesIn(t, filepath.Join(root, mod), root) {
+			if _, seen := codes[code]; !seen {
+				codes[code] = file
 			}
-			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-				return nil
-			}
-			src, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			for _, m := range codeRe.FindAllSubmatch(src, -1) {
-				code := string(m[1])
-				if _, seen := codes[code]; !seen {
-					rel, _ := filepath.Rel(root, path)
-					codes[code] = filepath.ToSlash(rel)
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("walking %s: %v", mod, err)
 		}
+	}
+	return codes
+}
+
+// collectCodesIn walks one module directory and returns code -> first
+// non-test source file (relative to root) that emits it.
+func collectCodesIn(t *testing.T, dir, root string) map[string]string {
+	t.Helper()
+	codes := make(map[string]string)
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range codeRe.FindAllSubmatch(src, -1) {
+			code := string(m[1])
+			if _, seen := codes[code]; !seen {
+				rel, _ := filepath.Rel(root, path)
+				codes[code] = filepath.ToSlash(rel)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walking %s: %v", dir, err)
 	}
 	return codes
 }

@@ -391,6 +391,11 @@ scans the module sources and fails when a code is missing from these tables, or 
 emitted. Severities are those assigned at emission: `rule-lint`, `rule-diff` and `realm-lint` promote every
 Warning to Error when run with `WithStrict`.
 
+Each module emits codes only from the prefix named in its heading (MOD-002), and a code that has shipped is
+never reused or renumbered (MOD-003). The registry `src/result/testdata/reserved_codes.txt` lists every
+shipped code as `active` or `retired`; `src/result/codes_lifecycle_test.go` enforces both rules against it.
+A retired check keeps its row below, marked retired, and its code is never emitted again.
+
 #### `rule-lint` (RL)
 
 | Code | Severity | When it fires |

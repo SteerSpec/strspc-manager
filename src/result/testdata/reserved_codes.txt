@@ -1,0 +1,78 @@
+# Diagnostic code registry (MOD-003).
+#
+# Every diagnostic code that has been merged to main, and therefore shipped
+# by the next release, is listed here with its status:
+#
+#   active   the code is emitted by its module and documented in docs/SPEC.md
+#   retired  the check was removed; the code stays reserved and must never be
+#            emitted again, but keeps its row in docs/SPEC.md marked retired
+#
+# This file is append-only. Adding a code appends an `active` line; removing a
+# check flips its line to `retired`. A line is never deleted or renumbered.
+# src/result/codes_lifecycle_test.go enforces this against the sources and
+# the spec.
+RL000 active
+RL001 active
+RL002 active
+RL003 active
+RL004 active
+RL005 active
+RL006 active
+RL007 active
+RL008 active
+RL009 active
+RL010 active
+RL011 active
+RL012 active
+RL013 active
+RL014 active
+RD000 active
+RD001 active
+RD002 active
+RD003 active
+RD004 active
+RD005 active
+RD006 active
+RD007 active
+RD008 active
+RD009 active
+RD010 active
+RD011 active
+RD012 active
+RM001 active
+RM002 active
+RM003 active
+RM004 active
+RM005 active
+RM006 active
+RM007 active
+RM008 active
+RM009 active
+RM010 active
+RM011 active
+RM012 active
+RR000 active
+RR001 active
+RR002 active
+RR003 active
+RR004 active
+RR005 active
+RR006 active
+RR007 active
+RR008 active
+RR009 active
+RR010 active
+RR011 active
+RR012 active
+RSV000 active
+RSV002 active
+RSV003 active
+RSV004 active
+RSV005 active
+RSV006 active
+RSV007 active
+RE001 active
+RE002 active
+RE003 active
+RE004 active
+EC001 active
