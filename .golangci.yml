@@ -12,10 +12,44 @@ linters:
     - contextcheck
     - noctx
     - errorlint
+    - forbidigo
+    - depguard
   settings:
     revive:
       rules:
         - name: exported
+    # MOD-001: modules report findings as result.Diagnostic values and never
+    # log, print or exit. The cmd/ entry point and tests are excluded below.
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^fmt\.Print(f|ln)?$
+          msg: MOD-001 — modules report findings through result.Result, not by printing
+        - pattern: ^print(ln)?$
+          msg: MOD-001 — modules report findings through result.Result, not by printing
+        - pattern: ^log\..*$
+          msg: MOD-001 — modules must not log; return diagnostics in a result.Result
+        - pattern: ^os\.Exit$
+          msg: MOD-001 — modules must not exit; return an error or a diagnostic
+    # MOD-005: dependencies point from the consumers (strspc-CLI, strspc-cloud)
+    # to the manager only, never the other way round.
+    depguard:
+      rules:
+        no-consumer-imports:
+          deny:
+            - pkg: github.com/SteerSpec/strspc-CLI
+              desc: MOD-005 — the manager must not import strspc-CLI
+            - pkg: github.com/SteerSpec/strspc-cloud
+              desc: MOD-005 — the manager must not import strspc-cloud
+  exclusions:
+    rules:
+      # The CLI entry point is the one place allowed to log and exit.
+      - path: ^src/cmd/
+        linters:
+          - forbidigo
+      - path: _test\.go$
+        linters:
+          - forbidigo
 
 formatters:
   enable:
