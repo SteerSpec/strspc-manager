@@ -393,8 +393,10 @@ Warning to Error when run with `WithStrict`.
 
 Each module emits codes only from the prefix named in its heading (MOD-002), and a code that has shipped is
 never reused or renumbered (MOD-003). The registry `src/result/testdata/reserved_codes.txt` lists every
-shipped code as `active` or `retired`; `src/result/codes_lifecycle_test.go` enforces both rules against it.
-A retired check keeps its row below, marked retired, and its code is never emitted again.
+shipped code as `active` or `retired` with a stable meaning slug; `src/result/codes_lifecycle_test.go`
+enforces both rules against it and compares the registry with the one shipped by the latest release tag, so
+a shipped line can neither be deleted nor change meaning. A retired check keeps its row below, marked
+retired, and its code is never emitted again.
 
 #### `rule-lint` (RL)
 

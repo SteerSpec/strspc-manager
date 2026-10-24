@@ -67,7 +67,7 @@ func TestDiagnosticCodesAreDocumented(t *testing.T) {
 		if _, ok := emitted[code]; ok {
 			continue
 		}
-		if registry[code] == "retired" {
+		if registry[code].status == "retired" {
 			continue // MOD-003: a retired check keeps its row as a reservation.
 		}
 		stale = append(stale, code)
@@ -130,15 +130,20 @@ func collectCodesIn(t *testing.T, dir, root string) map[string]string {
 }
 
 // collectDocumentedCodes returns the set of codes listed as table rows in
-// the "Diagnostic Codes" section of the spec.
+// the "Diagnostic Codes" section of the spec file at specPath.
 func collectDocumentedCodes(t *testing.T, specPath string) map[string]bool {
 	t.Helper()
 	data, err := os.ReadFile(specPath)
 	if err != nil {
 		t.Fatalf("reading spec: %v", err)
 	}
-	spec := string(data)
+	return documentedCodesIn(t, string(data))
+}
 
+// documentedCodesIn returns the set of codes listed as table rows in the
+// "Diagnostic Codes" section of the given spec text.
+func documentedCodesIn(t *testing.T, spec string) map[string]bool {
+	t.Helper()
 	loc := sectionRe.FindStringIndex(spec)
 	if loc == nil {
 		t.Fatalf("docs/SPEC.md has no \"### N.N Diagnostic Codes\" section")
