@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -15,11 +16,20 @@ import (
 
 // MOD-004: JSON schemas are fetched from steerspec.dev through this package
 // and are never embedded in the binary. The test walks src/ (skipping
-// testdata fixtures) and fails on any committed JSON file whose content is a
-// JSON Schema, on any file named *.schema.json, and on any //go:embed
-// directive that names a schema or resolves to a file whose content is one.
-// Detection is by content, so a schema saved as policy.json or embedded
-// through a wildcard is caught as well.
+// testdata fixtures) and enforces an explicit allowlist: every file that any
+// //go:embed directive resolves to must be listed in allowedEmbeds, and every
+// JSON file committed under src/ outside testdata must be listed too. A file
+// that is not listed fails regardless of its name or content, so a schema
+// saved as policy.json or pulled in through a wildcard cannot slip through.
+// Listed files are additionally checked by content and by name so that an
+// allowlisted file cannot later be turned into a schema copy.
+
+// allowedEmbeds maps each permitted embedded or committed non-Go data file,
+// as a slash-separated path relative to src/, to the reason it is allowed.
+// Adding an entry is a reviewed decision: the file must not be a JSON Schema.
+var allowedEmbeds = map[string]string{
+	"render/templates/default.md.tmpl": "default Markdown rendering template for the render package",
+}
 
 var embedRe = regexp.MustCompile(`^\s*//go:embed\s+(.+)$`)
 
@@ -48,17 +58,13 @@ func TestNoEmbeddedSchemas(t *testing.T) {
 			return nil
 		}
 		found++
-		name := d.Name()
-		if strings.HasSuffix(name, ".schema.json") {
-			t.Errorf("%s: schema copy committed under src/ outside testdata; fetch it through the schema package instead (MOD-004)", path)
+		rel := relToSrc(t, src, path)
+		if strings.HasSuffix(d.Name(), ".json") {
+			checkAllowed(t, src, rel, "committed under src/ outside testdata")
 			return nil
 		}
-		if strings.HasSuffix(name, ".json") && isJSONSchemaFile(t, path) {
-			t.Errorf("%s: file content is a JSON Schema committed under src/ outside testdata (MOD-004)", path)
-			return nil
-		}
-		if strings.HasSuffix(name, ".go") {
-			return checkEmbeds(t, path)
+		if strings.HasSuffix(d.Name(), ".go") {
+			return checkEmbeds(t, src, path)
 		}
 		return nil
 	})
@@ -71,9 +77,9 @@ func TestNoEmbeddedSchemas(t *testing.T) {
 }
 
 // checkEmbeds fails the test for every //go:embed directive in the Go file
-// whose pattern names a schema, or resolves to a file whose content is a
-// JSON Schema.
-func checkEmbeds(t *testing.T, path string) error {
+// that names a schema, or resolves to a file missing from allowedEmbeds or
+// failing the content check.
+func checkEmbeds(t *testing.T, src, path string) error {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
@@ -95,13 +101,42 @@ func checkEmbeds(t *testing.T, path string) error {
 			t.Errorf("%s:%d: //go:embed %s embeds a schema in the binary (MOD-004)", path, line, directive)
 			continue
 		}
-		for _, file := range resolveEmbed(t, dir, directive) {
-			if isJSONSchemaFile(t, file) {
-				t.Errorf("%s:%d: //go:embed %s embeds %s, whose content is a JSON Schema (MOD-004)", path, line, directive, file)
-			}
+		files := resolveEmbed(t, dir, directive)
+		if len(files) == 0 {
+			t.Errorf("%s:%d: //go:embed %s matches no file", path, line, directive)
+		}
+		for _, file := range files {
+			checkAllowed(t, src, relToSrc(t, src, file), "embedded by "+path+":"+strconv.Itoa(line))
 		}
 	}
 	return sc.Err()
+}
+
+// checkAllowed fails the test unless rel (relative to src/) is listed in
+// allowedEmbeds, and additionally fails when a listed file is or looks like
+// a schema.
+func checkAllowed(t *testing.T, src, rel, how string) {
+	t.Helper()
+	if _, ok := allowedEmbeds[rel]; !ok {
+		t.Errorf("src/%s is %s but is not in allowedEmbeds; schemas are fetched through the schema package, and any other data file needs a reviewed allowlist entry (MOD-004)", rel, how)
+		return
+	}
+	if strings.HasSuffix(rel, ".schema.json") || strings.Contains(strings.ToLower(filepath.Base(rel)), "schema") {
+		t.Errorf("src/%s is allowlisted but named like a schema (MOD-004)", rel)
+	}
+	if isJSONSchemaFile(t, filepath.Join(src, filepath.FromSlash(rel))) {
+		t.Errorf("src/%s is allowlisted but its content is a JSON Schema (MOD-004)", rel)
+	}
+}
+
+// relToSrc returns path relative to src/ with forward slashes.
+func relToSrc(t *testing.T, src, path string) string {
+	t.Helper()
+	rel, err := filepath.Rel(src, path)
+	if err != nil {
+		t.Fatalf("relativising %s: %v", path, err)
+	}
+	return filepath.ToSlash(rel)
 }
 
 // resolveEmbed expands the patterns of a //go:embed directive relative to
@@ -134,10 +169,13 @@ func resolveEmbed(t *testing.T, dir, directive string) []string {
 	return files
 }
 
-// isJSONSchemaFile reports whether the file parses as a JSON object that
-// looks like a JSON Schema document: a "$schema" pointing at json-schema.org,
-// an "$id" naming a schema, or a "type" together with "properties", "$defs"
-// or "definitions". Files that are not JSON objects are never schemas.
+// isJSONSchemaFile is the extra guard applied to allowlisted files: it
+// reports whether the file parses as a JSON object that looks like a JSON
+// Schema document ("$schema" pointing at json-schema.org, an "$id" naming a
+// schema, or "type" together with "properties", "$defs" or "definitions").
+// It is deliberately not the primary check, since valid schemas can also be
+// bare booleans, empty objects or objects using only keywords such as $ref;
+// those are excluded by the allowlist itself.
 func isJSONSchemaFile(t *testing.T, path string) bool {
 	t.Helper()
 	data, err := os.ReadFile(path)
