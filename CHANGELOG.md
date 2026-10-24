@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.19.0](https://github.com/SteerSpec/strspc-manager/compare/v1.18.1...v1.19.0) (2026-10-24)
+
+
+### Features
+
+* **lint:** enforce MOD-001 and MOD-005 with forbidigo and depguard ([b72af12](https://github.com/SteerSpec/strspc-manager/commit/b72af12e450b195511222800aa6f7de343f308fc))
+* **rules:** promote MOD-001..005 to Implemented ([5b1c29e](https://github.com/SteerSpec/strspc-manager/commit/5b1c29eabdf5cf0b85584e6c614c410a122e4e7e))
+* **rules:** promote MOD-001..005 to Implemented with deterministic enforcement ([9025f94](https://github.com/SteerSpec/strspc-manager/commit/9025f945e31912cd66ae0b61c370d1a668436c40))
+
 ## [1.18.1](https://github.com/SteerSpec/strspc-manager/compare/v1.18.0...v1.18.1) (2026-10-22)
 
 
