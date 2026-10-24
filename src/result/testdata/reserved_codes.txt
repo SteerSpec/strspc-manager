@@ -1,0 +1,82 @@
+# Diagnostic code registry (MOD-003).
+#
+# Every diagnostic code that has been merged to main, and therefore shipped by
+# the next release, is listed here as `<code> <status> <meaning>`:
+#
+#   status   active   the code is emitted by its module and documented in
+#                     docs/SPEC.md
+#            retired  the check was removed; the code stays reserved and must
+#                     never be emitted again, but keeps its row in docs/SPEC.md
+#                     marked retired
+#   meaning  a short stable slug naming what the code reports; it never changes
+#
+# This file is append-only. Adding a code appends an `active` line; removing a
+# check flips its status to `retired`. A line is never deleted, renumbered or
+# given a new meaning. src/result/codes_lifecycle_test.go enforces this against
+# the sources, docs/SPEC.md and the registry as shipped by the latest release
+# tag (git history), so a deleted or rewritten line fails the build.
+RL000 active entity-nil-or-unreadable
+RL001 active entity-json-invalid
+RL002 active entity-schema-validation
+RL003 active euid-format
+RL004 active rule-id-format
+RL005 active rule-numbers-not-sequential
+RL006 active rule-state-unknown
+RL007 active sub-entity-parent-mismatch
+RL008 active note-rule-ref-missing
+RL009 active note-id-format
+RL010 active note-type-unknown
+RL011 active rule-set-hash-mismatch
+RL012 active supersedes-target-missing
+RL013 active rule-set-version-not-semver
+RL014 active note-unqualified-ref-missing
+RD000 active entity-unreadable
+RD001 active draft-body-edit-without-revision
+RD002 active non-draft-body-edited
+RD003 active state-transition-not-allowed
+RD004 active new-rule-invalid-initial-state
+RD005 active entity-or-rule-deleted
+RD006 active superseded-rule-not-retired
+RD007 active rule-set-version-not-bumped
+RD008 active rule-set-hash-mismatch
+RD009 active rule-set-timestamp-unchanged
+RD010 active rule-number-reused
+RD011 active added-by-empty
+RD012 active append-only-note-removed
+RM001 active realm-manifest-unreadable
+RM002 active realm-schema-validation
+RM003 active schema-dir-missing
+RM004 active entity-schema-file-missing
+RM005 active entity-validation-walk
+RM006 active duplicate-euid
+RM007 active realm-id-or-version-invalid
+RM008 active sub-realm-entry-invalid
+RM009 active sub-realm-manifest-unreadable
+RM010 active sub-realm-id-mismatch
+RM011 active sub-realm-nested
+RM012 active sub-realm-euid-collision
+RR000 active context-cancelled
+RR001 active dependency-source-path-invalid
+RR002 active dependency-unreadable
+RR003 active dependency-realm-id-mismatch
+RR004 active dependency-version-mismatch
+RR005 active dependency-euid-collision
+RR006 active dependency-self-reference
+RR007 active sub-realm-entry-invalid
+RR008 active sub-realm-manifest-unreadable
+RR009 active sub-realm-id-mismatch
+RR010 active sub-realm-nested
+RR011 active sub-realm-euid-collision
+RR012 active github-dependency-fetch-failed
+RSV000 active context-cancelled
+RSV002 active local-source-unreadable
+RSV003 active entity-parse-or-id-empty
+RSV004 active rule-set-hash-mismatch
+RSV005 active duplicate-euid-across-sources
+RSV006 active source-yields-no-entities
+RSV007 active github-source-fetch-failed
+RE001 active rule-violated
+RE002 active ai-provider-failed
+RE003 active ai-evaluation-skipped
+RE004 active diff-empty
+EC001 active cache-recreated

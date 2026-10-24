@@ -6,15 +6,15 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.4.0",
-    "timestamp": "2026-10-21T07:46:57Z",
-    "hash": "blake3:205e0db83cbcc9efc84ece81143a9d9142cef283dc6512cb10c555c827c724e6"
+    "version": "0.9.0",
+    "timestamp": "2026-10-23T20:57:59Z",
+    "hash": "blake3:1cf394c1a2191ec234eb20bc8aff8a1edae3024f919947c34ec494c466f643fd"
   },
   "rules": [
     {
       "id": "MOD-001",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST report findings as result.Diagnostic values in a result.Result and MUST NOT log, print or exit from inside a module.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -23,7 +23,7 @@
     {
       "id": "MOD-002",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval).",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -32,7 +32,7 @@
     {
       "id": "MOD-003",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST NOT reuse or renumber a diagnostic code once it has shipped in a release; a retired check keeps its code reserved.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -41,7 +41,7 @@
     {
       "id": "MOD-004",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST fetch JSON schemas from steerspec.dev through the schema package and MUST NOT embed schema copies in the binary.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
@@ -50,7 +50,7 @@
     {
       "id": "MOD-005",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "MUST NOT import packages from strspc-CLI or strspc-cloud; dependencies point from consumers to the manager only.",
       "added_by": "@pleberre",
       "added_at": "2026-10-19",
