@@ -170,4 +170,109 @@ func TestUpdateNoteContent(t *testing.T) {
 			t.Fatal("expected error for nil file")
 		}
 	})
+
+	t.Run("empty content reports lookup and type errors first", func(t *testing.T) {
+		tests := []struct {
+			name, noteType, id, wantErr string
+			nilFile                     bool
+		}{
+			{"nil file", "rationale", "TST-001/01", "nil", true},
+			{"missing note", "rationale", "TST-001/02", "not found", false},
+			{"append-only note", "changelog", "TST-001/01", "cannot change", false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				f := newFile(t, tt.noteType)
+				if tt.nilFile {
+					f = nil
+				}
+				err := UpdateNoteContent(f, tt.id, "")
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
+				}
+			})
+		}
+	})
+}
+
+func TestUpdateNote(t *testing.T) {
+	newFile := func(t *testing.T, noteType string) *entity.File {
+		t.Helper()
+		f := makeFileWithRule(t, entity.StateImplemented)
+		if _, err := AddNote(f, "TST-001", noteType, "original", "@u"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		return f
+	}
+
+	tests := []struct {
+		name, content, noteType string
+		wantContent, wantType   string
+	}{
+		{"type only", "", "clarification", "original", "clarification"},
+		{"content only", "revised", "", "revised", "rationale"},
+		{"content and type", "revised", "clarification", "revised", "clarification"},
+		{"same type with new content", "revised", "rationale", "revised", "rationale"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFile(t, "rationale")
+			oldVersion := f.RuleSet.Version
+			oldHash := *f.RuleSet.Hash
+			if err := UpdateNote(f, "TST-001/01", tt.content, tt.noteType); err != nil {
+				t.Fatalf("UpdateNote: %v", err)
+			}
+			n := f.Notes[0]
+			if n.Content != tt.wantContent || n.Type != tt.wantType || n.Revision != 1 {
+				t.Errorf("note = %+v, want content %q type %q revision 1", n, tt.wantContent, tt.wantType)
+			}
+			want, _ := BumpPatch(oldVersion)
+			if f.RuleSet.Version != want {
+				t.Errorf("version = %q, want %q", f.RuleSet.Version, want)
+			}
+			if *f.RuleSet.Hash == oldHash {
+				t.Error("hash not refreshed")
+			}
+		})
+	}
+
+	t.Run("content edit keeps an out-of-enum type", func(t *testing.T) {
+		f := newFile(t, "rationale")
+		f.Notes[0].Type = "general" // as loaded from a file; RL010 reports it
+		if err := UpdateNoteContent(f, "TST-001/01", "revised"); err != nil {
+			t.Fatalf("UpdateNoteContent: %v", err)
+		}
+		if n := f.Notes[0]; n.Content != "revised" || n.Type != "general" || n.Revision != 1 {
+			t.Errorf("note = %+v, want revised content, type general, revision 1", n)
+		}
+	})
+
+	t.Run("rejects invalid input", func(t *testing.T) {
+		tests := []struct{ name, from, content, noteType, wantErr string }{
+			{"nothing to change", "rationale", "", "", "unchanged"},
+			{"same content and type", "rationale", "original", "rationale", "unchanged"},
+			{"invalid type", "rationale", "", "general", "invalid note type"},
+			{"retype into append-only", "rationale", "", "changelog", "append-only"},
+			{"append-only source", "related", "", "rationale", "cannot change"},
+			{"missing note", "rationale", "x", "", "not found"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				f := newFile(t, tt.from)
+				version := f.RuleSet.Version
+				id := "TST-001/01"
+				if tt.name == "missing note" {
+					id = "TST-001/02"
+				}
+				err := UpdateNote(f, id, tt.content, tt.noteType)
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
+				}
+				n := f.Notes[0]
+				if n.Type != tt.from || n.Content != "original" || n.Revision != 0 || f.RuleSet.Version != version {
+					t.Error("file modified despite error")
+				}
+			})
+		}
+	})
 }
