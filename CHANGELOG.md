@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.20.0](https://github.com/SteerSpec/strspc-manager/compare/v1.19.0...v1.20.0) (2026-10-28)
+
+
+### Features
+
+* **notes:** enforce note versioning contract (NTE-008..011) ([ef6227f](https://github.com/SteerSpec/strspc-manager/commit/ef6227f7afddf8ea0642451dbf903e2247b24509))
+* **notes:** enforce note versioning contract (NTE-008..011) ([7ef9dcd](https://github.com/SteerSpec/strspc-manager/commit/7ef9dcd8f031a5e5678dc8994fab9de088416336)), closes [#123](https://github.com/SteerSpec/strspc-manager/issues/123)
+
+
+### Bug Fixes
+
+* **rulediff:** report revision drift on append-only notes (RD013) ([62570cb](https://github.com/SteerSpec/strspc-manager/commit/62570cb39b81bbd0b2fff6f1c505ec9d9487b0ab))
+* **rulelint:** reject note number 00 (RL015) ([09d7200](https://github.com/SteerSpec/strspc-manager/commit/09d72008ac61be711ddacaa6d39191463500755b))
+* **rulelint:** reject rule number 000 (RL005) ([0702c11](https://github.com/SteerSpec/strspc-manager/commit/0702c114ca1d420dc963e0da627c54e233d120fd))
+* **rulelint:** reject rule number 000 (RL005) ([3720ffd](https://github.com/SteerSpec/strspc-manager/commit/3720ffd9bed179d00d55e462d3acf3886b007f79))
+
 ## [1.19.0](https://github.com/SteerSpec/strspc-manager/compare/v1.18.1...v1.19.0) (2026-10-24)
 
 
