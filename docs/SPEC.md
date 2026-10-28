@@ -140,7 +140,7 @@ A **Realm** is a namespace in which Entity Unique Identifiers are unique (RLM-00
 - A `realm.json` manifest at its root (RLM-004).
 - One or more entity JSON files.
 
-**Rule Identifier Format:** Each Realm HAS a Rule Identifier Format configuration (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4).
+**Rule Identifier Format:** Each Realm HAS a Rule Identifier Format configuration (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4). A sub-realm inherits its parent Realm's format (RLM-015); a Realm never inherits the format of a Realm it depends on.
 
 **Dependencies:** A Realm MAY declare dependencies on other Realms, importing their rules as read-only references (RLM-005). When dependencies exist, the Realm MUST NOT define Entity Unique Identifiers that collide with any Realm it depends on (RLM-006).
 
@@ -157,7 +157,7 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.version` | string | Semantic version of the Realm. |
 | `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.9.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
-| `rule_identifier_format` | object or null | Override RLIFRMT defaults, or `null` to inherit (RLMMNFST-004). |
+| `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
 The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-002). Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
@@ -279,14 +279,16 @@ The PR validator enforces consistency: if a rule declares `supersedes` and reach
 
 The displayed form of a rule identifier (e.g., `[ENT-001.0/D]`) is governed by the `RLIFRMT` entity in the Core Rule Set. This entity defines:
 
-- The bracket pair: `()`, `{}`, or `[]` (default: `[]`).
-- The position of the Entity Unique Identifier (opening or closing, default: opening).
+- The bracket pair: `()`, `{}`, or `[]` (default: `[]`). Manifest field `brackets`: `"(,)"`, `"{,}"` or `"[,]"`.
+- The position of the Entity Unique Identifier (opening or closing, default: opening). Field `euid_position`: `"opening"` or `"closing"`.
 - The position of the Rule Set Unique Number (opposing the EUID).
-- The split character between EUID and number: `-` or `_` (default: `-`).
-- The revision splitter: `.` or `#` (default: `.`).
-- The state splitter: `/`, `\`, or `|` (default: `/`).
+- The split character between EUID and number: `-` or `_` (default: `-`). Field `id_splitter`.
+- The revision splitter: `.` or `#` (default: `.`). Field `revision_splitter`.
+- The state splitter: `/`, `\`, or `|` (default: `/`). Field `state_splitter`.
 
-The JSON stores `id`, `revision`, and `state` as separate fields. The rendered identifier is assembled by the rendering layer according to `RLIFRMT` rules. Different Realms may define different formatting without changing the underlying data.
+The JSON stores `id`, `revision`, and `state` as separate fields. The rendered identifier is assembled by the rendering layer according to `RLIFRMT` rules. Different Realms may define different formatting without changing the underlying data: the format affects only the rendered identifier, never the stored `<EUID>-<NNN>` form that entity files, note references and cross-realm references carry (RLIFRMT-008). For example, `{"brackets": "{,}", "euid_position": "closing", "revision_splitter": "#"}` renders rule `ENT-001` at revision 2 in state `I` as `{001-ENT#2/I}`.
+
+`render.NewRuleIDFormatter` builds the formatter from a Realm's `rule_identifier_format`, and `render.WithRuleIDFormatter` passes it to the renderer. The caller resolves the Realm: for an entity of a sub-realm, it passes the parent Realm's format.
 
 ---
 

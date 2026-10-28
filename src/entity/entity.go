@@ -97,8 +97,28 @@ type RealmFile struct {
 	// SubRealms lists the subdirectory names of child Realms, if any.
 	SubRealms []string `json:"sub_realms,omitempty"`
 	// RuleIdentifierFormat overrides the RLIFRMT rule identifier rendering
-	// defaults; nil inherits them.
-	RuleIdentifierFormat interface{} `json:"rule_identifier_format,omitempty"`
+	// defaults (RLM-002, RLMMNFST-004); nil keeps them, or for a sub-realm
+	// means the parent's format applies (RLM-015).
+	RuleIdentifierFormat *RuleIdentifierFormat `json:"rule_identifier_format,omitempty"`
+}
+
+// RuleIdentifierFormat is a Realm's rule_identifier_format setting. It only
+// changes how a rule identifier is rendered, never the stored "<EUID>-<NNN>"
+// form (RLIFRMT-008). An empty field falls back to its RLIFRMT default.
+type RuleIdentifierFormat struct {
+	// Brackets is the opening and closing pair: "(,)", "{,}" or "[,]"
+	// (RLIFRMT-002).
+	Brackets string `json:"brackets,omitempty"`
+	// EUIDPosition places the Entity Unique Identifier at the "opening" or
+	// "closing" part of the identifier; the Rule Set Unique Number takes the
+	// other one (RLIFRMT-003, RLIFRMT-004).
+	EUIDPosition string `json:"euid_position,omitempty"`
+	// IDSplitter separates the EUID and the number: "-" or "_" (RLIFRMT-005).
+	IDSplitter string `json:"id_splitter,omitempty"`
+	// RevisionSplitter precedes the revision: "." or "#" (RLIFRMT-006).
+	RevisionSplitter string `json:"revision_splitter,omitempty"`
+	// StateSplitter precedes the state: "/", "\" or "|" (RLIFRMT-007).
+	StateSplitter string `json:"state_splitter,omitempty"`
 }
 
 // RealmMeta holds the identity and versioning for a Realm.

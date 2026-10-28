@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -120,5 +121,28 @@ func TestNewMarkdownFormat(t *testing.T) {
 	}
 	if r == nil {
 		t.Fatal("renderer is nil")
+	}
+}
+
+func TestRenderWithRuleIDFormatter(t *testing.T) {
+	ef, err := entity.Load("testdata/basic.json")
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	f, err := NewRuleIDFormatter(&entity.RuleIdentifierFormat{Brackets: "(,)", EUIDPosition: "closing"})
+	if err != nil {
+		t.Fatalf("NewRuleIDFormatter: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := NewMarkdownRenderer(WithRuleIDFormatter(f)).Render(&buf, ef); err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "(001-TST.0/D)") {
+		t.Errorf("output does not contain (001-TST.0/D):\n%s", got)
+	}
+	if strings.Contains(got, "[TST-001.0/D]") {
+		t.Errorf("output still contains the default form:\n%s", got)
 	}
 }
