@@ -68,3 +68,29 @@ func TestRealmDepSourceOmitEmpty(t *testing.T) {
 		t.Errorf("expected source to be omitted, got: %s", data)
 	}
 }
+
+func TestRealmFileRuleIdentifierFormat(t *testing.T) {
+	t.Run("object", func(t *testing.T) {
+		input := `{"realm": {"id": "dev.test", "title": "Test", "version": "0.1.0"},
+			"rule_identifier_format": {"brackets": "{,}", "euid_position": "closing",
+				"id_splitter": "_", "revision_splitter": "#", "state_splitter": "\\"}}`
+		var rf RealmFile
+		if err := json.Unmarshal([]byte(input), &rf); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		want := RuleIdentifierFormat{Brackets: "{,}", EUIDPosition: "closing", IDSplitter: "_", RevisionSplitter: "#", StateSplitter: `\`}
+		if rf.RuleIdentifierFormat == nil || *rf.RuleIdentifierFormat != want {
+			t.Errorf("RuleIdentifierFormat = %+v, want %+v", rf.RuleIdentifierFormat, want)
+		}
+	})
+
+	t.Run("null", func(t *testing.T) {
+		var rf RealmFile
+		if err := json.Unmarshal([]byte(`{"rule_identifier_format": null}`), &rf); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if rf.RuleIdentifierFormat != nil {
+			t.Errorf("RuleIdentifierFormat = %+v, want nil", rf.RuleIdentifierFormat)
+		}
+	})
+}

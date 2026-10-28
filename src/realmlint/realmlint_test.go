@@ -423,6 +423,17 @@ func TestRM011_SubRealmNested(t *testing.T) {
 	}
 }
 
+func TestRM013_SubRealmIdentifierFormat(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_identifier_format")
+	linter := New()
+	res := linter.Lint(context.Background(), dir)
+
+	assertHasCode(t, res, "RM013")
+	if res.OK() {
+		t.Error("expected errors for sub-realm with its own rule_identifier_format")
+	}
+}
+
 func TestRM007_SubRealmManifestMissingFields(t *testing.T) {
 	// A child manifest with the expected id but no title or version used to
 	// pass: RM007 ran only on the parent (strspc-manager#83).

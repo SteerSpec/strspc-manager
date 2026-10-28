@@ -117,7 +117,7 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	// RM003 + RM004: Directory structure.
 	checkSchemaDir(dir, res)
 
-	// RM008–RM011: Sub-realm validation.
+	// RM008–RM011, RM013: Sub-realm validation.
 	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, res)
 
 	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
@@ -530,6 +530,18 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Code:     "RM011",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("sub-realm %q: nested sub_realms not allowed", srName),
+				Path:     srRealmPath,
+			})
+		}
+
+		// RM013: A sub-realm inherits its parent's Rule Identifier Format
+		// (RLM-015), so its manifest leaves rule_identifier_format null.
+		if srRF.RuleIdentifierFormat != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM013",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: rule_identifier_format must be null; a sub-realm inherits its parent's format (RLM-015)", srName),
 				Path:     srRealmPath,
 			})
 		}

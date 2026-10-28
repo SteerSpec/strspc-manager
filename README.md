@@ -53,7 +53,7 @@ import "github.com/SteerSpec/strspc-manager/src/realmresolve" // Realm dependenc
 | `result` | Shared `Diagnostic`, `Severity`, and `Result` types returned by all modules. |
 | `schema` | Fetches and caches JSON schemas from `steerspec.dev` at runtime. No embedded copies — single source of truth via strspc-www. |
 | `remote` | Fetches `github://` rule directories through the GitHub REST tarball endpoint and caches them locally (§6.4). Shared by `ruleresolve` and `realmresolve`. |
-| `render` | Renders entity files to human-readable formats; Markdown today, with an optional custom template (`WithTemplate`). Rule IDs are displayed in the RLIFRMT default format. |
+| `render` | Renders entity files to human-readable formats; Markdown today, with an optional custom template (`WithTemplate`). Rule IDs are displayed in the RLIFRMT default format unless a Realm's `rule_identifier_format` is passed through `NewRuleIDFormatter` and `WithRuleIDFormatter`. |
 
 ### Modules
 

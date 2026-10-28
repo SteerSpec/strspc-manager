@@ -26,6 +26,14 @@ func WithTemplate(path string) Option {
 	}
 }
 
+// WithRuleIDFormatter overrides the RLIFRMT default rule identifier format,
+// typically with NewRuleIDFormatter of the entity's Realm.
+func WithRuleIDFormatter(f RuleIDFormatter) Option {
+	return func(r *MarkdownRenderer) {
+		r.formatter = f
+	}
+}
+
 // MarkdownRenderer renders entity files to Markdown using Go templates.
 type MarkdownRenderer struct {
 	formatter    RuleIDFormatter
