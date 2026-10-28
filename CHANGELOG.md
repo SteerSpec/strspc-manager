@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.21.0](https://github.com/SteerSpec/strspc-manager/compare/v1.20.0...v1.21.0) (2026-10-28)
+
+
+### Features
+
+* **entityops:** add UpdateNote to change a note's content and/or type ([60e3f1a](https://github.com/SteerSpec/strspc-manager/commit/60e3f1a88fbf547f0cd3b89ddb4f2dc63bd90fba))
+* **entityops:** add UpdateNote to change a note's content and/or type ([4374aa0](https://github.com/SteerSpec/strspc-manager/commit/4374aa0f571f5a60b1e7372685a0e3f256b77804))
+
+
+### Bug Fixes
+
+* **entityops:** keep UpdateNoteContent error order for empty content ([d2be66d](https://github.com/SteerSpec/strspc-manager/commit/d2be66d4a978e295fc6d04ac4841a6aee33a6cde))
+* **entityops:** validate only an explicitly supplied note type ([3806460](https://github.com/SteerSpec/strspc-manager/commit/38064602a006c231f61f9e3c449a0badedce9a5f))
+
+
+### Documentation
+
+* **readme:** describe render without a configurable rule-ID format ([c64970f](https://github.com/SteerSpec/strspc-manager/commit/c64970f4fbd8898eaf2fbe676f518a6a424ba557))
+* **readme:** document entityops, remote, render and evalcache packages ([8e92999](https://github.com/SteerSpec/strspc-manager/commit/8e92999beb3f7589e438c7d73c027a9ca83c9226))
+* **readme:** document entityops, remote, render and evalcache packages ([52554fc](https://github.com/SteerSpec/strspc-manager/commit/52554fc46d2ba8bfaf832dfdcb0aceae80920d5f))
+* **readme:** exclude NewFile from the entityops version-bump sentence ([f83048b](https://github.com/SteerSpec/strspc-manager/commit/f83048b75203614ae808cfaf90f11b420ed5c741))
+
 ## [1.20.0](https://github.com/SteerSpec/strspc-manager/compare/v1.19.0...v1.20.0) (2026-10-28)
 
 
