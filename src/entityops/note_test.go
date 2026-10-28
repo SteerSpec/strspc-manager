@@ -236,6 +236,17 @@ func TestUpdateNote(t *testing.T) {
 		})
 	}
 
+	t.Run("content edit keeps an out-of-enum type", func(t *testing.T) {
+		f := newFile(t, "rationale")
+		f.Notes[0].Type = "general" // as loaded from a file; RL010 reports it
+		if err := UpdateNoteContent(f, "TST-001/01", "revised"); err != nil {
+			t.Fatalf("UpdateNoteContent: %v", err)
+		}
+		if n := f.Notes[0]; n.Content != "revised" || n.Type != "general" || n.Revision != 1 {
+			t.Errorf("note = %+v, want revised content, type general, revision 1", n)
+		}
+	})
+
 	t.Run("rejects invalid input", func(t *testing.T) {
 		tests := []struct{ name, from, content, noteType, wantErr string }{
 			{"nothing to change", "rationale", "", "", "unchanged"},

@@ -89,13 +89,16 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 		content = n.Content
 	}
 	if noteType == "" {
+		// Keep the current type as is, even one outside the enum (RL010
+		// reports that), so a content-only edit is never refused for it.
 		noteType = n.Type
-	}
-	if !entity.IsValidNoteType(noteType) {
-		return fmt.Errorf("invalid note type %q: must be one of %s", noteType, strings.Join(entity.NoteTypes(), ", "))
-	}
-	if entity.IsAppendOnlyNoteType(noteType) {
-		return fmt.Errorf("cannot retype note %q to append-only type %q: add a new note instead", noteID, noteType)
+	} else {
+		if !entity.IsValidNoteType(noteType) {
+			return fmt.Errorf("invalid note type %q: must be one of %s", noteType, strings.Join(entity.NoteTypes(), ", "))
+		}
+		if entity.IsAppendOnlyNoteType(noteType) {
+			return fmt.Errorf("cannot retype note %q to append-only type %q: add a new note instead", noteID, noteType)
+		}
 	}
 	if content == n.Content && noteType == n.Type {
 		return fmt.Errorf("note %q unchanged: content and type are the same", noteID)
