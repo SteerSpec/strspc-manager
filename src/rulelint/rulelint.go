@@ -565,6 +565,16 @@ func checkNoteSequence(ef *entity.File, res *result.Result, path string) {
 		if err != nil {
 			continue
 		}
+		if num == 0 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL015",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("invalid note number in %s (expected sequential from 01)", n.ID),
+				Path:     path,
+			})
+			continue
+		}
 		ruleID := m[1]
 		if seen[ruleID] == nil {
 			seen[ruleID] = make(map[int]bool)

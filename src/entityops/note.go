@@ -13,7 +13,8 @@ const maxNoteNumber = 99
 
 // AddNote appends a note at revision 0 to ruleID and returns the new note ID.
 // The ID is <rule_id>/<NN> with NN one past the highest number already used
-// under that rule (NTE-011).
+// under that rule (NTE-011). Like the rule operations, it acts on f alone: for
+// a rule of a sub-entity, pass that sub-entity's File and bump its ancestors.
 func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string, error) {
 	if _, err := findRule(f, ruleID); err != nil {
 		return "", err
@@ -56,7 +57,8 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 }
 
 // UpdateNoteContent revises a note in place and increments its revision
-// (NTE-008). Notes of an append-only type cannot be changed (NTE-010).
+// (NTE-008). Notes of an append-only type cannot be changed (NTE-010). It acts
+// on f alone, like AddNote.
 func UpdateNoteContent(f *entity.File, noteID, content string) error {
 	n, err := findNote(f, noteID)
 	if err != nil {

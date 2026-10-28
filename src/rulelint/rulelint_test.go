@@ -148,6 +148,7 @@ func TestRL015_NoteIDsNotSequential(t *testing.T) {
 		{"note_ids_gap.json", "missing note number TST-001/02"},
 		{"note_ids_dup.json", "duplicate note ID TST-001/01"},
 		{"note_ids_not_from_01.json", "missing note number TST-001/01"},
+		{"note_ids_zero.json", "invalid note number in TST-001/00"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.file, func(t *testing.T) {
