@@ -1,6 +1,6 @@
 // Package rulelint provides stateless validation of SteerSpec entity files.
 // It checks a single entity file against the JSON schema and the business
-// rules defined in the Rule Manager Spec §7.1 (RL001–RL014).
+// rules defined in the Rule Manager Spec §7.1 (RL001–RL015).
 package rulelint
 
 import (
@@ -43,20 +43,6 @@ var relationNoteTypes = map[string]bool{
 	"supersedes": true,
 	"extends":    true,
 	"related":    true,
-}
-
-var validNoteTypes = map[string]bool{
-	"rationale":          true,
-	"example":            true,
-	"counter_example":    true,
-	"reference":          true,
-	"applies_to":         true,
-	"changelog":          true,
-	"clarification":      true,
-	"deprecation_notice": true,
-	"supersedes":         true,
-	"extends":            true,
-	"related":            true,
 }
 
 // Config holds options for the Linter.
@@ -294,7 +280,7 @@ func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.Wal
 	return res
 }
 
-// lintEntity runs checks RL003–RL010, RL013 on a single entity and recurses
+// lintEntity runs checks RL003–RL010, RL013, RL015 on a single entity and recurses
 // into sub-entities. The path prefix is used for sub-entity context.
 func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix string) {
 	path := pathPrefix
@@ -309,6 +295,7 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 	checkStates(ef, res, path)
 	checkNoteRuleRefs(ef, res, path)
 	checkNoteIDs(ef, res, path)
+	checkNoteSequence(ef, res, path)
 	checkNoteTypes(ef, res, path)
 	checkSemver(ef, res, path)
 
@@ -562,10 +549,61 @@ func checkNoteIDs(ef *entity.File, res *result.Result, path string) {
 	}
 }
 
+// RL015: Note numbers under each rule are sequential from 01, with no gaps
+// and no duplicates (NTE-011). IDs that fail RL009 are skipped.
+func checkNoteSequence(ef *entity.File, res *result.Result, path string) {
+	seen := make(map[string]map[int]bool)
+	maxNum := make(map[string]int)
+	var ruleOrder []string
+
+	for _, n := range ef.Notes {
+		m := noteIDRe.FindStringSubmatch(n.ID)
+		if m == nil {
+			continue // RL009 already reported
+		}
+		num, err := strconv.Atoi(m[2])
+		if err != nil {
+			continue
+		}
+		ruleID := m[1]
+		if seen[ruleID] == nil {
+			seen[ruleID] = make(map[int]bool)
+			ruleOrder = append(ruleOrder, ruleID)
+		}
+		if seen[ruleID][num] {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL015",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("duplicate note ID %s", n.ID),
+				Path:     path,
+			})
+		}
+		seen[ruleID][num] = true
+		if num > maxNum[ruleID] {
+			maxNum[ruleID] = num
+		}
+	}
+
+	for _, ruleID := range ruleOrder {
+		for i := 1; i <= maxNum[ruleID]; i++ {
+			if !seen[ruleID][i] {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RL015",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("missing note number %s/%02d (expected sequential from 01)", ruleID, i),
+					Path:     path,
+				})
+			}
+		}
+	}
+}
+
 // RL010: Note types in closed enum.
 func checkNoteTypes(ef *entity.File, res *result.Result, path string) {
 	for _, n := range ef.Notes {
-		if !validNoteTypes[n.Type] {
+		if !entity.IsValidNoteType(n.Type) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL010",

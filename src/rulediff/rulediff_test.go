@@ -423,6 +423,147 @@ func TestDiff_RD012_NonAppendOnlyNoteRemovalAllowed(t *testing.T) {
 	head.Notes = head.Notes[:1] // remove the rationale note, keep changelog
 	res := d.Diff(base, head)
 	assertNoCode(t, res, "RD012") // rationale is not append-only
+	assertHasCode(t, res, "RD014")
+}
+
+// --- RD013-RD016: note versioning (NTE-008..010) ---
+
+// makeBaseWithRationale returns makeBase plus a rationale note TSTENT-001/02
+// at the given revision.
+func makeBaseWithRationale(revision int) *entity.File {
+	base := makeBase()
+	base.Notes = append(base.Notes, entity.Note{
+		ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "rationale",
+		Content: "Why", AddedBy: "test@example.com", AddedAt: "2026-01-01", Revision: revision,
+	})
+	return base
+}
+
+func TestDiff_RD013_NoteRevision(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutate  func(n *entity.Note)
+		wantErr bool
+	}{
+		{"content edit with revision+1", func(n *entity.Note) { n.Content = "Why, revised"; n.Revision = 2 }, false},
+		{"type change with revision+1", func(n *entity.Note) { n.Type = "clarification"; n.Revision = 2 }, false},
+		{"content edit without revision", func(n *entity.Note) { n.Content = "Why, revised" }, true},
+		{"type change without revision", func(n *entity.Note) { n.Type = "clarification" }, true},
+		{"content edit with revision+2", func(n *entity.Note) { n.Content = "Why, revised"; n.Revision = 3 }, true},
+		{"revision bump without change", func(n *entity.Note) { n.Revision = 2 }, true},
+		{"unchanged note", func(n *entity.Note) {}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBaseWithRationale(1)
+			head := makeHead(base)
+			tt.mutate(&head.Notes[1])
+			res := New().Diff(base, head)
+			if tt.wantErr {
+				assertHasCode(t, res, "RD013")
+				assertCodeSeverity(t, res, "RD013", result.Error)
+			} else if !res.OK() {
+				t.Errorf("expected OK: %v", res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestDiff_RD013_NotForAppendOnly(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes[0].Content = "Rewritten"
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD013")
+	assertHasCode(t, res, "RD016")
+}
+
+func TestDiff_RD014_NoteRemoved(t *testing.T) {
+	base := makeBaseWithRationale(0)
+	head := makeHead(base)
+	head.Notes = head.Notes[:1]
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD014")
+	assertCodeSeverity(t, res, "RD014", result.Error)
+}
+
+func TestDiff_RD014_AppendOnlyRemovalReportedOnce(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes = nil
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD012")
+	assertNoCode(t, res, "RD014")
+}
+
+func TestDiff_RD015_NewNoteRevisionNonZero(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes = append(head.Notes, entity.Note{
+		ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "rationale",
+		Content: "Why", AddedBy: "test@example.com", AddedAt: "2026-02-01", Revision: 1,
+	})
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD015")
+	assertCodeSeverity(t, res, "RD015", result.Error)
+}
+
+func TestDiff_RD015_NewNoteRevisionZeroOK(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes = append(head.Notes, entity.Note{
+		ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "rationale",
+		Content: "Why", AddedBy: "test@example.com", AddedAt: "2026-02-01",
+	})
+	res := New().Diff(base, head)
+	if !res.OK() {
+		t.Errorf("expected OK: %v", res.Diagnostics)
+	}
+}
+
+func TestDiffNew_RD015_NewEntityNoteRevisionNonZero(t *testing.T) {
+	head := &entity.File{
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New Entity"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-02-01T00:00:00Z"},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 0, State: "D", Body: "First rule", AddedBy: "test@example.com", AddedAt: "2026-02-01"},
+		},
+		Notes: []entity.Note{
+			{ID: "NEWENT-001/01", RuleRef: "NEWENT-001", Type: "rationale", Content: "Why", AddedBy: "test@example.com", AddedAt: "2026-02-01", Revision: 1},
+		},
+	}
+	assertHasCode(t, New().DiffNew(head), "RD015")
+}
+
+func TestDiff_RD015_NewSubEntityNoteRevisionNonZero(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.SubEntities = []entity.File{
+		{
+			Entity:  entity.Entity{ID: "TSTSUB", Title: "Sub", Parent: "TSTENT"},
+			RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-02-01T00:00:00Z"},
+			Rules: []entity.Rule{
+				{ID: "TSTSUB-001", Revision: 0, State: "D", Body: "Sub rule", AddedBy: "test@example.com", AddedAt: "2026-02-01"},
+			},
+			Notes: []entity.Note{
+				{ID: "TSTSUB-001/01", RuleRef: "TSTSUB-001", Type: "rationale", Content: "Why", AddedBy: "test@example.com", AddedAt: "2026-02-01", Revision: 2},
+			},
+		},
+	}
+	assertHasCode(t, New().Diff(base, head), "RD015")
+}
+
+func TestDiff_RD016_AppendOnlyNoteContentChanged(t *testing.T) {
+	for _, revision := range []int{0, 1} {
+		base := makeBase()
+		head := makeHead(base)
+		head.Notes[0].Content = "Rewritten"
+		head.Notes[0].Revision = revision
+		res := New().Diff(base, head)
+		assertHasCode(t, res, "RD016")
+		assertCodeSeverity(t, res, "RD016", result.Error)
+		assertNoCode(t, res, "RD012")
+	}
 }
 
 // --- DiffNew ---

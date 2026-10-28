@@ -14,15 +14,7 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// appendOnlyNoteTypes are note types that must never be removed once added (RD012).
-var appendOnlyNoteTypes = map[string]bool{
-	"changelog":  true,
-	"supersedes": true,
-	"extends":    true,
-	"related":    true,
-}
-
-// checkRules runs RD001–RD006, RD010–RD012 for one entity's rules and notes.
+// checkRules runs RD001–RD006 and RD010–RD016 for one entity's rules and notes.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
 	headMap := buildRuleMap(head.Rules)
@@ -56,7 +48,7 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 	// RD004: new rule numbers must be consecutive starting at max(base)+1.
 	checkSequentialRuleNums(newRuleNums, maxRuleNum(baseNums)+1, res, path)
 
-	// RD011 (new notes) and RD012 (append-only notes).
+	// RD011–RD016: notes.
 	checkNotes(base.Notes, head.Notes, res, path)
 }
 
@@ -183,46 +175,107 @@ func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 	}
 }
 
-// checkNotes runs RD012 (append-only note removal) and RD011 (new note without added_by).
+// checkNotes runs RD011–RD016 for the notes of one entity: notes are never
+// removed (NTE-009), append-only notes never change (NTE-010), and every other
+// change to a note's content or type increments its revision by one, which
+// starts at 0 (NTE-008).
 func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path string) {
-	baseNoteSet := make(map[string]bool, len(baseNotes))
-	for _, n := range baseNotes {
-		baseNoteSet[n.ID] = true
-	}
-	// Map id → type so RD012 can verify the type was not changed away from append-only.
-	headNoteTypes := make(map[string]string, len(headNotes))
+	headByID := make(map[string]entity.Note, len(headNotes))
 	for _, n := range headNotes {
-		headNoteTypes[n.ID] = n.Type
+		headByID[n.ID] = n
 	}
 
-	// RD012: append-only notes must not be removed or have their type changed.
-	for _, n := range baseNotes {
-		if !appendOnlyNoteTypes[n.Type] {
-			continue
-		}
-		headType, ok := headNoteTypes[n.ID]
-		if !ok || headType != n.Type {
+	for _, b := range baseNotes {
+		notePath := path + "/notes/" + b.ID
+		h, ok := headByID[b.ID]
+		appendOnly := entity.IsAppendOnlyNoteType(b.Type)
+
+		switch {
+		case appendOnly && (!ok || h.Type != b.Type):
+			// RD012: append-only notes must not be removed or retyped.
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD012",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("append-only note %q (type %q) was removed or retyped", n.ID, n.Type),
-				Path:     path + "/notes/" + n.ID,
+				Message:  fmt.Sprintf("append-only note %q (type %q) was removed or retyped", b.ID, b.Type),
+				Path:     notePath,
 			})
+		case !ok:
+			// RD014: no note is ever removed; append-only removal is RD012.
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD014",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("note %q (type %q) removed: revise it in place instead of deleting", b.ID, b.Type),
+				Path:     notePath,
+			})
+		case appendOnly && h.Content != b.Content:
+			// RD016: append-only notes are immutable once added.
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD016",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("content of append-only note %q (type %q) changed: add a new note instead", b.ID, b.Type),
+				Path:     notePath,
+			})
+		case !appendOnly:
+			checkNoteRevision(b, h, res, notePath)
 		}
 	}
 
-	// RD011: new notes must have added_by.
+	baseNoteSet := make(map[string]bool, len(baseNotes))
+	for _, n := range baseNotes {
+		baseNoteSet[n.ID] = true
+	}
 	for _, n := range headNotes {
-		if !baseNoteSet[n.ID] && strings.TrimSpace(n.AddedBy) == "" {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RD011",
-				Severity: result.Error,
-				Message:  "new note missing added_by",
-				Path:     path + "/notes/" + n.ID,
-			})
+		if !baseNoteSet[n.ID] {
+			checkNewNote(n, res, path+"/notes/"+n.ID)
 		}
+	}
+}
+
+// checkNoteRevision runs RD013 for a note present in both versions: a change
+// to its content or type must increment its revision by exactly one, and its
+// revision must not move without such a change.
+func checkNoteRevision(b, h entity.Note, res *result.Result, path string) {
+	changed := h.Content != b.Content || h.Type != b.Type
+	var msg string
+	switch {
+	case changed && h.Revision != b.Revision+1:
+		msg = fmt.Sprintf("note content or type changed but revision not incremented: expected %d, got %d", b.Revision+1, h.Revision)
+	case !changed && h.Revision != b.Revision:
+		msg = fmt.Sprintf("note revision changed from %d to %d without a content or type change", b.Revision, h.Revision)
+	default:
+		return
+	}
+	res.Add(result.Diagnostic{
+		Module:   module,
+		Code:     "RD013",
+		Severity: result.Error,
+		Message:  msg,
+		Path:     path,
+	})
+}
+
+// checkNewNote runs RD011 and RD015 for a note that appears only in head.
+func checkNewNote(n entity.Note, res *result.Result, path string) {
+	if strings.TrimSpace(n.AddedBy) == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD011",
+			Severity: result.Error,
+			Message:  "new note missing added_by",
+			Path:     path,
+		})
+	}
+	if n.Revision != 0 {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD015",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("new note must have revision 0, got %d", n.Revision),
+			Path:     path,
+		})
 	}
 }
 
@@ -294,15 +347,7 @@ func checkNewEntityTree(head *entity.File, res *result.Result, path string) {
 	checkSequentialRuleNums(nums, 1, res, path)
 
 	for _, n := range head.Notes {
-		if strings.TrimSpace(n.AddedBy) == "" {
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RD011",
-				Severity: result.Error,
-				Message:  "new note missing added_by",
-				Path:     path + "/notes/" + n.ID,
-			})
-		}
+		checkNewNote(n, res, path+"/notes/"+n.ID)
 	}
 	for i := range head.SubEntities {
 		sub := &head.SubEntities[i]

@@ -79,8 +79,8 @@ type Note struct {
 	AddedBy string `json:"added_by"`
 	// AddedAt is the YYYY-MM-DD date the note was added.
 	AddedAt string `json:"added_at"`
-	// Revision is the revision of the referenced rule at which the note was
-	// added.
+	// Revision is the edit counter of the note; it is 0 when the note is
+	// added and grows by one per change to its content or type.
 	Revision int `json:"revision"`
 }
 
