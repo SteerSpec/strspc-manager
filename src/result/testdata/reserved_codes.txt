@@ -30,6 +30,7 @@ RL011 active rule-set-hash-mismatch
 RL012 active supersedes-target-missing
 RL013 active rule-set-version-not-semver
 RL014 active note-unqualified-ref-missing
+RL015 active note-ids-not-sequential
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -43,6 +44,10 @@ RD009 active rule-set-timestamp-unchanged
 RD010 active rule-number-reused
 RD011 active added-by-empty
 RD012 active append-only-note-removed
+RD013 active note-revision-mismatch
+RD014 active note-removed
+RD015 active new-note-revision-nonzero
+RD016 active append-only-note-content-changed
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing

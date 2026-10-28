@@ -1,0 +1,173 @@
+package entityops
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/SteerSpec/strspc-manager/src/entity"
+)
+
+func TestAddNote(t *testing.T) {
+	t.Run("adds note at revision 0", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StatePublished)
+		f.Rules[0].Revision = 2
+		oldVersion := f.RuleSet.Version
+
+		id, err := AddNote(f, "TST-001", "rationale", "Because.", "@alice")
+		if err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		if id != "TST-001/01" {
+			t.Errorf("id = %q, want TST-001/01", id)
+		}
+		if len(f.Notes) != 1 {
+			t.Fatalf("len(Notes) = %d, want 1", len(f.Notes))
+		}
+		n := f.Notes[0]
+		if n.RuleRef != "TST-001" || n.Type != "rationale" || n.Content != "Because." ||
+			n.AddedBy != "@alice" || n.AddedAt != "2026-03-23" || n.Revision != 0 {
+			t.Errorf("unexpected note: %+v", n)
+		}
+		if f.RuleSet.Version == oldVersion {
+			t.Error("version not bumped")
+		}
+		if f.RuleSet.Hash == nil {
+			t.Error("hash not set")
+		}
+	})
+
+	t.Run("numbers sequentially per rule", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		if _, err := AddRule(f, "second", "@user"); err != nil {
+			t.Fatalf("AddRule: %v", err)
+		}
+		for _, step := range []struct{ rule, want string }{
+			{"TST-001", "TST-001/01"},
+			{"TST-002", "TST-002/01"},
+			{"TST-001", "TST-001/02"},
+		} {
+			id, err := AddNote(f, step.rule, "example", "x", "@user")
+			if err != nil {
+				t.Fatalf("AddNote(%s): %v", step.rule, err)
+			}
+			if id != step.want {
+				t.Errorf("AddNote(%s) = %q, want %q", step.rule, id, step.want)
+			}
+		}
+	})
+
+	t.Run("rejects invalid input", func(t *testing.T) {
+		tests := []struct {
+			name, rule, typ, content, by, wantErr string
+		}{
+			{"missing rule", "TST-999", "rationale", "x", "@u", "not found"},
+			{"invalid type", "TST-001", "general", "x", "@u", "invalid note type"},
+			{"empty content", "TST-001", "rationale", "", "@u", "content"},
+			{"empty added_by", "TST-001", "rationale", "x", "", "added_by"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				f := makeFileWithRule(t, entity.StateDraft)
+				_, err := AddNote(f, tt.rule, tt.typ, tt.content, tt.by)
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
+				}
+				if len(f.Notes) != 0 {
+					t.Error("note added despite error")
+				}
+			})
+		}
+	})
+
+	t.Run("rejects more than 99 notes", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		f.Notes = append(f.Notes, entity.Note{ID: "TST-001/99", RuleRef: "TST-001", Type: "example"})
+		if _, err := AddNote(f, "TST-001", "example", "x", "@u"); err == nil {
+			t.Fatal("expected error past note 99")
+		}
+	})
+
+	t.Run("nil file", func(t *testing.T) {
+		if _, err := AddNote(nil, "TST-001", "rationale", "x", "@u"); err == nil {
+			t.Fatal("expected error for nil file")
+		}
+	})
+}
+
+func TestUpdateNoteContent(t *testing.T) {
+	newFile := func(t *testing.T, noteType string) *entity.File {
+		t.Helper()
+		f := makeFileWithRule(t, entity.StateImplemented)
+		if _, err := AddNote(f, "TST-001", noteType, "original", "@u"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		return f
+	}
+
+	t.Run("revises in place", func(t *testing.T) {
+		f := newFile(t, "rationale")
+		oldVersion := f.RuleSet.Version
+		oldHash := *f.RuleSet.Hash
+
+		if err := UpdateNoteContent(f, "TST-001/01", "revised"); err != nil {
+			t.Fatalf("UpdateNoteContent: %v", err)
+		}
+		n := f.Notes[0]
+		if n.Content != "revised" || n.Revision != 1 {
+			t.Errorf("note = %+v, want content revised at revision 1", n)
+		}
+		want, _ := BumpPatch(oldVersion)
+		if f.RuleSet.Version != want {
+			t.Errorf("version = %q, want %q", f.RuleSet.Version, want)
+		}
+		if *f.RuleSet.Hash == oldHash {
+			t.Error("hash not refreshed")
+		}
+
+		if err := UpdateNoteContent(f, "TST-001/01", "again"); err != nil {
+			t.Fatalf("second UpdateNoteContent: %v", err)
+		}
+		if f.Notes[0].Revision != 2 {
+			t.Errorf("Revision = %d, want 2", f.Notes[0].Revision)
+		}
+	})
+
+	for _, nt := range []string{"changelog", "supersedes", "extends", "related"} {
+		t.Run("rejects append-only "+nt, func(t *testing.T) {
+			f := newFile(t, nt)
+			if err := UpdateNoteContent(f, "TST-001/01", "changed"); err == nil {
+				t.Fatal("expected error for append-only note")
+			}
+			if f.Notes[0].Content != "original" || f.Notes[0].Revision != 0 {
+				t.Errorf("note modified despite error: %+v", f.Notes[0])
+			}
+		})
+	}
+
+	t.Run("rejects invalid input", func(t *testing.T) {
+		tests := []struct{ name, id, content, wantErr string }{
+			{"missing note", "TST-001/02", "x", "not found"},
+			{"empty content", "TST-001/01", "", "content"},
+			{"unchanged content", "TST-001/01", "original", "unchanged"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				f := newFile(t, "rationale")
+				version := f.RuleSet.Version
+				err := UpdateNoteContent(f, tt.id, tt.content)
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
+				}
+				if f.Notes[0].Revision != 0 || f.RuleSet.Version != version {
+					t.Error("file modified despite error")
+				}
+			})
+		}
+	})
+
+	t.Run("nil file", func(t *testing.T) {
+		if err := UpdateNoteContent(nil, "TST-001/01", "x"); err == nil {
+			t.Fatal("expected error for nil file")
+		}
+	})
+}

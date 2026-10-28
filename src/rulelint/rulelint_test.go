@@ -143,6 +143,56 @@ func TestRL009_BadNoteIDs(t *testing.T) {
 	assertHasCode(t, res, "RL009")
 }
 
+func TestRL015_NoteIDsNotSequential(t *testing.T) {
+	tests := []struct{ file, want string }{
+		{"note_ids_gap.json", "missing note number TST-001/02"},
+		{"note_ids_dup.json", "duplicate note ID TST-001/01"},
+		{"note_ids_not_from_01.json", "missing note number TST-001/01"},
+		{"note_ids_zero.json", "invalid note number in TST-001/00"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			data := mustReadFile(t, testdataPath("invalid", tt.file))
+			res := New().LintBytes(context.Background(), data)
+			found := false
+			for _, d := range res.Diagnostics {
+				if d.Code == "RL015" {
+					found = true
+					if d.Severity != result.Error {
+						t.Errorf("RL015 severity = %v, want Error", d.Severity)
+					}
+					if !strings.Contains(d.Message, tt.want) {
+						t.Errorf("RL015 message %q does not contain %q", d.Message, tt.want)
+					}
+				}
+			}
+			if !found {
+				t.Errorf("expected RL015, got %v", res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestRL015_SequentialNoteIDsPerRule(t *testing.T) {
+	f := &entity.File{
+		Entity:  entity.Entity{ID: "TST", Title: "Test"},
+		RuleSet: entity.RuleSet{Version: "1.0.0"},
+		Rules: []entity.Rule{
+			{ID: "TST-001", State: "D", Body: "a"},
+			{ID: "TST-002", State: "D", Body: "b"},
+		},
+		Notes: []entity.Note{
+			{ID: "TST-002/01", RuleRef: "TST-002", Type: "rationale"},
+			{ID: "TST-001/01", RuleRef: "TST-001", Type: "rationale"},
+			{ID: "TST-002/02", RuleRef: "TST-002", Type: "example"},
+			{ID: "BADFORMAT", RuleRef: "TST-001", Type: "rationale"}, // RL009 only
+		},
+	}
+	res := New().LintFile(f)
+	assertNoCode(t, res, "RL015")
+	assertHasCode(t, res, "RL009")
+}
+
 func TestRL010_BadNoteTypes(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_note_types.json"))
 	l := New()

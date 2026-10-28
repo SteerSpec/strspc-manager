@@ -77,7 +77,7 @@ A Rule Set groups all rules applicable to a specific entity. Every entity has ex
 | `timestamp` | string | UTC ISO timestamp of the last change. |
 | `hash` | string or null | `blake3:<hex>` hash of the canonical JSON content. |
 
-**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule in the set changes — whether a revision increment, a state transition, or a new rule added. The author chooses which semver component to increment; the system only enforces that `new_version > old_version`.
+**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update).
 
 **Hash computation:** The Blake3 hash is computed over the entire entity file's canonical JSON (sorted keys, minified). Any change to any part of the file — rules, sub-entities, notes — changes the hash.
 
@@ -93,9 +93,16 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 | `content` | string | The note body. |
 | `added_by` | string | Email address or `@github_handle`. |
 | `added_at` | string | ISO date. |
-| `revision` | integer | The rule revision at which this note was added. |
+| `revision` | integer | Starts at `0` when the note is added and increments by one on each change to its content or type. |
 
-Notes are stored in the same entity file as the rules they reference. They are append-friendly: relation and changelog notes are append-only; rationale, example, and scope notes use latest-wins semantics for rendering (all versions preserved in JSON, renderer shows the most recent).
+Notes are stored in the same entity file as the rules they reference and are edited in place, never deleted:
+
+- A note is never removed once added. A note that no longer applies is revised in place.
+- Notes of type `changelog`, `supersedes`, `extends` and `related` are immutable: neither their content nor their type may change once added.
+- Any other note may be revised; each change to its content or type increments its `revision` by exactly one.
+- Note IDs under a rule are sequential from `01`. Since no note is ever removed, an ID is never reused.
+
+Every note is rendered and sent to the evaluator; there is no latest-wins selection.
 
 ### 2.6 Note Types (Closed Enum)
 
@@ -264,6 +271,7 @@ The PR validator enforces consistency: if a rule declares `supersedes` and reach
 - It increments by exactly `+1` on every edit to the rule.
 - Revisions only change while the rule is in Draft state (since non-Draft rules are immutable).
 - State transitions do not increment the revision — they change the `state` field only.
+- Notes carry their own revision counter with the same semantics, independent of the rule's (§2.5).
 
 ---
 
@@ -417,6 +425,7 @@ retired, and its code is never emitted again.
 | RL012 | Warning | A rule's `supersedes` names a rule ID not found in the scanned files. |
 | RL013 | Error | `rule_set.version` is not valid semver. |
 | RL014 | Warning | A `supersedes`/`extends`/`related` note references an unqualified rule ID that was not found. |
+| RL015 | Error | Note numbers under a rule are duplicated or not sequential from 01. |
 
 #### `rule-diff` (RD)
 
@@ -435,6 +444,10 @@ retired, and its code is never emitted again.
 | RD010 | Error | A new rule reuses a rule number present in the base version. |
 | RD011 | Error | A new rule or new note has an empty `added_by`. |
 | RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped. |
+| RD013 | Error | A note's content or type changed without its revision incrementing by exactly 1, or its revision changed without a content or type change. |
+| RD014 | Error | A note that is not append-only and is present in the base version was removed. |
+| RD015 | Error | A new note has revision ≠ 0. |
+| RD016 | Error | The content of an append-only note changed. |
 
 #### `realm-lint` (RM)
 
@@ -560,6 +573,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 12. Cross-file references: each rule's `supersedes` points to an existing rule ID within the scanned realm.
 13. `rule_set.version` is valid semver.
 14. Relation notes (`supersedes`, `extends`, `related`): every unqualified `<EUID>-<NNN>` reference in the note content points to an existing rule ID within the scanned realm. Qualified `<realm-id>:<EUID>-<NNN>` references target another realm and are not checked here.
+15. Note numbers under each rule are sequential from `01` — no gaps, no duplicates.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
@@ -584,7 +598,9 @@ For each changed entity file, the validator compares the before and after states
 9. **Rule Set timestamp:** Must be updated.
 10. **No ID reuse:** New rule numbers must not reuse any previously existing rule number in the entity's history.
 11. **`added_by` present:** Required on new rules and new notes. Must be a valid email or `@handle`.
-12. **Notes only added, not removed:** For append-only note types (`changelog`, `supersedes`, `extends`, `related`), notes present in the base version must still be present.
+12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
+13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
+14. **New note added:** Must have `revision: 0`.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 
