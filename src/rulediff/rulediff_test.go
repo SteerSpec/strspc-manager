@@ -478,6 +478,15 @@ func TestDiff_RD013_NotForAppendOnly(t *testing.T) {
 	assertHasCode(t, res, "RD016")
 }
 
+func TestDiff_RD013_AppendOnlyRevisionDrift(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes[0].Revision = 1
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD013")
+	assertNoCode(t, res, "RD016")
+}
+
 func TestDiff_RD014_NoteRemoved(t *testing.T) {
 	base := makeBaseWithRationale(0)
 	head := makeHead(base)

@@ -218,7 +218,7 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 				Message:  fmt.Sprintf("content of append-only note %q (type %q) changed: add a new note instead", b.ID, b.Type),
 				Path:     notePath,
 			})
-		case !appendOnly:
+		default:
 			checkNoteRevision(b, h, res, notePath)
 		}
 	}
