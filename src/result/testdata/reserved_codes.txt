@@ -60,6 +60,7 @@ RM009 active sub-realm-manifest-unreadable
 RM010 active sub-realm-id-mismatch
 RM011 active sub-realm-nested
 RM012 active sub-realm-euid-collision
+RM013 active sub-realm-identifier-format
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable

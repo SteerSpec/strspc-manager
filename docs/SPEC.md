@@ -140,7 +140,7 @@ A **Realm** is a namespace in which Entity Unique Identifiers are unique (RLM-00
 - A `realm.json` manifest at its root (RLM-004).
 - One or more entity JSON files.
 
-**Rule Identifier Format:** Each Realm HAS a Rule Identifier Format configuration (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4). A sub-realm inherits its parent Realm's format (RLM-015); a Realm never inherits the format of a Realm it depends on.
+**Rule Identifier Format:** Each Realm HAS a Rule Identifier Format configuration (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4). A sub-realm inherits its parent Realm's format (RLM-015) and leaves `rule_identifier_format` null (RM013); a Realm never inherits the format of a Realm it depends on.
 
 **Dependencies:** A Realm MAY declare dependencies on other Realms, importing their rules as read-only references (RLM-005). When dependencies exist, the Realm MUST NOT define Entity Unique Identifiers that collide with any Realm it depends on (RLM-006).
 
@@ -470,6 +470,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM010 | Error | A sub-realm `realm.id` is not `<parent id>.<directory name>`. |
 | RM011 | Error | A sub-realm declares its own `sub_realms`. |
 | RM012 | Error | An EUID in a sub-realm collides with the parent realm or a sibling sub-realm. |
+| RM013 | Error | A sub-realm `realm.json` sets `rule_identifier_format`; a sub-realm inherits its parent's format (RLM-015). |
 
 #### `realm-resolve` (RR)
 

@@ -10,7 +10,7 @@ import (
 )
 
 // storedRuleIDRe matches the stored "<EUID>-<NNN>" form of a rule ID.
-var storedRuleIDRe = regexp.MustCompile(`^([A-Za-z0-9]+)-(\d{3})$`)
+var storedRuleIDRe = regexp.MustCompile(`^([A-Za-z0-9]{3,18})-(\d{3})$`)
 
 // RuleIDFormatter formats a rule's display identifier according to RLIFRMT rules.
 // It changes only the rendered form, never the stored rule ID (RLIFRMT-008).
