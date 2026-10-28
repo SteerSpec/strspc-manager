@@ -56,10 +56,22 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 	return noteID, nil
 }
 
-// UpdateNoteContent revises a note in place and increments its revision
-// (NTE-008). Notes of an append-only type cannot be changed (NTE-010). It acts
-// on f alone, like AddNote.
+// UpdateNoteContent revises a note's content in place and increments its
+// revision (NTE-008). It is UpdateNote with the type left unchanged, except
+// that empty content is an error.
 func UpdateNoteContent(f *entity.File, noteID, content string) error {
+	if content == "" {
+		return fmt.Errorf("note content must not be empty")
+	}
+	return UpdateNote(f, noteID, content, "")
+}
+
+// UpdateNote revises a note's content and/or type in place and increments its
+// revision once (NTE-008). An empty content or noteType keeps the current
+// value; at least one of them must change. Notes of an append-only type
+// cannot be changed, and no note can be retyped into one (NTE-010). It acts
+// on f alone, like AddNote.
+func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 	n, err := findNote(f, noteID)
 	if err != nil {
 		return err
@@ -68,13 +80,23 @@ func UpdateNoteContent(f *entity.File, noteID, content string) error {
 		return fmt.Errorf("note %q has type %q: notes of this type cannot change once added", noteID, n.Type)
 	}
 	if content == "" {
-		return fmt.Errorf("note content must not be empty")
+		content = n.Content
 	}
-	if content == n.Content {
-		return fmt.Errorf("note %q content unchanged", noteID)
+	if noteType == "" {
+		noteType = n.Type
+	}
+	if !entity.IsValidNoteType(noteType) {
+		return fmt.Errorf("invalid note type %q: must be one of %s", noteType, strings.Join(entity.NoteTypes(), ", "))
+	}
+	if entity.IsAppendOnlyNoteType(noteType) {
+		return fmt.Errorf("cannot retype note %q to append-only type %q: add a new note instead", noteID, noteType)
+	}
+	if content == n.Content && noteType == n.Type {
+		return fmt.Errorf("note %q unchanged: content and type are the same", noteID)
 	}
 
 	n.Content = content
+	n.Type = noteType
 	n.Revision++
 
 	v, err := BumpPatch(f.RuleSet.Version)
