@@ -443,6 +443,16 @@ func checkSequential(ef *entity.File, res *result.Result, path string) {
 		if err != nil {
 			continue
 		}
+		if n == 0 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL005",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("invalid rule number in %q (expected sequential from 001)", r.ID),
+				Path:     path,
+			})
+			continue
+		}
 		if seen[n] {
 			res.Add(result.Diagnostic{
 				Module:   module,

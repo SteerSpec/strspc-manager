@@ -115,6 +115,27 @@ func TestRL005_LargeGap(t *testing.T) {
 	}
 }
 
+func TestRL005_RuleNumberZero(t *testing.T) {
+	ef := &entity.File{
+		Entity:  entity.Entity{ID: "TST", Title: "Test"},
+		RuleSet: entity.RuleSet{Version: "1.0.0", Timestamp: "2026-01-01"},
+		Rules: []entity.Rule{
+			{ID: "TST-000", State: "D", Body: "r0", AddedBy: "t", AddedAt: "2026-01-01"},
+			{ID: "TST-001", State: "D", Body: "r1", AddedBy: "t", AddedAt: "2026-01-01"},
+		},
+	}
+	res := New().LintFile(ef)
+	var msgs []string
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL005" {
+			msgs = append(msgs, d.Message)
+		}
+	}
+	if len(msgs) != 1 || !strings.Contains(msgs[0], "TST-000") {
+		t.Errorf("expected one RL005 naming TST-000, got %v", msgs)
+	}
+}
+
 func TestRL006_BadStates(t *testing.T) {
 	data := mustReadFile(t, testdataPath("invalid", "bad_states.json"))
 	l := New()
