@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.22.0](https://github.com/SteerSpec/strspc-manager/compare/v1.21.0...v1.22.0) (2026-10-28)
+
+
+### Features
+
+* **realmlint:** reject a sub-realm rule_identifier_format (RM013) ([069f3de](https://github.com/SteerSpec/strspc-manager/commit/069f3deff0992af7a2244b0d190267dd4b040acd))
+* **render:** honour a realm's rule_identifier_format ([4634334](https://github.com/SteerSpec/strspc-manager/commit/4634334ea175a77c0b506da67d0d1eef7457fdc8))
+* **render:** honour a realm's rule_identifier_format ([3338bf6](https://github.com/SteerSpec/strspc-manager/commit/3338bf636e4c94f80729f36676ceae81363acd60))
+
 ## [1.21.0](https://github.com/SteerSpec/strspc-manager/compare/v1.20.0...v1.21.0) (2026-10-28)
 
 
