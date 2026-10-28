@@ -58,10 +58,16 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 
 // UpdateNoteContent revises a note's content in place and increments its
 // revision (NTE-008). It is UpdateNote with the type left unchanged, except
-// that empty content is an error.
+// that empty content is an error once the note is found and not append-only.
 func UpdateNoteContent(f *entity.File, noteID, content string) error {
 	if content == "" {
-		return fmt.Errorf("note content must not be empty")
+		n, err := findNote(f, noteID)
+		if err != nil {
+			return err
+		}
+		if !entity.IsAppendOnlyNoteType(n.Type) {
+			return fmt.Errorf("note content must not be empty")
+		}
 	}
 	return UpdateNote(f, noteID, content, "")
 }

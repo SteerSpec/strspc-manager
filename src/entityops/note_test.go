@@ -170,6 +170,29 @@ func TestUpdateNoteContent(t *testing.T) {
 			t.Fatal("expected error for nil file")
 		}
 	})
+
+	t.Run("empty content reports lookup and type errors first", func(t *testing.T) {
+		tests := []struct {
+			name, noteType, id, wantErr string
+			nilFile                     bool
+		}{
+			{"nil file", "rationale", "TST-001/01", "nil", true},
+			{"missing note", "rationale", "TST-001/02", "not found", false},
+			{"append-only note", "changelog", "TST-001/01", "cannot change", false},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				f := newFile(t, tt.noteType)
+				if tt.nilFile {
+					f = nil
+				}
+				err := UpdateNoteContent(f, tt.id, "")
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
+				}
+			})
+		}
+	})
 }
 
 func TestUpdateNote(t *testing.T) {
@@ -195,6 +218,7 @@ func TestUpdateNote(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFile(t, "rationale")
 			oldVersion := f.RuleSet.Version
+			oldHash := *f.RuleSet.Hash
 			if err := UpdateNote(f, "TST-001/01", tt.content, tt.noteType); err != nil {
 				t.Fatalf("UpdateNote: %v", err)
 			}
@@ -205,6 +229,9 @@ func TestUpdateNote(t *testing.T) {
 			want, _ := BumpPatch(oldVersion)
 			if f.RuleSet.Version != want {
 				t.Errorf("version = %q, want %q", f.RuleSet.Version, want)
+			}
+			if *f.RuleSet.Hash == oldHash {
+				t.Error("hash not refreshed")
 			}
 		})
 	}
