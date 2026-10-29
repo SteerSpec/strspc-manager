@@ -73,6 +73,9 @@ func TestResolveInheritance_Errors(t *testing.T) {
 		{"RR015", "already replaced by dev.lib:LIBKID-001 in LIBKID", result.Error},
 		{"RR013", "entity GONEA (through dev.lib:GONEKID)", result.Error},
 		{"RR013", "entity GONEB (through dev.lib:GONEKID)", result.Error},
+		// A sub-realm qualifier under the declared but missing dev.gone
+		// reports the failed dependency, not a missing declaration.
+		{"RR013", `entity GONESUB: inherits "dev.gone.auth:X" cannot be resolved: dependency dev.gone of realm dev.root could not be resolved`, result.Error},
 		// dev.gone is missing; the root and dev.lib both declare it, and it
 		// is loaded once for the root and both chains.
 		{"RR002", `dependency "dev.gone"`, result.Error},
@@ -96,12 +99,12 @@ func TestResolveInheritance_Errors(t *testing.T) {
 			}
 		}
 	}
-	// Exactly the expected set: 3 RR014, 5 RR013, 3 RR015, 1 RR016, 1 RR002.
+	// Exactly the expected set: 3 RR014, 6 RR013, 3 RR015, 1 RR016, 1 RR002.
 	counts := map[string]int{}
 	for _, d := range res.Diagnostics {
 		counts[d.Code]++
 	}
-	if counts["RR013"] != 5 || counts["RR014"] != 3 || counts["RR015"] != 3 || counts["RR016"] != 1 || counts["RR002"] != 1 || len(res.Diagnostics) != 13 {
+	if counts["RR013"] != 6 || counts["RR014"] != 3 || counts["RR015"] != 3 || counts["RR016"] != 1 || counts["RR002"] != 1 || len(res.Diagnostics) != 14 {
 		t.Errorf("diagnostic counts = %v", counts)
 	}
 }

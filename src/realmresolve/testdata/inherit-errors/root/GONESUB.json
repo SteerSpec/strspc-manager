@@ -1,0 +1,15 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GONESUB",
+    "title": "GONESUB",
+    "inherits": "dev.gone.auth:X"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [],
+  "notes": []
+}

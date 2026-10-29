@@ -272,15 +272,16 @@ func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 		}
 		return nil, nil, problem
 	}
+	depID := realmID
 	dep, declared := s.dependency(n, realmID)
 	if !declared {
-		dep, declared = s.dependencySubRealm(n, realmID)
+		dep, depID, declared = s.dependencySubRealm(n, realmID)
 	}
 	switch {
 	case !declared:
 		return nil, nil, fmt.Sprintf("realm %s is not a dependency of realm %s", realmID, n.realm.Realm.Realm.ID)
 	case dep == nil:
-		return nil, nil, fmt.Sprintf("dependency %s of realm %s could not be resolved", realmID, n.realm.Realm.Realm.ID)
+		return nil, nil, fmt.Sprintf("dependency %s of realm %s could not be resolved", depID, n.realm.Realm.Realm.ID)
 	}
 	e, ok := dep.Entities[euid]
 	if !ok {
@@ -363,32 +364,32 @@ func (s *chainState) dependency(n *node, realmID string) (dep *ResolvedRealm, de
 }
 
 // dependencySubRealm returns the dependency of n's Realm whose manifest
-// declares realmID as one of its sub-realms: entities of a sub-realm are
-// found in the dependency's directory, and a qualifier naming the sub-realm
-// is a qualifier of that dependency. declared is false when no dependency
-// does.
-func (s *chainState) dependencySubRealm(n *node, realmID string) (*ResolvedRealm, bool) {
-	var decls []string
-	if n.deps != nil {
-		for id := range n.deps {
-			decls = append(decls, id)
-		}
-	} else {
-		for _, d := range n.realm.Realm.Dependencies {
-			decls = append(decls, d.RealmID)
-		}
+// declares realmID as one of its sub-realms, and that dependency's ID:
+// entities of a sub-realm are found in the dependency's directory, and a
+// qualifier naming the sub-realm is a qualifier of that dependency. A
+// declared dependency that failed to resolve, and whose ID prefixes
+// realmID, is returned as nil with declared true, so the failure is
+// reported rather than a missing dependency. declared is false when no
+// dependency matches.
+func (s *chainState) dependencySubRealm(n *node, realmID string) (dep *ResolvedRealm, depID string, declared bool) {
+	decls := make([]string, 0, len(n.realm.Realm.Dependencies))
+	for _, d := range n.realm.Realm.Dependencies {
+		decls = append(decls, d.RealmID)
 	}
 	sort.Strings(decls)
 	for _, id := range decls {
 		if !strings.HasPrefix(realmID, id+".") {
 			continue
 		}
-		dep, _ := s.dependency(n, id)
-		if dep != nil && slices.Contains(subRealmIDs(dep.Realm), realmID) {
-			return dep, true
+		d, ok := s.dependency(n, id)
+		if ok && d == nil {
+			return nil, id, true
+		}
+		if d != nil && slices.Contains(subRealmIDs(d.Realm), realmID) {
+			return d, id, true
 		}
 	}
-	return nil, false
+	return nil, "", false
 }
 
 // depNode returns the node of a dependency Realm, built on first use. Its
