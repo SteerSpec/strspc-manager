@@ -209,3 +209,21 @@ func TestRenderInherited_WithoutChainsUnchanged(t *testing.T) {
 		t.Error("no Inherited rules section without WithInheritance")
 	}
 }
+
+func TestRenderInherited_EmptyChainKeepsSection(t *testing.T) {
+	// A resolved chain whose ancestors hold only Draft rules still gets the
+	// section, saying nothing is inherited yet.
+	ef := &entity.File{Entity: entity.Entity{ID: "SAV", Title: "Savings", Inherits: "ACCT"}, RuleSet: entity.RuleSet{Version: "0.1.0"}}
+	acct := inherit.Hop{RealmID: "dev.bank", Entity: &entity.File{
+		Entity: entity.Entity{ID: "ACCT"},
+		Rules:  []entity.Rule{{ID: "ACCT-001", State: "D", Body: "Draft."}},
+	}}
+	chains := map[string]Chain{"SAV": {Entity: inherit.Hop{RealmID: "dev.bank", Entity: ef}, Ancestors: []inherit.Hop{acct}}}
+	var buf bytes.Buffer
+	if err := NewMarkdownRenderer(WithInheritance(chains)).Render(&buf, ef); err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	if !strings.Contains(buf.String(), "## Inherited rules\n\nNo Published or Implemented rules are inherited yet.\n") {
+		t.Errorf("empty chain section missing:\n%s", buf.String())
+	}
+}

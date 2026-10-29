@@ -29,10 +29,13 @@
 {{- end}}
 {{end}}
 {{- end}}
-{{- if .Inherited}}
+{{- if .HasChain}}
 
 {{heading (add .Depth 1)}} Inherited rules
-{{range .Inherited}}
+{{if not .Inherited}}
+No Published or Implemented rules are inherited yet.
+{{- end}}
+{{- range .Inherited}}
 - **{{.ID}}** {{.Body}} ({{.State}}, from {{.Owner}} in {{.OwnerRealm}})
 {{- if .OverriddenBy}} *Overridden by {{.OverriddenBy}}.*{{end}}
 {{- end}}

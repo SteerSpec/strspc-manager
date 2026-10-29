@@ -93,8 +93,11 @@ type renderContext struct {
 	NotesByRule map[string][]entity.Note
 	// SubEntities holds the render contexts of the nested entity files.
 	SubEntities []renderContext
-	// Inherited lists the rules the entity inherits, when its chain was
-	// supplied with WithInheritance.
+	// HasChain reports whether the entity's chain was supplied with
+	// WithInheritance; the "Inherited rules" section is shown then, even
+	// when Inherited is empty.
+	HasChain bool
+	// Inherited lists the rules the entity inherits.
 	Inherited []InheritedRule
 }
 
@@ -157,6 +160,7 @@ func (r *MarkdownRenderer) newRenderContext(ef *entity.File, depth int) renderCo
 		SubEntities: subCtxs,
 	}
 	if c, ok := r.chains[ef.Entity.ID]; ok {
+		ctx.HasChain = true
 		ctx.Inherited = inheritedRows(c)
 	}
 	return ctx
