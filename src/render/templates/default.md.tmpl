@@ -9,6 +9,10 @@
 
 **Parent:** {{.Entity.Parent}}
 {{- end}}
+{{- if .Entity.Inherits}}
+
+**Inherits:** {{.Entity.Inherits}}
+{{- end}}
 
 **Version:** {{.RuleSet.Version}} | **Hash:** {{hashOrNone .RuleSet.Hash}} | **Timestamp:** {{.RuleSet.Timestamp}}
 {{- if .Rules}}
@@ -24,6 +28,14 @@
 > **{{.Type}}:** {{.Content}}
 {{- end}}
 {{end}}
+{{- end}}
+{{- if .Inherited}}
+
+{{heading (add .Depth 1)}} Inherited rules
+{{range .Inherited}}
+- **{{.ID}}** {{.Body}} ({{.State}}, from {{.Owner}} in {{.OwnerRealm}})
+{{- if .OverriddenBy}} *Overridden by {{.OverriddenBy}}.*{{end}}
+{{- end}}
 {{- end}}
 {{- if .SubEntities}}
 
