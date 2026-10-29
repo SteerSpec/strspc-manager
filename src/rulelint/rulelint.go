@@ -126,6 +126,35 @@ func (l *Linter) LintBytes(ctx context.Context, data []byte) *result.Result {
 	return res
 }
 
+// FileInput is one already-read entity file passed to LintFiles.
+type FileInput struct {
+	// Data is the raw JSON the file was parsed from (for RL002 and RL011).
+	Data []byte
+	// File is the parsed entity file.
+	File *entity.File
+}
+
+// LintFiles lints a set of entity files read together, such as the files of
+// one realm directory scanned by realm-lint, and returns one result per
+// input in order. Each file gets the checks LintBytes runs, except that RL017
+// indexes superseders across the whole set, so a rule superseded from another
+// file is not reported as a live override. The other cross-file reference
+// checks (RL012, RL014, RL016) stay with LintDir and LintRealm.
+func (l *Linter) LintFiles(ctx context.Context, files []FileInput) []*result.Result {
+	scope := make([]dirEntry, len(files))
+	for i, f := range files {
+		scope[i] = dirEntry{file: f.File}
+	}
+	superseded := collectSuperseded(scope)
+	out := make([]*result.Result, len(files))
+	for i, f := range files {
+		res := l.lintParsed(ctx, f.File, f.Data)
+		checkFileInheritanceWith(f.File, superseded, res)
+		out[i] = res
+	}
+	return out
+}
+
 // parseAndValidate parses raw JSON (RL001). On failure it returns a nil
 // file and a result holding the RL001 diagnostic.
 func (l *Linter) parseAndValidate(data []byte) (*entity.File, *result.Result) {
@@ -806,9 +835,13 @@ func checkInheritRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[st
 // superseder or chain link in another file is seen and diagnostics are not
 // doubled.
 func checkFileInheritance(ef *entity.File, res *result.Result) {
-	scope := []dirEntry{{file: ef}}
-	inherits := collectInherits(scope)
-	superseded := collectSuperseded(scope)
+	checkFileInheritanceWith(ef, collectSuperseded([]dirEntry{{file: ef}}), res)
+}
+
+// checkFileInheritanceWith is checkFileInheritance with a supersession index
+// supplied by the caller, which LintFiles builds across all its files.
+func checkFileInheritanceWith(ef *entity.File, superseded map[string]bool, res *result.Result) {
+	inherits := collectInherits([]dirEntry{{file: ef}})
 	var walk func(f *entity.File, path string)
 	walk = func(f *entity.File, path string) {
 		checkInheritChain(f, "", inherits, res)

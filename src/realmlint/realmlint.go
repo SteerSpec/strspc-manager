@@ -323,6 +323,11 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDi
 	// EUID → first file path where it was seen.
 	euids := make(map[string]string)
 
+	// Parsed files, linted together after the walk so that checks spanning
+	// files (RL017 supersession) see the whole directory.
+	var files []rulelint.FileInput
+	var filePaths []string
+
 	var walkOpts []entity.WalkOption
 	if len(excludeDirs) > 0 {
 		walkOpts = append(walkOpts, entity.WithExcludeDirs(excludeDirs))
@@ -368,14 +373,19 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDi
 		// Collect EUIDs from sub-entities too.
 		collectSubEntityEUIDs(ef, path, euids, relPath, res)
 
-		// RM005: Delegate entity file validation to rulelint.
+		// RM005: Delegate entity file validation to rulelint after the walk.
 		if l.cfg.RuleLinter != nil {
-			fileRes := l.cfg.RuleLinter.LintBytes(ctx, data)
-			copyDiagnostics(fileRes, path, res)
+			files = append(files, rulelint.FileInput{Data: data, File: ef})
+			filePaths = append(filePaths, path)
 		}
 
 		return nil
 	}, walkOpts...)
+	if l.cfg.RuleLinter != nil {
+		for i, fileRes := range l.cfg.RuleLinter.LintFiles(ctx, files) {
+			copyDiagnostics(fileRes, filePaths[i], res)
+		}
+	}
 	if walkErr != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
