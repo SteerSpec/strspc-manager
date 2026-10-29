@@ -107,7 +107,7 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 		return res
 	}
 	l.lintEntity(ef, res, "")
-	checkFileInheritChains(ef, res)
+	checkFileInheritance(ef, res)
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}
@@ -122,7 +122,7 @@ func (l *Linter) LintBytes(ctx context.Context, data []byte) *result.Result {
 		return res
 	}
 	res = l.lintParsed(ctx, f, data)
-	checkFileInheritChains(f, res)
+	checkFileInheritance(f, res)
 	return res
 }
 
@@ -223,8 +223,9 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []
 	// Cross-file supersedes/relation/inheritance references (RL012, RL014,
 	// RL016, RL018) across entire realm tree.
 	inherits := collectInherits(allParsed)
+	superseded := collectSuperseded(allParsed)
 	for _, de := range allParsed {
-		checkCrossRefs(de.file, de.path, allRuleIDs, inherits, res, l.cfg.Strict)
+		checkCrossRefs(de.file, de.path, allRuleIDs, inherits, superseded, res, l.cfg.Strict)
 	}
 
 	return res
@@ -283,14 +284,15 @@ func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.Wal
 	// Second pass: cross-file supersedes/relation/inheritance references
 	// (RL012, RL014, RL016, RL018).
 	inherits := collectInherits(parsed)
+	superseded := collectSuperseded(parsed)
 	for _, de := range parsed {
-		checkCrossRefs(de.file, de.path, allRuleIDs, inherits, res, l.cfg.Strict)
+		checkCrossRefs(de.file, de.path, allRuleIDs, inherits, superseded, res, l.cfg.Strict)
 	}
 
 	return res
 }
 
-// lintEntity runs checks RL003–RL010, RL013, RL015, RL017 on a single entity and recurses
+// lintEntity runs checks RL003–RL010, RL013, RL015 on a single entity and recurses
 // into sub-entities. The path prefix is used for sub-entity context.
 func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix string) {
 	path := pathPrefix
@@ -308,7 +310,6 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 	checkNoteSequence(ef, res, path)
 	checkNoteTypes(ef, res, path)
 	checkSemver(ef, res, path)
-	checkOverrideConflicts(ef, res, path)
 
 	for i := range ef.SubEntities {
 		sub := &ef.SubEntities[i]
@@ -703,18 +704,11 @@ func checkSemver(ef *entity.File, res *result.Result, path string) {
 }
 
 // RL017: Within an entity, at most one live rule overrides a given inherited
-// rule (RUL-010). A rule another non-Abandoned rule supersedes is not live,
-// so a supersession chain that restates the override (RUL-011) is not a
-// conflict; Abandoned and Terminated rules are not live either.
-func checkOverrideConflicts(ef *entity.File, res *result.Result, path string) {
-	superseded := make(map[string]bool)
-	for _, r := range ef.Rules {
-		// An abandoned superseder never took effect, so the rule it named
-		// stays live.
-		if r.Supersedes != nil && r.State != entity.StateAbandoned {
-			superseded[*r.Supersedes] = true
-		}
-	}
+// rule (RUL-010). A rule superseded by a non-Abandoned rule anywhere in the
+// scope (see collectSuperseded) is not live, so a supersession chain that
+// restates the override (RUL-011) is not a conflict; Abandoned and
+// Terminated rules are not live either.
+func checkOverrideConflicts(ef *entity.File, superseded map[string]bool, res *result.Result, path string) {
 	byTarget := make(map[string]string)
 	for _, r := range ef.Rules {
 		if r.Overrides == nil || superseded[r.ID] ||
@@ -739,8 +733,9 @@ func checkOverrideConflicts(ef *entity.File, res *result.Result, path string) {
 // RL012: Cross-file supersedes references.
 // RL014: Rule references in relation notes (supersedes, extends, related).
 // RL016: Unqualified inherits/overrides targets.
+// RL017: Duplicate override targets, with supersession across scanned files.
 // RL018: Inheritance chains within the scanned files.
-func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[string]string, res *result.Result, strict bool) {
+func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[string]string, superseded map[string]bool, res *result.Result, strict bool) {
 	sev := result.Warning
 	if strict {
 		sev = result.Error
@@ -765,9 +760,10 @@ func checkCrossRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[stri
 	checkNoteCrossRefs(ef, fpath, allRuleIDs, res, sev)
 	checkInheritRefs(ef, fpath, allRuleIDs, inherits, res, sev)
 	checkInheritChain(ef, fpath, inherits, res)
+	checkOverrideConflicts(ef, superseded, res, fpath)
 
 	for i := range ef.SubEntities {
-		checkCrossRefs(&ef.SubEntities[i], fpath, allRuleIDs, inherits, res, strict)
+		checkCrossRefs(&ef.SubEntities[i], fpath, allRuleIDs, inherits, superseded, res, strict)
 	}
 }
 
@@ -803,20 +799,26 @@ func checkInheritRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[st
 	}
 }
 
-// checkFileInheritChains runs RL018 over the entities of a single file, for
-// the single-file entry points (LintFile, LintBytes) that have no directory
-// pass. Directory and realm scans skip it and check chains across all
-// scanned files in checkCrossRefs instead, so diagnostics are not doubled.
-func checkFileInheritChains(ef *entity.File, res *result.Result) {
-	inherits := collectInherits([]dirEntry{{file: ef}})
-	var walk func(f *entity.File)
-	walk = func(f *entity.File) {
+// checkFileInheritance runs RL017 and RL018 over the entities of a single
+// file, for the single-file entry points (LintFile, LintBytes) that have no
+// directory pass. Directory and realm scans skip it and run both checks in
+// checkCrossRefs with indexes built across all scanned files, so a
+// superseder or chain link in another file is seen and diagnostics are not
+// doubled.
+func checkFileInheritance(ef *entity.File, res *result.Result) {
+	scope := []dirEntry{{file: ef}}
+	inherits := collectInherits(scope)
+	superseded := collectSuperseded(scope)
+	var walk func(f *entity.File, path string)
+	walk = func(f *entity.File, path string) {
 		checkInheritChain(f, "", inherits, res)
+		checkOverrideConflicts(f, superseded, res, path)
 		for i := range f.SubEntities {
-			walk(&f.SubEntities[i])
+			sub := &f.SubEntities[i]
+			walk(sub, path+" > "+sub.Entity.ID)
 		}
 	}
-	walk(ef)
+	walk(ef, ef.Entity.ID)
 }
 
 // checkInheritChain implements RL018: the inheritance chain starting at ef,
@@ -897,6 +899,28 @@ func collectInherits(parsed []dirEntry) map[string]string {
 	var walk func(ef *entity.File)
 	walk = func(ef *entity.File) {
 		out[ef.Entity.ID] = ef.Entity.Inherits
+		for i := range ef.SubEntities {
+			walk(&ef.SubEntities[i])
+		}
+	}
+	for _, de := range parsed {
+		walk(de.file)
+	}
+	return out
+}
+
+// collectSuperseded returns the IDs of rules superseded by a non-Abandoned
+// rule in any scanned entity, sub-entities included. An abandoned superseder
+// never took effect, so the rule it named stays live.
+func collectSuperseded(parsed []dirEntry) map[string]bool {
+	out := make(map[string]bool)
+	var walk func(ef *entity.File)
+	walk = func(ef *entity.File) {
+		for _, r := range ef.Rules {
+			if r.Supersedes != nil && r.State != entity.StateAbandoned {
+				out[*r.Supersedes] = true
+			}
+		}
 		for i := range ef.SubEntities {
 			walk(&ef.SubEntities[i])
 		}

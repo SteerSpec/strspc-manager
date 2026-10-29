@@ -722,3 +722,37 @@ func TestRL018_SingleFile(t *testing.T) {
 		})
 	}
 }
+
+func TestLintDir_RL017_CrossEntitySupersession(t *testing.T) {
+	res := New().LintDir(context.Background(), testdataPath("inherit_xsup"))
+	got := diagsWithCode(res, "RL017")
+	// KID-001 is superseded by OTHER-001 in another file, so KID-002 is the
+	// only live override in KID. CONF's conflict is reported exactly once.
+	if len(got) != 1 {
+		t.Fatalf("expected 1 RL017, got %d: %v", len(got), got)
+	}
+	if !strings.Contains(got[0].Message, "CONF-001 and CONF-002") {
+		t.Errorf("unexpected RL017: %q", got[0].Message)
+	}
+}
+
+func TestRL017_SingleFileSubEntitySuperseder(t *testing.T) {
+	p := func(s string) *string { return &s }
+	ef := &entity.File{
+		Entity:  entity.Entity{ID: "TOP", Title: "Top", Inherits: "BASE"},
+		RuleSet: entity.RuleSet{Version: "1.0.0", Timestamp: "2026-10-29"},
+		Rules: []entity.Rule{
+			{ID: "TOP-001", State: "R", Body: "b", AddedBy: "t", AddedAt: "2026-10-29", Overrides: p("BASE-001")},
+			{ID: "TOP-002", State: "D", Body: "b", AddedBy: "t", AddedAt: "2026-10-29", Overrides: p("BASE-001")},
+		},
+		SubEntities: []entity.File{{
+			Entity: entity.Entity{ID: "SUB", Title: "Sub", Parent: "TOP"},
+			Rules: []entity.Rule{
+				{ID: "SUB-001", State: "D", Body: "b", AddedBy: "t", AddedAt: "2026-10-29", Supersedes: p("TOP-001")},
+			},
+		}},
+	}
+	if got := diagsWithCode(New().LintFile(ef), "RL017"); len(got) != 0 {
+		t.Errorf("expected no RL017, got %v", got)
+	}
+}
