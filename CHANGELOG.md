@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.0](https://github.com/SteerSpec/strspc-manager/compare/v1.25.0...v1.26.0) (2026-10-29)
+
+
+### Features
+
+* **render:** list inherited rules with WithInheritance ([f8ef4b7](https://github.com/SteerSpec/strspc-manager/commit/f8ef4b748af74ffe63c04bd71b30af5b85a0cd3b))
+
 ## [1.25.0](https://github.com/SteerSpec/strspc-manager/compare/v1.24.0...v1.25.0) (2026-10-29)
 
 
