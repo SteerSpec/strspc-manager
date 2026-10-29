@@ -14,7 +14,7 @@ func rule(id, state string, overrides *string) entity.Rule {
 }
 
 func hop(realm, id string, rules ...entity.Rule) Hop {
-	return Hop{RealmID: realm, Entity: &entity.File{Entity: entity.Entity{ID: id, Title: id}, Rules: rules}}
+	return Hop{RealmID: realm, Entity: &entity.File{Entity: entity.Entity{ID: id, Title: id + " title"}, Rules: rules}}
 }
 
 // ids lists the qualified IDs of set, in order.
@@ -156,5 +156,30 @@ func TestEffective_NotesFollowTheirRule(t *testing.T) {
 	got := Effective(hop("prod", "SAV"), []Hop{acct}, nil)
 	if len(got) != 1 || len(got[0].Notes) != 1 || got[0].Notes[0].Content != "why" {
 		t.Errorf("notes not carried: %+v", got)
+	}
+}
+
+func TestOverriddenBy(t *testing.T) {
+	acct := hop("core", "ACCT", rule("ACCT-001", "I", nil), rule("ACCT-002", "I", nil))
+	sav := Effective(hop("prod", "SAV", rule("SAV-001", "D", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	loan := Effective(hop("prod", "LOAN", rule("LOAN-001", "P", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	got := OverriddenBy(sav, loan, sav)
+	want := map[string][]string{"core:ACCT-001": {"prod:LOAN-001 (LOAN title)", "prod:SAV-001 (SAV title)"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("OverriddenBy = %v, want %v", got, want)
+	}
+}
+
+func TestOverriddenBy_InheritedReplacementNamesTheInheritor(t *testing.T) {
+	// C overrides P's rule; G inherits C. P's rule covers neither C's nor
+	// G's subject, so both are named.
+	p := hop("core", "P", rule("P-001", "I", nil))
+	c := hop("prod", "C", rule("C-001", "I", ptr("core:P-001")))
+	effC := Effective(c, []Hop{p}, nil)
+	effG := Effective(hop("prod", "G"), []Hop{c, p}, nil)
+	got := OverriddenBy(effC, effG)
+	want := map[string][]string{"core:P-001": {"prod:C-001 (C title)", "prod:C-001 (G title)"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("OverriddenBy = %v, want %v", got, want)
 	}
 }

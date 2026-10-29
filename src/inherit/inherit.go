@@ -7,6 +7,7 @@
 package inherit
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -40,9 +41,13 @@ type Rule struct {
 	OwnerRealm string
 	// Owner is the EUID of the entity whose rules array holds the rule.
 	Owner string
+	// OwnerTitle is the title of that entity.
+	OwnerTitle string
 	// InheritedBy is the EUID of the inheriting entity when the rule comes
 	// from an ancestor, empty for the entity's own rules.
 	InheritedBy string
+	// InheritedByTitle is the title of that inheriting entity.
+	InheritedByTitle string
 	// Overrides is the qualified ID of the inherited rule this rule
 	// replaced, empty when it replaced none.
 	Overrides string
@@ -86,9 +91,47 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 	set := Inherited(ancestors)
 	for i := range set {
 		set[i].InheritedBy = child.Entity.Entity.ID
+		set[i].InheritedByTitle = child.Entity.Entity.Title
 	}
 	ns := namespaces(append([]Hop{child}, ancestors...))
 	return apply(set, ownRules(child, ns, func(r entity.Rule) bool { return keep[r.State] }))
+}
+
+// OverriddenBy maps the qualified ID of every rule replaced in the given
+// effective sets to the rules replacing it, each rendered as
+// `<qualified rule id> (<entity title>)` and sorted, for annotating the
+// replaced rule where its owner is evaluated on its own. The title names
+// the entity whose subject the replaced rule no longer covers: the
+// inheriting entity for a replacing rule it inherits (C overrides P, G
+// inherits C: P no longer covers G either), the owner otherwise.
+func OverriddenBy(sets ...[]Rule) map[string][]string {
+	out := make(map[string][]string)
+	seen := make(map[string]bool)
+	for _, set := range sets {
+		for _, r := range set {
+			by := r.QualifiedID()
+			if title := r.affectedTitle(); title != "" {
+				by += " (" + title + ")"
+			}
+			if r.Overrides == "" || seen[r.Overrides+"\x00"+by] {
+				continue
+			}
+			seen[r.Overrides+"\x00"+by] = true
+			out[r.Overrides] = append(out[r.Overrides], by)
+		}
+	}
+	for k := range out {
+		sort.Strings(out[k])
+	}
+	return out
+}
+
+// affectedTitle is the title of the entity the rule applies to in its set.
+func (r Rule) affectedTitle() string {
+	if r.InheritedBy != "" {
+		return r.InheritedByTitle
+	}
+	return r.OwnerTitle
 }
 
 // Qualify returns ref qualified with namespace when it is a short rule or
@@ -118,7 +161,7 @@ func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 		if !keep(r) {
 			continue
 		}
-		e := Rule{Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID}
+		e := Rule{Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title}
 		if r.Overrides != nil && *r.Overrides != "" {
 			e.Overrides = normalise(Qualify(h.RealmID, *r.Overrides), ns)
 		}
