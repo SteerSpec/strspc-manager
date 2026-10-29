@@ -107,6 +107,7 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 		return res
 	}
 	l.lintEntity(ef, res, "")
+	checkFileInheritChains(ef, res)
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}
@@ -120,7 +121,9 @@ func (l *Linter) LintBytes(ctx context.Context, data []byte) *result.Result {
 	if f == nil {
 		return res
 	}
-	return l.lintParsed(ctx, f, data)
+	res = l.lintParsed(ctx, f, data)
+	checkFileInheritChains(f, res)
+	return res
 }
 
 // parseAndValidate parses raw JSON (RL001). On failure it returns a nil
@@ -700,13 +703,15 @@ func checkSemver(ef *entity.File, res *result.Result, path string) {
 }
 
 // RL017: Within an entity, at most one live rule overrides a given inherited
-// rule (RUL-010). A rule another rule supersedes is not live, so a
-// supersession chain that restates the override (RUL-011) is not a conflict;
-// Abandoned and Terminated rules are not live either.
+// rule (RUL-010). A rule another non-Abandoned rule supersedes is not live,
+// so a supersession chain that restates the override (RUL-011) is not a
+// conflict; Abandoned and Terminated rules are not live either.
 func checkOverrideConflicts(ef *entity.File, res *result.Result, path string) {
 	superseded := make(map[string]bool)
 	for _, r := range ef.Rules {
-		if r.Supersedes != nil {
+		// An abandoned superseder never took effect, so the rule it named
+		// stays live.
+		if r.Supersedes != nil && r.State != entity.StateAbandoned {
 			superseded[*r.Supersedes] = true
 		}
 	}
@@ -796,6 +801,22 @@ func checkInheritRefs(ef *entity.File, fpath string, allRuleIDs, inherits map[st
 			})
 		}
 	}
+}
+
+// checkFileInheritChains runs RL018 over the entities of a single file, for
+// the single-file entry points (LintFile, LintBytes) that have no directory
+// pass. Directory and realm scans skip it and check chains across all
+// scanned files in checkCrossRefs instead, so diagnostics are not doubled.
+func checkFileInheritChains(ef *entity.File, res *result.Result) {
+	inherits := collectInherits([]dirEntry{{file: ef}})
+	var walk func(f *entity.File)
+	walk = func(f *entity.File) {
+		checkInheritChain(f, "", inherits, res)
+		for i := range f.SubEntities {
+			walk(&f.SubEntities[i])
+		}
+	}
+	walk(ef)
 }
 
 // checkInheritChain implements RL018: the inheritance chain starting at ef,

@@ -432,8 +432,8 @@ retired, and its code is never emitted again.
 | RL014 | Warning | A `supersedes`/`extends`/`related` note references an unqualified rule ID that was not found. |
 | RL015 | Error | Note numbers under a rule are duplicated or not sequential from 01. |
 | RL016 | Warning | An unqualified `inherits` target is not an entity in the scanned files, or an unqualified `overrides` target is not a rule in them. |
-| RL017 | Error | Two live rules of one entity (not superseded, not `A` or `T`) override the same target. |
-| RL018 | Error | An `inherits` chain followed through the scanned files is cyclic or longer than three hops. |
+| RL017 | Error | Two live rules of one entity override the same target. A rule is live unless it is `A` or `T` or a rule that is not `A` supersedes it. |
+| RL018 | Error | An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops. |
 
 #### `rule-diff` (RD)
 

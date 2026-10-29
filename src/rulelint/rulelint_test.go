@@ -2,6 +2,7 @@ package rulelint
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -666,6 +667,7 @@ func TestRL017_DuplicateOverrideTarget(t *testing.T) {
 		{"distinct targets", []entity.Rule{rule("001", "P", nil, p("ACCT-005")), rule("002", "D", nil, p("ACCT-006"))}, 0},
 		{"supersession restates override", []entity.Rule{rule("001", "R", nil, p("ACCT-005")), rule("002", "I", p("KID-001"), p("ACCT-005"))}, 0},
 		{"abandoned draft ignored", []entity.Rule{rule("001", "A", nil, p("core:ACCT-005")), rule("002", "D", nil, p("core:ACCT-005"))}, 0},
+		{"abandoned superseder keeps original live", []entity.Rule{rule("001", "I", nil, p("BASE-001")), rule("002", "A", p("KID-001"), p("BASE-001")), rule("003", "D", nil, p("BASE-001"))}, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -677,6 +679,45 @@ func TestRL017_DuplicateOverrideTarget(t *testing.T) {
 			got := diagsWithCode(New().LintFile(ef), "RL017")
 			if len(got) != tt.want {
 				t.Fatalf("RL017 count = %d, want %d: %v", len(got), tt.want, got)
+			}
+		})
+	}
+}
+
+func TestRL018_SingleFile(t *testing.T) {
+	file := func(id, inherits string, subs ...entity.File) *entity.File {
+		return &entity.File{
+			Entity:      entity.Entity{ID: id, Title: id, Inherits: inherits},
+			RuleSet:     entity.RuleSet{Version: "1.0.0", Timestamp: "2026-10-29"},
+			SubEntities: subs,
+		}
+	}
+	sub := func(id, inherits string) entity.File {
+		f := file(id, inherits)
+		f.Entity.Parent = "TOP"
+		return *f
+	}
+	tests := []struct {
+		name string
+		ef   *entity.File
+		want int
+	}{
+		{"self inheritance", file("TOP", "TOP"), 1},
+		{"cycle within sub-entities", file("TOP", "", sub("SUBA", "SUBB"), sub("SUBB", "SUBA")), 2},
+		{"chain leaving the file", file("TOP", "", sub("SUBA", "ELSEWHERE")), 0},
+		{"sub inherits its container", file("TOP", "", sub("SUBA", "TOP")), 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := diagsWithCode(New().LintFile(tt.ef), "RL018"); len(got) != tt.want {
+				t.Errorf("LintFile RL018 count = %d, want %d: %v", len(got), tt.want, got)
+			}
+			data, err := json.Marshal(tt.ef)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if got := diagsWithCode(New().LintBytes(context.Background(), data), "RL018"); len(got) != tt.want {
+				t.Errorf("LintBytes RL018 count = %d, want %d: %v", len(got), tt.want, got)
 			}
 		})
 	}
