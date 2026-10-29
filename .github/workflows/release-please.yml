@@ -22,7 +22,7 @@ jobs:
           app-id: ${{ secrets.STEERSPEC_APP_ID }}
           private-key: ${{ secrets.STEERSPEC_PRIVATE_KEY }}
 
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           # Not GITHUB_TOKEN: its tag pushes would not trigger the GoReleaser
           # workflow and its PRs get no CI. Not a PAT either: PAT commits are unsigned.
