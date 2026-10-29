@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.24.0](https://github.com/SteerSpec/strspc-manager/compare/v1.23.0...v1.24.0) (2026-10-29)
+
+
+### Features
+
+* **realmresolve:** resolve inheritance chains across realms with RR013-RR016 ([74de352](https://github.com/SteerSpec/strspc-manager/commit/74de3525a92bf050842bf10d75e24743796dc787))
+* **realmresolve:** resolve inheritance chains across realms with RR013-RR016 ([6fe8985](https://github.com/SteerSpec/strspc-manager/commit/6fe898534117486963d5062b2035519c4075921f))
+
+
+### Bug Fixes
+
+* **realmresolve:** report a failed dependency for its sub-realm qualifiers ([1b61b74](https://github.com/SteerSpec/strspc-manager/commit/1b61b7491a8fbdc0c54f9afb1cbe6394b07765d3))
+* **realmresolve:** use manifest sub-realms, skip superseded overrides, share failed loads ([639eab8](https://github.com/SteerSpec/strspc-manager/commit/639eab8295364d6f8074bd353a73c2b33ab98801))
+
 ## [1.23.0](https://github.com/SteerSpec/strspc-manager/compare/v1.22.0...v1.23.0) (2026-10-29)
 
 
