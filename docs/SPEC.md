@@ -49,6 +49,10 @@ Each entity has an **Entity Unique Identifier** (EUID):
 
 An entity MAY declare `inherits`, the EUID of one other entity whose effective rule set it inherits (ENT-006): the short EUID in the same Realm, or `<realm-id>:<EUID>` for an entity in a declared dependency (ENT-007). Chains MUST NOT cycle or exceed three hops (ENT-008). The field is omitted when the entity inherits nothing.
 
+**Effective rule set.** An inheriting entity's effective rule set is computed by the `inherit` package from its resolved chain. Starting from the root-most ancestor, each ancestor contributes its Published and Implemented rules after removing the inherited rules its own Published and Implemented rules override; then the entity's own rules that pass the consumer's evaluate states (default `D`, `P`, `I`) are added after removing the rules they override. Filtering before overriding lets an inherited rule reappear once the rule overriding it is Retired or Terminated. Inherited rules stay owned by their entity (ENT-009) and never count towards the inheriting entity's hash (ENT-010).
+
+**Chain resolution.** `realm-resolve` resolves the chain of every entity of a Realm and its sub-realms. Each hop resolves its target against the Realm holding that hop's entity: a short EUID, or one qualified with that Realm or a sub-realm of it, names an entity of the same Realm tree; any other qualifier must be a declared dependency of that Realm, with that Realm's version pin. Dependencies of dependencies are therefore loaded on demand when a chain reaches them, relative to the dependency's own directory (rebased onto its repository when it was fetched), and cached by `realm_id@version`. Entities inside a dependency's sub-realm directories resolve their targets against the dependency's root `dependencies`.
+
 ### 2.3 Rule
 
 A Rule defines a single property of an entity or describes the behavior of that property. Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
@@ -497,6 +501,10 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RR010 | Error | A sub-realm declares its own `sub_realms`. |
 | RR011 | Error | An EUID in a sub-realm collides with the parent, a sibling sub-realm, or an effective dependency. |
 | RR012 | Error | A `github://` dependency cannot be fetched (bad reference, no fetcher or cache dir, download error). |
+| RR013 | Error | An `inherits` target cannot be resolved: no such entity, a qualifier that is not a dependency of the hop's Realm, a dependency that failed to resolve, or a short EUID that only exists in a dependency. |
+| RR014 | Error | An inheritance chain, followed across Realms, is cyclic or longer than three hops. |
+| RR015 | Error | A live rule's `overrides` target is not in the entity's inherited rule set: the entity inherits nothing, the target is unknown, or an ancestor already overrides it. |
+| RR016 | Warning | A live rule's `overrides` target exists in the chain but is not Published or Implemented, so it is not inherited and the override has no effect. |
 
 #### `rule-resolve` (RSV)
 

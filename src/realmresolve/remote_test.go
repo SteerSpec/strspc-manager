@@ -293,3 +293,27 @@ func TestRebaseOnOrigin(t *testing.T) {
 		t.Errorf("root origin: everything inside the repository is local, got (%q, %v)", got, esc)
 	}
 }
+
+// TestResolveInheritance_RemoteTransitiveDep checks that a dependency's own
+// relative dependency, loaded for an inheritance chain, is rebased onto the
+// repository the dependency was fetched from: rules/y declares ../z/, which
+// is outside the fetched rules/y subtree.
+func TestResolveInheritance_RemoteTransitiveDep(t *testing.T) {
+	tb := tarballFromDir(t, "o-r-abc", "rules", absTestdata(t, "inherit-chain"))
+	fetcher := remoteFetcher(t, tb)
+
+	rf := loadTestRealm(t, "inherit-chain/x")
+	rf.Dependencies = []entity.RealmDep{{RealmID: "dev.y", Version: "0.1.0", Source: "github://o/r@v1/rules/y"}}
+	got, res := New(WithRemoteFetcher(fetcher)).Resolve(context.Background(), rf, absTestdata(t, "inherit-chain/x"))
+
+	if len(res.Diagnostics) != 0 {
+		t.Fatalf("expected no diagnostics, got: %v", res.Diagnostics)
+	}
+	if len(got.Inheritance) != 1 || len(got.Inheritance[0].Ancestors) != 2 {
+		t.Fatalf("expected SAV → ACCT → BASE, got %+v", got.Inheritance)
+	}
+	base := got.Inheritance[0].Ancestors[1]
+	if base.RealmID != "dev.z" || base.Entity.Entity.ID != "BASE" {
+		t.Errorf("root-most ancestor = %s:%s, want dev.z:BASE", base.RealmID, base.Entity.Entity.ID)
+	}
+}

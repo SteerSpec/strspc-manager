@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ACCT",
+    "title": "ACCT"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "ACCT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule 1 of ACCT.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

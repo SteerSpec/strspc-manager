@@ -1,0 +1,36 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SAV",
+    "title": "SAV",
+    "inherits": "dev.y:ACCT"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "SAV-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 1 of SAV.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.y:ACCT-001"
+    },
+    {
+      "id": "SAV-002",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 2 of SAV.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.z:BASE-002"
+    }
+  ],
+  "notes": []
+}

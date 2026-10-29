@@ -1,6 +1,9 @@
 // Package realmresolve resolves Realm dependencies declared in realm.json.
 // It fetches remote Realms (e.g. github:// URIs), resolves local paths,
-// caches results, and detects EUID collisions across dependent Realms.
+// caches results, and detects EUID collisions across dependent Realms
+// (RR001–RR012). It also resolves the inheritance chains of the Realm's
+// entities across Realms, loading dependencies of dependencies on demand
+// (RR013–RR016).
 package realmresolve
 
 import (
@@ -27,6 +30,10 @@ type ResolveResult struct {
 	// SubRealms holds the child Realms named in the manifest's sub_realms, each
 	// with its effective dependencies.
 	SubRealms []*ResolvedRealm
+	// Inheritance holds the resolved chain of every entity of the Realm and
+	// its sub-realms that declares `inherits` and whose chain resolved, in
+	// EUID order.
+	Inheritance []*Inheritance
 }
 
 // ResolvedRealm represents a single resolved dependency or sub-realm.
@@ -37,11 +44,20 @@ type ResolvedRealm struct {
 	Dir string
 	// EUIDs maps each EUID to its absolute file path.
 	EUIDs map[string]string
+	// Entities maps each EUID to its parsed entity: the entity file, or the
+	// sub-entity within it.
+	Entities map[string]*entity.File
 
 	// Dependencies holds the resolved effective dependencies of a
 	// sub-realm (inherited from the parent plus its own). Nil for
 	// dependencies themselves.
 	Dependencies []*ResolvedRealm
+
+	// origin is the github:// reference Dir was fetched from, or the
+	// reference it maps to inside the resolver's Origin; nil for a purely
+	// local realm. Relative dependencies of the realm, loaded on demand for
+	// inheritance chains, are rebased against it.
+	origin *remote.Ref
 }
 
 // Config holds options for the RealmResolver.
@@ -148,7 +164,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	if len(rf.SubRealms) > 0 {
 		walkOpts = append(walkOpts, entity.WithExcludeDirs(rf.SubRealms))
 	}
-	parentEUIDs := collectEUIDs(ctx, baseDir, res, walkOpts...)
+	parentEUIDs, parentEntities := collectEUIDs(ctx, baseDir, res, walkOpts...)
 
 	// Track all dependency EUIDs for dep-vs-dep collision detection.
 	allDepEUIDs := make(map[string]string) // EUID → realm_id
@@ -311,7 +327,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		}
 
 		// Collect EUIDs from the sub-realm directory.
-		subEUIDs := collectEUIDs(ctx, subDir, res)
+		subEUIDs, subEntities := collectEUIDs(ctx, subDir, res)
 
 		// RR011: EUID collision — sub-realm vs parent.
 		for euid, subPath := range subEUIDs {
@@ -371,9 +387,20 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			Realm:        subRF,
 			Dir:          subDir,
 			EUIDs:        subEUIDs,
+			Entities:     subEntities,
 			Dependencies: subDeps,
 		})
 	}
+
+	root := &ResolvedRealm{
+		Realm:        rf,
+		Dir:          rootDir,
+		EUIDs:        parentEUIDs,
+		Entities:     parentEntities,
+		Dependencies: out.Dependencies,
+		origin:       r.cfg.Origin,
+	}
+	out.Inheritance = r.resolveInheritance(ctx, root, out.SubRealms, res)
 
 	return out, res
 }
@@ -490,7 +517,7 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 
 	// Remote source: fetch into the cache, then treat as local.
 	if strings.Contains(dep.Source, "://") {
-		dir, err := r.fetchRemote(ctx, dep)
+		dir, ref, err := r.fetchRemote(ctx, dep)
 		if err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -501,7 +528,11 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 			})
 			return nil
 		}
-		return resolveLocalDep(ctx, dep, dir, res)
+		resolved := resolveLocalDep(ctx, dep, dir, res)
+		if resolved != nil {
+			resolved.origin = &ref
+		}
+		return resolved
 	}
 
 	// Resolve local path.
@@ -516,7 +547,30 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		})
 		return nil
 	}
-	return resolveLocalDep(ctx, dep, resolvedDir, res)
+	resolved := resolveLocalDep(ctx, dep, resolvedDir, res)
+	if resolved != nil {
+		resolved.origin = originWithin(r.cfg.Origin, rootDir, resolvedDir)
+	}
+	return resolved
+}
+
+// originWithin returns the repository reference of dir when it lies inside
+// rootDir, the materialised subtree origin.Path of a remote repository; nil
+// when there is no origin or dir is outside the subtree.
+func originWithin(origin *remote.Ref, rootDir, dir string) *remote.Ref {
+	if origin == nil {
+		return nil
+	}
+	rel, err := filepath.Rel(rootDir, dir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil
+	}
+	o := *origin
+	o.Path = path.Join(origin.Path, filepath.ToSlash(rel))
+	if o.Path == "." {
+		o.Path = "" // the repository root
+	}
+	return &o
 }
 
 // rebaseOnOrigin maps a relative dependency source, declared in baseDir of
@@ -545,23 +599,23 @@ func rebaseOnOrigin(origin remote.Ref, source, baseDir, rootDir string) (rebased
 }
 
 // fetchRemote materialises a remote dependency source in the cache and
-// returns the local directory holding it.
-func (r *RealmResolver) fetchRemote(ctx context.Context, dep entity.RealmDep) (string, error) {
+// returns the local directory holding it and the parsed reference.
+func (r *RealmResolver) fetchRemote(ctx context.Context, dep entity.RealmDep) (string, remote.Ref, error) {
 	if !strings.HasPrefix(dep.Source, remote.Scheme) {
-		return "", fmt.Errorf("unsupported remote source scheme in %q (only %s is supported)", dep.Source, remote.Scheme)
+		return "", remote.Ref{}, fmt.Errorf("unsupported remote source scheme in %q (only %s is supported)", dep.Source, remote.Scheme)
 	}
 	ref, err := remote.ParseGitHub(dep.Source)
 	if err != nil {
-		return "", err
+		return "", remote.Ref{}, err
 	}
 	if r.cfg.Fetcher == nil {
-		return "", fmt.Errorf("remote source %s requires a cache directory (WithCacheDir) or fetcher (WithRemoteFetcher)", ref.String())
+		return "", remote.Ref{}, fmt.Errorf("remote source %s requires a cache directory (WithCacheDir) or fetcher (WithRemoteFetcher)", ref.String())
 	}
 	dir, err := r.cfg.Fetcher.EnsureDir(ctx, ref)
 	if err != nil {
-		return "", fmt.Errorf("fetching %s: %w", ref.String(), err)
+		return "", remote.Ref{}, fmt.Errorf("fetching %s: %w", ref.String(), err)
 	}
-	return dir, nil
+	return dir, ref, nil
 }
 
 // mergeDepLists merges parent and child dependency lists.
@@ -586,10 +640,11 @@ func mergeDepLists(parent, child []entity.RealmDep) []entity.RealmDep {
 	return merged
 }
 
-// collectEUIDs walks a directory and returns a map of EUID → file path,
-// including EUIDs from sub-entities.
-func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts ...entity.WalkOption) map[string]string {
+// collectEUIDs walks a directory and returns maps of EUID → file path and
+// EUID → parsed entity, including sub-entities.
+func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts ...entity.WalkOption) (map[string]string, map[string]*entity.File) {
 	euids := make(map[string]string)
+	entities := make(map[string]*entity.File)
 	err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -608,7 +663,7 @@ func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts 
 			})
 			return nil
 		}
-		addEUIDs(ef, path, euids)
+		addEUIDs(ef, path, euids, entities)
 		return nil
 	}, walkOpts...)
 	if err != nil && ctx.Err() == nil {
@@ -620,15 +675,17 @@ func collectEUIDs(ctx context.Context, dir string, res *result.Result, walkOpts 
 			Path:     dir,
 		})
 	}
-	return euids
+	return euids, entities
 }
 
-// addEUIDs recursively collects EUIDs from an entity file and its sub-entities.
-func addEUIDs(ef *entity.File, path string, euids map[string]string) {
+// addEUIDs recursively collects EUIDs and entities from an entity file and
+// its sub-entities.
+func addEUIDs(ef *entity.File, path string, euids map[string]string, entities map[string]*entity.File) {
 	if id := ef.Entity.ID; id != "" {
 		euids[id] = path
+		entities[id] = ef
 	}
 	for i := range ef.SubEntities {
-		addEUIDs(&ef.SubEntities[i], path, euids)
+		addEUIDs(&ef.SubEntities[i], path, euids, entities)
 	}
 }

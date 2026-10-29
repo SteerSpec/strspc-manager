@@ -79,6 +79,10 @@ RR009 active sub-realm-id-mismatch
 RR010 active sub-realm-nested
 RR011 active sub-realm-euid-collision
 RR012 active github-dependency-fetch-failed
+RR013 active inherits-unresolved
+RR014 active inherit-chain-invalid
+RR015 active override-target-not-inherited
+RR016 active override-target-not-in-force
 RSV000 active context-cancelled
 RSV002 active local-source-unreadable
 RSV003 active entity-parse-or-id-empty
