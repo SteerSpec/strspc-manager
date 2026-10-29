@@ -222,12 +222,12 @@ func TestRulesBlock_InheritanceLines(t *testing.T) {
 	got := prompt.RulesBlock([]ruleeval.RuleInput{
 		{Rule: entity.Rule{ID: "ACCT-002", State: "I", Body: "Accounts MUST log."}, EntityID: "SAV", Owner: "core:ACCT", InheritedBy: "SAV"},
 		{Rule: entity.Rule{ID: "SAV-001", State: "D", Body: "Savings MUST cap."}, EntityID: "SAV", Overrides: "core:ACCT-001"},
-		{Rule: entity.Rule{ID: "ACCT-001", State: "I", Body: "Accounts MUST pay."}, EntityID: "ACCT", OverriddenBy: []string{"prod:LOAN-001", "prod:SAV-001"}},
+		{Rule: entity.Rule{ID: "ACCT-001", State: "I", Body: "Accounts MUST pay."}, EntityID: "ACCT", OverriddenBy: []string{"prod:LOAN-001 (Loans)", "prod:SAV-001 (Savings)"}},
 	})
 	for _, want := range []string{
 		"### ACCT-002\nentity: core:ACCT\nstate: I\nrevision: 0\ninherited by: SAV\n",
 		"### SAV-001\nentity: SAV\nstate: D\nrevision: 0\noverrides: core:ACCT-001\n",
-		"### ACCT-001\nentity: ACCT\nstate: I\nrevision: 0\noverridden by: prod:LOAN-001, prod:SAV-001\n",
+		"### ACCT-001\nentity: ACCT\nstate: I\nrevision: 0\noverridden by: prod:LOAN-001 (Loans), prod:SAV-001 (Savings)\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("rules block missing %q in:\n%s", want, got)

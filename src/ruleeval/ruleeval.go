@@ -81,9 +81,9 @@ type RuleInput struct {
 	// Overrides is the qualified ID of the inherited rule that Rule replaces
 	// for its entity (RUL-009), when it replaced one.
 	Overrides string
-	// OverriddenBy lists the qualified IDs of the rules that replace Rule in
-	// the entities inheriting it; Rule does not apply where their subject
-	// applies.
+	// OverriddenBy lists the rules that replace Rule in the entities
+	// inheriting it, as `<qualified rule id> (<entity title>)`; Rule does not
+	// apply where those entities' subject applies.
 	OverriddenBy []string
 }
 
@@ -118,7 +118,7 @@ func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput 
 
 // AnnotateOverriddenBy sets OverriddenBy on the inputs that are their
 // entity's own rules (not inherited) in the Realm realmID, from a map of
-// qualified rule ID → overriding rule IDs such as inherit.OverriddenBy
+// qualified rule ID → overriding rules such as inherit.OverriddenBy
 // returns. Callers use it on the rules of a configured source whose Realm
 // other evaluated entities inherit from.
 func AnnotateOverriddenBy(inputs []RuleInput, realmID string, overriddenBy map[string][]string) {

@@ -41,6 +41,8 @@ type Rule struct {
 	OwnerRealm string
 	// Owner is the EUID of the entity whose rules array holds the rule.
 	Owner string
+	// OwnerTitle is the title of that entity.
+	OwnerTitle string
 	// InheritedBy is the EUID of the inheriting entity when the rule comes
 	// from an ancestor, empty for the entity's own rules.
 	InheritedBy string
@@ -93,18 +95,24 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 }
 
 // OverriddenBy maps the qualified ID of every rule replaced in the given
-// effective sets to the sorted qualified IDs of the rules replacing it, for
-// annotating the replaced rule where its owner is evaluated on its own.
+// effective sets to the rules replacing it, each rendered as
+// `<qualified rule id> (<owning entity title>)` and sorted, for annotating
+// the replaced rule where its owner is evaluated on its own. The title
+// names the subject where the replaced rule no longer applies.
 func OverriddenBy(sets ...[]Rule) map[string][]string {
 	out := make(map[string][]string)
 	seen := make(map[string]bool)
 	for _, set := range sets {
 		for _, r := range set {
-			if r.Overrides == "" || seen[r.Overrides+"\x00"+r.QualifiedID()] {
+			by := r.QualifiedID()
+			if r.OwnerTitle != "" {
+				by += " (" + r.OwnerTitle + ")"
+			}
+			if r.Overrides == "" || seen[r.Overrides+"\x00"+by] {
 				continue
 			}
-			seen[r.Overrides+"\x00"+r.QualifiedID()] = true
-			out[r.Overrides] = append(out[r.Overrides], r.QualifiedID())
+			seen[r.Overrides+"\x00"+by] = true
+			out[r.Overrides] = append(out[r.Overrides], by)
 		}
 	}
 	for k := range out {
@@ -140,7 +148,7 @@ func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 		if !keep(r) {
 			continue
 		}
-		e := Rule{Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID}
+		e := Rule{Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title}
 		if r.Overrides != nil && *r.Overrides != "" {
 			e.Overrides = normalise(Qualify(h.RealmID, *r.Overrides), ns)
 		}
