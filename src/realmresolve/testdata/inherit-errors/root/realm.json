@@ -1,0 +1,16 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.root",
+    "title": "dev.root",
+    "version": "0.1.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.lib",
+      "version": "0.1.0",
+      "source": "../lib/"
+    }
+  ],
+  "rule_identifier_format": null
+}

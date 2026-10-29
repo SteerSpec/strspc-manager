@@ -1,0 +1,46 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "OVR",
+    "title": "OVR",
+    "inherits": "dev.lib:LIBENT"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "OVR-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 1 of OVR.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.lib:LIBENT-002"
+    },
+    {
+      "id": "OVR-002",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 2 of OVR.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.lib:LIBENT-009"
+    },
+    {
+      "id": "OVR-003",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 3 of OVR.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.lib:LIBENT-001"
+    }
+  ],
+  "notes": []
+}

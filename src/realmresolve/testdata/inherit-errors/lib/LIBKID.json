@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBKID",
+    "title": "LIBKID",
+    "inherits": "LIBENT"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "LIBKID-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule 1 of LIBKID.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "LIBENT-001"
+    }
+  ],
+  "notes": []
+}

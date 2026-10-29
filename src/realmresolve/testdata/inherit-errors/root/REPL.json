@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "REPL",
+    "title": "REPL",
+    "inherits": "dev.lib:LIBKID"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "REPL-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 1 of REPL.",
+      "added_by": "t",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.lib:LIBENT-001"
+    }
+  ],
+  "notes": []
+}

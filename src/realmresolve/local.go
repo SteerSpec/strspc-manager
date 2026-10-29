@@ -65,11 +65,12 @@ func resolveLocalDep(ctx context.Context, dep entity.RealmDep, resolvedDir strin
 	}
 
 	// Walk resolved directory to collect EUIDs (including sub-entities).
-	euids := collectEUIDs(ctx, resolvedDir, res)
+	euids, entities := collectEUIDs(ctx, resolvedDir, res)
 
 	return &ResolvedRealm{
-		Realm: loaded,
-		Dir:   resolvedDir,
-		EUIDs: euids,
+		Realm:    loaded,
+		Dir:      resolvedDir,
+		EUIDs:    euids,
+		Entities: entities,
 	}
 }
