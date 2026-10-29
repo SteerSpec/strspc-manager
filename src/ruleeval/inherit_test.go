@@ -85,6 +85,7 @@ func TestCacheKey_InheritanceMetadata(t *testing.T) {
 		"inherited":     {Rule: base.Rule, EntityID: "SAV", Owner: "core:ACCT", InheritedBy: "SAV"},
 		"overrides":     {Rule: base.Rule, EntityID: "ACCT", Overrides: "core:BASE-001"},
 		"overridden by": {Rule: base.Rule, EntityID: "ACCT", OverriddenBy: []string{"prod:SAV-001"}},
+		"entity":        {Rule: base.Rule, EntityID: "OTHER"},
 	} {
 		if CacheKey(in, "d", "m", "v") == key {
 			t.Errorf("%s: cache key must differ from the owner-context entry", name)

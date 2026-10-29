@@ -169,3 +169,17 @@ func TestOverriddenBy(t *testing.T) {
 		t.Errorf("OverriddenBy = %v, want %v", got, want)
 	}
 }
+
+func TestOverriddenBy_InheritedReplacementNamesTheInheritor(t *testing.T) {
+	// C overrides P's rule; G inherits C. P's rule covers neither C's nor
+	// G's subject, so both are named.
+	p := hop("core", "P", rule("P-001", "I", nil))
+	c := hop("prod", "C", rule("C-001", "I", ptr("core:P-001")))
+	effC := Effective(c, []Hop{p}, nil)
+	effG := Effective(hop("prod", "G"), []Hop{c, p}, nil)
+	got := OverriddenBy(effC, effG)
+	want := map[string][]string{"core:P-001": {"prod:C-001 (C title)", "prod:C-001 (G title)"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("OverriddenBy = %v, want %v", got, want)
+	}
+}

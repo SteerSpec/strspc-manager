@@ -168,10 +168,10 @@ var DefaultEvaluateStates = []string{"D", "P", "I"}
 
 // CacheKey derives the cache key for one rule evaluated against one diff.
 // It is the hex-encoded BLAKE3 hash of the rule ID, revision, body, notes
-// (type and content, order-independent), source and scope, and the
+// (type and content, order-independent), entity, source and scope, and the
 // inheritance metadata (owner, inheritor, overrides, overridden-by) together
-// with diffHash, the model and the prompt version. Source, scope and the
-// inheritance metadata are part of the prompt (a local rule applies only
+// with diffHash, the model and the prompt version. The entity, source, scope
+// and inheritance metadata are part of the prompt (a local rule applies only
 // under its source directory; an inherited rule is judged against its
 // inheritor's subject), so a change to them must invalidate a cached
 // verdict. Rule state is deliberately excluded: it drives severity, not the
@@ -191,6 +191,7 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 		strconv.Itoa(rule.Rule.Revision),
 		rule.Rule.Body,
 		strings.Join(notes, "\x1e"),
+		rule.EntityID,
 		rule.Source,
 		rule.Scope,
 		rule.Owner,
