@@ -47,6 +47,8 @@ Each entity has an **Entity Unique Identifier** (EUID):
 - Alphanumeric characters only (letters and numbers).
 - Unique within the Realm.
 
+An entity MAY declare `inherits`, the EUID of one other entity whose effective rule set it inherits (ENT-006): the short EUID in the same Realm, or `<realm-id>:<EUID>` for an entity in a declared dependency (ENT-007). Chains MUST NOT cycle or exceed three hops (ENT-008). The field is omitted when the entity inherits nothing.
+
 ### 2.3 Rule
 
 A Rule defines a single property of an entity or describes the behavior of that property. Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
@@ -62,6 +64,7 @@ Each rule carries:
 | `added_by` | string | Email address or `@github_handle` of the author. |
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
+| `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. Omitted when the rule overrides none. |
 
 **Immutability constraint:** Once a rule is in any state other than Draft (`D`), it is immutable. Modifications must be introduced by superseding it with a new rule.
 
@@ -428,6 +431,9 @@ retired, and its code is never emitted again.
 | RL013 | Error | `rule_set.version` is not valid semver. |
 | RL014 | Warning | A `supersedes`/`extends`/`related` note references an unqualified rule ID that was not found. |
 | RL015 | Error | Note numbers under a rule are duplicated or not sequential from 01. |
+| RL016 | Warning | An unqualified `inherits` target is not an entity in the scanned files, or an unqualified `overrides` target is not a rule in them. |
+| RL017 | Error | Two live rules of one entity (not superseded, not `A` or `T`) override the same target. |
+| RL018 | Error | An `inherits` chain followed through the scanned files is cyclic or longer than three hops. |
 
 #### `rule-diff` (RD)
 
@@ -450,6 +456,8 @@ retired, and its code is never emitted again.
 | RD014 | Error | A note that is not append-only and is present in the base version was removed. |
 | RD015 | Error | A new note has revision ≠ 0. |
 | RD016 | Error | The content of an append-only note changed. |
+| RD017 | Error | `inherits` changed or was removed on an entity whose base version has a rule beyond Draft. |
+| RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
 
 #### `realm-lint` (RM)
 
@@ -577,6 +585,9 @@ github://<owner>/<repo>@<ref>[/<path>]
 13. `rule_set.version` is valid semver.
 14. Relation notes (`supersedes`, `extends`, `related`): every unqualified `<EUID>-<NNN>` reference in the note content points to an existing rule ID within the scanned realm. Qualified `<realm-id>:<EUID>-<NNN>` references target another realm and are not checked here.
 15. Note numbers under each rule are sequential from `01` — no gaps, no duplicates.
+16. Inheritance references: an unqualified `inherits` target is an entity, and an unqualified `overrides` target a rule, within the scanned realm. Qualified targets are resolved by `realm-resolve`.
+17. Within an entity, at most one live rule overrides a given target.
+18. Inheritance chains within the scanned realm do not cycle and do not exceed three hops.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
@@ -604,6 +615,8 @@ For each changed entity file, the validator compares the before and after states
 12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
+15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change or be removed; adding it where there was none is allowed.
+16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 

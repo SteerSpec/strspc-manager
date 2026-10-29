@@ -80,7 +80,7 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 }
 
 // Diff compares parsed entity files and validates the lifecycle transition.
-// Runs checks RD001–RD007, RD009–RD012. For RD008 (hash verification), use DiffBytes.
+// Runs checks RD001–RD007, RD009–RD018. For RD008 (hash verification), use DiffBytes.
 func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	res := &result.Result{}
 	if base == nil || head == nil {
@@ -126,6 +126,7 @@ func (d *Differ) DiffNew(head *entity.File) *result.Result {
 // to the top-level entity file and are called directly by Diff/DiffBytes.
 func (d *Differ) diffEntityTree(base, head *entity.File, res *result.Result, path string) {
 	checkRules(base, head, res, path)
+	checkInherits(base, head, res, path)
 
 	// Index base sub-entities for O(1) lookup.
 	baseSubMap := make(map[string]*entity.File, len(base.SubEntities))

@@ -584,3 +584,100 @@ func TestRL002_ContextCancelled(t *testing.T) {
 		t.Errorf("expected RL002 error mentioning %q, got %+v", context.Canceled, res.Diagnostics)
 	}
 }
+
+// diagsWithCode returns the diagnostics carrying code.
+func diagsWithCode(res *result.Result, code string) []result.Diagnostic {
+	var out []result.Diagnostic
+	for _, d := range res.Diagnostics {
+		if d.Code == code {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func TestLintDir_RL016_InheritTargets(t *testing.T) {
+	res := New().LintDir(context.Background(), testdataPath("inherit"))
+	got := diagsWithCode(res, "RL016")
+	// ORPHAN inherits the unknown NOPE and KID-002 overrides the unknown
+	// MISSING-001. BASE and BASE-001 resolve; the qualified QUAL inherits and
+	// KID-003 override are left to realm-resolve.
+	if len(got) != 2 {
+		t.Fatalf("expected 2 RL016, got %d: %v", len(got), got)
+	}
+	var msgs []string
+	for _, d := range got {
+		if d.Severity != result.Warning {
+			t.Errorf("RL016 severity = %s, want warning", d.Severity)
+		}
+		msgs = append(msgs, d.Message)
+	}
+	joined := strings.Join(msgs, "\n")
+	for _, want := range []string{`entity ORPHAN inherits "NOPE"`, `rule KID-002 overrides "MISSING-001"`} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("missing RL016 %q in:\n%s", want, joined)
+		}
+	}
+}
+
+func TestLintDir_RL016_StrictIsError(t *testing.T) {
+	res := New(WithStrict(true)).LintDir(context.Background(), testdataPath("inherit"))
+	for _, d := range diagsWithCode(res, "RL016") {
+		if d.Severity != result.Error {
+			t.Errorf("strict RL016 severity = %s, want error", d.Severity)
+		}
+	}
+}
+
+func TestLintDir_RL018_InheritChains(t *testing.T) {
+	res := New().LintDir(context.Background(), testdataPath("inherit"))
+	got := diagsWithCode(res, "RL018")
+	// CYCA and CYCB each sit on the cycle; LONGA is four hops from LONGE.
+	// LONGB (three hops), KID, ORPHAN and QUAL are fine.
+	byEntity := make(map[string]string)
+	for _, d := range got {
+		if d.Severity != result.Error {
+			t.Errorf("RL018 severity = %s, want error", d.Severity)
+		}
+		id := strings.TrimPrefix(strings.SplitN(d.Message, ":", 2)[0], "entity ")
+		byEntity[id] = d.Message
+	}
+	if len(got) != 3 {
+		t.Fatalf("expected 3 RL018, got %d: %v", len(got), got)
+	}
+	for id, want := range map[string]string{"CYCA": "cyclic", "CYCB": "cyclic", "LONGA": "exceeds 3 hops"} {
+		if !strings.Contains(byEntity[id], want) {
+			t.Errorf("RL018 for %s = %q, want it to mention %q", id, byEntity[id], want)
+		}
+	}
+}
+
+func TestRL017_DuplicateOverrideTarget(t *testing.T) {
+	rule := func(n, state string, supersedes, overrides *string) entity.Rule {
+		return entity.Rule{ID: "KID-" + n, State: state, Body: "b", AddedBy: "t", AddedAt: "2026-10-29", Supersedes: supersedes, Overrides: overrides}
+	}
+	p := func(s string) *string { return &s }
+	tests := []struct {
+		name  string
+		rules []entity.Rule
+		want  int
+	}{
+		{"two live overrides", []entity.Rule{rule("001", "P", nil, p("ACCT-005")), rule("002", "D", nil, p("ACCT-005"))}, 1},
+		{"distinct targets", []entity.Rule{rule("001", "P", nil, p("ACCT-005")), rule("002", "D", nil, p("ACCT-006"))}, 0},
+		{"supersession restates override", []entity.Rule{rule("001", "R", nil, p("ACCT-005")), rule("002", "I", p("KID-001"), p("ACCT-005"))}, 0},
+		{"abandoned draft ignored", []entity.Rule{rule("001", "A", nil, p("core:ACCT-005")), rule("002", "D", nil, p("core:ACCT-005"))}, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ef := &entity.File{
+				Entity:  entity.Entity{ID: "KID", Title: "Kid", Inherits: "ACCT"},
+				RuleSet: entity.RuleSet{Version: "1.0.0", Timestamp: "2026-10-29"},
+				Rules:   tt.rules,
+			}
+			got := diagsWithCode(New().LintFile(ef), "RL017")
+			if len(got) != tt.want {
+				t.Fatalf("RL017 count = %d, want %d: %v", len(got), tt.want, got)
+			}
+		})
+	}
+}

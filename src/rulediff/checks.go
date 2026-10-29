@@ -14,7 +14,8 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006 and RD010–RD016 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016 and RD018 for one entity's rules and notes.
+// RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
 	headMap := buildRuleMap(head.Rules)
@@ -83,6 +84,19 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			Code:     "RD002",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("rule body is immutable in state %q: supersede the rule to change its body", b.State),
+			Path:     path,
+		})
+	}
+
+	// RD018: overrides is immutable once a rule has left Draft (RUL-007);
+	// adding, removing or retargeting it would change which inherited rule
+	// the entity enforces without a new rule.
+	if b.State != entity.StateDraft && !sameRef(b.Overrides, h.Overrides) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD018",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("rule overrides is immutable in state %q: changed from %s to %s; supersede the rule to change it", b.State, refString(b.Overrides), refString(h.Overrides)),
 			Path:     path,
 		})
 	}
@@ -289,6 +303,49 @@ func checkVersion(base, head *entity.File, res *result.Result, path string) {
 			Message:  fmt.Sprintf("rule_set.version must be a valid semver and strictly higher than %q, got %q", base.RuleSet.Version, head.RuleSet.Version),
 			Path:     path + "/rule_set.version",
 		})
+	}
+}
+
+// sameRef reports whether two optional rule references are equal.
+func sameRef(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+// refString renders an optional rule reference for a diagnostic message.
+func refString(r *string) string {
+	if r == nil {
+		return "none"
+	}
+	return strconv.Quote(*r)
+}
+
+// checkInherits runs RD017: once an entity has a rule beyond Draft, its
+// `inherits` value may not change or be removed, since re-parenting changes
+// the inherited rules its published rules were written against. Adding
+// `inherits` where there was none only adds rules and is allowed.
+func checkInherits(base, head *entity.File, res *result.Result, path string) {
+	if base.Entity.Inherits == "" || head.Entity.Inherits == base.Entity.Inherits {
+		return
+	}
+	for _, r := range base.Rules {
+		if r.State == entity.StateDraft {
+			continue
+		}
+		msg := fmt.Sprintf("inherits changed from %q to %q", base.Entity.Inherits, head.Entity.Inherits)
+		if head.Entity.Inherits == "" {
+			msg = fmt.Sprintf("inherits %q removed", base.Entity.Inherits)
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD017",
+			Severity: result.Error,
+			Message:  msg + fmt.Sprintf(" while rule %s is in state %q: create a new entity instead", r.ID, r.State),
+			Path:     path + "/entity.inherits",
+		})
+		return
 	}
 }
 

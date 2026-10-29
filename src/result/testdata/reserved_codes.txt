@@ -31,6 +31,9 @@ RL012 active supersedes-target-missing
 RL013 active rule-set-version-not-semver
 RL014 active note-unqualified-ref-missing
 RL015 active note-ids-not-sequential
+RL016 active inherit-target-missing
+RL017 active duplicate-override-target
+RL018 active inherit-chain-invalid
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -48,6 +51,8 @@ RD013 active note-revision-mismatch
 RD014 active note-removed
 RD015 active new-note-revision-nonzero
 RD016 active append-only-note-content-changed
+RD017 active inherits-changed
+RD018 active overrides-changed
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
