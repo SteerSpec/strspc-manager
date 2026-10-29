@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -72,7 +73,8 @@ func TestResolveInheritance_Errors(t *testing.T) {
 		{"RR015", "already replaced by dev.lib:LIBKID-001 in LIBKID", result.Error},
 		{"RR013", "entity GONEA (through dev.lib:GONEKID)", result.Error},
 		{"RR013", "entity GONEB (through dev.lib:GONEKID)", result.Error},
-		// dev.lib's own dependency is missing: loaded once for both chains.
+		// dev.gone is missing; the root and dev.lib both declare it, and it
+		// is loaded once for the root and both chains.
 		{"RR002", `dependency "dev.gone"`, result.Error},
 	}
 	for _, tt := range tests {
@@ -85,8 +87,9 @@ func TestResolveInheritance_Errors(t *testing.T) {
 			t.Errorf("%s %q: severity %s, want %s", tt.code, tt.substr, got[0].Severity, tt.sev)
 		}
 	}
-	// LONGB is exactly three hops from LONGE; OVR-003's target is inherited.
-	for _, ok := range []string{"rule OVR-003", "entity LONGB:"} {
+	// LONGB is exactly three hops from LONGE; OVR-003's target is inherited;
+	// SUPER-001 is superseded, so its dangling override is not live.
+	for _, ok := range []string{"rule OVR-003", "entity LONGB:", "rule SUPER-001"} {
 		for _, d := range res.Diagnostics {
 			if strings.HasPrefix(d.Message, ok) {
 				t.Errorf("unexpected diagnostic for %s: %s", ok, d)
@@ -125,5 +128,36 @@ func TestResolveInheritance_NoOpWithoutInheritance(t *testing.T) {
 	got, res := New().Resolve(context.Background(), loadTestRealm(t, "parent"), absTestdata(t, "parent"))
 	if !res.OK() || got.Inheritance != nil {
 		t.Errorf("expected no inheritance work: %v, %v", got.Inheritance, res.Diagnostics)
+	}
+}
+
+func TestResolveInheritance_PrefixNamedDependencyAndItsSubRealm(t *testing.T) {
+	// dev.bank.core is a dependency of dev.bank, not a sub-realm of it, and
+	// dev.bank.core.auth is a sub-realm the dependency's manifest declares.
+	got, res := New().Resolve(context.Background(), loadTestRealm(t, "inherit-prefix/bank"), absTestdata(t, "inherit-prefix/bank"))
+	if len(res.Diagnostics) != 0 {
+		t.Fatalf("expected no diagnostics, got: %v", res.Diagnostics)
+	}
+	byEntity := map[string]string{}
+	for _, inh := range got.Inheritance {
+		a := inh.Ancestors[0]
+		byEntity[inh.Entity.Entity.Entity.ID] = a.RealmID + ":" + a.Entity.Entity.ID
+	}
+	if byEntity["ACCT"] != "dev.bank.core:CORE" || byEntity["LOGIN"] != "dev.bank.core:CAUTH" {
+		t.Errorf("chains = %v", byEntity)
+	}
+}
+
+func TestOriginWithin_RepositoryRoot(t *testing.T) {
+	o := originWithin(&remote.Ref{Owner: "o", Repo: "r", Ref: "v1"}, "/cache/x", "/cache/x")
+	if o == nil || o.Path != "" {
+		t.Errorf("origin at the repository root = %+v, want empty path", o)
+	}
+	o = originWithin(&remote.Ref{Owner: "o", Repo: "r", Ref: "v1", Path: "rules"}, "/cache/x", "/cache/x/core")
+	if o == nil || o.Path != "rules/core" {
+		t.Errorf("origin of a subdirectory = %+v, want rules/core", o)
+	}
+	if originWithin(&remote.Ref{Path: "rules"}, "/cache/x", "/cache/y") != nil {
+		t.Error("a directory outside the subtree has no origin")
 	}
 }

@@ -3,6 +3,7 @@ package realmresolve
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -35,6 +36,9 @@ type node struct {
 	realm *ResolvedRealm
 	// ns is the namespace of the hop: the Realm tree's ID.
 	ns string
+	// subRealmIDs are the IDs of the sub-realms the tree's manifest
+	// declares; a qualifier naming one of them stays in the namespace.
+	subRealmIDs []string
 	// entities indexes the EUIDs visible as short references: the whole
 	// tree for the resolved Realm (RLM-013), the dependency's own directory
 	// otherwise.
@@ -84,8 +88,9 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		nodes:    make(map[*ResolvedRealm]*node),
 		treeNode: make(map[string]*node),
 	}
+	rootSubs := subRealmIDs(root.Realm)
 	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		n := &node{realm: rr, ns: root.Realm.Realm.ID, entities: entities, deps: make(map[string]*ResolvedRealm)}
+		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm)}
 		for _, d := range rr.Dependencies {
 			n.deps[d.Realm.Realm.ID] = d
 			s.loaded[d.Realm.Realm.ID+"@"+d.Realm.Realm.Version] = d
@@ -93,6 +98,16 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		s.nodes[rr] = n
 		for id := range rr.Entities {
 			s.treeNode[id] = n
+		}
+	}
+	// Declared dependencies that failed to resolve are cached as failed, so
+	// a dependency Realm declaring the same realm_id@version does not load
+	// it again and repeat its diagnostics.
+	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
+		for _, decl := range rr.Realm.Dependencies {
+			if _, ok := s.loaded[decl.RealmID+"@"+decl.Version]; !ok {
+				s.loaded[decl.RealmID+"@"+decl.Version] = nil
+			}
 		}
 	}
 
@@ -121,15 +136,40 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		}
 		chains[id] = ancestors
 		out = append(out, &Inheritance{
-			Entity:    inherit.Hop{RealmID: root.Realm.Realm.ID, Entity: e},
+			Entity:    inherit.Hop{RealmID: root.Realm.Realm.ID, SubRealmIDs: rootSubs, Entity: e},
 			Ancestors: ancestors,
 			Path:      paths[id],
 		})
 	}
 
+	superseded := supersededRules(entities)
 	for _, id := range ids {
 		if !failed[id] {
-			checkOverrides(inherit.Hop{RealmID: root.Realm.Realm.ID, Entity: entities[id]}, chains[id], paths[id], res)
+			checkOverrides(inherit.Hop{RealmID: root.Realm.Realm.ID, SubRealmIDs: rootSubs, Entity: entities[id]}, chains[id], superseded, paths[id], res)
+		}
+	}
+	return out
+}
+
+// subRealmIDs returns the IDs of the sub-realms rf declares.
+func subRealmIDs(rf *entity.RealmFile) []string {
+	ids := make([]string, 0, len(rf.SubRealms))
+	for _, name := range rf.SubRealms {
+		ids = append(ids, rf.Realm.ID+"."+name)
+	}
+	return ids
+}
+
+// supersededRules returns the IDs of the rules superseded by a rule that is
+// not Abandoned, across entities: such a rule is no longer live (RUL-011),
+// the convention rule-lint's RL017 uses.
+func supersededRules(entities map[string]*entity.File) map[string]bool {
+	out := make(map[string]bool)
+	for _, e := range entities {
+		for _, r := range e.Rules {
+			if r.Supersedes != nil && r.State != entity.StateAbandoned {
+				out[*r.Supersedes] = true
+			}
 		}
 	}
 	return out
@@ -202,24 +242,25 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 			return nil, false
 		}
 		seen[key] = true
-		ancestors = append(ancestors, inherit.Hop{RealmID: next.ns, Entity: target})
+		ancestors = append(ancestors, inherit.Hop{RealmID: next.ns, SubRealmIDs: next.subRealmIDs, Entity: target})
 		cur, curEnt = next, target
 	}
 	return ancestors, true
 }
 
 // lookup resolves an `inherits` reference made by an entity held by n. A
-// short EUID, or one qualified with n's Realm or a sub-realm of it, names an
-// entity of n's own namespace; any other qualifier must be a dependency of
-// n's Realm, loaded on demand for dependency Realms. On failure it returns a
-// nil entity and the reason.
+// short EUID, or one qualified with n's Realm or a sub-realm its manifest
+// declares, names an entity of n's own namespace; any other qualifier must
+// be a dependency of n's Realm or a declared sub-realm of one, loaded on
+// demand for dependency Realms. On failure it returns a nil entity and the
+// reason.
 func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 	realmID, euid, qualified := strings.Cut(ref, ":")
 	if !qualified {
 		euid = ref
 		realmID = n.ns
 	}
-	if realmID == n.ns || strings.HasPrefix(realmID, n.ns+".") {
+	if realmID == n.ns || slices.Contains(n.subRealmIDs, realmID) {
 		if e, ok := n.entities[euid]; ok {
 			return s.nodeOf(n, euid), e, ""
 		}
@@ -232,6 +273,9 @@ func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 		return nil, nil, problem
 	}
 	dep, declared := s.dependency(n, realmID)
+	if !declared {
+		dep, declared = s.dependencySubRealm(n, realmID)
+	}
 	switch {
 	case !declared:
 		return nil, nil, fmt.Sprintf("realm %s is not a dependency of realm %s", realmID, n.realm.Realm.Realm.ID)
@@ -318,6 +362,35 @@ func (s *chainState) dependency(n *node, realmID string) (dep *ResolvedRealm, de
 	return nil, false
 }
 
+// dependencySubRealm returns the dependency of n's Realm whose manifest
+// declares realmID as one of its sub-realms: entities of a sub-realm are
+// found in the dependency's directory, and a qualifier naming the sub-realm
+// is a qualifier of that dependency. declared is false when no dependency
+// does.
+func (s *chainState) dependencySubRealm(n *node, realmID string) (*ResolvedRealm, bool) {
+	var decls []string
+	if n.deps != nil {
+		for id := range n.deps {
+			decls = append(decls, id)
+		}
+	} else {
+		for _, d := range n.realm.Realm.Dependencies {
+			decls = append(decls, d.RealmID)
+		}
+	}
+	sort.Strings(decls)
+	for _, id := range decls {
+		if !strings.HasPrefix(realmID, id+".") {
+			continue
+		}
+		dep, _ := s.dependency(n, id)
+		if dep != nil && slices.Contains(subRealmIDs(dep.Realm), realmID) {
+			return dep, true
+		}
+	}
+	return nil, false
+}
+
 // depNode returns the node of a dependency Realm, built on first use. Its
 // entities are the dependency directory's, sub-realm directories included;
 // those entities resolve their own references against the dependency's
@@ -326,7 +399,7 @@ func (s *chainState) depNode(dep *ResolvedRealm) *node {
 	if n, ok := s.nodes[dep]; ok {
 		return n
 	}
-	n := &node{realm: dep, ns: dep.Realm.Realm.ID, entities: dep.Entities}
+	n := &node{realm: dep, ns: dep.Realm.Realm.ID, subRealmIDs: subRealmIDs(dep.Realm), entities: dep.Entities}
 	s.nodes[dep] = n
 	return n
 }
@@ -344,11 +417,12 @@ func depVersion(deps []entity.RealmDep, realmID string) string {
 // checkOverrides checks every live overriding rule of child against the
 // rule set it inherits from ancestors: RR015 when the target is not in that
 // set, RR016 when the target exists in the chain but is not Published or
-// Implemented, so the override has no effect.
-func checkOverrides(child inherit.Hop, ancestors []inherit.Hop, path string, res *result.Result) {
+// Implemented, so the override has no effect. A rule is live unless it is
+// Abandoned, Terminated or in superseded.
+func checkOverrides(child inherit.Hop, ancestors []inherit.Hop, superseded map[string]bool, path string, res *result.Result) {
 	var inherited map[string]inherit.Rule
 	for _, r := range child.Entity.Rules {
-		if r.Overrides == nil || r.State == entity.StateAbandoned || r.State == entity.StateTerminated {
+		if r.Overrides == nil || r.State == entity.StateAbandoned || r.State == entity.StateTerminated || superseded[r.ID] {
 			continue
 		}
 		if child.Entity.Entity.Inherits == "" {

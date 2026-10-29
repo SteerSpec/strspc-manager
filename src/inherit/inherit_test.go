@@ -118,6 +118,7 @@ func TestEffective_ShortAndSubRealmOverrideForms(t *testing.T) {
 	// Same-realm parent: a short override resolves in the child's namespace,
 	// and a sub-realm qualifier normalises onto the realm tree.
 	acct := hop("dev.bank", "ACCT", rule("ACCT-001", "I", nil), rule("ACCT-002", "I", nil))
+	acct.SubRealmIDs = []string{"dev.bank.auth"}
 	child := hop("dev.bank", "SAV",
 		rule("SAV-001", "D", ptr("ACCT-001")),
 		rule("SAV-002", "D", ptr("dev.bank.auth:ACCT-002")))
@@ -127,13 +128,25 @@ func TestEffective_ShortAndSubRealmOverrideForms(t *testing.T) {
 	}
 }
 
-func TestNormalise_DistinctRealmNotTreatedAsSubRealm(t *testing.T) {
-	ns := []string{"dev.bank", "dev.bank.core"}
-	if got := normalise("dev.bank.core:X-001", ns); got != "dev.bank.core:X-001" {
-		t.Errorf("normalise = %q, want unchanged", got)
+func TestNormalise_OnlyDeclaredSubRealms(t *testing.T) {
+	ns := namespaces([]Hop{{RealmID: "dev.bank", SubRealmIDs: []string{"dev.bank.auth"}}, {RealmID: "dev.bank.core"}})
+	for in, want := range map[string]string{
+		"dev.bank.auth:X-001": "dev.bank:X-001",      // declared sub-realm
+		"dev.bank.core:X-001": "dev.bank.core:X-001", // a namespace itself
+		"dev.bank.fake:X-001": "dev.bank.fake:X-001", // shares the prefix only
+	} {
+		if got := normalise(in, ns); got != want {
+			t.Errorf("normalise(%s) = %s, want %s", in, got, want)
+		}
 	}
-	if got := normalise("dev.bank.core.auth:X-001", ns); got != "dev.bank.core:X-001" {
-		t.Errorf("normalise = %q, want longest namespace", got)
+}
+
+func TestEffective_PrefixRealmDoesNotReplaceLocalRule(t *testing.T) {
+	acct := hop("dev.bank", "ACCT", rule("ACCT-001", "I", nil))
+	child := hop("dev.bank", "SAV", rule("SAV-001", "D", ptr("dev.bank.fake:ACCT-001")))
+	got := ids(Effective(child, []Hop{acct}, nil))
+	if want := []string{"dev.bank:ACCT-001", "dev.bank:SAV-001"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Effective = %v, want %v", got, want)
 	}
 }
 

@@ -10,6 +10,11 @@
       "realm_id": "dev.lib",
       "version": "0.1.0",
       "source": "../lib/"
+    },
+    {
+      "realm_id": "dev.gone",
+      "version": "0.1.0",
+      "source": "../gone/"
     }
   ],
   "rule_identifier_format": null

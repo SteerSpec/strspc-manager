@@ -566,7 +566,10 @@ func originWithin(origin *remote.Ref, rootDir, dir string) *remote.Ref {
 		return nil
 	}
 	o := *origin
-	o.Path = strings.TrimPrefix(path.Join(origin.Path, filepath.ToSlash(rel)), "/")
+	o.Path = path.Join(origin.Path, filepath.ToSlash(rel))
+	if o.Path == "." {
+		o.Path = "" // the repository root
+	}
 	return &o
 }
 

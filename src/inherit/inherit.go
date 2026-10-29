@@ -23,6 +23,9 @@ type Hop struct {
 	// tree holding it. Entities of a realm and of its sub-realms share the
 	// realm's ID, since EUIDs are unique across both (RLM-013).
 	RealmID string
+	// SubRealmIDs are the IDs of the sub-realms the realm's manifest
+	// declares. A rule qualified with one of them belongs to RealmID.
+	SubRealmIDs []string
 	// Entity is the entity file or sub-entity.
 	Entity *entity.File
 }
@@ -105,7 +108,7 @@ func Target(child Hop, ancestors []Hop, ref string) string {
 
 // ownRules returns the rules of h that pass keep, with their notes and,
 // in Overrides, the normalised target they declare (not yet applied).
-func ownRules(h Hop, ns []string, keep func(entity.Rule) bool) []Rule {
+func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 	notes := make(map[string][]entity.Note)
 	for _, n := range h.Entity.Notes {
 		notes[n.RuleRef] = append(notes[n.RuleRef], n)
@@ -152,40 +155,31 @@ func apply(set, added []Rule) []Rule {
 	return append(kept, added...)
 }
 
-// namespaces lists the distinct namespaces of hops.
-func namespaces(hops []Hop) []string {
-	var out []string
-	seen := make(map[string]bool)
+// namespaces maps every realm ID that the hops' namespaces cover (each
+// namespace and the sub-realms its manifest declares) to its namespace.
+func namespaces(hops []Hop) map[string]string {
+	out := make(map[string]string)
 	for _, h := range hops {
-		if !seen[h.RealmID] {
-			seen[h.RealmID] = true
-			out = append(out, h.RealmID)
+		out[h.RealmID] = h.RealmID
+		for _, id := range h.SubRealmIDs {
+			out[id] = h.RealmID
 		}
 	}
 	return out
 }
 
-// normalise maps a qualified ID whose realm is a sub-realm of one of the
-// namespaces (`parent.auth:ACCT-005`) onto that namespace
-// (`parent:ACCT-005`), so that it matches the owner's QualifiedID. A realm
-// that is itself one of the namespaces is left alone, and the longest
-// matching namespace wins.
-func normalise(qualified string, ns []string) string {
+// normalise maps a qualified ID whose realm is a declared sub-realm of one
+// of the namespaces (`parent.auth:ACCT-005`) onto that namespace
+// (`parent:ACCT-005`), so that it matches the owner's QualifiedID. Other
+// qualifiers are left alone: a realm whose ID merely starts with a
+// namespace's ID is a different realm.
+func normalise(qualified string, ns map[string]string) string {
 	realm, id, ok := strings.Cut(qualified, ":")
 	if !ok {
 		return qualified
 	}
-	best := ""
-	for _, n := range ns {
-		if realm == n {
-			return qualified
-		}
-		if strings.HasPrefix(realm, n+".") && len(n) > len(best) {
-			best = n
-		}
+	if n, ok := ns[realm]; ok {
+		return n + ":" + id
 	}
-	if best == "" {
-		return qualified
-	}
-	return best + ":" + id
+	return qualified
 }
