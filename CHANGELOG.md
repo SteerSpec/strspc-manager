@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.23.0](https://github.com/SteerSpec/strspc-manager/compare/v1.22.0...v1.23.0) (2026-10-29)
+
+
+### Features
+
+* **entity:** add inherits and overrides fields with RL016-RL018, RD017-RD018 ([8ee610c](https://github.com/SteerSpec/strspc-manager/commit/8ee610c4cba0699de564c89c946822299c348963))
+* **entity:** add inherits and overrides fields with RL016-RL018, RD017-RD018 ([06cb975](https://github.com/SteerSpec/strspc-manager/commit/06cb975bea53089622ec9a747b2a4754e2ca801d))
+
+
+### Bug Fixes
+
+* **realmlint:** lint a directory's entity files together for RL017 ([d24c22c](https://github.com/SteerSpec/strspc-manager/commit/d24c22c8c38c1a16bf0c21d57f27641cdb7e55fd))
+* **rulelint:** index superseders across the scan for RL017 ([535643d](https://github.com/SteerSpec/strspc-manager/commit/535643d59c27a43ff0da6cc9e0253de32e0e8548))
+* **rulelint:** keep rules live under abandoned superseders and check chains in single files ([b3c8983](https://github.com/SteerSpec/strspc-manager/commit/b3c8983289042aa8ce7b7ec534caf1320e071236))
+
 ## [1.22.0](https://github.com/SteerSpec/strspc-manager/compare/v1.21.0...v1.22.0) (2026-10-28)
 
 
