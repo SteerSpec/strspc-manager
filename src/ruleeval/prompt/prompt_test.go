@@ -79,8 +79,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v4" {
-		t.Fatalf("Version = %q, want v4", prompt.Version)
+	if prompt.Version != "v5" {
+		t.Fatalf("Version = %q, want v5", prompt.Version)
 	}
 }
 
@@ -214,6 +214,23 @@ func assertStrict(t *testing.T, path string, node map[string]any) {
 	if node["type"] == "array" {
 		if items, ok := node["items"].(map[string]any); ok {
 			assertStrict(t, path+"[]", items)
+		}
+	}
+}
+
+func TestRulesBlock_InheritanceLines(t *testing.T) {
+	got := prompt.RulesBlock([]ruleeval.RuleInput{
+		{Rule: entity.Rule{ID: "ACCT-002", State: "I", Body: "Accounts MUST log."}, EntityID: "SAV", Owner: "core:ACCT", InheritedBy: "SAV"},
+		{Rule: entity.Rule{ID: "SAV-001", State: "D", Body: "Savings MUST cap."}, EntityID: "SAV", Overrides: "core:ACCT-001"},
+		{Rule: entity.Rule{ID: "ACCT-001", State: "I", Body: "Accounts MUST pay."}, EntityID: "ACCT", OverriddenBy: []string{"prod:LOAN-001", "prod:SAV-001"}},
+	})
+	for _, want := range []string{
+		"### ACCT-002\nentity: core:ACCT\nstate: I\nrevision: 0\ninherited by: SAV\n",
+		"### SAV-001\nentity: SAV\nstate: D\nrevision: 0\noverrides: core:ACCT-001\n",
+		"### ACCT-001\nentity: ACCT\nstate: I\nrevision: 0\noverridden by: prod:LOAN-001, prod:SAV-001\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("rules block missing %q in:\n%s", want, got)
 		}
 	}
 }

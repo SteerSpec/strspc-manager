@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -70,6 +71,65 @@ type RuleInput struct {
 	// Scope is the source scope, "global" or "local"; local rules are judged
 	// only against files under their source directory.
 	Scope string
+	// Owner is the qualified ID (<realm-id>:<EUID>) of the entity whose rules
+	// array holds an inherited Rule; empty for the entity's own rules.
+	Owner string
+	// InheritedBy is the EUID of the entity that inherits Rule (ENT-009),
+	// empty for an entity's own rules. An inherited rule keeps the
+	// inheriting entity's EntityID, so it is judged with that entity's rules.
+	InheritedBy string
+	// Overrides is the qualified ID of the inherited rule that Rule replaces
+	// for its entity (RUL-009), when it replaced one.
+	Overrides string
+	// OverriddenBy lists the qualified IDs of the rules that replace Rule in
+	// the entities inheriting it; Rule does not apply where their subject
+	// applies.
+	OverriddenBy []string
+}
+
+// RuleInputsFromEffective builds RuleInputs from the effective rule set of
+// the entity entityID, as computed by inherit.Effective. Every input
+// carries entityID; inherited rules also carry their owner and inheritor.
+// An inherited rule whose ID is already used in the set (two Realms of the
+// chain reuse an EUID) is grouped apart, under "<entityID> via <owner>",
+// because verdicts are keyed by rule ID within a group.
+func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput {
+	seen := make(map[string]bool, len(rules))
+	for _, r := range rules {
+		if r.InheritedBy == "" {
+			seen[r.Rule.ID] = true
+		}
+	}
+	inputs := make([]RuleInput, 0, len(rules))
+	for _, r := range rules {
+		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides}
+		if r.InheritedBy != "" {
+			in.Owner = r.OwnerRealm + ":" + r.Owner
+			in.InheritedBy = r.InheritedBy
+			if seen[r.Rule.ID] {
+				in.EntityID = entityID + " via " + in.Owner
+			}
+			seen[r.Rule.ID] = true
+		}
+		inputs = append(inputs, in)
+	}
+	return inputs
+}
+
+// AnnotateOverriddenBy sets OverriddenBy on the inputs that are their
+// entity's own rules (not inherited) in the Realm realmID, from a map of
+// qualified rule ID → overriding rule IDs such as inherit.OverriddenBy
+// returns. Callers use it on the rules of a configured source whose Realm
+// other evaluated entities inherit from.
+func AnnotateOverriddenBy(inputs []RuleInput, realmID string, overriddenBy map[string][]string) {
+	for i := range inputs {
+		if inputs[i].InheritedBy != "" {
+			continue
+		}
+		if by := overriddenBy[realmID+":"+inputs[i].Rule.ID]; len(by) > 0 {
+			inputs[i].OverriddenBy = by
+		}
+	}
 }
 
 // RuleInputsFromFile extracts RuleInputs from an entity file, grouping
@@ -117,11 +177,20 @@ type EvalRequest struct {
 	Source string
 	// Scope is the source scope, "global" or "local".
 	Scope string
+	// Owner, InheritedBy, Overrides and OverriddenBy carry the inheritance
+	// metadata of the RuleInput (see RuleInput).
+	Owner        string
+	InheritedBy  string
+	Overrides    string
+	OverriddenBy []string
 }
 
 // Input returns the RuleInput equivalent of the request.
 func (r EvalRequest) Input() RuleInput {
-	return RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: r.EntityID, Source: r.Source, Scope: r.Scope}
+	return RuleInput{
+		Rule: r.Rule, Notes: r.Notes, EntityID: r.EntityID, Source: r.Source, Scope: r.Scope,
+		Owner: r.Owner, InheritedBy: r.InheritedBy, Overrides: r.Overrides, OverriddenBy: r.OverriddenBy,
+	}
 }
 
 // EvalResponse contains the AI provider's evaluation of a single rule.
@@ -470,6 +539,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 			resp, err := e.provider.Evaluate(ctx, EvalRequest{
 				Rule: in.Rule, Notes: in.Notes, Diff: diff,
 				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
+				Owner: in.Owner, InheritedBy: in.InheritedBy, Overrides: in.Overrides, OverriddenBy: in.OverriddenBy,
 			})
 			e.observe(Event{Kind: EventProviderCall, EntityID: g.entityID, RuleIDs: []string{in.Rule.ID}, Err: err})
 			outcomes[i] = outcome{resp: resp, err: err, fresh: err == nil, done: true}

@@ -406,9 +406,9 @@ func scenarios() []scenario {
 			// budget forces one request per file.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
 			cfg: func(c *claude.Config) {
-				// system ≈ 1028 tokens + rules ≈ 50 + overhead 256 = 1334; the
+				// system ≈ 1159 tokens + rules ≈ 50 + overhead 256 = 1465; the
 				// remaining ~170 tokens (510 bytes) fit one ~400-byte file per chunk.
-				c.MaxInputTokens = 1504
+				c.MaxInputTokens = 1635
 			},
 			script: func(w http.ResponseWriter, body string, call int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
@@ -444,7 +444,7 @@ func scenarios() []scenario {
 			// violation from the second chunk must still win, and the omission
 			// must be reported so the evaluator warns and does not cache.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1504 },
+			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1635 },
 			script: func(w http.ResponseWriter, body string, call int) {
 				if strings.Contains(body, "src/cmd/sync.go") {
 					violated("src/cmd/sync.go")(w, body, call)
@@ -471,7 +471,7 @@ func scenarios() []scenario {
 			name:   "oversize_hunk",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong + bigHunkDiff("src/generated/big.go", 60),
-			cfg:    func(c *claude.Config) { c.MaxInputTokens = 1504 },
+			cfg:    func(c *claude.Config) { c.MaxInputTokens = 1635 },
 			script: ok,
 			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if err != nil {
@@ -585,7 +585,7 @@ func scenarios() []scenario {
 			// and then withdrawn to not_applicable with an explanation. The
 			// merged result must keep that explanation (strspc-manager#89).
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1504 },
+			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1635 },
 			script: func(w http.ResponseWriter, body string, _ int) {
 				switch {
 				case isDetailRequest(body):
@@ -653,7 +653,7 @@ func scenarios() []scenario {
 			// the second chunk's explanation and the first chunk's failure.
 			diff: strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/a.go") +
 				strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/b.go"),
-			cfg: func(c *claude.Config) { c.MaxInputTokens = 1504 },
+			cfg: func(c *claude.Config) { c.MaxInputTokens = 1635 },
 			script: func(w http.ResponseWriter, body string, _ int) {
 				switch {
 				case isDetailRequest(body) && strings.Contains(body, "src/cmd/a.go"):
@@ -980,7 +980,7 @@ func (failingTransport) RoundTrip(*http.Request) (*http.Response, error) {
 // A rule whose body alone exceeds the rules budget is reported instead of
 // zeroing the diff budget and rejecting every hunk; no request is made.
 func TestEvaluateBatch_RuleTooLargeForBudget(t *testing.T) {
-	p, err := claude.New(claude.Config{APIKey: "k", MaxInputTokens: 1504, HTTPClient: &http.Client{Transport: failingTransport{}}})
+	p, err := claude.New(claude.Config{APIKey: "k", MaxInputTokens: 1635, HTTPClient: &http.Client{Transport: failingTransport{}}})
 	if err != nil {
 		t.Fatal(err)
 	}

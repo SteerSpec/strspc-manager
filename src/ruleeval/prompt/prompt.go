@@ -17,7 +17,7 @@ import (
 
 // Version identifies the prompt revision. Bump it whenever a change to this
 // package could change verdicts so that cached results are invalidated.
-const Version = "v4"
+const Version = "v5"
 
 // noteOrder lists the note types sent to the evaluator, in the order they
 // are rendered. Other note types (changelog, reference, supersedes, …) are
@@ -31,6 +31,7 @@ How to evaluate:
 - For each rule choose exactly one verdict. "violated": an added or changed line breaks the rule. "compliant": the diff touches the rule's subject and respects it. "not_applicable": the diff does not touch the rule's subject at all; this is the default, so choose it whenever the rule's subject is absent from the diff rather than guessing.
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when the diff falls outside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule whose source has scope "local" applies only to files under that source's own directory. Files elsewhere in the diff make such a rule "not_applicable".
+- Entities can inherit rules. A rule marked "inherited by" is owned by the entity named in "entity" and applies to the inheriting entity's subject as well. A rule marked "overrides" replaces the named inherited rule for its own entity's subject. A rule marked "overridden by" does not apply where the overriding rules' entities apply, and still applies to its own entity's subject elsewhere.
 - The verdict response is one JSON object with one key per rule id listed in the rules block and the verdict as its value. Every listed id is present, including when every verdict is "not_applicable".
 - Rule states are lifecycle codes, not activity flags: D Draft, P Published, I Implemented, R Retired, T Terminated. A state never changes whether a rule applies to the diff; the consumer decides which states block a merge. Never treat "I" as inactive.
 - Files under a "testdata", "fixtures" or "__fixtures__" directory, and files whose name or path marks them as test fixtures, are inputs for tests. A fixture that is deliberately malformed does not violate a rule about the artefact it imitates; judge it only by rules that govern test data.
@@ -48,8 +49,9 @@ func DiffBlock(diff string) string {
 }
 
 // RulesBlock renders the rules to evaluate. Each rule carries its id,
-// owning entity, state, revision, source and scope, followed by its body
-// and its notes grouped by type in a fixed order.
+// owning entity, state, revision, source and scope, and for inheritance the
+// inheriting entity, the rule it overrides and the rules overriding it,
+// followed by its body and its notes grouped by type in a fixed order.
 func RulesBlock(rules []ruleeval.RuleInput) string {
 	var b strings.Builder
 	b.WriteString("<rules>\n")
@@ -65,7 +67,10 @@ func RulesBlock(rules []ruleeval.RuleInput) string {
 
 func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 	fmt.Fprintf(b, "### %s\n", r.Rule.ID)
-	if r.EntityID != "" {
+	switch {
+	case r.Owner != "":
+		fmt.Fprintf(b, "entity: %s\n", r.Owner)
+	case r.EntityID != "":
 		fmt.Fprintf(b, "entity: %s\n", r.EntityID)
 	}
 	if r.Rule.State != "" {
@@ -78,6 +83,15 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 			scope = "global"
 		}
 		fmt.Fprintf(b, "source: %s (scope: %s)\n", r.Source, scope)
+	}
+	if r.InheritedBy != "" {
+		fmt.Fprintf(b, "inherited by: %s\n", r.InheritedBy)
+	}
+	if r.Overrides != "" {
+		fmt.Fprintf(b, "overrides: %s\n", r.Overrides)
+	}
+	if len(r.OverriddenBy) > 0 {
+		fmt.Fprintf(b, "overridden by: %s\n", strings.Join(r.OverriddenBy, ", "))
 	}
 	fmt.Fprintf(b, "rule: %s\n", strings.TrimSpace(r.Rule.Body))
 

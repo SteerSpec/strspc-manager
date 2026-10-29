@@ -158,3 +158,14 @@ func TestEffective_NotesFollowTheirRule(t *testing.T) {
 		t.Errorf("notes not carried: %+v", got)
 	}
 }
+
+func TestOverriddenBy(t *testing.T) {
+	acct := hop("core", "ACCT", rule("ACCT-001", "I", nil), rule("ACCT-002", "I", nil))
+	sav := Effective(hop("prod", "SAV", rule("SAV-001", "D", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	loan := Effective(hop("prod", "LOAN", rule("LOAN-001", "P", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	got := OverriddenBy(sav, loan, sav)
+	want := map[string][]string{"core:ACCT-001": {"prod:LOAN-001", "prod:SAV-001"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("OverriddenBy = %v, want %v", got, want)
+	}
+}

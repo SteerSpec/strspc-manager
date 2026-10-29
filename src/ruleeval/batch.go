@@ -168,17 +168,22 @@ var DefaultEvaluateStates = []string{"D", "P", "I"}
 
 // CacheKey derives the cache key for one rule evaluated against one diff.
 // It is the hex-encoded BLAKE3 hash of the rule ID, revision, body, notes
-// (type and content, order-independent), source and scope together with
-// diffHash, the model and the prompt version. Source and scope are part of
-// the prompt (a local rule applies only under its source directory), so a
-// scope change must invalidate a cached not_applicable verdict. Rule state
-// is deliberately excluded: it drives severity, not the verdict.
+// (type and content, order-independent), source and scope, and the
+// inheritance metadata (owner, inheritor, overrides, overridden-by) together
+// with diffHash, the model and the prompt version. Source, scope and the
+// inheritance metadata are part of the prompt (a local rule applies only
+// under its source directory; an inherited rule is judged against its
+// inheritor's subject), so a change to them must invalidate a cached
+// verdict. Rule state is deliberately excluded: it drives severity, not the
+// verdict.
 func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	notes := make([]string, 0, len(rule.Notes))
 	for _, n := range rule.Notes {
 		notes = append(notes, n.Type+"\x1f"+n.Content)
 	}
 	sort.Strings(notes)
+	overriddenBy := append([]string(nil), rule.OverriddenBy...)
+	sort.Strings(overriddenBy)
 
 	var b strings.Builder
 	fields := []string{
@@ -188,6 +193,10 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 		strings.Join(notes, "\x1e"),
 		rule.Source,
 		rule.Scope,
+		rule.Owner,
+		rule.InheritedBy,
+		rule.Overrides,
+		strings.Join(overriddenBy, "\x1e"),
 		diffHash,
 		model,
 		promptVersion,

@@ -7,6 +7,7 @@
 package inherit
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -89,6 +90,27 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 	}
 	ns := namespaces(append([]Hop{child}, ancestors...))
 	return apply(set, ownRules(child, ns, func(r entity.Rule) bool { return keep[r.State] }))
+}
+
+// OverriddenBy maps the qualified ID of every rule replaced in the given
+// effective sets to the sorted qualified IDs of the rules replacing it, for
+// annotating the replaced rule where its owner is evaluated on its own.
+func OverriddenBy(sets ...[]Rule) map[string][]string {
+	out := make(map[string][]string)
+	seen := make(map[string]bool)
+	for _, set := range sets {
+		for _, r := range set {
+			if r.Overrides == "" || seen[r.Overrides+"\x00"+r.QualifiedID()] {
+				continue
+			}
+			seen[r.Overrides+"\x00"+r.QualifiedID()] = true
+			out[r.Overrides] = append(out[r.Overrides], r.QualifiedID())
+		}
+	}
+	for k := range out {
+		sort.Strings(out[k])
+	}
+	return out
 }
 
 // Qualify returns ref qualified with namespace when it is a short rule or
