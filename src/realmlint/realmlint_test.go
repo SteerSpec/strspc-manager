@@ -555,3 +555,24 @@ func TestRM002_ContextCancelled(t *testing.T) {
 		t.Errorf("expected RM002 error mentioning %q, got %+v", context.Canceled, res.Diagnostics)
 	}
 }
+
+// TestLint_RL017_CrossFileSupersession checks that realm-lint's per-file
+// delegation sees superseders in other files of the realm: OTHER-001
+// supersedes KID-001, so only CONF's real duplicate override is reported.
+func TestLint_RL017_CrossFileSupersession(t *testing.T) {
+	dir := filepath.Join(testdataPath(t), "inherit_xsup")
+	res := New(WithRuleLinter(rulelint.New())).Lint(context.Background(), dir)
+
+	var rl017 []result.Diagnostic
+	for _, d := range res.Diagnostics {
+		if d.Code == "RL017" {
+			rl017 = append(rl017, d)
+		}
+	}
+	if len(rl017) != 1 {
+		t.Fatalf("expected 1 RL017, got %d: %v", len(rl017), rl017)
+	}
+	if !strings.Contains(rl017[0].Message, "CONF-001 and CONF-002") || !strings.HasPrefix(rl017[0].Path, filepath.Join(dir, "CONF.json")) {
+		t.Errorf("unexpected RL017: %s: %s", rl017[0].Path, rl017[0].Message)
+	}
+}

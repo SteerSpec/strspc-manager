@@ -94,3 +94,79 @@ func TestRealmFileRuleIdentifierFormat(t *testing.T) {
 		}
 	})
 }
+
+// TestInheritanceFieldsRoundTrip checks that inherits and overrides survive a
+// parse/marshal round trip and are omitted when unset, so files that do not
+// use inheritance keep the same canonical hash after a rewrite.
+func TestInheritanceFieldsRoundTrip(t *testing.T) {
+	input := `{
+		"$schema": "./_schema/entity.v1.schema.json",
+		"entity": {"id": "SAVACCT", "title": "Savings", "inherits": "dev.example.core:ACCT"},
+		"rule_set": {"version": "0.1.0", "timestamp": "2026-10-29T00:00:00Z", "hash": null},
+		"rules": [
+			{"id": "SAVACCT-001", "revision": 0, "state": "D", "body": "b", "added_by": "t", "added_at": "2026-10-29", "supersedes": null, "overrides": "dev.example.core:ACCT-005"},
+			{"id": "SAVACCT-002", "revision": 0, "state": "D", "body": "b", "added_by": "t", "added_at": "2026-10-29", "supersedes": null}
+		],
+		"notes": []
+	}`
+	f, err := Parse([]byte(input))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if f.Entity.Inherits != "dev.example.core:ACCT" {
+		t.Errorf("Inherits = %q", f.Entity.Inherits)
+	}
+	if f.Rules[0].Overrides == nil || *f.Rules[0].Overrides != "dev.example.core:ACCT-005" {
+		t.Errorf("Overrides = %v", f.Rules[0].Overrides)
+	}
+	data, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	out := string(data)
+	if !strings.Contains(out, `"inherits":"dev.example.core:ACCT"`) || !strings.Contains(out, `"overrides":"dev.example.core:ACCT-005"`) {
+		t.Errorf("fields lost on marshal: %s", out)
+	}
+	if strings.Count(out, `"overrides"`) != 1 {
+		t.Errorf("overrides must be omitted when nil: %s", out)
+	}
+}
+
+// TestInheritanceFieldsKeepHash checks that rewriting a file that does not
+// use inheritance adds no fields and leaves its canonical hash unchanged.
+func TestInheritanceFieldsKeepHash(t *testing.T) {
+	data := []byte(`{
+		"$schema": "./_schema/entity.v1.schema.json",
+		"entity": {"id": "ACCT", "title": "Account", "parent": "BANK"},
+		"rule_set": {"version": "0.1.0", "timestamp": "2026-10-29T00:00:00Z", "hash": null},
+		"rules": [
+			{"id": "ACCT-001", "revision": 0, "state": "P", "body": "b", "added_by": "t", "added_at": "2026-10-29", "supersedes": null},
+			{"id": "ACCT-002", "revision": 1, "state": "D", "body": "c", "added_by": "t", "added_at": "2026-10-29", "supersedes": "ACCT-001"}
+		],
+		"notes": [
+			{"id": "ACCT-001/01", "rule_ref": "ACCT-001", "type": "rationale", "content": "why", "added_by": "t", "added_at": "2026-10-29", "revision": 0}
+		]
+	}`)
+	f, err := Parse(data)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rewritten, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(rewritten), `"inherits"`) || strings.Contains(string(rewritten), `"overrides"`) {
+		t.Errorf("rewrite added inheritance fields: %s", rewritten)
+	}
+	before, err := ComputeHash(data)
+	if err != nil {
+		t.Fatalf("hash: %v", err)
+	}
+	after, err := ComputeHash(rewritten)
+	if err != nil {
+		t.Fatalf("hash rewritten: %v", err)
+	}
+	if before != after {
+		t.Errorf("hash changed on rewrite: %s → %s", before, after)
+	}
+}

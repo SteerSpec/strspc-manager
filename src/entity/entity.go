@@ -30,6 +30,10 @@ type Entity struct {
 	Description string `json:"description,omitempty"`
 	// Parent is the ID of the containing entity; empty for a top-level entity.
 	Parent string `json:"parent,omitempty"`
+	// Inherits is the identifier of the entity whose rule set this entity
+	// inherits (ENT-006): a short EUID in-realm or <realm-id>:<EUID> across
+	// realms; empty when the entity inherits nothing.
+	Inherits string `json:"inherits,omitempty"`
 }
 
 // RuleSet holds versioning and integrity metadata for an entity's rule set.
@@ -62,6 +66,11 @@ type Rule struct {
 	// Supersedes is the ID of the rule this rule replaces, or nil when it
 	// replaces none.
 	Supersedes *string `json:"supersedes"`
+	// Overrides is the ID of the inherited rule this rule replaces within the
+	// inheriting entity's effective rule set (RUL-009), short or
+	// realm-qualified, or nil when it overrides none. Unlike Supersedes it is
+	// omitted when nil, so files without overrides keep their bytes and hash.
+	Overrides *string `json:"overrides,omitempty"`
 }
 
 // Note represents an annotation attached to a specific rule.

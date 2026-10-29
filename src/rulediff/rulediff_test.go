@@ -905,3 +905,85 @@ func TestDiff_StrictMode_PromotesWarnings(t *testing.T) {
 	res := d.Diff(base, head)
 	assertCodeSeverity(t, res, "RD006", result.Error)
 }
+
+func TestDiff_RD017_InheritsChanged(t *testing.T) {
+	base := makeBase()
+	base.Entity.Inherits = "dev.example.core:ACCT"
+	head := makeHead(base)
+	head.Entity.Inherits = "dev.example.core:LOAN"
+	res := New().Diff(base, head)
+	assertCodeSeverity(t, res, "RD017", result.Error)
+}
+
+func TestDiff_RD017_InheritsRemoved(t *testing.T) {
+	base := makeBase()
+	base.Entity.Inherits = "ACCT"
+	head := makeHead(base)
+	head.Entity.Inherits = ""
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD017")
+}
+
+func TestDiff_RD017_Valid_InheritsAdded(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Entity.Inherits = "ACCT"
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD017")
+}
+
+func TestDiff_RD017_Valid_AllDraft(t *testing.T) {
+	base := makeBase()
+	base.Rules = base.Rules[:1] // TSTENT-001 only, in D
+	base.Entity.Inherits = "ACCT"
+	head := makeHead(base)
+	head.Entity.Inherits = "LOAN"
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD017")
+}
+
+func TestDiff_RD017_SubEntity(t *testing.T) {
+	sub := entity.File{
+		Entity: entity.Entity{ID: "TSTSUB", Title: "Sub", Parent: "TSTENT", Inherits: "ACCT"},
+		Rules: []entity.Rule{
+			{ID: "TSTSUB-001", Revision: 0, State: "I", Body: "Sub rule", AddedBy: "test@example.com", AddedAt: "2026-01-01"},
+		},
+	}
+	base := makeBase()
+	base.SubEntities = []entity.File{sub}
+	head := makeHead(base)
+	headSub := sub
+	headSub.Entity.Inherits = "LOAN"
+	head.SubEntities = []entity.File{headSub}
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD017")
+}
+
+func TestDiff_RD018_OverridesImmutable(t *testing.T) {
+	tests := []struct {
+		name       string
+		idx        int // 0 = TSTENT-001 (D), 2 = TSTENT-003 (I)
+		base, head *string
+		want       bool
+	}{
+		{"added on implemented rule", 2, nil, ptr("core:ACCT-005"), true},
+		{"removed from implemented rule", 2, ptr("core:ACCT-005"), nil, true},
+		{"retargeted on implemented rule", 2, ptr("core:ACCT-005"), ptr("core:ACCT-006"), true},
+		{"unchanged on implemented rule", 2, ptr("core:ACCT-005"), ptr("core:ACCT-005"), false},
+		{"added on draft rule", 0, nil, ptr("core:ACCT-005"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBase()
+			base.Rules[tt.idx].Overrides = tt.base
+			head := makeHead(base)
+			head.Rules[tt.idx].Overrides = tt.head
+			res := New().Diff(base, head)
+			if tt.want {
+				assertCodeSeverity(t, res, "RD018", result.Error)
+			} else {
+				assertNoCode(t, res, "RD018")
+			}
+		})
+	}
+}
