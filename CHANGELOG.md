@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.25.0](https://github.com/SteerSpec/strspc-manager/compare/v1.24.0...v1.25.0) (2026-10-29)
+
+
+### Features
+
+* **ruleeval:** carry inheritance into the evaluator prompt and cache key ([2e9c467](https://github.com/SteerSpec/strspc-manager/commit/2e9c46786558f34548d68df116219cf9bf4b90f4))
+* **ruleeval:** carry inheritance into the evaluator prompt and cache key ([57e90e0](https://github.com/SteerSpec/strspc-manager/commit/57e90e0a3f143d47b7d45b13a7ddea2344642834))
+
+
+### Bug Fixes
+
+* **ruleeval:** name the inheriting entity for inherited replacements; key cache by entity ([b3e9c8c](https://github.com/SteerSpec/strspc-manager/commit/b3e9c8cd574ecffc7b4067bc4e3d3335e3fc2831))
+* **ruleeval:** name the overriding entity in overridden-by markers ([bded9d2](https://github.com/SteerSpec/strspc-manager/commit/bded9d2b2fa55b69a859733990dbc45473dda3d9))
+
 ## [1.24.0](https://github.com/SteerSpec/strspc-manager/compare/v1.23.0...v1.24.0) (2026-10-29)
 
 
