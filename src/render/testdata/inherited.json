@@ -1,0 +1,44 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SAV",
+    "title": "Savings Account",
+    "inherits": "dev.bank.core:ACCT"
+  },
+  "rule_set": {
+    "version": "0.2.0",
+    "timestamp": "2026-10-29T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "SAV-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Withdrawals MUST be capped at three per month.",
+      "added_by": "@alice",
+      "added_at": "2026-10-29",
+      "supersedes": null,
+      "overrides": "dev.bank.core:ACCT-002"
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "SAVJR",
+        "title": "Junior Savings",
+        "parent": "SAV",
+        "inherits": "SAV"
+      },
+      "rule_set": {
+        "version": "0.1.0",
+        "timestamp": "2026-10-29T00:00:00Z",
+        "hash": null
+      },
+      "rules": [],
+      "notes": []
+    }
+  ],
+  "notes": []
+}
