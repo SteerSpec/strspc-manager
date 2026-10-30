@@ -192,6 +192,9 @@ func (l *RealmLinter) compileSchema(ctx context.Context) (*jsonschema.Schema, er
 	}
 
 	c := jsonschema.NewCompiler()
+	// No loaders: a schema may come from the realm under lint, so it must not
+	// reach beyond itself. The JSON Schema metaschemas are built in.
+	c.UseLoader(jsonschema.SchemeURLLoader{})
 	if err := c.AddResource("realm.schema.json", sch); err != nil {
 		return nil, fmt.Errorf("compiling schema: %w", err)
 	}

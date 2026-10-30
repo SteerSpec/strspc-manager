@@ -114,10 +114,10 @@ func WithLocalDir(dir string) Option {
 
 // ForRealm returns the options selecting the schemas for the realm in dir: its
 // own _schema/, which every realm carries (RM003, RM004), then those of the
-// core version it depends on, then the latest. Drift between _schema/ and the
-// pin is RM015's to report. It returns none when dir has no readable
-// realm.json, leaving the latest schemas in use; reporting a broken manifest is
-// the linters' job.
+// core version it depends on, then the latest. RM015 reports drift between
+// _schema/ and the pin, only where the linter has a dependency fetcher. It
+// returns none when dir has no readable realm.json, leaving the latest schemas
+// in use; reporting a broken manifest is the linters' job.
 func ForRealm(dir string) []Option {
 	data, err := os.ReadFile(filepath.Join(dir, "realm.json"))
 	if err != nil {
