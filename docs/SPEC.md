@@ -438,6 +438,10 @@ retired, and its code is never emitted again.
 | RL016 | Warning | An unqualified `inherits` target is not an entity in the scanned files, or an unqualified `overrides` target is not a rule in them. |
 | RL017 | Error | Two live rules of one entity override the same target. A rule is live unless it is `A` or `T` or a rule that is not `A` supersedes it. |
 | RL018 | Error | An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops. |
+| RL019 | Warning | The body of a `D`, `P` or `I` rule references an unqualified rule ID that was not found. Text in backticks is ignored. |
+| RL020 | Warning | The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies. |
+| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
+| RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
 
 #### `rule-diff` (RD)
 
@@ -601,6 +605,10 @@ github://<owner>/<repo>@<ref>[/<path>]
 16. Inheritance references: an unqualified `inherits` target is an entity, and an unqualified `overrides` target a rule, within the scanned realm. Qualified targets are resolved by `realm-resolve`.
 17. Within an entity, at most one live rule overrides a given target.
 18. Inheritance chains within the scanned realm do not cycle and do not exceed three hops.
+19. Bodies of `D`, `P` and `I` rules: every unqualified `<EUID>-<NNN>` reference outside backticks points to an existing rule ID within the scanned realm.
+20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
+21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
+22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
