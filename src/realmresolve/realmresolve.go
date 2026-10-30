@@ -125,9 +125,10 @@ func New(opts ...Option) *RealmResolver {
 	}
 	if cfg.Fetcher == nil && cfg.CacheDir != "" {
 		cfg.Fetcher = &remote.Fetcher{
-			Token:    remote.TokenFromEnv(),
-			CacheDir: cfg.CacheDir,
-			TTL:      cfg.CacheTTL,
+			Token:       remote.TokenFromEnv(),
+			TokenOwners: remote.TokenOwnersFromEnv(),
+			CacheDir:    cfg.CacheDir,
+			TTL:         cfg.CacheTTL,
 		}
 	}
 	return &RealmResolver{cfg: cfg}
