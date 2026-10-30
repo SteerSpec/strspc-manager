@@ -462,6 +462,7 @@ retired, and its code is never emitted again.
 | RD016 | Error | The content of an append-only note changed. |
 | RD017 | Error | `inherits` changed or was removed on an entity whose base version has a rule beyond Draft. |
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
+| RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
 
 #### `realm-lint` (RM)
 

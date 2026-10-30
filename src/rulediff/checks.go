@@ -2,6 +2,7 @@ package rulediff
 
 import (
 	"fmt"
+	"net/mail"
 	"regexp"
 	"sort"
 	"strconv"
@@ -11,10 +12,23 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
-// ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
-var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
+var (
+	// ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
+	ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016 and RD018 for one entity's rules and notes.
+	// handleRe matches a GitHub @handle, a bot's included: hyphens only between
+	// alphanumerics.
+	handleRe = regexp.MustCompile(`^@[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?$`)
+
+	// domainRe matches a domain of at least two labels of up to 63 characters,
+	// each without a leading or trailing hyphen. net/mail does not check this.
+	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$`)
+)
+
+// maxDomainLen is the longest domain name DNS allows.
+const maxDomainLen = 253
+
+// checkRules runs RD001–RD006, RD010–RD016, RD018 and RD019 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -157,7 +171,7 @@ func checkNewRule(h entity.Rule, baseNums map[int]bool, res *result.Result, path
 	}
 }
 
-// checkNewRuleConstraints runs RD004 and RD011 for any new rule (used by both
+// checkNewRuleConstraints runs RD004, RD011 and RD019 for any new rule (used by both
 // checkNewRule and checkNewEntityTree).
 func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 	if r.Revision != 0 {
@@ -178,15 +192,44 @@ func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 			Path:     path,
 		})
 	}
-	if strings.TrimSpace(r.AddedBy) == "" {
+	checkAddedBy("rule", r.AddedBy, res, path)
+}
+
+// checkAddedBy runs RD011 and RD019 for the added_by of a new rule or note.
+func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
+	if strings.TrimSpace(addedBy) == "" {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD011",
 			Severity: result.Error,
-			Message:  "new rule missing added_by",
+			Message:  fmt.Sprintf("new %s missing added_by", kind),
+			Path:     path,
+		})
+		return
+	}
+	if !validAddedBy(addedBy) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD019",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("new %s has invalid added_by %q: must be an email address or @handle", kind, addedBy),
 			Path:     path,
 		})
 	}
+}
+
+// validAddedBy reports whether s is a GitHub @handle or a bare email address.
+// A display name or angle brackets are not bare.
+func validAddedBy(s string) bool {
+	if handleRe.MatchString(s) {
+		return true
+	}
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return false
+	}
+	domain := s[strings.LastIndex(s, "@")+1:]
+	return len(domain) <= maxDomainLen && domainRe.MatchString(domain)
 }
 
 // checkNotes runs RD011–RD016 for the notes of one entity: notes are never
@@ -271,17 +314,9 @@ func checkNoteRevision(b, h entity.Note, res *result.Result, path string) {
 	})
 }
 
-// checkNewNote runs RD011 and RD015 for a note that appears only in head.
+// checkNewNote runs RD011, RD015 and RD019 for a note that appears only in head.
 func checkNewNote(n entity.Note, res *result.Result, path string) {
-	if strings.TrimSpace(n.AddedBy) == "" {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RD011",
-			Severity: result.Error,
-			Message:  "new note missing added_by",
-			Path:     path,
-		})
-	}
+	checkAddedBy("note", n.AddedBy, res, path)
 	if n.Revision != 0 {
 		res.Add(result.Diagnostic{
 			Module:   module,
