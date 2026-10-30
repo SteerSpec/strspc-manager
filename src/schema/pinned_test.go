@@ -256,7 +256,7 @@ func TestForRealm_PinsADependencyOnCore(t *testing.T) {
 	}
 }
 
-func TestForRealm_CoreUsesItsOwnSchemas(t *testing.T) {
+func TestWithLocalDir_PrefersItsOwnSchemas(t *testing.T) {
 	dir := writeRealm(t, `{"realm": {"id": "dev.steerspec.core"}, "dependencies": []}`)
 	if err := os.Mkdir(filepath.Join(dir, "_schema"), 0o755); err != nil {
 		t.Fatal(err)
@@ -265,12 +265,12 @@ func TestForRealm_CoreUsesItsOwnSchemas(t *testing.T) {
 		t.Fatal(err)
 	}
 	srv, calls := site(t, map[string]string{"/schemas/entity/v1.json": `"latest"`})
-	opts := append([]schema.Option{
-		schema.WithBaseURL(srv.URL + "/schemas"),
-		schema.WithCacheDir(t.TempDir()),
-	}, schema.ForRealm(dir)...)
 
-	got, err := schema.New(opts...).EntityV1(context.Background())
+	got, err := schema.New(
+		schema.WithBaseURL(srv.URL+"/schemas"),
+		schema.WithCacheDir(t.TempDir()),
+		schema.WithLocalDir(dir),
+	).EntityV1(context.Background())
 	if err != nil {
 		t.Fatalf("EntityV1: %v", err)
 	}
@@ -282,13 +282,18 @@ func TestForRealm_CoreUsesItsOwnSchemas(t *testing.T) {
 	}
 }
 
-func TestForRealm_IgnoresANonCoreRealmsOwnSchemas(t *testing.T) {
+func TestForRealm_IgnoresARealmsOwnSchemas(t *testing.T) {
 	for name, tt := range map[string]struct{ manifest, want string }{
 		"pinned": {
 			`{"realm": {"id": "dev.example.bank"}, "dependencies": [{"realm_id": "dev.steerspec.core", "version": "1.10.0"}]}`,
 			`"1.10.0"`,
 		},
-		"unpinned": {`{"realm": {"id": "dev.example.bank"}, "dependencies": []}`, `"latest"`},
+		"unpinned":          {`{"realm": {"id": "dev.example.bank"}, "dependencies": []}`, `"latest"`},
+		"claims to be core": {`{"realm": {"id": "dev.steerspec.core"}, "dependencies": []}`, `"latest"`},
+		"claims to be core, pinned": {
+			`{"realm": {"id": "dev.steerspec.core"}, "dependencies": [{"realm_id": "dev.steerspec.core", "version": "1.10.0"}]}`,
+			`"1.10.0"`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := writeRealm(t, tt.manifest)

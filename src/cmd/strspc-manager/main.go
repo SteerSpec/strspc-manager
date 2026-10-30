@@ -74,7 +74,7 @@ var (
 )
 
 func newRealmLintCmd() *cobra.Command {
-	var strict bool
+	var strict, core bool
 	cmd := &cobra.Command{
 		Use:   "realm-lint <dir>",
 		Short: "Validate a Realm directory",
@@ -82,14 +82,21 @@ func newRealmLintCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := args[0]
-			linters := func(dir string) (*schema.Fetcher, *rulelint.Linter) {
-				fetcher := schema.New(schema.ForRealm(dir)...)
+			build := func(opts []schema.Option) (*schema.Fetcher, *rulelint.Linter) {
+				fetcher := schema.New(opts...)
 				return fetcher, rulelint.New(
 					rulelint.WithStrict(strict),
 					rulelint.WithSchemaFetcher(fetcher),
 				)
 			}
-			fetcher, rl := linters(dir)
+			linters := func(dir string) (*schema.Fetcher, *rulelint.Linter) {
+				return build(schema.ForRealm(dir))
+			}
+			opts := schema.ForRealm(dir)
+			if core {
+				opts = []schema.Option{schema.WithLocalDir(dir)}
+			}
+			fetcher, rl := build(opts)
 			linter := realmlint.New(
 				realmlint.WithStrict(strict),
 				realmlint.WithSchemaFetcher(fetcher),
@@ -106,6 +113,7 @@ func newRealmLintCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&strict, "strict", false, "treat warnings as errors")
+	cmd.Flags().BoolVar(&core, "core", false, "dir is the core realm: validate it against its own _schema/")
 	return cmd
 }
 

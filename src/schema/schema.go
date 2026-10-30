@@ -36,7 +36,8 @@ const defaultTimeout = 30 * time.Second
 // fetched again.
 const latestTTL = time.Hour
 
-// CoreRealmID identifies the realm that defines the schemas.
+// CoreRealmID identifies the realm that defines the schemas, in a dependency on
+// it. A realm's own ID proves nothing: see WithLocalDir.
 const CoreRealmID = "dev.steerspec.core"
 
 // errNotFound marks a schema the server does not have.
@@ -106,27 +107,26 @@ func WithCoreVersion(version string) Option {
 	}
 }
 
-// WithLocalDir prefers the schemas in dir/_schema over any published ones.
+// WithLocalDir prefers the schemas in dir/_schema over any published ones. Only
+// core, which defines the schemas, should use it, and only when the caller knows
+// dir is core: a realm declares its own ID, so its manifest cannot say.
 func WithLocalDir(dir string) Option {
 	return func(c *Config) { c.LocalDir = dir }
 }
 
-// ForRealm returns the options selecting the schemas for the realm in dir: its
-// own _schema/ for core, which defines them, otherwise those of the core
-// version it depends on. Any other realm's _schema/ is a copy under the same
-// review as the content it would validate, so it never decides validation;
-// RM015 reports its drift from the pin. It returns none when dir has no
-// readable realm.json or no dependency on core, leaving the latest schemas in
-// use; reporting a broken manifest is the linters' job.
+// ForRealm returns the options selecting the schemas for the realm in dir: those
+// of the core version it depends on. A realm's _schema/ is a copy under the same
+// review as the content it would validate, so it never decides validation, even
+// if the realm claims to be core; RM015 reports its drift from the pin. It
+// returns none when dir has no readable realm.json or no dependency on core,
+// leaving the latest schemas in use; reporting a broken manifest is the linters'
+// job.
 func ForRealm(dir string) []Option {
 	data, err := os.ReadFile(filepath.Join(dir, "realm.json"))
 	if err != nil {
 		return nil
 	}
 	var manifest struct {
-		Realm struct {
-			ID string `json:"id"`
-		} `json:"realm"`
 		Dependencies []struct {
 			RealmID string `json:"realm_id"`
 			Version string `json:"version"`
@@ -134,9 +134,6 @@ func ForRealm(dir string) []Option {
 	}
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil
-	}
-	if manifest.Realm.ID == CoreRealmID {
-		return []Option{WithLocalDir(dir)}
 	}
 	for _, dep := range manifest.Dependencies {
 		if dep.RealmID == CoreRealmID {
