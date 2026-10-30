@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.27.0](https://github.com/SteerSpec/strspc-manager/compare/v1.26.0...v1.27.0) (2026-10-30)
+
+
+### Features
+
+* **realmlint:** check dependency pins and schema drift (RM014-RM016) ([336c8eb](https://github.com/SteerSpec/strspc-manager/commit/336c8ebf71b637f7056d80b758650f6942111c2d))
+* **realmlint:** check dependency pins and schema drift (RM014-RM016) ([197735e](https://github.com/SteerSpec/strspc-manager/commit/197735ece76ac8975885e59b3f20625f577f269a))
+* **rulediff:** reject a malformed added_by (RD019) ([55b6872](https://github.com/SteerSpec/strspc-manager/commit/55b6872c08dd966ec2fe7618019e42ac4e66a79c))
+* **rulediff:** reject a malformed added_by (RD019) ([c0bf37f](https://github.com/SteerSpec/strspc-manager/commit/c0bf37ffddb53886f7bc2a0bab6dccf76689ffdc))
+* **rulelint:** check rule bodies (RL019-RL022) ([571ecfa](https://github.com/SteerSpec/strspc-manager/commit/571ecfac412243b4f8223af318028b4029c4b6f7))
+* **rulelint:** check rule bodies (RL019-RL022) ([a742dbd](https://github.com/SteerSpec/strspc-manager/commit/a742dbd89354b9e1d5c67880223baa2151cca60f))
+
+
+### Bug Fixes
+
+* **realmlint:** compare _schema only with the core that was pinned ([1df1aff](https://github.com/SteerSpec/strspc-manager/commit/1df1affa294f6d95f7c04ca5d6e692f5d673f647))
+* **rulediff:** enforce DNS length limits on an added_by domain ([d48fec5](https://github.com/SteerSpec/strspc-manager/commit/d48fec514018bb5c7f01691aa3c12c829375550b))
+* **rulediff:** validate added_by with stricter grammars ([b55b2cb](https://github.com/SteerSpec/strspc-manager/commit/b55b2cb94891946b32622ee74966cb0602cd1211))
+* **rulediff:** validate the domain labels of an added_by address ([25c3306](https://github.com/SteerSpec/strspc-manager/commit/25c33064513b7e61a8fc196c41a90466270efb38))
+* **rulelint:** see a sentence ending in a closing quote or bracket ([acdd9d4](https://github.com/SteerSpec/strspc-manager/commit/acdd9d473dc7c150fbd5ef4c85b406b834f95e63))
+* **rulelint:** tighten the RL021 and RL022 detectors ([78dfb25](https://github.com/SteerSpec/strspc-manager/commit/78dfb25597b2917edf82b3cd3e15bed70728038f))
+* **rulelint:** treat initialisms as abbreviations in RL022 ([546f2fe](https://github.com/SteerSpec/strspc-manager/commit/546f2fe5ca68d65a21484be225612f1beb502fc6))
+
+
+### Documentation
+
+* **spec:** list the body checks in the format linter workflow ([eb47057](https://github.com/SteerSpec/strspc-manager/commit/eb4705722ecd3b55b838b899ecc690cbe67fd71e))
+
 ## [1.26.0](https://github.com/SteerSpec/strspc-manager/compare/v1.25.0...v1.26.0) (2026-10-29)
 
 
