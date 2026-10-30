@@ -82,15 +82,19 @@ func newRealmLintCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := args[0]
-			fetcher := schema.New()
-			rl := rulelint.New(
-				rulelint.WithStrict(strict),
-				rulelint.WithSchemaFetcher(fetcher),
-			)
+			linters := func(dir string) (*schema.Fetcher, *rulelint.Linter) {
+				fetcher := schema.New(schema.ForRealm(dir)...)
+				return fetcher, rulelint.New(
+					rulelint.WithStrict(strict),
+					rulelint.WithSchemaFetcher(fetcher),
+				)
+			}
+			fetcher, rl := linters(dir)
 			linter := realmlint.New(
 				realmlint.WithStrict(strict),
 				realmlint.WithSchemaFetcher(fetcher),
 				realmlint.WithRuleLinter(rl),
+				realmlint.WithSubRealmLinters(linters),
 			)
 			res := linter.Lint(cmd.Context(), dir)
 			printDiagnostics(cmd, res)

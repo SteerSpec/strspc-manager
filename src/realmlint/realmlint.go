@@ -54,11 +54,18 @@ type Config struct {
 	// DependencyFetcher is optional: when set, RM014 also reads each
 	// dependency's manifest, and RM015 and RM016 run.
 	DependencyFetcher DependencyFetcher
+	// SubRealmLinters is optional: when set, a sub-realm that pins its own core
+	// Realm is validated with the schemas it returns.
+	SubRealmLinters SubRealmLinters
 }
 
 // DependencyFetcher returns the local directory holding dep, a dependency
 // declared by the Realm in realmDir. It may download the dependency.
 type DependencyFetcher func(ctx context.Context, realmDir string, dep entity.RealmDep) (string, error)
+
+// SubRealmLinters returns the schema fetcher and rule linter for the sub-realm
+// in dir.
+type SubRealmLinters func(dir string) (*schema.Fetcher, *rulelint.Linter)
 
 // Option configures the RealmLinter.
 type Option func(*Config)
@@ -82,6 +89,12 @@ func WithRuleLinter(l *rulelint.Linter) Option {
 // dependencies it pins.
 func WithDependencyFetcher(f DependencyFetcher) Option {
 	return func(c *Config) { c.DependencyFetcher = f }
+}
+
+// WithSubRealmLinters sets how a sub-realm that pins its own core Realm gets its
+// schemas. Without it, every sub-realm uses the parent's.
+func WithSubRealmLinters(f SubRealmLinters) Option {
+	return func(c *Config) { c.SubRealmLinters = f }
 }
 
 // RealmLinter validates Realm directories.
@@ -192,6 +205,9 @@ func (l *RealmLinter) compileSchema(ctx context.Context) (*jsonschema.Schema, er
 	}
 
 	c := jsonschema.NewCompiler()
+	// No loaders: a core realm's schema comes from the directory under lint, so
+	// it must not reach beyond itself. The JSON Schema metaschemas are built in.
+	c.UseLoader(jsonschema.SchemeURLLoader{})
 	if err := c.AddResource("realm.schema.json", sch); err != nil {
 		return nil, fmt.Errorf("compiling schema: %w", err)
 	}
@@ -680,7 +696,8 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		// RLMMNFST-002), so its manifest and layout get the same checks as
 		// the parent: RM002 schema, RM007 fields, RM003/RM004 _schema/,
 		// RM014–RM016 dependencies.
-		l.checkRealmSchema(ctx, srData, srRealmPath, res)
+		sub := l.forSubRealm(srDir, srRF)
+		sub.checkRealmSchema(ctx, srData, srRealmPath, res)
 		checkRealmFields(srRF, srRealmPath, res)
 		checkSchemaDir(srDir, res)
 		srCoreDir := l.checkDependencies(ctx, srDir, srRF, srRealmPath, res)
@@ -727,11 +744,22 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		// Scan sub-realm entity files for EUID collection.
 		// If the sub-realm violates RM011 (nested sub_realms), exclude those
 		// dirs so their entities don't leak into this sub-realm's EUID set.
-		srEUIDs := l.scanEntityFiles(ctx, srDir, srRF.SubRealms, res)
+		srEUIDs := sub.scanEntityFiles(ctx, srDir, srRF.SubRealms, res)
 		subRealmEUIDs[srName] = srEUIDs
 	}
 
 	return subRealmEUIDs
+}
+
+// forSubRealm returns the linter holding the schemas for the sub-realm in dir:
+// its own when it pins a core Realm, otherwise the parent's (RLM-014).
+func (l *RealmLinter) forSubRealm(dir string, rf *entity.RealmFile) *RealmLinter {
+	if l.cfg.SubRealmLinters == nil || !declaresCore(rf) {
+		return l
+	}
+	cfg := l.cfg
+	cfg.SchemaFetcher, cfg.RuleLinter = l.cfg.SubRealmLinters(dir)
+	return &RealmLinter{cfg: cfg}
 }
 
 // checkEUIDCollisions checks for EUID collisions between parent and sub-realms,
