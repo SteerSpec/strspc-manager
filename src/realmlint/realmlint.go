@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -325,7 +326,7 @@ func checkSchemaDir(dir string, res *result.Result) {
 
 // checkDependencies validates the dependencies rf declares (RM014, RM016) and
 // returns the directory of the core Realm it pins, "" if it pins none or the
-// core could not be fetched.
+// core could not be fetched or is not what was pinned.
 func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *entity.RealmFile, realmPath string, res *result.Result) string {
 	coreDir := ""
 	for _, dep := range rf.Dependencies {
@@ -371,12 +372,18 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 				Message:  fmt.Sprintf("dependency %q version %q: the manifest at %q declares %q version %q", dep.RealmID, dep.Version, dep.Source, depRF.Realm.ID, depRF.Realm.Version),
 				Path:     realmPath,
 			})
-		}
-		if dep.RealmID == coreRealmID {
+		} else if dep.RealmID == coreRealmID {
 			coreDir = depDir
 		}
 	}
 	return coreDir
+}
+
+// declaresCore reports whether rf itself pins the core Realm.
+func declaresCore(rf *entity.RealmFile) bool {
+	return slices.ContainsFunc(rf.Dependencies, func(d entity.RealmDep) bool {
+		return d.RealmID == coreRealmID
+	})
 }
 
 // RM015: Files in _schema/ must match the core Realm's copies. Only files both
@@ -396,7 +403,7 @@ func checkSchemaDrift(dir, coreDir string, res *result.Result) {
 			continue
 		}
 		corePath := filepath.Join(coreDir, "_schema", e.Name())
-		if _, err := os.Stat(corePath); err != nil {
+		if _, err := os.Stat(corePath); os.IsNotExist(err) {
 			continue
 		}
 		localPath := filepath.Join(schemaDir, e.Name())
@@ -677,7 +684,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		checkRealmFields(srRF, srRealmPath, res)
 		checkSchemaDir(srDir, res)
 		srCoreDir := l.checkDependencies(ctx, srDir, srRF, srRealmPath, res)
-		if srCoreDir == "" {
+		if !declaresCore(srRF) {
 			srCoreDir = coreDir
 		}
 		checkSchemaDrift(srDir, srCoreDir, res)

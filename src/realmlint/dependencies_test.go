@@ -126,6 +126,40 @@ func TestRM015_SchemaDrift(t *testing.T) {
 	}
 }
 
+func TestRM015_SkipsMismatchedCore(t *testing.T) {
+	for _, tt := range []struct{ name, id, version string }{
+		{"other version", coreRealmID, "1.10.0"},
+		{"other realm", "dev.example.other", "1.11.0"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir, core := t.TempDir(), t.TempDir()
+			writeRealm(t, core, tt.id, tt.version, nil, nil, map[string]string{"entity.v1.schema.json": `{"a": 1}`})
+			writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("1.11.0", coreSource), nil,
+				map[string]string{"entity.v1.schema.json": `{"a": 2}`})
+			res := New(WithDependencyFetcher(fetchFrom(core))).Lint(context.Background(), dir)
+			assertHasCode(t, res, "RM014")
+			if hasCode(res, "RM015") {
+				t.Errorf("unexpected RM015: %v", res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestRM015_UnreadableCoreSchema(t *testing.T) {
+	dir, core := t.TempDir(), t.TempDir()
+	writeRealm(t, core, coreRealmID, "1.11.0", nil, nil, nil)
+	// A directory makes the core's copy exist but fail to read, on any platform.
+	if err := os.Mkdir(filepath.Join(core, "_schema", "entity.v1.schema.json"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("1.11.0", coreSource), nil,
+		map[string]string{"entity.v1.schema.json": `{"a": 1}`})
+	res := New(WithDependencyFetcher(fetchFrom(core))).Lint(context.Background(), dir)
+	if !hasCodeWithSeverity(res, "RM015", result.Warning) {
+		t.Errorf("expected RM015 warning, got: %v", res.Diagnostics)
+	}
+}
+
 func TestRM015_OnlyComparesCore(t *testing.T) {
 	dir, dep := t.TempDir(), t.TempDir()
 	writeRealm(t, dep, "dev.example.other", "1.0.0", nil, nil, map[string]string{"entity.v1.schema.json": `{"a": 1}`})
@@ -165,6 +199,25 @@ func TestRM015_SubRealm(t *testing.T) {
 			return core, nil
 		}
 		res := New(WithDependencyFetcher(fetch)).Lint(context.Background(), dir)
+		if hasCode(res, "RM015") {
+			t.Errorf("unexpected RM015: %v", res.Diagnostics)
+		}
+	})
+
+	t.Run("does not fall back when its own core is unavailable", func(t *testing.T) {
+		dir, core := t.TempDir(), t.TempDir()
+		writeRealm(t, core, coreRealmID, "1.11.0", nil, nil, coreSchemas)
+		writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("1.11.0", coreSource), []string{"sub"}, coreSchemas)
+		writeRealm(t, filepath.Join(dir, "sub"), "dev.example.test.sub", "0.1.0",
+			coreDep("1.8.0", "github://SteerSpec/strspc-rules@v1.8.0/rules/core"), nil, drifted)
+		fetch := func(_ context.Context, _ string, dep entity.RealmDep) (string, error) {
+			if dep.Version == "1.8.0" {
+				return "", errors.New("network down")
+			}
+			return core, nil
+		}
+		res := New(WithDependencyFetcher(fetch)).Lint(context.Background(), dir)
+		assertHasCode(t, res, "RM016")
 		if hasCode(res, "RM015") {
 			t.Errorf("unexpected RM015: %v", res.Diagnostics)
 		}

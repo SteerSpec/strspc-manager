@@ -485,8 +485,8 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM012 | Error | An EUID in a sub-realm collides with the parent realm or a sibling sub-realm. |
 | RM013 | Error | A sub-realm `realm.json` sets `rule_identifier_format`; a sub-realm inherits its parent's format (RLM-015). |
 | RM014 | Error | A dependency's `version` differs from the release tag in its `github://` `source`, or the dependency's own manifest declares another `realm.id` or `realm.version`. |
-| RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. |
-| RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so RM014 and RM015 could not check it. |
+| RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
+| RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
 
 #### `realm-resolve` (RR)
 
