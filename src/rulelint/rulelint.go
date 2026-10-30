@@ -42,8 +42,9 @@ var (
 	// keywordRe finds the key words of KWRD-002 to KWRD-006. RUL-001 writes
 	// DEFINE as DEFINES, so both forms count.
 	keywordRe = regexp.MustCompile(`\b(?:MUST|REQUIRED|SHALL|HAS|IS|DEFINES?|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b`)
-	// abbreviationRe finds abbreviations whose full stop ends no sentence.
-	abbreviationRe = regexp.MustCompile(`\b(?:e\.g|i\.e|etc|vs)\.`)
+	// abbreviationRe finds abbreviations whose full stop ends no sentence:
+	// initialisms such as e.g. or U.S., plus etc. and vs.
+	abbreviationRe = regexp.MustCompile(`\b(?:(?:[A-Za-z]\.){2,}|(?:etc|vs)\.)`)
 	// sentenceBreakRe finds the end of one sentence and the start of the next.
 	sentenceBreakRe = regexp.MustCompile(`[.!?]\s+\S`)
 )

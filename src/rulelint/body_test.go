@@ -146,6 +146,7 @@ func TestDraftBodies(t *testing.T) {
 		{name: "sentence starting with code", state: "D", body: "MUST hold. `x` IS set.", wantSentence: true},
 		{name: "semicolon", state: "D", body: "MUST hold; it MUST NOT fail."},
 		{name: "abbreviation", state: "D", body: "MUST name a tool, e.g. Claude."},
+		{name: "initialism", state: "D", body: "MUST use U.S. standards."},
 		{name: "etc", state: "D", body: "MUST cover a, b, etc. in that order."},
 		{name: "vs", state: "D", body: "MUST pick a vs. b first."},
 		{name: "full stop in code", state: "D", body: "MUST call `a. B` first."},
