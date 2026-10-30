@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -426,6 +427,10 @@ func TestDiff_RD019_AddedByFormat(t *testing.T) {
 		{"dev@example-.com", true},
 		{"dev@example.-com", true},
 		{"dev@my-example.com", false},
+		{"dev@" + strings.Repeat("a", 63) + ".com", false},
+		{"dev@" + strings.Repeat("a", 64) + ".com", true},
+		{"dev@" + strings.Repeat(strings.Repeat("a", 61)+".", 4) + "com", false}, // 251 characters
+		{"dev@" + strings.Repeat(strings.Repeat("a", 63)+".", 4) + "com", true},  // 259 characters
 		{"<dev@example.com>", true},
 		{" @pleberre", true},
 		{"dev@example", true},

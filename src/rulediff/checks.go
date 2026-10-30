@@ -20,10 +20,13 @@ var (
 	// alphanumerics.
 	handleRe = regexp.MustCompile(`^@[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?$`)
 
-	// domainRe matches a domain of at least two labels, each without a leading
-	// or trailing hyphen. net/mail does not check this.
-	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$`)
+	// domainRe matches a domain of at least two labels of up to 63 characters,
+	// each without a leading or trailing hyphen. net/mail does not check this.
+	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$`)
 )
+
+// maxDomainLen is the longest domain name DNS allows.
+const maxDomainLen = 253
 
 // checkRules runs RD001–RD006, RD010–RD016, RD018 and RD019 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
@@ -222,7 +225,11 @@ func validAddedBy(s string) bool {
 		return true
 	}
 	addr, err := mail.ParseAddress(s)
-	return err == nil && addr.Address == s && domainRe.MatchString(s[strings.LastIndex(s, "@")+1:])
+	if err != nil || addr.Address != s {
+		return false
+	}
+	domain := s[strings.LastIndex(s, "@")+1:]
+	return len(domain) <= maxDomainLen && domainRe.MatchString(domain)
 }
 
 // checkNotes runs RD011–RD016 for the notes of one entity: notes are never
