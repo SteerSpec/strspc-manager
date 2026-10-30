@@ -2,6 +2,7 @@ package rulediff
 
 import (
 	"fmt"
+	"net/mail"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,8 +16,9 @@ var (
 	// ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 	ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-	// addedByRe matches an email address or a GitHub @handle, a bot's included.
-	addedByRe = regexp.MustCompile(`^(@[A-Za-z0-9][A-Za-z0-9-]*(\[bot\])?|[^@\s]+@[^@\s]+\.[^@\s]+)$`)
+	// handleRe matches a GitHub @handle, a bot's included: hyphens only between
+	// alphanumerics.
+	handleRe = regexp.MustCompile(`^@[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?$`)
 )
 
 // checkRules runs RD001–RD006, RD010–RD016, RD018 and RD019 for one entity's rules and notes.
@@ -198,7 +200,7 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 		})
 		return
 	}
-	if !addedByRe.MatchString(addedBy) {
+	if !validAddedBy(addedBy) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD019",
@@ -207,6 +209,16 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 			Path:     path,
 		})
 	}
+}
+
+// validAddedBy reports whether s is a GitHub @handle or a bare email address
+// whose domain has a dot. A display name or angle brackets are not bare.
+func validAddedBy(s string) bool {
+	if handleRe.MatchString(s) {
+		return true
+	}
+	addr, err := mail.ParseAddress(s)
+	return err == nil && addr.Address == s && strings.Contains(s[strings.LastIndex(s, "@"):], ".")
 }
 
 // checkNotes runs RD011–RD016 for the notes of one entity: notes are never
