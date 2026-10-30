@@ -43,9 +43,9 @@ var (
 	// DEFINE as DEFINES, so both forms count.
 	keywordRe = regexp.MustCompile(`\b(?:MUST|REQUIRED|SHALL|HAS|IS|DEFINES?|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b`)
 	// abbreviationRe finds abbreviations whose full stop ends no sentence.
-	abbreviationRe = regexp.MustCompile(`\b(?:e\.g|i\.e)\.`)
+	abbreviationRe = regexp.MustCompile(`\b(?:e\.g|i\.e|etc|vs)\.`)
 	// sentenceBreakRe finds the end of one sentence and the start of the next.
-	sentenceBreakRe = regexp.MustCompile(`[.!?]\s+[A-Z]`)
+	sentenceBreakRe = regexp.MustCompile(`[.!?]\s+\S`)
 )
 
 // maxInheritHops is the longest inheritance chain allowed by ENT-008.
@@ -1029,7 +1029,8 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 			continue
 		}
 		body := inlineCodeRe.ReplaceAllString(r.Body, " ")
-		if !keywordRe.MatchString(body) {
+		// A rule ID's EUID can spell a key word, as in HAS-001.
+		if !keywordRe.MatchString(crossRefRe.ReplaceAllString(body, " ")) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL021",

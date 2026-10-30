@@ -440,7 +440,7 @@ retired, and its code is never emitted again.
 | RL018 | Error | An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops. |
 | RL019 | Warning | The body of a `D`, `P` or `I` rule references an unqualified rule ID that was not found. Text in backticks is ignored. |
 | RL020 | Warning | The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies. |
-| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks is ignored. |
+| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
 | RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
 
 #### `rule-diff` (RD)
