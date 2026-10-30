@@ -282,68 +282,39 @@ func TestForRealm_CoreUsesItsOwnSchemas(t *testing.T) {
 	}
 }
 
-func TestForRealm_OwnSchemasWinOverThePin(t *testing.T) {
-	dir := writeRealm(t, `{
-		"realm": {"id": "dev.example.bank"},
-		"dependencies": [{"realm_id": "dev.steerspec.core", "version": "1.10.0"}]
-	}`)
-	if err := os.Mkdir(filepath.Join(dir, "_schema"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "_schema", "entity.v1.schema.json"), []byte(`"local"`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	srv, calls := site(t, map[string]string{
-		"/rules/v1.10.0/_schema/entity.v1.schema.json": `"1.10.0"`,
-		"/rules/v1.10.0/_schema/realm.v1.schema.json":  `"realm 1.10.0"`,
-	})
-	opts := append([]schema.Option{
-		schema.WithBaseURL(srv.URL + "/schemas"),
-		schema.WithCacheDir(t.TempDir()),
-	}, schema.ForRealm(dir)...)
-	f := schema.New(opts...)
+func TestForRealm_IgnoresANonCoreRealmsOwnSchemas(t *testing.T) {
+	for name, tt := range map[string]struct{ manifest, want string }{
+		"pinned": {
+			`{"realm": {"id": "dev.example.bank"}, "dependencies": [{"realm_id": "dev.steerspec.core", "version": "1.10.0"}]}`,
+			`"1.10.0"`,
+		},
+		"unpinned": {`{"realm": {"id": "dev.example.bank"}, "dependencies": []}`, `"latest"`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := writeRealm(t, tt.manifest)
+			if err := os.Mkdir(filepath.Join(dir, "_schema"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "_schema", "entity.v1.schema.json"), []byte(`"local"`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			srv, _ := site(t, map[string]string{
+				"/schemas/entity/v1.json":                      `"latest"`,
+				"/rules/v1.10.0/_schema/entity.v1.schema.json": `"1.10.0"`,
+			})
+			opts := append([]schema.Option{
+				schema.WithBaseURL(srv.URL + "/schemas"),
+				schema.WithCacheDir(t.TempDir()),
+			}, schema.ForRealm(dir)...)
 
-	got, err := f.EntityV1(context.Background())
-	if err != nil {
-		t.Fatalf("EntityV1: %v", err)
-	}
-	if string(got) != `"local"` {
-		t.Errorf("got %s", got)
-	}
-	if *calls != 0 {
-		t.Errorf("expected no server call, got %d", *calls)
-	}
-
-	// A file the realm does not carry still comes from its pin.
-	got, err = f.RealmV1(context.Background())
-	if err != nil {
-		t.Fatalf("RealmV1: %v", err)
-	}
-	if string(got) != `"realm 1.10.0"` {
-		t.Errorf("got %s", got)
-	}
-}
-
-func TestForRealm_OwnSchemasWithoutAPin(t *testing.T) {
-	dir := writeRealm(t, `{"realm": {"id": "dev.example.bank"}, "dependencies": []}`)
-	if err := os.Mkdir(filepath.Join(dir, "_schema"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "_schema", "entity.v1.schema.json"), []byte(`"local"`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	srv, _ := site(t, map[string]string{"/schemas/entity/v1.json": `"latest"`})
-	opts := append([]schema.Option{
-		schema.WithBaseURL(srv.URL + "/schemas"),
-		schema.WithCacheDir(t.TempDir()),
-	}, schema.ForRealm(dir)...)
-
-	got, err := schema.New(opts...).EntityV1(context.Background())
-	if err != nil {
-		t.Fatalf("EntityV1: %v", err)
-	}
-	if string(got) != `"local"` {
-		t.Errorf("got %s", got)
+			got, err := schema.New(opts...).EntityV1(context.Background())
+			if err != nil {
+				t.Fatalf("EntityV1: %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
+		})
 	}
 }
 

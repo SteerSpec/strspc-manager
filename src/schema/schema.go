@@ -2,11 +2,10 @@
 // Schemas are the source of truth for entity and Realm validation.
 // The latest are published at https://steerspec.dev/schemas/ and those of each
 // core release at https://steerspec.dev/rules/vX.Y.Z/_schema/. A realm is
-// validated against its own _schema/, then the schemas of the core version it
-// pins (see ForRealm), so a schema change reaches it through its pin. Published
-// schemas are cached locally to avoid repeated network calls: a release's
-// schemas never change, so its copy is kept for good, while a latest copy
-// expires after latestTTL.
+// validated against the schemas of the core version it pins (see ForRealm), so
+// a schema change reaches it through its pin. Both are cached locally to avoid
+// repeated network calls: a release's schemas never change, so its copy is
+// kept for good, while a latest copy expires after latestTTL.
 package schema
 
 import (
@@ -113,17 +112,21 @@ func WithLocalDir(dir string) Option {
 }
 
 // ForRealm returns the options selecting the schemas for the realm in dir: its
-// own _schema/, which every realm carries (RM003, RM004), then those of the
-// core version it depends on, then the latest. RM015 reports drift between
-// _schema/ and the pin, only where the linter has a dependency fetcher. It
-// returns none when dir has no readable realm.json, leaving the latest schemas
-// in use; reporting a broken manifest is the linters' job.
+// own _schema/ for core, which defines them, otherwise those of the core
+// version it depends on. Any other realm's _schema/ is a copy under the same
+// review as the content it would validate, so it never decides validation;
+// RM015 reports its drift from the pin. It returns none when dir has no
+// readable realm.json or no dependency on core, leaving the latest schemas in
+// use; reporting a broken manifest is the linters' job.
 func ForRealm(dir string) []Option {
 	data, err := os.ReadFile(filepath.Join(dir, "realm.json"))
 	if err != nil {
 		return nil
 	}
 	var manifest struct {
+		Realm struct {
+			ID string `json:"id"`
+		} `json:"realm"`
 		Dependencies []struct {
 			RealmID string `json:"realm_id"`
 			Version string `json:"version"`
@@ -132,13 +135,15 @@ func ForRealm(dir string) []Option {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil
 	}
-	opts := []Option{WithLocalDir(dir)}
+	if manifest.Realm.ID == CoreRealmID {
+		return []Option{WithLocalDir(dir)}
+	}
 	for _, dep := range manifest.Dependencies {
 		if dep.RealmID == CoreRealmID {
-			return append(opts, WithCoreVersion(dep.Version))
+			return []Option{WithCoreVersion(dep.Version)}
 		}
 	}
-	return opts
+	return nil
 }
 
 // Fetcher retrieves and caches JSON schemas from steerspec.dev.

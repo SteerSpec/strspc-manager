@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
+	"github.com/SteerSpec/strspc-manager/src/rulelint"
+	"github.com/SteerSpec/strspc-manager/src/schema"
 )
 
 const coreSource = "github://SteerSpec/strspc-rules@v1.11.0/rules/core"
@@ -220,6 +224,67 @@ func TestRM015_SubRealm(t *testing.T) {
 		assertHasCode(t, res, "RM016")
 		if hasCode(res, "RM015") {
 			t.Errorf("unexpected RM015: %v", res.Diagnostics)
+		}
+	})
+}
+
+func TestSubRealmLinters(t *testing.T) {
+	// Core 1.10.0 rejects everything, so only its schemas can report RM002/RL002.
+	routes := map[string]string{
+		"/rules/v1.11.0/_schema/realm.v1.schema.json":  `{}`,
+		"/rules/v1.11.0/_schema/entity.v1.schema.json": `{}`,
+		"/rules/v1.10.0/_schema/realm.v1.schema.json":  `{"not": {}}`,
+		"/rules/v1.10.0/_schema/entity.v1.schema.json": `{"not": {}}`,
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := routes[r.URL.Path]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+
+	linters := func(dir string) (*schema.Fetcher, *rulelint.Linter) {
+		opts := append([]schema.Option{
+			schema.WithBaseURL(srv.URL + "/schemas"),
+			schema.WithCacheDir(t.TempDir()),
+		}, schema.ForRealm(dir)...)
+		fetcher := schema.New(opts...)
+		return fetcher, rulelint.New(rulelint.WithSchemaFetcher(fetcher))
+	}
+	lint := func(dir string) *result.Result {
+		fetcher, rl := linters(dir)
+		return New(WithSchemaFetcher(fetcher), WithRuleLinter(rl), WithSubRealmLinters(linters)).Lint(context.Background(), dir)
+	}
+	entityFile, err := os.ReadFile(filepath.Join("..", "rulelint", "testdata", "valid", "basic.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeSub := func(t *testing.T, deps []entity.RealmDep) string {
+		t.Helper()
+		dir := t.TempDir()
+		writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("1.11.0", coreSource), []string{"sub"}, nil)
+		sub := filepath.Join(dir, "sub")
+		writeRealm(t, sub, "dev.example.test.sub", "0.1.0", deps, nil, nil)
+		if err := os.WriteFile(filepath.Join(sub, "TST.json"), entityFile, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+
+	t.Run("a sub-realm with its own pin uses it", func(t *testing.T) {
+		dir := writeSub(t, coreDep("1.10.0", "github://SteerSpec/strspc-rules@v1.10.0/rules/core"))
+		res := lint(dir)
+		assertDiagPath(t, res, "RM002", filepath.Join(dir, "sub", "realm.json"))
+		assertHasCode(t, res, "RL002")
+	})
+
+	t.Run("a sub-realm without a pin inherits its parent's", func(t *testing.T) {
+		res := lint(writeSub(t, nil))
+		if hasCode(res, "RM002") || hasCode(res, "RL002") {
+			t.Errorf("unexpected schema failure: %v", res.Diagnostics)
 		}
 	})
 }
