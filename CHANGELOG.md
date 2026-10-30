@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.1](https://github.com/SteerSpec/strspc-manager/compare/v1.28.0...v1.28.1) (2026-10-30)
+
+
+### Documentation
+
+* correct the 1.28.0 changelog ([e0b3967](https://github.com/SteerSpec/strspc-manager/commit/e0b39677e27dcb4d864d67f3f5b117655f024c81))
+* correct the 1.28.0 changelog ([44c6d3b](https://github.com/SteerSpec/strspc-manager/commit/44c6d3bd60cfb1fcacdd06758c8f52038ed3b000))
+
 ## [1.28.0](https://github.com/SteerSpec/strspc-manager/compare/v1.27.0...v1.28.0) (2026-10-30)
 
 
