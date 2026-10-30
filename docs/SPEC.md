@@ -438,6 +438,10 @@ retired, and its code is never emitted again.
 | RL016 | Warning | An unqualified `inherits` target is not an entity in the scanned files, or an unqualified `overrides` target is not a rule in them. |
 | RL017 | Error | Two live rules of one entity override the same target. A rule is live unless it is `A` or `T` or a rule that is not `A` supersedes it. |
 | RL018 | Error | An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops. |
+| RL019 | Warning | The body of a `D`, `P` or `I` rule references an unqualified rule ID that was not found. Text in backticks is ignored. |
+| RL020 | Warning | The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies. |
+| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
+| RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
 
 #### `rule-diff` (RD)
 
@@ -462,10 +466,12 @@ retired, and its code is never emitted again.
 | RD016 | Error | The content of an append-only note changed. |
 | RD017 | Error | `inherits` changed or was removed on an entity whose base version has a rule beyond Draft. |
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
+| RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
 
 #### `realm-lint` (RM)
 
-RM002, RM003, RM004 and RM007 fire for the parent manifest and for each sub-realm manifest.
+RM002, RM003, RM004, RM007 and RM014–RM016 fire for the parent manifest and for each sub-realm manifest.
+RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
 RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its strict-mode unit test.
 
 | Code | Severity | When it fires |
@@ -483,6 +489,9 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM011 | Error | A sub-realm declares its own `sub_realms`. |
 | RM012 | Error | An EUID in a sub-realm collides with the parent realm or a sibling sub-realm. |
 | RM013 | Error | A sub-realm `realm.json` sets `rule_identifier_format`; a sub-realm inherits its parent's format (RLM-015). |
+| RM014 | Error | A dependency's `version` differs from the release tag in its `github://` `source`, or the dependency's own manifest declares another `realm.id` or `realm.version`. |
+| RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
+| RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
 
 #### `realm-resolve` (RR)
 
@@ -596,6 +605,10 @@ github://<owner>/<repo>@<ref>[/<path>]
 16. Inheritance references: an unqualified `inherits` target is an entity, and an unqualified `overrides` target a rule, within the scanned realm. Qualified targets are resolved by `realm-resolve`.
 17. Within an entity, at most one live rule overrides a given target.
 18. Inheritance chains within the scanned realm do not cycle and do not exceed three hops.
+19. Bodies of `D`, `P` and `I` rules: every unqualified `<EUID>-<NNN>` reference outside backticks points to an existing rule ID within the scanned realm.
+20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
+21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
+22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 

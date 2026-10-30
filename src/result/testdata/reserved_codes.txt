@@ -34,6 +34,10 @@ RL015 active note-ids-not-sequential
 RL016 active inherit-target-missing
 RL017 active duplicate-override-target
 RL018 active inherit-chain-invalid
+RL019 active rule-body-ref-missing
+RL020 active ref-to-abandoned-rule
+RL021 active rule-body-no-keyword
+RL022 active rule-body-multiple-sentences
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -53,6 +57,7 @@ RD015 active new-note-revision-nonzero
 RD016 active append-only-note-content-changed
 RD017 active inherits-changed
 RD018 active overrides-changed
+RD019 active added-by-invalid
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
@@ -66,6 +71,9 @@ RM010 active sub-realm-id-mismatch
 RM011 active sub-realm-nested
 RM012 active sub-realm-euid-collision
 RM013 active sub-realm-identifier-format
+RM014 active dependency-pin-mismatch
+RM015 active schema-differs-from-dependency
+RM016 active dependency-unavailable
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable
