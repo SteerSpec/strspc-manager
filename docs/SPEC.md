@@ -600,6 +600,10 @@ github://<owner>/<repo>@<ref>[/<path>]
 16. Inheritance references: an unqualified `inherits` target is an entity, and an unqualified `overrides` target a rule, within the scanned realm. Qualified targets are resolved by `realm-resolve`.
 17. Within an entity, at most one live rule overrides a given target.
 18. Inheritance chains within the scanned realm do not cycle and do not exceed three hops.
+19. Bodies of `D`, `P` and `I` rules: every unqualified `<EUID>-<NNN>` reference outside backticks points to an existing rule ID within the scanned realm.
+20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
+21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
+22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
