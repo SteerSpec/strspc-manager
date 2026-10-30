@@ -66,6 +66,9 @@ RM010 active sub-realm-id-mismatch
 RM011 active sub-realm-nested
 RM012 active sub-realm-euid-collision
 RM013 active sub-realm-identifier-format
+RM014 active dependency-pin-mismatch
+RM015 active schema-differs-from-dependency
+RM016 active dependency-unavailable
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable
