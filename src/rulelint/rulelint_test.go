@@ -371,6 +371,18 @@ func TestRL002_SchemaValidationFail(t *testing.T) {
 	assertHasCode(t, res, "RL002")
 }
 
+func TestRL002_SchemaCannotReferenceLocalFiles(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "target.json")
+	if err := os.WriteFile(target, []byte(`{"type": "object"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fetcher := newTestFetcher(t, `{"$ref": "file://`+filepath.ToSlash(target)+`"}`, http.StatusOK)
+	data := mustReadFile(t, testdataPath("valid", "basic.json"))
+	l := New(WithSchemaFetcher(fetcher))
+	res := l.LintBytes(context.Background(), data)
+	assertHasCode(t, res, "RL002")
+}
+
 func TestRL002_SchemaFetchError(t *testing.T) {
 	fetcher := newTestFetcher(t, "not found", http.StatusNotFound)
 	data := mustReadFile(t, testdataPath("valid", "basic.json"))

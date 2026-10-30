@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -292,6 +293,23 @@ func TestRM002_SchemaValidationPass(t *testing.T) {
 				t.Errorf("unexpected RM002 error: %s", d.Message)
 			}
 		}
+	}
+}
+
+func TestRM002_SchemaCannotReferenceLocalFiles(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "target.json")
+	if err := os.WriteFile(target, []byte(`{"type": "object"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"$ref": "file://`+filepath.ToSlash(target)+`"}`)
+	}))
+	t.Cleanup(srv.Close)
+	fetcher := schema.New(schema.WithBaseURL(srv.URL), schema.WithCacheDir(t.TempDir()))
+
+	res := New(WithSchemaFetcher(fetcher)).Lint(context.Background(), filepath.Join(testdataPath(t), "valid"))
+	if !hasCodeWithSeverity(res, "RM002", result.Error) {
+		t.Errorf("expected an RM002 error: %v", res.Diagnostics)
 	}
 }
 

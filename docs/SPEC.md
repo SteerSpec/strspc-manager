@@ -472,6 +472,7 @@ retired, and its code is never emitted again.
 
 RM002, RM003, RM004, RM007 and RM014–RM016 fire for the parent manifest and for each sub-realm manifest.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
+RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's.
 RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its strict-mode unit test.
 
 | Code | Severity | When it fires |
