@@ -45,8 +45,9 @@ var (
 	// abbreviationRe finds abbreviations whose full stop ends no sentence:
 	// initialisms such as e.g. or U.S., plus etc. and vs.
 	abbreviationRe = regexp.MustCompile(`\b(?:(?:[A-Za-z]\.){2,}|(?:etc|vs)\.)`)
-	// sentenceBreakRe finds the end of one sentence and the start of the next.
-	sentenceBreakRe = regexp.MustCompile(`[.!?]\s+\S`)
+	// sentenceBreakRe finds the end of one sentence, with any closing quote or
+	// bracket, and the start of the next.
+	sentenceBreakRe = regexp.MustCompile(`[.!?]["')\]]*\s+\S`)
 )
 
 // maxInheritHops is the longest inheritance chain allowed by ENT-008.
