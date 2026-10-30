@@ -386,6 +386,7 @@ func TestDiff_RD011_NewRuleMissingAddedBy(t *testing.T) {
 	})
 	res := d.Diff(base, head)
 	assertHasCode(t, res, "RD011")
+	assertNoCode(t, res, "RD019")
 }
 
 func TestDiff_RD011_NewNoteMissingAddedBy(t *testing.T) {
@@ -398,6 +399,66 @@ func TestDiff_RD011_NewNoteMissingAddedBy(t *testing.T) {
 	})
 	res := d.Diff(base, head)
 	assertHasCode(t, res, "RD011")
+	assertNoCode(t, res, "RD019")
+}
+
+// --- RD019 ---
+
+func TestDiff_RD019_AddedByFormat(t *testing.T) {
+	tests := []struct {
+		addedBy string
+		want    bool
+	}{
+		{"@pleberre", false},
+		{"@a-b-1", false},
+		{"@steerspec-sync[bot]", false},
+		{"dev@example.com", false},
+		{"first.last+tag@mail.example.com", false},
+		{"pleberre", true},
+		{"@", true},
+		{"@-x", true},
+		{"@a b", true},
+		{" @pleberre", true},
+		{"dev@example", true},
+		{"a@b@c.d", true},
+		{"PLB <dev@example.com>", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.addedBy, func(t *testing.T) {
+			base := makeBase()
+			head := makeHead(base)
+			head.Rules = append(head.Rules, entity.Rule{
+				ID: "TSTENT-004", Revision: 0, State: "D",
+				Body: "New rule", AddedBy: tt.addedBy, AddedAt: "2026-02-01",
+			})
+			head.Notes = append(head.Notes, entity.Note{
+				ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "rationale",
+				Content: "Because", AddedBy: tt.addedBy, AddedAt: "2026-02-01",
+			})
+			res := New().Diff(base, head)
+			got := 0
+			for _, d := range res.Diagnostics {
+				if d.Code == "RD019" {
+					got++
+				}
+			}
+			want := 0
+			if tt.want {
+				want = 2 // the rule and the note
+			}
+			if got != want {
+				t.Errorf("RD019 count = %d, want %d: %v", got, want, res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestDiff_RD019_ExistingEntriesNotChecked(t *testing.T) {
+	base := makeBase()
+	base.Rules[0].AddedBy = "pleberre"
+	head := makeHead(base)
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD019")
 }
 
 // --- RD012 ---

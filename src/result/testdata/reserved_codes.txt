@@ -53,6 +53,7 @@ RD015 active new-note-revision-nonzero
 RD016 active append-only-note-content-changed
 RD017 active inherits-changed
 RD018 active overrides-changed
+RD019 active added-by-invalid
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
