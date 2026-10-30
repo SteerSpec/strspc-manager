@@ -5,17 +5,12 @@
 
 ### Features
 
-* **schema:** prefer a realm's own _schema/ over its pin ([11f7bb0](https://github.com/SteerSpec/strspc-manager/commit/11f7bb0db8ab093ce782f77d74cc7ff51b542dc1))
-* **schema:** resolve schemas from the realm's pinned core version ([cefcdae](https://github.com/SteerSpec/strspc-manager/commit/cefcdaeb0be90a983455bbd79fe9ebbb5a062f72))
 * **schema:** resolve schemas from the realm's pinned core version ([db426b9](https://github.com/SteerSpec/strspc-manager/commit/db426b9b995d53d1620c9a2860a17561d2e2cc7b))
 
 
 ### Bug Fixes
 
-* **schema:** let the caller select core's own schemas, not the realm ([3e468c6](https://github.com/SteerSpec/strspc-manager/commit/3e468c62ea2ac89a8b6385975c5b932b04e3a73c))
-* **schema:** let the caller select core's own schemas, not the realm ([8aa0a21](https://github.com/SteerSpec/strspc-manager/commit/8aa0a21a7daab1c36c0d5bc8d38b57db051fb95c))
 * **schema:** stop a schema reading files through $ref ([ed6ccbb](https://github.com/SteerSpec/strspc-manager/commit/ed6ccbb5af699bb7e53d17f8ae43c72cf6fe0749))
-* **schema:** validate against the pin, not a realm's own copy ([4d0d516](https://github.com/SteerSpec/strspc-manager/commit/4d0d5167cd57d0b554fe4082ab5d47b978fb7b7c))
 
 ## [1.27.0](https://github.com/SteerSpec/strspc-manager/compare/v1.26.0...v1.27.0) (2026-10-30)
 
