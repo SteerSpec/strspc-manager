@@ -183,3 +183,13 @@ func TestNew_BuildsDefaultFetcherFromConfig(t *testing.T) {
 		t.Errorf("fetcher not built from config: %+v", f)
 	}
 }
+
+func TestParseSource_DefaultFetcherLimitsToken(t *testing.T) {
+	cfg := &Config{CacheDir: t.TempDir()}
+	if _, err := parseSource(SourceEntry{Source: "github://o/r@v1"}, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Fetcher == nil || len(cfg.Fetcher.TokenOwners) == 0 {
+		t.Errorf("default fetcher has no TokenOwners: %+v", cfg.Fetcher)
+	}
+}

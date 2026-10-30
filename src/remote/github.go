@@ -43,6 +43,12 @@ const (
 	// DefaultTTL bounds how long a resolved "latest" tag is trusted.
 	DefaultTTL = 24 * time.Hour
 
+	// TokenOwnersEnv names the variable listing extra owners allowed to receive
+	// the token.
+	TokenOwnersEnv = "STRSPC_TOKEN_OWNERS"
+
+	defaultTokenOwner = "SteerSpec"
+
 	// MaxExtractBytes caps the total uncompressed size extracted from one
 	// tarball (50 MB).
 	MaxExtractBytes int64 = 50 << 20
@@ -133,6 +139,42 @@ func TokenFromEnv() string {
 	return os.Getenv("GH_TOKEN")
 }
 
+// TokenOwnersFromEnv returns the owners allowed to receive the token: SteerSpec,
+// GITHUB_REPOSITORY_OWNER, and the comma-separated owners in STRSPC_TOKEN_OWNERS.
+func TokenOwnersFromEnv() []string {
+	owners := []string{defaultTokenOwner}
+	if o := os.Getenv("GITHUB_REPOSITORY_OWNER"); o != "" {
+		owners = append(owners, o)
+	}
+	for _, o := range strings.Split(os.Getenv(TokenOwnersEnv), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			owners = append(owners, o)
+		}
+	}
+	return owners
+}
+
+// TokenForOwner returns the token from the environment if TokenOwnersFromEnv
+// allows owner, and "" otherwise. It is for callers that query GitHub without a
+// Fetcher.
+func TokenForOwner(owner string) string {
+	if !ownerAllowed(TokenOwnersFromEnv(), owner) {
+		return ""
+	}
+	return TokenFromEnv()
+}
+
+// ownerAllowed reports whether owners lists owner. GitHub owner names are
+// case-insensitive.
+func ownerAllowed(owners []string, owner string) bool {
+	for _, o := range owners {
+		if strings.EqualFold(o, owner) {
+			return true
+		}
+	}
+	return false
+}
+
 // Fetcher downloads github:// references into a local cache directory.
 // The zero value is usable once CacheDir is set.
 type Fetcher struct {
@@ -141,6 +183,10 @@ type Fetcher struct {
 	Client *http.Client
 	// Token is the bearer token sent as Authorization when non-empty.
 	Token string
+	// TokenOwners limits Token to references with these owners, because a
+	// reference can come from a realm.json the user only cloned. Other owners
+	// are fetched anonymously. nil sends Token for every owner.
+	TokenOwners []string
 	// BaseURL is the API root; "" selects DefaultBaseURL.
 	BaseURL string
 	// CacheDir is required; content lands under <CacheDir>/github/.
@@ -267,7 +313,7 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
 	endpoint := fmt.Sprintf("%s/repos/%s/%s/releases/latest", f.baseURL(),
 		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo))
-	resp, err := f.get(ctx, endpoint, "application/vnd.github+json")
+	resp, err := f.get(ctx, ref, endpoint, "application/vnd.github+json")
 	if err != nil {
 		return "", err
 	}
@@ -302,7 +348,7 @@ func (f *Fetcher) fetchLatestTag(ctx context.Context, ref Ref) (string, error) {
 func (f *Fetcher) download(ctx context.Context, ref Ref, dir string) error {
 	endpoint := fmt.Sprintf("%s/repos/%s/%s/tarball/%s", f.baseURL(),
 		url.PathEscape(ref.Owner), url.PathEscape(ref.Repo), url.PathEscape(ref.Ref))
-	resp, err := f.get(ctx, endpoint, "application/vnd.github+json")
+	resp, err := f.get(ctx, ref, endpoint, "application/vnd.github+json")
 	if err != nil {
 		return err
 	}
@@ -549,7 +595,13 @@ func writeFileAtomic(p string, data []byte) error {
 	return nil
 }
 
-func (f *Fetcher) get(ctx context.Context, url, accept string) (*http.Response, error) {
+// withholdsToken reports whether a token is set but TokenOwners keeps it from
+// owner.
+func (f *Fetcher) withholdsToken(owner string) bool {
+	return f.Token != "" && f.TokenOwners != nil && !ownerAllowed(f.TokenOwners, owner)
+}
+
+func (f *Fetcher) get(ctx context.Context, ref Ref, url, accept string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("remote: building request: %w", err)
@@ -557,7 +609,7 @@ func (f *Fetcher) get(ctx context.Context, url, accept string) (*http.Response, 
 	req.Header.Set("Accept", accept)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Set("User-Agent", "strspc-manager")
-	if f.Token != "" {
+	if f.Token != "" && !f.withholdsToken(ref.Owner) {
 		req.Header.Set("Authorization", "Bearer "+f.Token)
 	}
 	resp, err := f.client().Do(req)
@@ -574,6 +626,9 @@ func (f *Fetcher) statusError(resp *http.Response, ref Ref, what string) error {
 	target := fmt.Sprintf("%s/%s@%s", ref.Owner, ref.Repo, ref.Ref)
 	switch resp.StatusCode {
 	case http.StatusNotFound:
+		if f.withholdsToken(ref.Owner) {
+			return fmt.Errorf("remote: %s for %s: %w (token not sent to owner %q; add it to %s if this repo is private)", what, target, ErrNotFound, ref.Owner, TokenOwnersEnv)
+		}
 		if f.Token == "" {
 			return fmt.Errorf("remote: %s for %s: %w (private repo or missing token; set GITHUB_TOKEN)", what, target, ErrNotFound)
 		}
@@ -582,6 +637,9 @@ func (f *Fetcher) statusError(resp *http.Response, ref Ref, what string) error {
 		return fmt.Errorf("remote: %s for %s: HTTP 401 unauthorized (invalid token)", what, target)
 	case http.StatusForbidden:
 		if resp.Header.Get("X-RateLimit-Remaining") == "0" {
+			if f.withholdsToken(ref.Owner) {
+				return fmt.Errorf("remote: %s for %s: HTTP 403 rate limited (token not sent to owner %q; add it to %s to raise the limit)", what, target, ref.Owner, TokenOwnersEnv)
+			}
 			return fmt.Errorf("remote: %s for %s: HTTP 403 rate limited (set GITHUB_TOKEN to raise the limit)", what, target)
 		}
 		return fmt.Errorf("remote: %s for %s: HTTP 403 forbidden", what, target)
