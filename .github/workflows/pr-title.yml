@@ -2,8 +2,15 @@ name: PR title
 
 # Pull requests into develop are squashed, so the title is the commit
 # release-please reads. `edited` lets a title fix clear the check without a push.
+#
+# Both triggers are temporary. `pr-title` is required on develop, and a PR that
+# swaps one trigger for the other gets no run at all, so `pull_request` is removed
+# in a follow-up PR, which then gets its check from this file on develop.
 on:
   pull_request:
+    branches: [main, develop]
+    types: [opened, edited, synchronize, reopened]
+  pull_request_target:
     branches: [main, develop]
     types: [opened, edited, synchronize, reopened]
 
