@@ -2,8 +2,14 @@ name: PR title
 
 # Pull requests into develop are squashed, so the title is the commit
 # release-please reads. `edited` lets a title fix clear the check without a push.
+#
+# pull_request_target, not pull_request: the check is required, and under
+# pull_request a PR could replace this file with a no-op that still reports
+# `pr-title`. This way the definition comes from the default branch. Safe because
+# nothing is checked out and the action only reads PR metadata; do not add a
+# checkout step here.
 on:
-  pull_request:
+  pull_request_target:
     branches: [main, develop]
     types: [opened, edited, synchronize, reopened]
 

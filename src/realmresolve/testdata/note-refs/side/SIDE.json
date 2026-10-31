@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SIDE",
+    "title": "SIDE"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "SIDE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule SIDE-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

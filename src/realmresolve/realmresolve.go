@@ -3,7 +3,8 @@
 // caches results, and detects EUID collisions across dependent Realms
 // (RR001–RR012). It also resolves the inheritance chains of the Realm's
 // entities across Realms, loading dependencies of dependencies on demand
-// (RR013–RR016).
+// (RR013–RR016), and checks the realm-qualified references in their relation
+// notes (RR017, RR018).
 package realmresolve
 
 import (
@@ -402,6 +403,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		origin:       r.cfg.Origin,
 	}
 	out.Inheritance = r.resolveInheritance(ctx, root, out.SubRealms, res)
+	r.checkNoteRefs(ctx, root, out.SubRealms, res)
 
 	return out, res
 }
