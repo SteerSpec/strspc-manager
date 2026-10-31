@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.32.0](https://github.com/SteerSpec/strspc-manager/compare/v1.31.0...v1.32.0) (2026-10-31)
+
+
+### Features
+
+* **result:** export a diagnostic code registry ([#186](https://github.com/SteerSpec/strspc-manager/issues/186)) ([54c92be](https://github.com/SteerSpec/strspc-manager/commit/54c92bed732b00ad9c991cac29d5d60f9cafe29f))
+* **rulerefs:** validate rule-id citations in text files ([#184](https://github.com/SteerSpec/strspc-manager/issues/184)) ([0183467](https://github.com/SteerSpec/strspc-manager/commit/0183467199220f95a451bbe3d9077059508329ca))
+
 ## [1.31.0](https://github.com/SteerSpec/strspc-manager/compare/v1.30.0...v1.31.0) (2026-10-31)
 
 
