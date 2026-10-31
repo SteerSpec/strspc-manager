@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -562,6 +563,103 @@ func TestTokenFromEnv(t *testing.T) {
 	t.Setenv("GITHUB_TOKEN", "github")
 	if got := TokenFromEnv(); got != "github" {
 		t.Errorf("GITHUB_TOKEN should win → %q", got)
+	}
+}
+
+func TestEnsureDir_TokenOwners(t *testing.T) {
+	tests := []struct {
+		name     string
+		owners   []string
+		owner    string
+		wantAuth string
+	}{
+		{"nil sends to every owner", nil, "o", "Bearer secret"},
+		{"listed owner", []string{"SteerSpec", "o"}, "o", "Bearer secret"},
+		{"owner case is ignored", []string{"SteerSpec"}, "steerspec", "Bearer secret"},
+		{"unlisted owner", []string{"SteerSpec"}, "o", ""},
+		{"empty list sends to nobody", []string{}, "o", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": rulesTarball(t, "o-r-1")}}
+			f, _ := newFetcher(t, g)
+			f.Token = "secret"
+			f.TokenOwners = tt.owners
+			ref := Ref{Owner: tt.owner, Repo: "r", Ref: "v1", Path: "rules/core"}
+			if _, err := f.EnsureDir(context.Background(), ref); err != nil {
+				t.Fatal(err)
+			}
+			if auth, _ := g.seenAuth.Load().(string); auth != tt.wantAuth {
+				t.Errorf("Authorization = %q, want %q", auth, tt.wantAuth)
+			}
+		})
+	}
+}
+
+func TestEnsureDir_TokenOwnersCoverReleaseLookup(t *testing.T) {
+	g := &fakeGitHub{t: t, latest404: true}
+	f, _ := newFetcher(t, g)
+	f.Token = "secret"
+	f.TokenOwners = []string{"SteerSpec"}
+	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: LatestRef})
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+	if auth, _ := g.seenAuth.Load().(string); auth != "" {
+		t.Errorf("Authorization = %q, want none", auth)
+	}
+}
+
+func TestEnsureDir_404NamesTokenOwnersEnv(t *testing.T) {
+	g := &fakeGitHub{t: t, tarballs: map[string][]byte{}}
+	f, _ := newFetcher(t, g)
+	f.Token = "secret"
+	f.TokenOwners = []string{"SteerSpec"}
+	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "private", Ref: "v1"})
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+	if !strings.Contains(err.Error(), TokenOwnersEnv) {
+		t.Errorf("error should name %s, got %q", TokenOwnersEnv, err)
+	}
+}
+
+func TestEnsureDir_RateLimitNamesTokenOwnersEnv(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(srv.Close)
+	f := &Fetcher{Client: srv.Client(), BaseURL: srv.URL, CacheDir: t.TempDir(), Token: "secret", TokenOwners: []string{"SteerSpec"}}
+	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"})
+	if err == nil || !strings.Contains(err.Error(), TokenOwnersEnv) {
+		t.Errorf("error should name %s, got %v", TokenOwnersEnv, err)
+	}
+}
+
+func TestTokenOwnersFromEnv(t *testing.T) {
+	t.Setenv("GITHUB_REPOSITORY_OWNER", "")
+	t.Setenv(TokenOwnersEnv, "")
+	if got := TokenOwnersFromEnv(); len(got) != 1 || got[0] != "SteerSpec" {
+		t.Errorf("empty env → %q", got)
+	}
+	t.Setenv("GITHUB_REPOSITORY_OWNER", "acme")
+	t.Setenv(TokenOwnersEnv, "foo, bar,,")
+	want := []string{"SteerSpec", "acme", "foo", "bar"}
+	if got := TokenOwnersFromEnv(); !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestTokenForOwner(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "secret")
+	t.Setenv("GITHUB_REPOSITORY_OWNER", "")
+	t.Setenv(TokenOwnersEnv, "acme")
+	if got := TokenForOwner("ACME"); got != "secret" {
+		t.Errorf("listed owner → %q", got)
+	}
+	if got := TokenForOwner("other"); got != "" {
+		t.Errorf("unlisted owner → %q", got)
 	}
 }
 

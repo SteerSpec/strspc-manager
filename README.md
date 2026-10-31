@@ -117,14 +117,18 @@ for the full Realm architecture.
 `develop` is the default branch and collects the changes for the next release;
 `main` only moves when a release is prepared:
 
-1. Pull requests target `develop`.
+1. Pull requests target `develop` and are **squashed**. The pull request title
+	becomes the commit release-please reads, so it decides the release note and
+	the version bump. A merge commit would list the change twice.
 2. A `chore: promote develop to main` pull request carries the bundle to `main`.
 	Merge it with a **merge commit**: release-please reads the individual
 	conventional commits, and a squash would hide them behind a single `chore:`.
 3. release-please opens its release pull request against `main`; merging it tags
 	the version and GoReleaser publishes it.
 
-`develop` is not back-merged, so it stays behind `main` by the release commits.
+The `merge-method-develop` and `merge-method-main` rulesets enforce both merge
+methods. `develop` is not back-merged, so it stays behind `main` by the release
+commits.
 
 ## References
 

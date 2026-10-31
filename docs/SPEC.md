@@ -162,7 +162,7 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.id` | string | Reverse domain notation identifier. |
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.11.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.12.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
@@ -572,7 +572,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 `<cache-dir>` is the cache directory configured on the resolver (`WithCacheDir`). Consumers SHOULD point it at a git-ignored location such as `.strspc/cache/` so downloaded rules are never committed alongside the Configuration.
 
-**Authentication.** Private repositories and higher rate limits need a token. The resolvers read `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment and send it as `Authorization: Bearer <token>`. A 404 without a token is reported as "private repo or missing token".
+**Authentication.** Private repositories and higher rate limits need a token. The resolvers read `GITHUB_TOKEN`, then `GH_TOKEN`, from the environment and send it as `Authorization: Bearer <token>`, but only for sources owned by `SteerSpec`, by `GITHUB_REPOSITORY_OWNER`, or by an owner listed in the comma-separated `STRSPC_TOKEN_OWNERS`. Any other source is fetched anonymously, because a source can come from a `realm.json` the user only cloned. A 404 without a token is reported as "private repo or missing token", and a 404 where the token was held back names `STRSPC_TOKEN_OWNERS`.
 
 **Validation after download.** A fetched directory is treated exactly like a local one: `rule-resolve` parses every entity file and verifies `rule_set.hash` (RSV003, RSV004); `realm-resolve` loads its `realm.json` and enforces the declared `realm_id` and `version` (RR003, RR004). Download failures are reported as RSV007 (rule sources) or RR012 (realm dependencies). A fetched directory holds only the requested subtree, so a relative dependency of a remote Realm that leaves it (`../core/` next to `rules/cli`, declared by the Realm or by one of its sub-realms) is rebased by `realm-resolve` onto the same repository and ref (`github://owner/repo@ref/rules/core`) when the consumer declares the Realm's origin (`WithOrigin`); a relative source that leaves the repository root is rejected (RR001).
 

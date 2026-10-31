@@ -229,10 +229,11 @@ func parseSource(e SourceEntry, cfg *Config) (Source, error) {
 				return nil, fmt.Errorf("github source %s requires a cache directory (WithCacheDir)", s)
 			}
 			cfg.Fetcher = &remote.Fetcher{
-				Token:    remote.TokenFromEnv(),
-				CacheDir: cfg.CacheDir,
-				TTL:      cfg.CacheTTL,
-				Force:    cfg.ForceSync,
+				Token:       remote.TokenFromEnv(),
+				TokenOwners: remote.TokenOwnersFromEnv(),
+				CacheDir:    cfg.CacheDir,
+				TTL:         cfg.CacheTTL,
+				Force:       cfg.ForceSync,
 			}
 		}
 		return &GitHubSource{Fetcher: cfg.Fetcher}, nil

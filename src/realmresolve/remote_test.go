@@ -317,3 +317,10 @@ func TestResolveInheritance_RemoteTransitiveDep(t *testing.T) {
 		t.Errorf("root-most ancestor = %s:%s, want dev.z:BASE", base.RealmID, base.Entity.Entity.ID)
 	}
 }
+
+func TestNew_DefaultFetcherLimitsToken(t *testing.T) {
+	r := New(WithCacheDir(t.TempDir()))
+	if r.cfg.Fetcher == nil || len(r.cfg.Fetcher.TokenOwners) == 0 {
+		t.Errorf("default fetcher has no TokenOwners: %+v", r.cfg.Fetcher)
+	}
+}
