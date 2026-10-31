@@ -68,54 +68,13 @@ type chainState struct {
 // against the inherited rule sets (RR015, RR016). Nothing is loaded when no
 // entity uses inheritance.
 func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, res *result.Result) []*Inheritance {
-	entities := make(map[string]*entity.File)
-	paths := make(map[string]string)
-	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		for id, e := range rr.Entities {
-			entities[id] = e
-			paths[id] = rr.EUIDs[id]
-		}
-	}
+	entities, paths := treeEntities(root, subs)
 	if !usesInheritance(entities) {
 		return nil
 	}
-
-	s := &chainState{
-		r:        r,
-		ctx:      ctx,
-		res:      res,
-		loaded:   make(map[string]*ResolvedRealm),
-		nodes:    make(map[*ResolvedRealm]*node),
-		treeNode: make(map[string]*node),
-	}
+	s := r.newChainState(ctx, root, subs, entities, res)
 	rootSubs := subRealmIDs(root.Realm)
-	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm)}
-		for _, d := range rr.Dependencies {
-			n.deps[d.Realm.Realm.ID] = d
-			s.loaded[d.Realm.Realm.ID+"@"+d.Realm.Realm.Version] = d
-		}
-		s.nodes[rr] = n
-		for id := range rr.Entities {
-			s.treeNode[id] = n
-		}
-	}
-	// Declared dependencies that failed to resolve are cached as failed, so
-	// a dependency Realm declaring the same realm_id@version does not load
-	// it again and repeat its diagnostics.
-	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		for _, decl := range rr.Realm.Dependencies {
-			if _, ok := s.loaded[decl.RealmID+"@"+decl.Version]; !ok {
-				s.loaded[decl.RealmID+"@"+decl.Version] = nil
-			}
-		}
-	}
-
-	ids := make([]string, 0, len(entities))
-	for id := range entities {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
+	ids := sortedIDs(entities)
 
 	var out []*Inheritance
 	chains := make(map[string][]inherit.Hop)
@@ -151,6 +110,66 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 	return out
 }
 
+// treeEntities indexes the entities of the root Realm and its sub-realms by
+// EUID, with the file holding each.
+func treeEntities(root *ResolvedRealm, subs []*ResolvedRealm) (entities map[string]*entity.File, paths map[string]string) {
+	entities = make(map[string]*entity.File)
+	paths = make(map[string]string)
+	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
+		for id, e := range rr.Entities {
+			entities[id] = e
+			paths[id] = rr.EUIDs[id]
+		}
+	}
+	return entities, paths
+}
+
+// sortedIDs returns the keys of entities in order.
+func sortedIDs(entities map[string]*entity.File) []string {
+	ids := make([]string, 0, len(entities))
+	for id := range entities {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// newChainState builds the state and tree nodes for resolving references
+// made by the entities of the root Realm and its sub-realms.
+func (r *RealmResolver) newChainState(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, entities map[string]*entity.File, res *result.Result) *chainState {
+	s := &chainState{
+		r:        r,
+		ctx:      ctx,
+		res:      res,
+		loaded:   make(map[string]*ResolvedRealm),
+		nodes:    make(map[*ResolvedRealm]*node),
+		treeNode: make(map[string]*node),
+	}
+	rootSubs := subRealmIDs(root.Realm)
+	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
+		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm)}
+		for _, d := range rr.Dependencies {
+			n.deps[d.Realm.Realm.ID] = d
+			s.loaded[d.Realm.Realm.ID+"@"+d.Realm.Realm.Version] = d
+		}
+		s.nodes[rr] = n
+		for id := range rr.Entities {
+			s.treeNode[id] = n
+		}
+	}
+	// Declared dependencies that failed to resolve are cached as failed, so
+	// a dependency Realm declaring the same realm_id@version does not load
+	// it again and repeat its diagnostics.
+	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
+		for _, decl := range rr.Realm.Dependencies {
+			if _, ok := s.loaded[decl.RealmID+"@"+decl.Version]; !ok {
+				s.loaded[decl.RealmID+"@"+decl.Version] = nil
+			}
+		}
+	}
+	return s
+}
+
 // subRealmIDs returns the IDs of the sub-realms rf declares.
 func subRealmIDs(rf *entity.RealmFile) []string {
 	ids := make([]string, 0, len(rf.SubRealms))
@@ -173,6 +192,12 @@ func supersededRules(entities map[string]*entity.File) map[string]bool {
 		}
 	}
 	return out
+}
+
+// isLive reports whether r is in force: not Abandoned, Terminated or in
+// superseded.
+func isLive(r entity.Rule, superseded map[string]bool) bool {
+	return r.State != entity.StateAbandoned && r.State != entity.StateTerminated && !superseded[r.ID]
 }
 
 // usesInheritance reports whether any entity declares inherits or has a
@@ -214,7 +239,7 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 			})
 			return nil, false
 		}
-		next, target, problem := s.lookup(cur, curEnt.Entity.Inherits)
+		next, target, failure := s.lookup(cur, curEnt.Entity.Inherits)
 		if target == nil {
 			who := e.Entity.ID
 			if curEnt != e {
@@ -224,7 +249,7 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 				Module:   module,
 				Code:     "RR013",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("entity %s: inherits %q cannot be resolved: %s", who, curEnt.Entity.Inherits, problem),
+				Message:  fmt.Sprintf("entity %s: inherits %q cannot be resolved: %s", who, curEnt.Entity.Inherits, failure.reason),
 				Path:     path,
 			})
 			return nil, false
@@ -248,13 +273,33 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 	return ancestors, true
 }
 
-// lookup resolves an `inherits` reference made by an entity held by n. A
+// lookupFailure says why lookup found no entity.
+type lookupFailure struct {
+	kind   failureKind
+	reason string
+}
+
+// failureKind classifies a failed lookup.
+type failureKind int
+
+const (
+	// noEntity: the Realm is known but does not hold the entity.
+	noEntity failureKind = iota
+	// undeclaredRealm: the qualifier is neither n's namespace, a dependency
+	// of n's Realm nor a declared sub-realm of one.
+	undeclaredRealm
+	// unresolvedDependency: the Realm is declared but failed to resolve, and
+	// its diagnostics were already reported.
+	unresolvedDependency
+)
+
+// lookup resolves a reference to an entity made by an entity held by n. A
 // short EUID, or one qualified with n's Realm or a sub-realm its manifest
 // declares, names an entity of n's own namespace; any other qualifier must
 // be a dependency of n's Realm or a declared sub-realm of one, loaded on
 // demand for dependency Realms. On failure it returns a nil entity and the
 // reason.
-func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
+func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, lookupFailure) {
 	realmID, euid, qualified := strings.Cut(ref, ":")
 	if !qualified {
 		euid = ref
@@ -262,7 +307,7 @@ func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 	}
 	if realmID == n.ns || slices.Contains(n.subRealmIDs, realmID) {
 		if e, ok := n.entities[euid]; ok {
-			return s.nodeOf(n, euid), e, ""
+			return s.nodeOf(n, euid), e, lookupFailure{}
 		}
 		problem := fmt.Sprintf("no entity %s in realm %s", euid, n.ns)
 		if !qualified {
@@ -270,7 +315,7 @@ func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 				problem += fmt.Sprintf("; it exists in dependency %s, so use the qualified form %s:%s", dep, dep, euid)
 			}
 		}
-		return nil, nil, problem
+		return nil, nil, lookupFailure{noEntity, problem}
 	}
 	depID := realmID
 	dep, declared := s.dependency(n, realmID)
@@ -279,15 +324,15 @@ func (s *chainState) lookup(n *node, ref string) (*node, *entity.File, string) {
 	}
 	switch {
 	case !declared:
-		return nil, nil, fmt.Sprintf("realm %s is not a dependency of realm %s", realmID, n.realm.Realm.Realm.ID)
+		return nil, nil, lookupFailure{undeclaredRealm, fmt.Sprintf("realm %s is not a dependency of realm %s", realmID, n.realm.Realm.Realm.ID)}
 	case dep == nil:
-		return nil, nil, fmt.Sprintf("dependency %s of realm %s could not be resolved", depID, n.realm.Realm.Realm.ID)
+		return nil, nil, lookupFailure{unresolvedDependency, fmt.Sprintf("dependency %s of realm %s could not be resolved", depID, n.realm.Realm.Realm.ID)}
 	}
 	e, ok := dep.Entities[euid]
 	if !ok {
-		return nil, nil, fmt.Sprintf("no entity %s in realm %s", euid, realmID)
+		return nil, nil, lookupFailure{noEntity, fmt.Sprintf("no entity %s in realm %s", euid, realmID)}
 	}
-	return s.depNode(dep), e, ""
+	return s.depNode(dep), e, lookupFailure{}
 }
 
 // nodeOf returns the node holding euid within n's namespace: for the
@@ -423,7 +468,7 @@ func depVersion(deps []entity.RealmDep, realmID string) string {
 func checkOverrides(child inherit.Hop, ancestors []inherit.Hop, superseded map[string]bool, path string, res *result.Result) {
 	var inherited map[string]inherit.Rule
 	for _, r := range child.Entity.Rules {
-		if r.Overrides == nil || r.State == entity.StateAbandoned || r.State == entity.StateTerminated || superseded[r.ID] {
+		if r.Overrides == nil || !isLive(r, superseded) {
 			continue
 		}
 		if child.Entity.Entity.Inherits == "" {

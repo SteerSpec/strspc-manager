@@ -515,6 +515,8 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RR014 | Error | An inheritance chain, followed across Realms, is cyclic or longer than three hops. |
 | RR015 | Error | A live rule's `overrides` target is not in the entity's inherited rule set: the entity inherits nothing, the target is unknown, or an ancestor already overrides it. |
 | RR016 | Warning | A live rule's `overrides` target exists in the chain but is not Published or Implemented, so it is not inherited and the override has no effect. |
+| RR017 | Error | A `supersedes`/`extends`/`related` note of a live rule qualifies a reference with a Realm outside the tree that is neither a dependency of the note's Realm nor a declared sub-realm of one (NTE-007). |
+| RR018 | Error | A `supersedes`/`extends`/`related` note of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version. |
 
 #### `rule-resolve` (RSV)
 
@@ -601,7 +603,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 11. If `rule_set.hash` is present, recompute Blake3 over canonical JSON and verify match.
 12. Cross-file references: each rule's `supersedes` points to an existing rule ID within the scanned realm.
 13. `rule_set.version` is valid semver.
-14. Relation notes (`supersedes`, `extends`, `related`): every unqualified `<EUID>-<NNN>` reference in the note content points to an existing rule ID within the scanned realm. Qualified `<realm-id>:<EUID>-<NNN>` references target another realm and are not checked here.
+14. Relation notes (`supersedes`, `extends`, `related`): every unqualified `<EUID>-<NNN>` reference in the note content points to an existing rule ID within the scanned realm. Qualified `<realm-id>:<EUID>-<NNN>` references target another realm and are checked by `realm-resolve` (RR017, RR018).
 15. Note numbers under each rule are sequential from `01` — no gaps, no duplicates.
 16. Inheritance references: an unqualified `inherits` target is an entity, and an unqualified `overrides` target a rule, within the scanned realm. Qualified targets are resolved by `realm-resolve`.
 17. Within an entity, at most one live rule overrides a given target.

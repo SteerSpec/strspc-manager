@@ -1,0 +1,10 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.brk.auth",
+    "title": "dev.brk.auth",
+    "version": "0.1.0"
+  },
+  "dependencies": [],
+  "rule_identifier_format": null
+}

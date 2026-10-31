@@ -920,7 +920,7 @@ func checkInheritChain(ef *entity.File, fpath string, inherits map[string]string
 // checkNoteCrossRefs implements RL014: every unqualified rule reference
 // (<EUID>-<NNN>) found in the content of a supersedes/extends/related note
 // must resolve to a rule in the scanned set. Qualified references
-// (<realm-id>:<EUID>-<NNN>) point outside this realm and are not checked.
+// (<realm-id>:<EUID>-<NNN>) are checked by realm-resolve (RR017, RR018).
 func checkNoteCrossRefs(ef *entity.File, fpath string, allRuleIDs map[string]string, res *result.Result, sev result.Severity) {
 	for _, n := range ef.Notes {
 		if !relationNoteTypes[n.Type] {
@@ -962,7 +962,7 @@ func checkBodyCrossRefs(ef *entity.File, fpath string, allRuleIDs, states map[st
 		reported := make(map[string]bool)
 		for _, m := range crossRefRe.FindAllStringSubmatch(inlineCodeRe.ReplaceAllString(r.Body, " "), -1) {
 			if strings.Contains(m[0], ":") {
-				continue // cross-realm reference; resolved by realm-resolve
+				continue // qualified reference; rule bodies are not checked across realms
 			}
 			ref := m[1] + "-" + m[2]
 			if ref == r.ID || reported[ref] {
@@ -1001,7 +1001,7 @@ func checkNoteAbandonedRefs(ef *entity.File, fpath string, states map[string]str
 		reported := make(map[string]bool)
 		for _, m := range crossRefRe.FindAllStringSubmatch(n.Content, -1) {
 			if strings.Contains(m[0], ":") {
-				continue // cross-realm reference; resolved by realm-resolve
+				continue // qualified reference; realm-resolve checks it exists, not its state
 			}
 			ref := m[1] + "-" + m[2]
 			if reported[ref] || states[ref] != entity.StateAbandoned {
