@@ -1,6 +1,7 @@
 package realmlint
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -453,13 +454,31 @@ func TestRM013_SubRealmIdentifierFormat(t *testing.T) {
 }
 
 func TestRM017_SubRealmLanguage(t *testing.T) {
-	dir := filepath.Join(testdataPath(t), "invalid", "sub_realm_language")
-	linter := New()
-	res := linter.Lint(context.Background(), dir)
+	// RLM-018 forbids declaring the key, so an empty or null value counts.
+	for _, value := range []string{`"en"`, `""`, `null`} {
+		t.Run(value, func(t *testing.T) {
+			dir := t.TempDir()
+			src := filepath.Join(testdataPath(t), "invalid", "sub_realm_language")
+			if err := os.CopyFS(dir, os.DirFS(src)); err != nil {
+				t.Fatal(err)
+			}
+			manifest := filepath.Join(dir, "sync", "realm.json")
+			data, err := os.ReadFile(manifest)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data = bytes.Replace(data, []byte(`"language": "en"`), []byte(`"language": `+value), 1)
+			if err := os.WriteFile(manifest, data, 0o600); err != nil {
+				t.Fatal(err)
+			}
 
-	assertHasCode(t, res, "RM017")
-	if res.OK() {
-		t.Error("expected errors for sub-realm with its own language")
+			res := New().Lint(context.Background(), dir)
+
+			assertHasCode(t, res, "RM017")
+			if res.OK() {
+				t.Error("expected errors for sub-realm that declares language")
+			}
+		})
 	}
 }
 
