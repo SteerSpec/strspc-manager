@@ -10,6 +10,12 @@
 set -euo pipefail
 
 threshold="${COVERAGE_THRESHOLD:-85}"
+# awk reads anything else as 0, which would turn the floor off.
+if ! [[ "$threshold" =~ ^[0-9]+(\.[0-9]+)?$ ]] || ! awk -v t="$threshold" 'BEGIN { exit !(t + 0 <= 100) }'; then
+  echo "COVERAGE_THRESHOLD must be a number from 0 to 100, got: $threshold" >&2
+  exit 1
+fi
+
 output="$(mktemp)"
 trap 'rm -f "$output"' EXIT
 
