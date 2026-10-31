@@ -1,0 +1,839 @@
+[
+  {
+    "code": "EC001",
+    "module": "eval-cache",
+    "severity": "Info",
+    "title": "Evaluation cache recreated",
+    "summary": "The evaluation cache file was corrupt and has been discarded and recreated.",
+    "fix": "No action is needed. Verdicts lost with the old cache are evaluated again on the next run.",
+    "retired": false
+  },
+  {
+    "code": "RD000",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Entity file unavailable for comparison",
+    "summary": "The base or head entity file is nil, cannot be read, or cannot be parsed.",
+    "fix": "Check that the file exists and parses at both versions, and that both git refs are available.",
+    "retired": false
+  },
+  {
+    "code": "RD001",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Invalid Draft body edit",
+    "summary": "A Draft rule body was edited without incrementing the revision, or together with a state change.",
+    "fix": "Change the body in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+    "retired": false
+  },
+  {
+    "code": "RD002",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Immutable rule body edited",
+    "summary": "The body of a rule that has left Draft was edited.",
+    "fix": "Restore the original body. To change the text, add a replacement with `strspc rule supersede`.",
+    "retired": false
+  },
+  {
+    "code": "RD003",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Illegal state transition",
+    "summary": "A state transition is not allowed by the state machine (§3.2).",
+    "fix": "Use only D→P, D→A, P→I, I→R and R→T; `A` and `T` are final. `strspc rule promote`, `retire` and `abandon` apply these.",
+    "retired": false
+  },
+  {
+    "code": "RD004",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Invalid new rule",
+    "summary": "A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive.",
+    "fix": "Add rules with `strspc rule add`, which starts them at revision 0 in state `D` with the next number.",
+    "retired": false
+  },
+  {
+    "code": "RD005",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Deleted content",
+    "summary": "A rule, sub-entity or entity file present in the base version was deleted.",
+    "fix": "Restore what was deleted. To end a rule, abandon it from Draft with `strspc rule abandon` or take it to `T` with `strspc rule retire`.",
+    "retired": false
+  },
+  {
+    "code": "RD006",
+    "module": "rule-diff",
+    "severity": "Warning",
+    "title": "Superseded rule not retired",
+    "summary": "A superseding rule reached `I` but the superseded rule is missing or not in state `R`.",
+    "fix": "Retire the superseded rule with `strspc rule retire`, or restore it if it is missing.",
+    "retired": false
+  },
+  {
+    "code": "RD007",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Rule set version not raised",
+    "summary": "`rule_set.version` is not valid semver or not strictly higher than the base version.",
+    "fix": "Set `rule_set.version` to a valid semantic version above the base version.",
+    "retired": false
+  },
+  {
+    "code": "RD008",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Invalid rule set hash",
+    "summary": "`rule_set.hash` cannot be computed or differs from the Blake3 hash of the head file.",
+    "fix": "Run `strspc entity rehash <EUID>`. Make later changes through `strspc rule` and `strspc note`, which keep the hash valid.",
+    "retired": false
+  },
+  {
+    "code": "RD009",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Rule set timestamp unchanged",
+    "summary": "`rule_set.timestamp` is unchanged from the base version.",
+    "fix": "Update `rule_set.timestamp` to the time of the change. `strspc rule` and `strspc note` commands do this.",
+    "retired": false
+  },
+  {
+    "code": "RD010",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Rule number reused",
+    "summary": "A new rule reuses a rule number present in the base version.",
+    "fix": "Give the new rule the next unused number. `strspc rule add` picks it.",
+    "retired": false
+  },
+  {
+    "code": "RD011",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Missing added_by",
+    "summary": "A new rule or new note has an empty `added_by`.",
+    "fix": "Set `added_by` to the contributor's email address or `@handle`.",
+    "retired": false
+  },
+  {
+    "code": "RD012",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Append-only note removed or retyped",
+    "summary": "An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped.",
+    "fix": "Restore the note as it was, and add a new note for any correction.",
+    "retired": false
+  },
+  {
+    "code": "RD013",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Note revision out of step",
+    "summary": "A note's content or type changed without its revision incrementing by exactly 1, or its revision changed without a content or type change.",
+    "fix": "Raise the note's revision by exactly 1 with each content or type change, and leave it alone otherwise. `strspc note update` does this.",
+    "retired": false
+  },
+  {
+    "code": "RD014",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Note removed",
+    "summary": "A note that is not append-only and is present in the base version was removed.",
+    "fix": "Restore the note. Revise it with `strspc note update` instead of removing it.",
+    "retired": false
+  },
+  {
+    "code": "RD015",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Invalid new note revision",
+    "summary": "A new note has revision ≠ 0.",
+    "fix": "Set the new note's revision to 0, or add it with `strspc note add`.",
+    "retired": false
+  },
+  {
+    "code": "RD016",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Append-only note edited",
+    "summary": "The content of an append-only note changed.",
+    "fix": "Restore the note as it was, and add a new note for any correction.",
+    "retired": false
+  },
+  {
+    "code": "RD017",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Inheritance changed after Draft",
+    "summary": "`inherits` changed or was removed on an entity whose base version has a rule beyond Draft.",
+    "fix": "Restore `inherits`. It is fixed once a rule has left Draft, so give a different parent to a new entity.",
+    "retired": false
+  },
+  {
+    "code": "RD018",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Override changed after Draft",
+    "summary": "`overrides` was added, removed or retargeted on a rule that has left Draft.",
+    "fix": "Restore `overrides`. To override a different target, add a new rule with `strspc rule add --overrides`.",
+    "retired": false
+  },
+  {
+    "code": "RD019",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Malformed added_by",
+    "summary": "A new rule or new note has an `added_by` that is not an email address or `@handle`.",
+    "fix": "Write `added_by` as an email address or an `@handle`.",
+    "retired": false
+  },
+  {
+    "code": "RE001",
+    "module": "rule-eval",
+    "severity": "Warning / Error",
+    "title": "Rule violated",
+    "summary": "The diff violates a rule; Error when the rule's state is in `fail_on`, Warning otherwise.",
+    "fix": "Change the code to satisfy the rule, or supersede the rule if it no longer holds. The `fail_on` setting decides whether a violation blocks.",
+    "retired": false
+  },
+  {
+    "code": "RE002",
+    "module": "rule-eval",
+    "severity": "Warning",
+    "title": "AI evaluation failed",
+    "summary": "The AI provider failed for a rule or entity, or returned no verdict or an unrecognized one.",
+    "fix": "Read the provider error in the message and run the check again. The affected rules were not judged; this warning never blocks on its own.",
+    "retired": false
+  },
+  {
+    "code": "RE003",
+    "module": "rule-eval",
+    "severity": "Info",
+    "title": "AI evaluation skipped",
+    "summary": "AI evaluation skipped because the evaluator runs in static-only mode.",
+    "fix": "No action is needed for a static run. To evaluate rules with AI, set `evaluator.provider` to `claude` and provide `ANTHROPIC_API_KEY`.",
+    "retired": false
+  },
+  {
+    "code": "RE004",
+    "module": "rule-eval",
+    "severity": "Info",
+    "title": "Nothing to evaluate",
+    "summary": "The diff is empty; nothing to evaluate.",
+    "fix": "No action is needed. If you expected changes, check the refs being compared.",
+    "retired": false
+  },
+  {
+    "code": "RL000",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Entity file unreadable",
+    "summary": "The entity file is nil, or a file or directory cannot be read while scanning.",
+    "fix": "Check that the file or directory exists and is readable.",
+    "retired": false
+  },
+  {
+    "code": "RL001",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Invalid entity JSON",
+    "summary": "The file is not valid JSON or does not parse into the entity structure.",
+    "fix": "Fix the JSON syntax, or the field whose type does not match the entity structure.",
+    "retired": false
+  },
+  {
+    "code": "RL002",
+    "module": "rule-lint",
+    "severity": "Info / Error",
+    "title": "Schema validation failed",
+    "summary": "Info if no schema fetcher is set; Error if the schema fails to load or validation fails.",
+    "fix": "Fix the fields the schema error names. If the schema failed to load, check the `dev.steerspec.core` version the Realm pins and your network connection. The Info form means the caller set no schema fetcher, so validation was skipped.",
+    "retired": false
+  },
+  {
+    "code": "RL003",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Malformed EUID",
+    "summary": "The EUID is not 3–18 alphanumeric characters.",
+    "fix": "Use an entity ID of 3 to 18 letters and digits, with no separators, and change the rule IDs to match.",
+    "retired": false
+  },
+  {
+    "code": "RL004",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Malformed rule ID",
+    "summary": "A rule ID is not `<EUID>-<NNN>`, or its prefix differs from the entity ID.",
+    "fix": "Write the rule ID as `<EUID>-<NNN>`, with exactly three digits and the entity's ID as the prefix.",
+    "retired": false
+  },
+  {
+    "code": "RL005",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Rule numbers out of sequence",
+    "summary": "Rule numbers are duplicated or not sequential from 001.",
+    "fix": "Number the rules from 001 with no gaps or repeats. Restore a deleted rule rather than renumbering the others.",
+    "retired": false
+  },
+  {
+    "code": "RL006",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Unknown rule state",
+    "summary": "A rule state is outside `D`, `A`, `P`, `I`, `R`, `T`.",
+    "fix": "Set the state to one of `D`, `A`, `P`, `I`, `R` or `T`.",
+    "retired": false
+  },
+  {
+    "code": "RL007",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Sub-entity parent mismatch",
+    "summary": "A sub-entity `parent` differs from the containing entity ID.",
+    "fix": "Set the sub-entity's `parent` to the ID of the entity that contains it.",
+    "retired": false
+  },
+  {
+    "code": "RL008",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Note references a missing rule",
+    "summary": "A note `rule_ref` names a rule that does not exist in the same entity.",
+    "fix": "Point `rule_ref` at a rule in this entity, or add the rule it names.",
+    "retired": false
+  },
+  {
+    "code": "RL009",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Malformed note ID",
+    "summary": "A note ID is not `<rule_id>/<NN>`, or its prefix differs from `rule_ref`.",
+    "fix": "Write the note ID as `<rule_id>/<NN>`, with exactly two digits and the same rule ID as `rule_ref`.",
+    "retired": false
+  },
+  {
+    "code": "RL010",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Unknown note type",
+    "summary": "A note type is outside the closed enum.",
+    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends` or `related`.",
+    "retired": false
+  },
+  {
+    "code": "RL011",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Invalid rule set hash",
+    "summary": "`rule_set.hash` is malformed, cannot be computed, or differs from the Blake3 hash of the file.",
+    "fix": "Run `strspc entity rehash <EUID>`. Make later changes through `strspc rule` and `strspc note`, which keep the hash valid.",
+    "retired": false
+  },
+  {
+    "code": "RL012",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Superseded rule not found",
+    "summary": "A rule's `supersedes` names a rule ID not found in the scanned files.",
+    "fix": "Correct the rule ID in `supersedes`, or include the file that holds the rule in the scan.",
+    "retired": false
+  },
+  {
+    "code": "RL013",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Invalid rule set version",
+    "summary": "`rule_set.version` is not valid semver.",
+    "fix": "Set `rule_set.version` to a semantic version such as `1.2.0`.",
+    "retired": false
+  },
+  {
+    "code": "RL014",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Note reference not found",
+    "summary": "A `supersedes`/`extends`/`related` note references an unqualified rule ID that was not found.",
+    "fix": "Correct the rule ID, or qualify it as `<realm-id>:<EUID>-NNN` if the rule lives in another Realm.",
+    "retired": false
+  },
+  {
+    "code": "RL015",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Note numbers out of sequence",
+    "summary": "Note numbers under a rule are duplicated or not sequential from 01.",
+    "fix": "Number the notes under each rule from 01 with no gaps or repeats.",
+    "retired": false
+  },
+  {
+    "code": "RL016",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Inheritance target not found",
+    "summary": "An unqualified `inherits` target is not an entity in the scanned files, or an unqualified `overrides` target is not a rule in them.",
+    "fix": "Correct the target, or qualify it with its Realm, as in `<realm-id>:<EUID>-NNN`, if it lives in a dependency.",
+    "retired": false
+  },
+  {
+    "code": "RL017",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Duplicate override",
+    "summary": "Two live rules of one entity override the same target. A rule is live unless it is `A` or `T` or a rule that is not `A` supersedes it.",
+    "fix": "Keep one override of the target. Abandon a Draft duplicate with `strspc rule abandon`, or replace a later-stage rule with `strspc rule supersede`.",
+    "retired": false
+  },
+  {
+    "code": "RL018",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Inheritance chain invalid",
+    "summary": "An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops.",
+    "fix": "Change `inherits` so the chain visits no entity twice and ends within three hops.",
+    "retired": false
+  },
+  {
+    "code": "RL019",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Body reference not found",
+    "summary": "The body of a `D`, `P` or `I` rule references an unqualified rule ID that was not found. Text in backticks is ignored.",
+    "fix": "Correct the rule ID, or wrap the text in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RL020",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Reference to an abandoned rule",
+    "summary": "The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies.",
+    "fix": "Point the reference at a rule still in force. In a body, wrap the ID in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RL021",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Rule body has no key word",
+    "summary": "A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored.",
+    "fix": "Reword the rule around a key word such as MUST or SHOULD, or `DEFINES` for a definition, with `strspc rule update`.",
+    "retired": false
+  },
+  {
+    "code": "RL022",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Rule body has several sentences",
+    "summary": "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored.",
+    "fix": "Cut the body to one sentence with `strspc rule update`, and put any further requirement in its own rule.",
+    "retired": false
+  },
+  {
+    "code": "RM001",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Realm manifest unreadable",
+    "summary": "`realm.json` cannot be read or parsed.",
+    "fix": "Check that `realm.json` exists, is readable and holds valid JSON.",
+    "retired": false
+  },
+  {
+    "code": "RM002",
+    "module": "realm-lint",
+    "severity": "Info / Error",
+    "title": "Realm schema validation failed",
+    "summary": "Info if no schema fetcher is set; Error if the schema fails to load or validation fails.",
+    "fix": "Fix the fields the schema error names. If the schema failed to load, check the `dev.steerspec.core` version the Realm pins and your network connection. The Info form means the caller set no schema fetcher, so validation was skipped.",
+    "retired": false
+  },
+  {
+    "code": "RM003",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Missing _schema/ directory",
+    "summary": "`_schema/` is missing, inaccessible, or not a directory.",
+    "fix": "Create `_schema/` as a directory in the Realm, holding the schemas of the core version it pins.",
+    "retired": false
+  },
+  {
+    "code": "RM004",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Missing entity schema",
+    "summary": "`_schema/entity.v1.schema.json` is missing or inaccessible.",
+    "fix": "Add `_schema/entity.v1.schema.json`, copied from the `dev.steerspec.core` release the Realm pins.",
+    "retired": false
+  },
+  {
+    "code": "RM005",
+    "module": "realm-lint",
+    "severity": "Info / Error",
+    "title": "Entity files not linted",
+    "summary": "Info if no rule linter is configured; Error if a path cannot be accessed or the walk fails.",
+    "fix": "Check that the reported path exists and is readable. The Info form means the caller set no rule linter, so entity files were skipped.",
+    "retired": false
+  },
+  {
+    "code": "RM006",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Duplicate EUID in the Realm",
+    "summary": "The same EUID appears in more than one entity or sub-entity of the realm.",
+    "fix": "Rename one of the entities so that each EUID appears once in the Realm.",
+    "retired": false
+  },
+  {
+    "code": "RM007",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Invalid Realm identity",
+    "summary": "`realm.id` is missing or not reverse-domain notation, or `realm.version` is missing or not semver.",
+    "fix": "Set `realm.id` in reverse-domain notation, such as `dev.example.billing`, and `realm.version` to a semantic version.",
+    "retired": false
+  },
+  {
+    "code": "RM008",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Invalid sub-realm entry",
+    "summary": "A `sub_realms` entry is not a clean directory name, or its directory does not exist.",
+    "fix": "Make the entry a plain directory name inside the Realm, and create that directory if it is missing.",
+    "retired": false
+  },
+  {
+    "code": "RM009",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Sub-realm manifest invalid",
+    "summary": "A sub-realm has no `realm.json`, or it cannot be parsed.",
+    "fix": "Give the sub-realm a valid `realm.json`. `strspc realm add-subrealm` scaffolds one.",
+    "retired": false
+  },
+  {
+    "code": "RM010",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Sub-realm ID mismatch",
+    "summary": "A sub-realm `realm.id` is not `<parent id>.<directory name>`.",
+    "fix": "Set the sub-realm's `realm.id` to `<parent id>.<directory name>`.",
+    "retired": false
+  },
+  {
+    "code": "RM011",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Nested sub-realms",
+    "summary": "A sub-realm declares its own `sub_realms`.",
+    "fix": "Remove `sub_realms` from the sub-realm: Realms nest one level only. Declare the Realm on the top-level manifest instead.",
+    "retired": false
+  },
+  {
+    "code": "RM012",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "EUID collision with a sub-realm",
+    "summary": "An EUID in a sub-realm collides with the parent realm or a sibling sub-realm.",
+    "fix": "Rename one of the entities so that each EUID appears once across the parent and its sub-realms.",
+    "retired": false
+  },
+  {
+    "code": "RM013",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Sub-realm sets a rule identifier format",
+    "summary": "A sub-realm `realm.json` sets `rule_identifier_format`; a sub-realm inherits its parent's format (RLM-015).",
+    "fix": "Remove `rule_identifier_format` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
+    "retired": false
+  },
+  {
+    "code": "RM014",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Dependency pin mismatch",
+    "summary": "A dependency's `version` differs from the release tag in its `github://` `source`, or the dependency's own manifest declares another `realm.id` or `realm.version`.",
+    "fix": "Make the dependency's `version`, the tag in its `source` and its own manifest agree.",
+    "retired": false
+  },
+  {
+    "code": "RM015",
+    "module": "realm-lint",
+    "severity": "Warning",
+    "title": "_schema/ differs from the pinned core",
+    "summary": "A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports.",
+    "fix": "Copy the file from the pinned `dev.steerspec.core` release into `_schema/`, or pin the release you meant.",
+    "retired": false
+  },
+  {
+    "code": "RM016",
+    "module": "realm-lint",
+    "severity": "Warning",
+    "title": "Dependency unavailable",
+    "summary": "A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run.",
+    "fix": "Check the dependency's `source`, your network connection and your GitHub token, then run the check again.",
+    "retired": false
+  },
+  {
+    "code": "RR000",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Realm resolution interrupted",
+    "summary": "The context was cancelled or timed out during resolution.",
+    "fix": "Run it again with a longer timeout, or find what cancelled it.",
+    "retired": false
+  },
+  {
+    "code": "RR001",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Invalid dependency source",
+    "summary": "A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin.",
+    "fix": "Use a relative path that stays inside the repository, or a `github://<owner>/<repo>@<ref>[/<path>]` reference.",
+    "retired": false
+  },
+  {
+    "code": "RR002",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Dependency cannot be loaded",
+    "summary": "Dependency directory or `realm.json` cannot be loaded, or an entity file is unreadable or invalid.",
+    "fix": "Check that the directory holds a valid `realm.json`, then run `strspc realm validate` on it to find the entity file at fault.",
+    "retired": false
+  },
+  {
+    "code": "RR003",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Dependency Realm ID mismatch",
+    "summary": "A dependency's `realm.id` differs from the declared `realm_id`.",
+    "fix": "Set `realm_id` to the `realm.id` in the dependency's `realm.json`, or point `source` at the Realm you meant.",
+    "retired": false
+  },
+  {
+    "code": "RR004",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Dependency version mismatch",
+    "summary": "A dependency's `realm.version` differs from the declared `version`.",
+    "fix": "Set `version` to the `realm.version` in the dependency's `realm.json`, or point `source` at the release you meant.",
+    "retired": false
+  },
+  {
+    "code": "RR005",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "EUID collision between Realms",
+    "summary": "An EUID collides between the parent realm and a dependency, or between two dependencies.",
+    "fix": "Rename the entity in a Realm you own, or drop one of the colliding dependencies.",
+    "retired": false
+  },
+  {
+    "code": "RR006",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Realm depends on itself",
+    "summary": "A dependency's `realm_id` is the realm or sub-realm that declares it.",
+    "fix": "Remove the dependency: a Realm or sub-realm cannot depend on itself.",
+    "retired": false
+  },
+  {
+    "code": "RR007",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Invalid sub-realm entry",
+    "summary": "A `sub_realms` entry is not a clean directory name, or its directory does not exist.",
+    "fix": "Make the entry a plain directory name inside the Realm, and create that directory if it is missing.",
+    "retired": false
+  },
+  {
+    "code": "RR008",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Sub-realm manifest unreadable",
+    "summary": "A sub-realm's `realm.json` cannot be loaded.",
+    "fix": "Give the sub-realm a valid `realm.json`. `strspc realm add-subrealm` scaffolds one.",
+    "retired": false
+  },
+  {
+    "code": "RR009",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Sub-realm ID mismatch",
+    "summary": "A sub-realm `realm.id` is not `<parent id>.<directory name>`.",
+    "fix": "Set the sub-realm's `realm.id` to `<parent id>.<directory name>`.",
+    "retired": false
+  },
+  {
+    "code": "RR010",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Nested sub-realms",
+    "summary": "A sub-realm declares its own `sub_realms`.",
+    "fix": "Remove `sub_realms` from the sub-realm: Realms nest one level only. Declare the Realm on the top-level manifest instead.",
+    "retired": false
+  },
+  {
+    "code": "RR011",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "EUID collision with a sub-realm",
+    "summary": "An EUID in a sub-realm collides with the parent, a sibling sub-realm, or an effective dependency.",
+    "fix": "Rename the entity in the sub-realm, or in another Realm you own, so that the EUID is unique.",
+    "retired": false
+  },
+  {
+    "code": "RR012",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Dependency cannot be fetched",
+    "summary": "A `github://` dependency cannot be fetched (bad reference, no fetcher or cache dir, download error).",
+    "fix": "Check the reference against `github://<owner>/<repo>@<ref>[/<path>]` and your network connection. For a private repository, set `GITHUB_TOKEN` and list its owner in `STRSPC_TOKEN_OWNERS`.",
+    "retired": false
+  },
+  {
+    "code": "RR013",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Unresolved inherits target",
+    "summary": "An `inherits` target cannot be resolved: no such entity, a qualifier that is not a dependency of the hop's Realm, a dependency that failed to resolve, or a short EUID that only exists in a dependency.",
+    "fix": "Correct the target, qualify it with a Realm that is a dependency of this one, and fix any dependency that failed to resolve.",
+    "retired": false
+  },
+  {
+    "code": "RR014",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Inheritance chain invalid across Realms",
+    "summary": "An inheritance chain, followed across Realms, is cyclic or longer than three hops.",
+    "fix": "Change `inherits` so the chain visits no entity twice and ends within three hops.",
+    "retired": false
+  },
+  {
+    "code": "RR015",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Invalid overrides target",
+    "summary": "A live rule's `overrides` target is not in the entity's inherited rule set: the entity inherits nothing, the target is unknown, or an ancestor already overrides it.",
+    "fix": "Point `overrides` at a rule this entity inherits, and check that `inherits` is set and that no ancestor already overrides the target.",
+    "retired": false
+  },
+  {
+    "code": "RR016",
+    "module": "realm-resolve",
+    "severity": "Warning",
+    "title": "Override has no effect",
+    "summary": "A live rule's `overrides` target exists in the chain but is not Published or Implemented, so it is not inherited and the override has no effect.",
+    "fix": "Promote the target to Published, or override a rule that is Published or Implemented.",
+    "retired": false
+  },
+  {
+    "code": "RR017",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Note names an unknown Realm",
+    "summary": "A `supersedes`/`extends`/`related` note of a live rule qualifies a reference with a Realm outside the tree that is neither a dependency of the note's Realm nor a declared sub-realm of one (NTE-007).",
+    "fix": "Correct the qualifier, or add the Realm with `strspc realm dep add`.",
+    "retired": false
+  },
+  {
+    "code": "RR018",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Note names a missing rule",
+    "summary": "A `supersedes`/`extends`/`related` note of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version.",
+    "fix": "Correct the rule ID, or pin a version of the dependency that holds the rule.",
+    "retired": false
+  },
+  {
+    "code": "RR019",
+    "module": "realm-resolve",
+    "severity": "Warning",
+    "title": "Reference to a rule no longer in force",
+    "summary": "An `extends`/`related` note or the body of a live rule makes a qualified reference to a rule that is Abandoned, Terminated or superseded. Text in backticks is ignored in bodies.",
+    "fix": "Point the reference at the rule that replaced it, or remove it. In a body, wrap the text in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RR020",
+    "module": "realm-resolve",
+    "severity": "Warning",
+    "title": "Body names an unknown Realm",
+    "summary": "The body of a live rule qualifies a reference with a Realm outside the tree that is neither a dependency of the rule's Realm nor a declared sub-realm of one. Text in backticks is ignored.",
+    "fix": "Correct the qualifier, or add the Realm with `strspc realm dep add`. Wrap the text in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RR021",
+    "module": "realm-resolve",
+    "severity": "Warning",
+    "title": "Body names a missing rule",
+    "summary": "The body of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version. Text in backticks is ignored.",
+    "fix": "Correct the rule ID, or pin a version of the dependency that holds the rule. Wrap the text in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RSV000",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "Rule resolution interrupted",
+    "summary": "The context was cancelled or timed out during resolution.",
+    "fix": "Run it again with a longer timeout, or find what cancelled it.",
+    "retired": false
+  },
+  {
+    "code": "RSV002",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "Local source unreadable",
+    "summary": "A local source path cannot be resolved, is not a directory, or cannot be walked or read.",
+    "fix": "Check that the source path exists, is a directory and is readable.",
+    "retired": false
+  },
+  {
+    "code": "RSV003",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "Invalid entity file in a source",
+    "summary": "An entity file cannot be parsed, or its `entity.id` is empty.",
+    "fix": "Fix the JSON in the file, and make sure `entity.id` is set.",
+    "retired": false
+  },
+  {
+    "code": "RSV004",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "Invalid rule set hash in a source",
+    "summary": "`rule_set.hash` cannot be computed or differs from the Blake3 hash of the file.",
+    "fix": "Run `strspc entity rehash <EUID>` in the repository that owns the file. For a remote source, pin a release with valid hashes.",
+    "retired": false
+  },
+  {
+    "code": "RSV005",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "EUID provided by two sources",
+    "summary": "The same EUID is provided by two different sources.",
+    "fix": "Remove one source from the Configuration, or rename the entity in a source you own.",
+    "retired": false
+  },
+  {
+    "code": "RSV006",
+    "module": "rule-resolve",
+    "severity": "Warning",
+    "title": "Source holds no entities",
+    "summary": "A source directory yields no entity files and produced no errors.",
+    "fix": "Point the source at the directory that holds the entity files, or remove it from the Configuration.",
+    "retired": false
+  },
+  {
+    "code": "RSV007",
+    "module": "rule-resolve",
+    "severity": "Error",
+    "title": "Remote source unavailable",
+    "summary": "A `github://` source cannot be parsed, has no fetcher, or cannot be downloaded.",
+    "fix": "Check the reference against `github://<owner>/<repo>@<ref>[/<path>]` and your network connection. For a private repository, set `GITHUB_TOKEN` and list its owner in `STRSPC_TOKEN_OWNERS`.",
+    "retired": false
+  }
+]
