@@ -3,9 +3,11 @@ package ruleeval_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 )
@@ -420,6 +422,27 @@ func TestEvalRequest_NotesPassedToProvider(t *testing.T) {
 	}
 	if call.Diff != "the diff" {
 		t.Errorf("expected diff 'the diff', got %q", call.Diff)
+	}
+}
+
+func TestEvaluatorPassesExtendedToProvider(t *testing.T) {
+	mp := &mockProvider{
+		responses: map[string]*ruleeval.EvalResponse{
+			"ENT-001": {Verdict: ruleeval.Compliant},
+		},
+	}
+	e, err := ruleeval.New(mp, ruleeval.WithFailOn([]string{"I"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	extended := []inherit.Extended{{ID: "core:BASE-001", Revision: 1, Body: "Base rule."}}
+	e.Evaluate(context.Background(), []ruleeval.RuleInput{{Rule: makeRule("ENT-001", "I"), Extended: extended}}, "the diff")
+
+	if len(mp.calls) != 1 {
+		t.Fatalf("expected 1 call, got %d", len(mp.calls))
+	}
+	if !reflect.DeepEqual(mp.calls[0].Extended, extended) {
+		t.Errorf("Extended = %v, want %v", mp.calls[0].Extended, extended)
 	}
 }
 

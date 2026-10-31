@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
@@ -79,8 +80,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v5" {
-		t.Fatalf("Version = %q, want v5", prompt.Version)
+	if prompt.Version != "v6" {
+		t.Fatalf("Version = %q, want v6", prompt.Version)
 	}
 }
 
@@ -215,6 +216,19 @@ func assertStrict(t *testing.T, path string, node map[string]any) {
 		if items, ok := node["items"].(map[string]any); ok {
 			assertStrict(t, path+"[]", items)
 		}
+	}
+}
+
+func TestRulesBlock_ExtendedRules(t *testing.T) {
+	got := prompt.RulesBlock([]ruleeval.RuleInput{{
+		Rule:     entity.Rule{ID: "SAV-001", State: "I", Body: "Savings MUST cap."},
+		EntityID: "SAV",
+		Notes:    []entity.Note{{ID: "SAV-001/01", RuleRef: "SAV-001", Type: "extends", Content: "core:ACCT-002"}},
+		Extended: []inherit.Extended{{ID: "core:ACCT-002", Revision: 1, Body: "Accounts MUST log.\nEvery change."}},
+	}})
+	want := "extends:\n  - core:ACCT-002\nextended rules:\n  - core:ACCT-002: Accounts MUST log.\n    Every change.\n"
+	if !strings.Contains(got, want) {
+		t.Errorf("rules block missing %q in:\n%s", want, got)
 	}
 }
 

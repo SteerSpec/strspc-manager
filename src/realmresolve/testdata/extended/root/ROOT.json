@@ -1,0 +1,99 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ROOT",
+    "title": "ROOT",
+    "inherits": "dev.mid:MID"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "ROOT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule ROOT-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "ROOT-002",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule ROOT-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "ROOT-003",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule ROOT-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "ROOT-004",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule ROOT-004.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "ROOT-005",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule ROOT-005.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "ROOT-001/01",
+      "rule_ref": "ROOT-001",
+      "type": "extends",
+      "content": "Extends dev.mid:MID-001, and again dev.mid:MID-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "ROOT-002/01",
+      "rule_ref": "ROOT-002",
+      "type": "extends",
+      "content": "Extends ROOT-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "ROOT-004/01",
+      "rule_ref": "ROOT-004",
+      "type": "extends",
+      "content": "Extends dev.mid:MID-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "ROOT-005/01",
+      "rule_ref": "ROOT-005",
+      "type": "related",
+      "content": "See dev.mid:MID-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ],
+  "sub_entities": []
+}
