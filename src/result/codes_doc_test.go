@@ -26,6 +26,7 @@ var codeModules = []string{
 	"src/ruleresolve",
 	"src/ruleeval",
 	"src/evalcache",
+	"src/rulerefs",
 }
 
 // minExpectedCodes guards against a regexp that silently matches nothing.
