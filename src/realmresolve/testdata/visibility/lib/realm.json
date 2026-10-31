@@ -12,5 +12,8 @@
       "source": "../deep"
     }
   ],
-  "rule_identifier_format": null
+  "rule_identifier_format": null,
+  "sub_realms": [
+    "child"
+  ]
 }

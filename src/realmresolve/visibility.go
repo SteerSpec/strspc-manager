@@ -2,6 +2,8 @@ package realmresolve
 
 import (
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -24,18 +26,43 @@ const (
 	sameRealm
 )
 
-// relationOf returns how from stands to to. A dependency's sub-realms share
-// its node, which is harmless: from a Realm outside that tree, they are all
-// otherRealm.
-func relationOf(from, to *node) relation {
+// place is where an entity sits: its Realm tree and the Realm holding it.
+type place struct {
+	// ns is the Realm tree's ID.
+	ns string
+	// realm is the ID of the Realm holding the entity.
+	realm string
+}
+
+// relationOf returns how from stands to to.
+func relationOf(from, to place) relation {
 	switch {
 	case from.ns != to.ns:
 		return otherRealm
-	case from.realm.Realm.Realm.ID == to.realm.Realm.Realm.ID:
+	case from.realm == to.realm:
 		return sameRealm
 	default:
 		return sameTree
 	}
+}
+
+// place returns where e, an entity of n, sits. A dependency's node also holds
+// the entities of its sub-realms, so for those the Realm comes from the file:
+// a sub-realm is a directory of its parent (RLM-010).
+func (n *node) place(e *entity.File) place {
+	p := place{ns: n.ns, realm: n.realm.Realm.Realm.ID}
+	if n.deps != nil {
+		return p
+	}
+	rel, err := filepath.Rel(n.realm.Dir, n.realm.EUIDs[e.Entity.ID])
+	if err != nil {
+		return p
+	}
+	dir, _, _ := strings.Cut(filepath.ToSlash(rel), "/")
+	if slices.Contains(n.realm.Realm.SubRealms, dir) {
+		p.realm += "." + dir
+	}
+	return p
 }
 
 // mayInherit reports whether visibility permits inheriting across rel (ENT-012
@@ -122,12 +149,13 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 	at := s.holder[parent.Entity]
 	v := at.visibility(parent.Entity)
 	name := parent.RealmID + ":" + parent.Entity.Entity.ID
-	if !mayInherit(v, relationOf(from, at)) {
+	here := from.place(hop.Entity)
+	if !mayInherit(v, relationOf(here, at.place(parent.Entity))) {
 		s.res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR022",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("entity %s: inherits %s, whose visibility `%s` does not permit it from realm %s", who, name, v, from.realm.Realm.Realm.ID),
+			Message:  fmt.Sprintf("entity %s: inherits %s, whose visibility `%s` does not permit it from realm %s", who, name, v, here.realm),
 			Path:     path,
 		})
 	}
@@ -142,7 +170,7 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 	}
 	for _, r := range hop.Entity.Rules {
 		if r.Overrides != nil && !outOfForce(r.State) {
-			s.checkOverrideVisibility(from, r.ID, inherit.Target(hop, ancestors, *r.Overrides), ancestors, path)
+			s.checkOverrideVisibility(here, r.ID, inherit.Target(hop, ancestors, *r.Overrides), ancestors, path)
 		}
 	}
 }
@@ -152,7 +180,7 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 // ruleID. Entities above the owner have no say. A target that no ancestor
 // owns is left to RR015; one that isn't inherited, such as a Draft rule, is
 // still checked (ENT-016/01).
-func (s *chainState) checkOverrideVisibility(from *node, ruleID, target string, ancestors []inherit.Hop, path string) {
+func (s *chainState) checkOverrideVisibility(from place, ruleID, target string, ancestors []inherit.Hop, path string) {
 	owner := -1
 	for i, h := range ancestors {
 		if id, ok := strings.CutPrefix(target, h.RealmID+":"); ok {
@@ -168,14 +196,14 @@ func (s *chainState) checkOverrideVisibility(from *node, ruleID, target string, 
 	for _, h := range ancestors[:owner+1] {
 		at := s.holder[h.Entity]
 		v := at.visibility(h.Entity)
-		if mayOverride(v, relationOf(from, at)) {
+		if mayOverride(v, relationOf(from, at.place(h.Entity))) {
 			continue
 		}
 		s.res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR023",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule %s overrides %s: visibility `%s` of %s:%s does not permit it from realm %s", ruleID, target, v, h.RealmID, h.Entity.Entity.ID, from.realm.Realm.Realm.ID),
+			Message:  fmt.Sprintf("rule %s overrides %s: visibility `%s` of %s:%s does not permit it from realm %s", ruleID, target, v, h.RealmID, h.Entity.Entity.ID, from.realm),
 			Path:     path,
 		})
 		return
@@ -208,8 +236,8 @@ func (s *chainState) checkExtendsVisibility(at *node, e *entity.File, n entity.N
 		v := next.visibility(target)
 		var why string
 		switch own := at.visibility(e); {
-		case !mayInherit(v, relationOf(at, next)):
-			why = fmt.Sprintf("visibility `%s` does not permit inheritance from realm %s", v, at.realm.Realm.Realm.ID)
+		case !mayInherit(v, relationOf(at.place(e), next.place(target))):
+			why = fmt.Sprintf("visibility `%s` does not permit inheritance from realm %s", v, at.place(e).realm)
 		case entity.VisibilityWider(own, v):
 			why = fmt.Sprintf("visibility `%s` is narrower than `%s` of entity %s", v, own, e.Entity.ID)
 		default:

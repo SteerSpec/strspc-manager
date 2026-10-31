@@ -37,27 +37,16 @@ func TestPermissions(t *testing.T) {
 }
 
 func TestRelationOf(t *testing.T) {
-	realm := func(id string) *ResolvedRealm {
-		rf := &entity.RealmFile{}
-		rf.Realm.ID = id
-		return &ResolvedRealm{Realm: rf}
-	}
-	root := &node{realm: realm("dev.r"), ns: "dev.r"}
-	sub := &node{realm: realm("dev.r.a"), ns: "dev.r"}
-	dep := &node{realm: realm("dev.d"), ns: "dev.d"}
-	older := &node{realm: realm("dev.r"), ns: "dev.r"} // the same Realm, reached at another version
-
 	tests := []struct {
 		name     string
-		from, to *node
+		from, to place
 		want     relation
 	}{
-		{"same node", root, root, sameRealm},
-		{"sub-realm from parent", root, sub, sameTree},
-		{"parent from sub-realm", sub, root, sameTree},
-		{"dependency", root, dep, otherRealm},
-		{"own Realm at another version", root, older, sameRealm},
-		{"parent at another version", sub, older, sameTree},
+		{"same Realm", place{"dev.r", "dev.r"}, place{"dev.r", "dev.r"}, sameRealm},
+		{"sub-realm from parent", place{"dev.r", "dev.r"}, place{"dev.r", "dev.r.a"}, sameTree},
+		{"parent from sub-realm", place{"dev.r", "dev.r.a"}, place{"dev.r", "dev.r"}, sameTree},
+		{"sibling", place{"dev.r", "dev.r.a"}, place{"dev.r", "dev.r.b"}, sameTree},
+		{"dependency", place{"dev.r", "dev.r"}, place{"dev.d", "dev.d"}, otherRealm},
 	}
 	for _, tt := range tests {
 		if got := relationOf(tt.from, tt.to); got != tt.want {
@@ -115,6 +104,9 @@ func TestVisibility(t *testing.T) {
 		{"RR022", "entity UDEEP (through dev.lib:LWIDE): inherits dev.deep:DPRIV, whose visibility `private` does not permit it from realm dev.lib"},
 		{"RR024", "entity UDEEP (through dev.lib:LWIDE): visibility `public` is wider than `private` of inherited entity dev.deep:DPRIV"},
 		{"RR023", "rule LWIDE-001 overrides dev.deep:DPRIV-001: visibility `private` of dev.deep:DPRIV does not permit it from realm dev.lib"},
+		// A dependency's sub-realm is a Realm of its own for a `private` override.
+		{"RR022", "entity UCHILD: inherits dev.lib:LUP"},
+		{"RR023", "rule LUP-001 overrides dev.lib:LCHILD-001: visibility `private` of dev.lib:LCHILD does not permit it from realm dev.lib"},
 		// NTE-012: narrower target, also unqualified, and an unreachable one.
 		{"RR025", "note NOTES-001/01 references \"RPRIV-001\": visibility `private` is narrower than `public` of entity NOTES"},
 		{"RR025", "note NOTES-002/01 references \"dev.lib:LPRIV-001\": visibility `private` does not permit inheritance from realm dev.root"},
