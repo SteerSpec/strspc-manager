@@ -512,6 +512,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Check the dependency's `source`, your network connection and your GitHub token, then run the check again.",
 	},
 	{
+		Code:     "RM017",
+		Module:   "realm-lint",
+		Severity: "Error",
+		Title:    "Sub-realm sets a language",
+		Summary:  "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018).",
+		Fix:      "Remove `language` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
+	},
+	{
 		Code:     "RR000",
 		Module:   "realm-resolve",
 		Severity: "Error",
