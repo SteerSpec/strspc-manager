@@ -21,15 +21,19 @@ const module = "rule-refs"
 // syntax can carry it, such as an HTML comment in markdown.
 const ignoreMarker = "strspc-refs: ignore"
 
+// realmQualifier matches an optional realm prefix, as group 1 of a pattern.
+const realmQualifier = `(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)?`
+
 var (
 	// citationRe finds the stored form of a rule identifier, which is a
 	// substring of the rendered one under the default format, optionally
 	// qualified by a realm. Group 1 is the realm, group 2 the EUID and group 3
 	// the rule number.
-	citationRe = regexp.MustCompile(`\b(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
+	citationRe = regexp.MustCompile(`\b` + realmQualifier + `([A-Za-z0-9]{3,18})-(\d{3})\b`)
 
-	// urlRe finds URLs, whose path segments are not citations.
-	urlRe = regexp.MustCompile(`[a-z][a-z0-9+.-]*://\S+`)
+	// urlRe finds URLs, whose path segments are not citations. Schemes are
+	// case-insensitive.
+	urlRe = regexp.MustCompile(`(?i)[a-z][a-z0-9+.-]*://\S+`)
 
 	// reportableEUIDRe selects the unknown prefixes worth reporting. EUIDs in
 	// practice are uppercase, while a lowercase or numeric shape is usually a
@@ -107,8 +111,8 @@ type Checker struct {
 }
 
 // New creates a Checker for the given sources, in priority order. It returns an
-// error for a state outside the rule lifecycle or an invalid
-// rule_identifier_format.
+// error for a state outside the rule lifecycle, allowed or held by a source
+// rule, and for an invalid rule_identifier_format.
 func New(sources []Source, opts ...Option) (*Checker, error) {
 	c := &Checker{
 		allowed: make(map[string]bool),
@@ -139,7 +143,9 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		own := make(map[string]*citedRule)
 		euids := make(map[string]bool)
 		for _, ef := range s.Entities {
-			collect(ef, own, euids, &replaced)
+			if err := collect(ef, own, euids, &replaced); err != nil {
+				return nil, fmt.Errorf("realm %q: %w", s.RealmID, err)
+			}
 		}
 		for id, r := range own {
 			if _, dup := c.rules[id]; !dup {
@@ -165,22 +171,29 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 }
 
 // collect adds the rules of ef and of its sub-entities to rules and euids, and
-// appends every rule that supersedes another to replaced.
-func collect(ef *entity.File, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) {
+// appends every rule that supersedes another to replaced. A rule in an unknown
+// state is an error: no citation of it could be judged.
+func collect(ef *entity.File, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
 	if ef == nil {
-		return
+		return nil
 	}
 	euids[ef.Entity.ID] = true
 	for i := range ef.Rules {
 		r := &ef.Rules[i]
+		if !entity.IsValidState(r.State) {
+			return fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
+		}
 		rules[r.ID] = &citedRule{state: r.State}
 		if r.Supersedes != nil {
 			*replaced = append(*replaced, r)
 		}
 	}
 	for i := range ef.SubEntities {
-		collect(&ef.SubEntities[i], rules, euids, replaced)
+		if err := collect(&ef.SubEntities[i], rules, euids, replaced); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // successorRank orders the states of a superseder by how much they replace the
@@ -208,10 +221,10 @@ func newForm(f render.RuleIDFormatter, euids map[string]bool) (form, bool) {
 		split = "-"
 	}
 	if f.EUIDClosing {
-		return form{regexp.MustCompile(`\b` + num + split + euid + `\b`), 2, 1, euids}, true
+		return form{regexp.MustCompile(`\b` + realmQualifier + num + split + euid + `\b`), 3, 2, euids}, true
 	}
 	if split != "-" {
-		return form{regexp.MustCompile(`\b` + euid + split + num + `\b`), 1, 2, euids}, true
+		return form{regexp.MustCompile(`\b` + realmQualifier + euid + split + num + `\b`), 2, 3, euids}, true
 	}
 	return form{}, false
 }
@@ -267,20 +280,24 @@ func (c *Checker) checkLine(line string, at site, res *result.Result) {
 		if embedded(line, m[0], m[1]) {
 			continue
 		}
-		realm := ""
-		if m[2] >= 0 {
-			realm = line[m[2]:m[3]]
-		}
-		cite(realm, line[m[4]:m[5]], line[m[6]:m[7]])
+		cite(qualifier(line, m), line[m[4]:m[5]], line[m[6]:m[7]])
 	}
 	for _, f := range c.forms {
 		for _, m := range f.re.FindAllStringSubmatchIndex(line, -1) {
 			euid := line[m[2*f.euidGroup]:m[2*f.euidGroup+1]]
 			if f.knownEUIDs[euid] && !embedded(line, m[0], m[1]) {
-				cite("", euid, line[m[2*f.numGroup]:m[2*f.numGroup+1]])
+				cite(qualifier(line, m), euid, line[m[2*f.numGroup]:m[2*f.numGroup+1]])
 			}
 		}
 	}
+}
+
+// qualifier returns the realm prefix of a match, if it has one.
+func qualifier(line string, m []int) string {
+	if m[2] < 0 {
+		return ""
+	}
+	return line[m[2]:m[3]]
 }
 
 // embedded reports whether line[start:end] is part of a longer hyphenated token

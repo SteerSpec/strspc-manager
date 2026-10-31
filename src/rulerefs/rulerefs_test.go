@@ -110,6 +110,7 @@ func TestCheckText(t *testing.T) {
 		{"number range", "Takes 100-200 ms, call 800-555.", nil},
 		{"mixed case unknown prefix", "Pod web1-123 and Foo-123.", nil},
 		{"URL", "See https://linear.app/x/issue/ENG-123 now.", nil},
+		{"URL with an uppercase scheme", "See HTTPS://linear.app/x/issue/ENG-123 now.", nil},
 		{"embedded before", "The foo-RUL-004 slug.", nil},
 		{"embedded after", "The RUL-004-bar slug.", nil},
 		{"four digits", "See RUL-0040.", nil},
@@ -221,6 +222,9 @@ func TestRealmFormats(t *testing.T) {
 		{"closing, rendered", closing, "[002-APP.1/A]", []finding{{"RF002", result.Error, 1}}},
 		{"closing underscore", closingUnder, "002_APP", []finding{{"RF002", result.Error, 1}}},
 		{"stored form still matches", under, "APP-002", []finding{{"RF002", result.Error, 1}}},
+		{"qualified with its realm", under, "dev.acme.app:APP_002", []finding{{"RF002", result.Error, 1}}},
+		{"qualified with a realm not in scope", under, "dev.other.realm:APP_001", []finding{{"RF001", result.Error, 1}}},
+		{"closing, qualified with a realm not in scope", closing, "dev.other.realm:001-APP", []finding{{"RF001", result.Error, 1}}},
 		{"default format ignores the other forms", nil, "APP_002 and 002-APP", nil},
 		{"a form does not reach another realm", under, "RUL_004", nil},
 	}
@@ -264,6 +268,17 @@ func TestNewRejectsBadInput(t *testing.T) {
 	}{
 		{"unknown state", nil, []rulerefs.Option{rulerefs.WithAllowedStates("X")}},
 		{"bad format", []rulerefs.Source{{Format: &entity.RuleIdentifierFormat{IDSplitter: "+"}}}, nil},
+		{"rule in an unknown state", []rulerefs.Source{{Entities: []*entity.File{{
+			Entity: entity.Entity{ID: "RUL"},
+			Rules:  []entity.Rule{{ID: "RUL-001", State: "X"}},
+		}}}}, nil},
+		{"sub-entity rule in an unknown state", []rulerefs.Source{{Entities: []*entity.File{{
+			Entity: entity.Entity{ID: "RUL"},
+			SubEntities: []entity.File{{
+				Entity: entity.Entity{ID: "SUB"},
+				Rules:  []entity.Rule{{ID: "SUB-001", State: "X"}},
+			}},
+		}}}}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
