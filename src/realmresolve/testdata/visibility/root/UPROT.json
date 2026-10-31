@@ -1,0 +1,66 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "UPROT",
+    "title": "UPROT",
+    "inherits": "dev.lib:LPROT",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "UPROT-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of UPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "dev.lib:LPROT-001"
+    },
+    {
+      "id": "UPROT-002",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 2 of UPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "dev.lib:LPROT-002"
+    },
+    {
+      "id": "UPROT-003",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 3 of UPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "dev.lib:LPROT-001"
+    },
+    {
+      "id": "UPROT-004",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 4 of UPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": "UPROT-003"
+    },
+    {
+      "id": "UPROT-005",
+      "revision": 0,
+      "state": "R",
+      "body": "Rule 5 of UPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "dev.lib:LPROT-001"
+    }
+  ],
+  "notes": []
+}

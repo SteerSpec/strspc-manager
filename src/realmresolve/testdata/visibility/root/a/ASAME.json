@@ -1,0 +1,27 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ASAME",
+    "title": "ASAME",
+    "inherits": "APRIV",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "ASAME-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of ASAME.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "APRIV-001"
+    }
+  ],
+  "notes": []
+}

@@ -38,6 +38,9 @@ RL019 active rule-body-ref-missing
 RL020 active ref-to-abandoned-rule
 RL021 active rule-body-no-keyword
 RL022 active rule-body-multiple-sentences
+RL023 active visibility-value-unknown
+RL024 active visibility-wider-than-container
+RL025 active supersedes-other-entity
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -58,6 +61,7 @@ RD016 active append-only-note-content-changed
 RD017 active inherits-changed
 RD018 active overrides-changed
 RD019 active added-by-invalid
+RD020 active visibility-changed
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
@@ -96,6 +100,10 @@ RR018 active note-ref-rule-missing
 RR019 active ref-rule-not-live
 RR020 active body-ref-realm-undeclared
 RR021 active body-ref-rule-missing
+RR022 active inherit-not-permitted
+RR023 active override-not-permitted
+RR024 active visibility-wider-than-inherited
+RR025 active extends-not-permitted
 RSV000 active context-cancelled
 RSV002 active local-source-unreadable
 RSV003 active entity-parse-or-id-empty

@@ -1,0 +1,53 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NPRIV",
+    "title": "NPRIV",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "NPRIV-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of NPRIV.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NPRIV-002",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 2 of NPRIV.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "NPRIV-001/01",
+      "rule_ref": "NPRIV-001",
+      "type": "extends",
+      "content": "Builds on dev.root:RPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NPRIV-002/01",
+      "rule_ref": "NPRIV-002",
+      "type": "extends",
+      "content": "Builds on dev.lib:LPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ]
+}

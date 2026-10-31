@@ -1,0 +1,61 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LPROT",
+    "title": "LPROT",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "LPROT-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of LPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "LPROT-002",
+      "revision": 0,
+      "state": "D",
+      "body": "Rule 2 of LPROT.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "LSUB",
+        "title": "LSUB",
+        "parent": "LPROT"
+      },
+      "rule_set": {
+        "version": "0.1.0",
+        "timestamp": "2026-10-31T00:00:00Z",
+        "hash": null
+      },
+      "rules": [
+        {
+          "id": "LSUB-001",
+          "revision": 0,
+          "state": "P",
+          "body": "Rule 1 of LSUB.",
+          "added_by": "t",
+          "added_at": "2026-10-31",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

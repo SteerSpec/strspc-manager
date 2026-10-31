@@ -360,17 +360,23 @@ func refString(r *string) string {
 // checkInherits runs RD017: once an entity has a rule beyond Draft, its
 // `inherits` value may not change or be removed, since re-parenting changes
 // the inherited rules its published rules were written against. Adding
-// `inherits` where there was none only adds rules and is allowed.
+// `inherits` where there was none only adds rules and is allowed. So is
+// removing it once no rule is Published or Implemented: nothing relies on the
+// parent, and a consumer may have to leave a parent narrowed to `private`.
 func checkInherits(base, head *entity.File, res *result.Result, path string) {
 	if base.Entity.Inherits == "" || head.Entity.Inherits == base.Entity.Inherits {
 		return
 	}
+	removed := head.Entity.Inherits == ""
 	for _, r := range base.Rules {
 		if r.State == entity.StateDraft {
 			continue
 		}
+		if removed && r.State != entity.StatePublished && r.State != entity.StateImplemented {
+			continue
+		}
 		msg := fmt.Sprintf("inherits changed from %q to %q", base.Entity.Inherits, head.Entity.Inherits)
-		if head.Entity.Inherits == "" {
+		if removed {
 			msg = fmt.Sprintf("inherits %q removed", base.Entity.Inherits)
 		}
 		res.Add(result.Diagnostic{
@@ -382,6 +388,42 @@ func checkInherits(base, head *entity.File, res *result.Result, path string) {
 		})
 		return
 	}
+}
+
+// checkVisibility runs RD020 on any change to the `visibility` of an entity.
+// Removing the key is an Error, because it also catches a tool that drops the
+// field and so silently widens the entity; the fix is to set `public`
+// explicitly. Any other change is Info, so strict mode doesn't block it, and
+// says which version bump it needs. baseContainer and headContainer are the
+// effective visibilities of the entity containing this one.
+func checkVisibility(base, head *entity.File, baseContainer, headContainer string, res *result.Result, path string) {
+	from, to := base.Entity.Visibility, head.Entity.Visibility
+	if from == to {
+		return
+	}
+	path += "/entity.visibility"
+	if to == "" {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD020",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("visibility `%s` removed: set `public` explicitly if the entity is meant to be public", from),
+			Path:     path,
+		})
+		return
+	}
+	before, after := entity.EffectiveVisibility(from, baseContainer), entity.EffectiveVisibility(to, headContainer)
+	msg := fmt.Sprintf("visibility changed from `%s` to `%s`", from, to)
+	if from == "" {
+		msg = fmt.Sprintf("visibility changed from absent to `%s`", to)
+	}
+	switch {
+	case entity.VisibilityWider(before, after):
+		msg += ": narrowing needs a MAJOR bump of realm.version"
+	case entity.VisibilityWider(after, before):
+		msg += ": widening needs a MINOR bump of realm.version"
+	}
+	res.Add(result.Diagnostic{Module: module, Code: "RD020", Severity: result.Info, Message: msg, Path: path})
 }
 
 // checkTimestamp runs RD009: rule_set.timestamp must be updated.

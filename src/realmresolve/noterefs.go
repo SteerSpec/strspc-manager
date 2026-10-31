@@ -34,7 +34,8 @@ var relationNoteTypes = map[string]bool{
 // their bodies, as warnings: RR019, RR020 and RR021 for the same three faults;
 // no rule requires a body to reference anything. A reference to a dependency
 // that failed to resolve adds nothing to that failure. Dead rules are skipped:
-// their notes cannot be changed (NTE-010) and nothing relies on them.
+// their notes cannot be changed (NTE-010) and nothing relies on them. `extends`
+// notes also get RR025 (NTE-012), which spares fewer rules: see outOfForce.
 // Dependencies of the tree are already resolved, so nothing loads.
 func (r *RealmResolver) checkNoteRefs(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, res *result.Result) {
 	entities, paths := treeEntities(root, subs)
@@ -47,16 +48,21 @@ func (r *RealmResolver) checkNoteRefs(ctx context.Context, root *ResolvedRealm, 
 		}
 		e := entities[id]
 		dead := make(map[string]bool)
+		gone := make(map[string]bool)
 		for _, rule := range e.Rules {
 			if isLive(rule, superseded) {
 				s.checkBody(s.treeNode[id], rule, paths[id])
 			} else {
 				dead[rule.ID] = true
 			}
+			gone[rule.ID] = outOfForce(rule.State)
 		}
 		for _, n := range e.Notes {
 			if relationNoteTypes[n.Type] && !dead[n.RuleRef] {
 				s.checkNote(s.treeNode[id], n, paths[id])
+			}
+			if n.Type == "extends" && !gone[n.RuleRef] {
+				s.checkExtendsVisibility(s.treeNode[id], e, n, paths[id])
 			}
 		}
 	}
@@ -188,7 +194,7 @@ func (s *chainState) notLive(at *node, rule entity.Rule) string {
 	}
 }
 
-// findRule returns the rule id of e.
+// findRule returns the rule of e with the given id, and whether e holds it.
 func findRule(e *entity.File, id string) (entity.Rule, bool) {
 	for _, r := range e.Rules {
 		if r.ID == id {

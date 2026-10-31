@@ -166,8 +166,8 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Inheritance changed after Draft",
-    "summary": "`inherits` changed or was removed on an entity whose base version has a rule beyond Draft.",
-    "fix": "Restore `inherits`. It is fixed once a rule has left Draft, so give a different parent to a new entity.",
+    "summary": "`inherits` changed on an entity whose base version has a rule beyond Draft, or was removed on one whose base version has a Published or Implemented rule.",
+    "fix": "Restore `inherits`. It is fixed once a rule has left Draft, so give a different parent to a new entity. To drop it, first retire the entity's rules.",
     "retired": false
   },
   {
@@ -186,6 +186,15 @@
     "title": "Malformed added_by",
     "summary": "A new rule or new note has an `added_by` that is not an email address or `@handle`.",
     "fix": "Write `added_by` as an email address or an `@handle`.",
+    "retired": false
+  },
+  {
+    "code": "RD020",
+    "module": "rule-diff",
+    "severity": "Info / Error",
+    "title": "Visibility changed",
+    "summary": "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed.",
+    "fix": "Set `public` explicitly rather than removing the key. Bump `realm.version` as the message says.",
     "retired": false
   },
   {
@@ -483,6 +492,33 @@
     "title": "Rule body has several sentences",
     "summary": "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored.",
     "fix": "Cut the body to one sentence with `strspc rule update`, and put any further requirement in its own rule.",
+    "retired": false
+  },
+  {
+    "code": "RL023",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Unknown visibility",
+    "summary": "An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011).",
+    "fix": "Use one of the three values, or remove the field to take the default.",
+    "retired": false
+  },
+  {
+    "code": "RL024",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Sub-entity wider than its container",
+    "summary": "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015).",
+    "fix": "Narrow the sub-entity, or remove the field to take the container's visibility.",
+    "retired": false
+  },
+  {
+    "code": "RL025",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Superseding across entities",
+    "summary": "A rule's `supersedes` names a rule of another entity (RUL-012).",
+    "fix": "Supersede within the same entity. To reuse another entity's rule, inherit it or cite it in a `related` note.",
     "retired": false
   },
   {
@@ -825,6 +861,42 @@
     "title": "Body names a missing rule",
     "summary": "The body of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version. Text in backticks is ignored.",
     "fix": "Correct the rule ID, or pin a version of the dependency that holds the rule. Wrap the text in backticks if it is not a reference.",
+    "retired": false
+  },
+  {
+    "code": "RR022",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Inheritance not permitted",
+    "summary": "An entity inherits an entity whose visibility does not permit inheritance from its Realm (ENT-014, ENT-016).",
+    "fix": "Inherit a different entity, or ask its owner to widen it. An `inherits` that has shipped can be removed once no rule is Published or Implemented (RD017).",
+    "retired": false
+  },
+  {
+    "code": "RR023",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Override not permitted",
+    "summary": "A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-016).",
+    "fix": "Supersede the rule without restating `overrides`, then retire it.",
+    "retired": false
+  },
+  {
+    "code": "RR024",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Wider than the inherited entity",
+    "summary": "An entity is wider than the entity it inherits (ENT-015). An absent `visibility` counts as `public`.",
+    "fix": "Declare a `visibility` no wider than the inherited entity's.",
+    "retired": false
+  },
+  {
+    "code": "RR025",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "`extends` target not permitted",
+    "summary": "An `extends` note on a rule that is not Abandoned, Retired or Terminated references a rule whose entity's visibility does not permit inheritance from the note's Realm or is narrower than that of the entity holding the note (NTE-012). Short references count.",
+    "fix": "Reference another rule, or supersede the rule and retire it: the note itself can't change.",
     "retired": false
   },
   {
