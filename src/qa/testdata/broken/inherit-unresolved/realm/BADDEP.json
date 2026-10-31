@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BADDEP",
+    "title": "QA entity BADDEP",
+    "inherits": "dev.steerspec.qa.broken:THING"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:4cecd7949c77ff7f15f051a82d8c990a0073df0beb12def39eb8b222496218cd"
+  },
+  "rules": [
+    {
+      "id": "BADDEP-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of baddep MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "EXTA",
+    "title": "QA entity EXTA",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:b7c24fc16e30b896d2ee1ed3f348843bab750bbd49b170028a003142e5493573"
+  },
+  "rules": [
+    {
+      "id": "EXTA-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of exta MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "EXTA-002",
+      "revision": 0,
+      "state": "R",
+      "body": "The subject of exta MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "EXTA-001/01",
+      "rule_ref": "EXTA-001",
+      "type": "extends",
+      "content": "dev.steerspec.qa.vislib:LIBPRIV-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "EXTA-002/01",
+      "rule_ref": "EXTA-002",
+      "type": "extends",
+      "content": "dev.steerspec.qa.vislib:LIBPRIV-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

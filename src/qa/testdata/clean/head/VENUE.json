@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "VENUE",
+    "title": "QA entity VENUE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:a9d98be4ef14cd2a86beafe5e00497614f03bd24df82d7f852793b665d2de80d"
+  },
+  "rules": [
+    {
+      "id": "VENUE-001",
+      "revision": 0,
+      "state": "D",
+      "body": "A venue MUST be licensed.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

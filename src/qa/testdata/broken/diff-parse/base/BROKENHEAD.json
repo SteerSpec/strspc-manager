@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BROKENHEAD",
+    "title": "QA entity BROKENHEAD"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:8f83c3c9de94bf1b18b041d805824f9d0d991a31476145767350bb073daee8dd"
+  },
+  "rules": [
+    {
+      "id": "BROKENHEAD-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of brokenhead MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

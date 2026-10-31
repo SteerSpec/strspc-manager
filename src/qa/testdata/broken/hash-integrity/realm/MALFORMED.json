@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "MALFORMED",
+    "title": "QA entity MALFORMED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "md5:abc"
+  },
+  "rules": [
+    {
+      "id": "MALFORMED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of malformed MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

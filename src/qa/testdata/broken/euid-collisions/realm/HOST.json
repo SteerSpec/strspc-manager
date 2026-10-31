@@ -1,0 +1,51 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "HOST",
+    "title": "QA entity HOST"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:f53f34de6601ccf82ea0ff848f854f7d125c940826298d00382e8b1d9cc9ee0e"
+  },
+  "rules": [
+    {
+      "id": "HOST-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of host MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "HOSTSUB",
+        "title": "QA entity HOSTSUB",
+        "parent": "HOST"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:17dca1344a099ae87f0b05a99c64ab9d425a791164beb8209a742a0b21e564f1"
+      },
+      "rules": [
+        {
+          "id": "HOSTSUB-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of hostsub MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

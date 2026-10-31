@@ -1,0 +1,68 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR002",
+    "severity": "error",
+    "path": "deps/gone"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/BADDEP.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/NOENT.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/NOREALM.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/QUALGONE.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/SHORTDEP.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR013",
+    "severity": "error",
+    "path": "realm/VIADEP.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL016",
+    "severity": "warning",
+    "path": "realm/NOENT.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL016",
+    "severity": "warning",
+    "path": "realm/SHORTDEP.json"
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "XLONG",
+    "title": "QA entity XLONG",
+    "inherits": "dev.steerspec.qa.chainlib:LONGA"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:cbc29ab1a78e31a4bf9149c24770e20f631ac24baa83386156d8c1611512b049"
+  },
+  "rules": [
+    {
+      "id": "XLONG-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of xlong MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

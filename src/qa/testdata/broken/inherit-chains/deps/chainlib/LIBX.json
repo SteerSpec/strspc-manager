@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBX",
+    "title": "QA entity LIBX",
+    "inherits": "dev.steerspec.qa.chains:XCYC"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:4680f9e554efa6d4ace8ecf59303e31e721820cb21c16fee08cbf48b0f9c37f1"
+  },
+  "rules": [
+    {
+      "id": "LIBX-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of libx MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

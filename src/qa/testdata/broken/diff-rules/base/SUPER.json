@@ -1,0 +1,42 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SUPER",
+    "title": "QA entity SUPER"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:56e57dfcef37f44661be85be9f5ffb8ae741cd9c50db8be928ef7028ff94b760"
+  },
+  "rules": [
+    {
+      "id": "SUPER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of super MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "SUPER-002",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of super MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "SUPER-001"
+    },
+    {
+      "id": "SUPER-003",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of super MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "SUPER-099"
+    }
+  ],
+  "notes": []
+}

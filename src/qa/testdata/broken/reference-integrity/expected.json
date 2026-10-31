@@ -1,0 +1,98 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/team"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR017",
+    "severity": "error",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR017",
+    "severity": "error",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR018",
+    "severity": "error",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR018",
+    "severity": "error",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR019",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR019",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR019",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR020",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR021",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL012",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL014",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL019",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL020",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL020",
+    "severity": "warning",
+    "path": "realm/REFS.json"
+  }
+]

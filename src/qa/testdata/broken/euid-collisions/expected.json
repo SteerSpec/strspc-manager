@@ -1,0 +1,92 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/alpha"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/beta"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM006",
+    "severity": "error",
+    "path": "realm/HOST.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM006",
+    "severity": "error",
+    "path": "realm/SHARED2.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM012",
+    "severity": "error",
+    "path": "realm/alpha/CLASHC.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM012",
+    "severity": "error",
+    "path": "realm/alpha/CLASHD.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR005",
+    "severity": "error",
+    "path": "deps/one"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR005",
+    "severity": "error",
+    "path": "deps/three"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR005",
+    "severity": "error",
+    "path": "deps/two"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR011",
+    "severity": "error",
+    "path": "realm/alpha"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR011",
+    "severity": "error",
+    "path": "realm/alpha"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR011",
+    "severity": "error",
+    "path": "realm/beta"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV005",
+    "severity": "error",
+    "path": "deps/one/CLASHA.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV005",
+    "severity": "error",
+    "path": "deps/one/CLASHE.json"
+  }
+]

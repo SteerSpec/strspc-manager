@@ -1,0 +1,43 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "EXTB",
+    "title": "QA entity EXTB"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:d6e96bacfb73d3b20cf28d7e0b2259c8cd6309138bf155aaef0a5834291a945a"
+  },
+  "rules": [
+    {
+      "id": "EXTB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of extb MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "EXTB-001/01",
+      "rule_ref": "EXTB-001",
+      "type": "extends",
+      "content": "HUSH-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "EXTB-001/02",
+      "rule_ref": "EXTB-001",
+      "type": "related",
+      "content": "HUSH-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

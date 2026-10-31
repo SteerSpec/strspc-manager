@@ -1,0 +1,27 @@
+{
+  "claims": [
+    "RE001",
+    "RE003",
+    "RE004"
+  ],
+  "eval": [
+    {
+      "diff": "diff --git a/app.go b/app.go\n+// a change the rules judge\n",
+      "violated": [
+        "EVL-001",
+        "EVL-002",
+        "EVL-003",
+        "EVL-004"
+      ],
+      "fail_on": [
+        "I"
+      ]
+    },
+    {
+      "static_only": true
+    },
+    {
+      "diff": "  \n"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "VAULTX",
+    "title": "QA entity VAULTX",
+    "inherits": "VAULT",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:6c09cc248461edd737da05f26fac49ea7444f141885e7a482c569cd44ebe6489"
+  },
+  "rules": [
+    {
+      "id": "VAULTX-001",
+      "revision": 0,
+      "state": "I",
+      "body": "A vault audit MUST reseal the vault.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "VAULT-001"
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "USEINNER",
+    "title": "QA entity USEINNER",
+    "inherits": "dev.steerspec.qa.vislib:LIBINNER",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:52530b7088b59e959d99978d53c727a1b20971f00f04c5d78c1d0a0ed38e9a0a"
+  },
+  "rules": [
+    {
+      "id": "USEINNER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of useinner MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

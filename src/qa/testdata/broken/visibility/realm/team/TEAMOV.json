@@ -1,0 +1,27 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TEAMOV",
+    "title": "QA entity TEAMOV",
+    "inherits": "TREEPRIV",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9be40c387908572edcae0fb4dfb5b280cefde1fd2cc36b54088dc76c02b19caa"
+  },
+  "rules": [
+    {
+      "id": "TEAMOV-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of teamov MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "TREEPRIV-001"
+    }
+  ],
+  "notes": []
+}

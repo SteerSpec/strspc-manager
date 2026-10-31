@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "CYCB",
+    "title": "QA entity CYCB",
+    "inherits": "CYCA"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:f3a8ac32c83255b89c34049c2250e8736c58628f93935738686533d2077771cc"
+  },
+  "rules": [
+    {
+      "id": "CYCB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cycb MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

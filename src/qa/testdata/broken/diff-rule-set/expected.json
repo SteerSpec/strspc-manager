@@ -1,0 +1,32 @@
+[
+  {
+    "module": "rule-diff",
+    "code": "RD007",
+    "severity": "error",
+    "path": "BADSEMVER/rule_set.version"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD007",
+    "severity": "error",
+    "path": "LOWER/rule_set.version"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD007",
+    "severity": "error",
+    "path": "NOBUMP/rule_set.version"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD008",
+    "severity": "error",
+    "path": "STALEHASH/rule_set.hash"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD009",
+    "severity": "error",
+    "path": "SAMETIME/rule_set.timestamp"
+  }
+]

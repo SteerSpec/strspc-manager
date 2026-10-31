@@ -1,0 +1,36 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BILLING",
+    "title": "QA entity BILLING",
+    "inherits": "dev.steerspec.qa.shared:PAY"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:cdb913f6d830aa33e3be4dbb9651769c27aa9e4e55e43c24619c349181c12728"
+  },
+  "rules": [
+    {
+      "id": "BILLING-001",
+      "revision": 0,
+      "state": "I",
+      "body": "A billing run MUST use dev.steerspec.qa.shared:PAY-002 references.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.shared:PAY-001"
+    }
+  ],
+  "notes": [
+    {
+      "id": "BILLING-001/01",
+      "rule_ref": "BILLING-001",
+      "type": "related",
+      "content": "dev.steerspec.qa.shared:PAY-003",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

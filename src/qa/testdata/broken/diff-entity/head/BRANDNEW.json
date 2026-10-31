@@ -1,0 +1,60 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BRANDNEW",
+    "title": "QA entity BRANDNEW"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9bd20dbcd0b3fe2a9b1c865809d16d48e52eda1c0e160eba647f4c99bf9e2af1"
+  },
+  "rules": [
+    {
+      "id": "BRANDNEW-001",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of brandnew MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "BRANDNEW-003",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of brandnew MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "BRANDSUB",
+        "title": "QA entity BRANDSUB",
+        "parent": "BRANDNEW"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:d673b68f1782ee88a2c9451828dc321144be9a6de3d4df680c4f4f302b404621"
+      },
+      "rules": [
+        {
+          "id": "BRANDSUB-001",
+          "revision": 2,
+          "state": "D",
+          "body": "The subject of brandsub MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

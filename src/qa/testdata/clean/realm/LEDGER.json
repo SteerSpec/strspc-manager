@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LEDGER",
+    "title": "QA entity LEDGER",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:1dc9ea565ae3276bc042c1cbaae53bfd67037f73c366e2c3b08bf3ac0058ad02"
+  },
+  "rules": [
+    {
+      "id": "LEDGER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "A ledger entry MUST balance.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

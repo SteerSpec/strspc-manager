@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "FROZEN",
+    "title": "QA entity FROZEN"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:0dfbbda230c010bb784b2c14f65e4670853db3521d1282b3d3234be0eb3bab16"
+  },
+  "rules": [
+    {
+      "id": "FROZEN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The frozen body MUST NOT change, yet it did.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

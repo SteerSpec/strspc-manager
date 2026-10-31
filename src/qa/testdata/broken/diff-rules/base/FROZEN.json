@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "FROZEN",
+    "title": "QA entity FROZEN"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:02a53443f153fb859c2a1011c95fadc01f47b9a203f8b58a66f92f5a1608173f"
+  },
+  "rules": [
+    {
+      "id": "FROZEN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of frozen MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

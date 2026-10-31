@@ -1,0 +1,44 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR015",
+    "severity": "error",
+    "path": "realm/CHILD.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR015",
+    "severity": "error",
+    "path": "realm/GRAND.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR015",
+    "severity": "error",
+    "path": "realm/PLAIN.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR016",
+    "severity": "warning",
+    "path": "realm/CHILD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL016",
+    "severity": "warning",
+    "path": "realm/CHILD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL017",
+    "severity": "error",
+    "path": "realm/CHILD.json"
+  }
+]

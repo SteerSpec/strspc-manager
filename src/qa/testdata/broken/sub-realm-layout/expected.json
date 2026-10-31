@@ -1,0 +1,152 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM002",
+    "severity": "error",
+    "path": "realm/language/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM002",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/fmtset"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/language"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/nested"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/wrongid"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM008",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM008",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM008",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM009",
+    "severity": "error",
+    "path": "realm/badmanifest/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM009",
+    "severity": "error",
+    "path": "realm/nomanifest/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM010",
+    "severity": "error",
+    "path": "realm/wrongid/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM011",
+    "severity": "error",
+    "path": "realm/nested/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM013",
+    "severity": "error",
+    "path": "realm/fmtset/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM017",
+    "severity": "error",
+    "path": "realm/language/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR007",
+    "severity": "error",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR007",
+    "severity": "error",
+    "path": "realm/missing"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR007",
+    "severity": "error",
+    "path": "realm/plain"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR008",
+    "severity": "error",
+    "path": "realm/badmanifest/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR008",
+    "severity": "error",
+    "path": "realm/nomanifest/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR009",
+    "severity": "error",
+    "path": "realm/wrongid/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR010",
+    "severity": "error",
+    "path": "realm/nested/realm.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL000",
+    "severity": "error",
+    "path": "outside"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL000",
+    "severity": "error",
+    "path": "realm/missing"
+  }
+]

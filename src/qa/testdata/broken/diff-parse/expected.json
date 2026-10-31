@@ -1,0 +1,20 @@
+[
+  {
+    "module": "rule-diff",
+    "code": "RD000",
+    "severity": "error",
+    "path": ""
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD000",
+    "severity": "error",
+    "path": ""
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD000",
+    "severity": "error",
+    "path": ""
+  }
+]

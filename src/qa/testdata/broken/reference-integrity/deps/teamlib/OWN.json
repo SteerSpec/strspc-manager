@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "OWN",
+    "title": "QA entity OWN"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:c4c81d49eddd73cc74c1e74e824790410be6a2b726a68842974439e28134d53f"
+  },
+  "rules": [
+    {
+      "id": "OWN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of own MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

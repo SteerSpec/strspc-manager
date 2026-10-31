@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SHARED",
+    "title": "QA entity SHARED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9cd2ef1668626725e08582726aa0d92e38408b283ffdebe3d33217601f4990ab"
+  },
+  "rules": [
+    {
+      "id": "SHARED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of shared MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

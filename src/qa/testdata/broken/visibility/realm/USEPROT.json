@@ -1,0 +1,66 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "USEPROT",
+    "title": "QA entity USEPROT",
+    "inherits": "dev.steerspec.qa.vislib:LIBPROT",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:176596857bbaf2df93013becad04cc712be8abe41a599437895ddeaebfd18a0c"
+  },
+  "rules": [
+    {
+      "id": "USEPROT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of useprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
+    },
+    {
+      "id": "USEPROT-002",
+      "revision": 0,
+      "state": "T",
+      "body": "The subject of useprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
+    },
+    {
+      "id": "USEPROT-003",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of useprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
+    },
+    {
+      "id": "USEPROT-004",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of useprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "USEPROT-003"
+    },
+    {
+      "id": "USEPROT-005",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of useprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBPROT-002"
+    }
+  ],
+  "notes": []
+}

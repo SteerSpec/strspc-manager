@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GRAND",
+    "title": "QA entity GRAND",
+    "inherits": "MID"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9471a93bc7db5d4a266ae4316cb4ac94be6ce680e5336ab8fcb99685b8d11d9f"
+  },
+  "rules": [
+    {
+      "id": "GRAND-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of grand MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-003"
+    }
+  ],
+  "notes": []
+}

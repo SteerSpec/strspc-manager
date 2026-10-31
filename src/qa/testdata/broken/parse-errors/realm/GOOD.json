@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GOOD",
+    "title": "QA entity GOOD"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:e2f3cd5c14e98b114bf393e1492ce08c81ec1929bd37a063a44b7dfe0dbf5f71"
+  },
+  "rules": [
+    {
+      "id": "GOOD-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of good MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

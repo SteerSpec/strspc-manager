@@ -1,0 +1,52 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "FRESH",
+    "title": "QA entity FRESH"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:b878a525c56a1adb03aa4b57925973283b23c83ea0f474b0d9f03acefcca2198"
+  },
+  "rules": [
+    {
+      "id": "FRESH-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of fresh MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "FRESH-001/01",
+      "rule_ref": "FRESH-001",
+      "type": "rationale",
+      "content": "Starts past revision 0.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 2
+    },
+    {
+      "id": "FRESH-001/02",
+      "rule_ref": "FRESH-001",
+      "type": "rationale",
+      "content": "Has no author.",
+      "added_by": "",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "FRESH-001/03",
+      "rule_ref": "FRESH-001",
+      "type": "rationale",
+      "content": "Has a malformed author.",
+      "added_by": "@-bad-",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

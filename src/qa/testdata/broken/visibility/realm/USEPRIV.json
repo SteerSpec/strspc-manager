@@ -1,0 +1,36 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "USEPRIV",
+    "title": "QA entity USEPRIV",
+    "inherits": "dev.steerspec.qa.vislib:LIBPRIV",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:5c91e4bdd71af42a2187545f840db790029c60905dd3d323f1b5e945398c0d3f"
+  },
+  "rules": [
+    {
+      "id": "USEPRIV-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of usepriv MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "USEPRIV-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of usepriv MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBPRIV-001"
+    }
+  ],
+  "notes": []
+}

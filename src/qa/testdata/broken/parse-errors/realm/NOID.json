@@ -1,0 +1,14 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "",
+    "title": "QA entity NOID"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:92a12b69b6b05fd9263ede1a4488498f511d64c8fa358d63b4fdfea650a7ecc0"
+  },
+  "rules": [],
+  "notes": []
+}

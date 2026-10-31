@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ORPHAN",
+    "title": "QA entity ORPHAN",
+    "inherits": "ONE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:ebd1cbaf0add30b7bdd9d64601059a9b69a80d01f21d7b38c86f06a2ab1e98cf"
+  },
+  "rules": [
+    {
+      "id": "ORPHAN-001",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of orphan MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

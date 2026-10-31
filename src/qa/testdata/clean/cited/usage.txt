@@ -1,0 +1,7 @@
+The checkout follows ORDER-001 and dev.steerspec.qa.clean:ORDER-006.
+Payments follow dev.steerspec.qa.shared:PAY-002.
+Audits follow AUDIT-001.
+Branch feat-123 and the range 100-200 are not citations.
+See https://example.com/docs/ORDER-999 for the upstream text.
+<!-- strspc-refs: ignore -->
+ORDER-003 is a Draft, which the marker above exempts.

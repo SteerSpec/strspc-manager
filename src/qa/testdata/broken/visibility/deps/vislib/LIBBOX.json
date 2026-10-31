@@ -1,0 +1,52 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBBOX",
+    "title": "QA entity LIBBOX",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:048b4497db3b0833a4b7a58edd4b98a8da02f3ffd21c97c7ecf26c399b6e6ab9"
+  },
+  "rules": [
+    {
+      "id": "LIBBOX-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of libbox MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "LIBINNER",
+        "title": "QA entity LIBINNER",
+        "parent": "LIBBOX"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:22f0e5b7783ae87b02978cffb2fab1b75e114b6e71b854d92cacaca6f820ef1d"
+      },
+      "rules": [
+        {
+          "id": "LIBINNER-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of libinner MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

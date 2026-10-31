@@ -1,0 +1,51 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NEWSUB",
+    "title": "QA entity NEWSUB"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:f491d8e84b67feba85c3049f6f3b17cdffe5f716f8ffcef943ed882b8f4e62a9"
+  },
+  "rules": [
+    {
+      "id": "NEWSUB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of newsub MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "NEWCHILD",
+        "title": "QA entity NEWCHILD",
+        "parent": "NEWSUB"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:7e94940e0ac46ad3b9a28d4e856d353a924ecacdcedaddad646db4451cd38f0c"
+      },
+      "rules": [
+        {
+          "id": "NEWCHILD-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of newchild MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

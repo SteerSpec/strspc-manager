@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SOURCED",
+    "title": "QA entity SOURCED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:4490fc3acba0d2512f2b0fa5984c9f252faf1c97322b4592b1aae35055b126c4"
+  },
+  "rules": [
+    {
+      "id": "SOURCED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of sourced MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

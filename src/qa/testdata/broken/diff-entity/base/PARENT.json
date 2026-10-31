@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PARENT",
+    "title": "QA entity PARENT",
+    "inherits": "ONE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:f0ef53ba78bbd5020649e49dd6b11f0b4f84a5bfcf46b9f78fabb4398e90a3eb"
+  },
+  "rules": [
+    {
+      "id": "PARENT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of parent MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

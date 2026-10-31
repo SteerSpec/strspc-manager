@@ -1,0 +1,10 @@
+{
+  "claims": [
+    "RD007",
+    "RD008",
+    "RD009"
+  ],
+  "bad_hash": [
+    "head/STALEHASH.json"
+  ]
+}

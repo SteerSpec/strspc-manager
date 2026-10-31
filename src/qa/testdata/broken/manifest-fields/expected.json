@@ -1,0 +1,122 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM002",
+    "severity": "error",
+    "path": "realm/badid/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM002",
+    "severity": "error",
+    "path": "realm/blank/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM002",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM003",
+    "severity": "error",
+    "path": "realm/_schema"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM003",
+    "severity": "error",
+    "path": "realm/flat/_schema"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM004",
+    "severity": "error",
+    "path": "realm/bare/_schema/entity.v1.schema.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/badid"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/bare"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/blank"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/flat"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM007",
+    "severity": "error",
+    "path": "realm/badid/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM007",
+    "severity": "error",
+    "path": "realm/blank/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM007",
+    "severity": "error",
+    "path": "realm/blank/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM007",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM010",
+    "severity": "error",
+    "path": "realm/badid/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM010",
+    "severity": "error",
+    "path": "realm/blank/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR009",
+    "severity": "error",
+    "path": "realm/badid/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR009",
+    "severity": "error",
+    "path": "realm/blank/realm.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV006",
+    "severity": "warning",
+    "path": "realm"
+  }
+]

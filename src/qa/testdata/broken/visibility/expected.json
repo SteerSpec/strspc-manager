@@ -1,0 +1,116 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/team"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR016",
+    "severity": "warning",
+    "path": "realm/USEPROT.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR022",
+    "severity": "error",
+    "path": "realm/USEINNER.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR022",
+    "severity": "error",
+    "path": "realm/USEPRIV.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR022",
+    "severity": "error",
+    "path": "realm/USESUB.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/PIERCE.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/USEPRIV.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/USEPROT.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/USEPROT.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/USEPROT.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR023",
+    "severity": "error",
+    "path": "realm/team/TEAMOV.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR024",
+    "severity": "error",
+    "path": "realm/THRU.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR024",
+    "severity": "error",
+    "path": "realm/WIDE.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR025",
+    "severity": "error",
+    "path": "realm/EXTA.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR025",
+    "severity": "error",
+    "path": "realm/EXTB.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/BADVIS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL023",
+    "severity": "error",
+    "path": "realm/BADVIS.json: BADVIS/entity.visibility"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL024",
+    "severity": "error",
+    "path": "realm/CONT.json: CONT \u003e CONTSUB/entity.visibility"
+  }
+]

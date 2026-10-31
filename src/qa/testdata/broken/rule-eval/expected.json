@@ -1,0 +1,38 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE001",
+    "severity": "error",
+    "path": "app.go:1"
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE001",
+    "severity": "warning",
+    "path": "app.go:1"
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE001",
+    "severity": "warning",
+    "path": "app.go:1"
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE003",
+    "severity": "info",
+    "path": ""
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE004",
+    "severity": "info",
+    "path": ""
+  }
+]

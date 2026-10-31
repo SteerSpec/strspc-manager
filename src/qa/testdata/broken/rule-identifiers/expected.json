@@ -1,0 +1,68 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/BADCHARS.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/SHAPE.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/TOOLONG.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL003",
+    "severity": "error",
+    "path": "realm/BADCHARS.json: a!"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL003",
+    "severity": "error",
+    "path": "realm/TOOLONG.json: EUIDOFNINETEENCHARS"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL004",
+    "severity": "error",
+    "path": "realm/PREFIX.json: PREFIX"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL004",
+    "severity": "error",
+    "path": "realm/SHAPE.json: SHAPE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL005",
+    "severity": "error",
+    "path": "realm/DOUBLED.json: DOUBLED"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL005",
+    "severity": "error",
+    "path": "realm/GAPPED.json: GAPPED"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL005",
+    "severity": "error",
+    "path": "realm/ZERO.json: ZERO"
+  }
+]
