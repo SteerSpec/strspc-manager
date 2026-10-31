@@ -1,0 +1,49 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBENT",
+    "title": "LIBENT"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "LIBENT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule LIBENT-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [],
+  "sub_entities": [
+    {
+      "entity": {
+        "id": "LIBSUB",
+        "title": "LIBSUB"
+      },
+      "rule_set": {
+        "version": "0.1.0",
+        "timestamp": "2026-10-31T00:00:00Z",
+        "hash": null
+      },
+      "rules": [
+        {
+          "id": "LIBSUB-001",
+          "revision": 0,
+          "state": "I",
+          "body": "Rule LIBSUB-001.",
+          "added_by": "t",
+          "added_at": "2026-10-31",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

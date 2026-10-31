@@ -91,6 +91,8 @@ RR013 active inherits-unresolved
 RR014 active inherit-chain-invalid
 RR015 active override-target-not-inherited
 RR016 active override-target-not-in-force
+RR017 active note-ref-realm-undeclared
+RR018 active note-ref-rule-missing
 RSV000 active context-cancelled
 RSV002 active local-source-unreadable
 RSV003 active entity-parse-or-id-empty

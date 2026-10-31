@@ -1,0 +1,19 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.brk",
+    "title": "dev.brk",
+    "version": "0.1.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.gone",
+      "version": "0.1.0",
+      "source": "../gone/"
+    }
+  ],
+  "rule_identifier_format": null,
+  "sub_realms": [
+    "auth"
+  ]
+}

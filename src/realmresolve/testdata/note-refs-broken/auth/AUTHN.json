@@ -1,0 +1,34 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "AUTHN",
+    "title": "AUTHN"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "AUTHN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule AUTHN-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "AUTHN-001/01",
+      "rule_ref": "AUTHN-001",
+      "type": "related",
+      "content": "See dev.gone:GONE-003 and dev.gone.sub:GONE-004.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ]
+}
