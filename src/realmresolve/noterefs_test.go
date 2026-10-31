@@ -75,3 +75,22 @@ func TestCheckNoteRefs_FailedDependencyIsReportedOnce(t *testing.T) {
 		t.Errorf("expected no note diagnostics, got: %v", got)
 	}
 }
+
+func TestCheckNoteRefs_StopsWhenCancelled(t *testing.T) {
+	dir := absTestdata(t, "note-refs-solo")
+	rf := loadTestRealm(t, "note-refs-solo")
+	res := &result.Result{}
+	euids, entities := collectEUIDs(context.Background(), dir, res)
+	root := &ResolvedRealm{Realm: rf, Dir: dir, EUIDs: euids, Entities: entities}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	New().checkNoteRefs(ctx, root, nil, res)
+
+	if !hasDiagCode(res, "RR000") {
+		t.Errorf("expected RR000, got: %v", res.Diagnostics)
+	}
+	if got := noteRefDiags(res); len(got) != 0 {
+		t.Errorf("expected no note diagnostics, got: %v", got)
+	}
+}

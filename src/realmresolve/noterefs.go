@@ -34,6 +34,10 @@ func (r *RealmResolver) checkNoteRefs(ctx context.Context, root *ResolvedRealm, 
 	s := r.newChainState(ctx, root, subs, entities, res)
 	superseded := supersededRules(entities)
 	for _, id := range sortedIDs(entities) {
+		if err := ctx.Err(); err != nil {
+			res.Add(result.Diagnostic{Module: module, Code: "RR000", Severity: result.Error, Message: err.Error(), Path: root.Dir})
+			return
+		}
 		e := entities[id]
 		dead := make(map[string]bool)
 		for _, rule := range e.Rules {
