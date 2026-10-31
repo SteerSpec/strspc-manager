@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.31.0](https://github.com/SteerSpec/strspc-manager/compare/v1.30.0...v1.31.0) (2026-10-31)
+
+
+### Features
+
+* **realmresolve:** warn on dead targets and check qualified refs in bodies ([#180](https://github.com/SteerSpec/strspc-manager/issues/180)) ([7abd309](https://github.com/SteerSpec/strspc-manager/commit/7abd309c9c4f9b2c83509b5b59719a6af1e1205c))
+* **ruleeval:** read the rules an extends note names with the rule ([#181](https://github.com/SteerSpec/strspc-manager/issues/181)) ([21cf1d8](https://github.com/SteerSpec/strspc-manager/commit/21cf1d8ae59729aa4c69862a5baa5f4ec1b9a116))
+
 ## [1.30.0](https://github.com/SteerSpec/strspc-manager/compare/v1.29.0...v1.30.0) (2026-10-31)
 
 
