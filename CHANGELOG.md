@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.34.0](https://github.com/SteerSpec/strspc-manager/compare/v1.33.0...v1.34.0) (2026-10-31)
+
+
+### Features
+
+* **realm:** carry the realm language and reject it on sub-realms ([#199](https://github.com/SteerSpec/strspc-manager/issues/199)) ([e324949](https://github.com/SteerSpec/strspc-manager/commit/e3249490c759a9e85c6c4dcd6a53a1309ee092d8))
+* **remote:** report what the cache holds without the network ([#197](https://github.com/SteerSpec/strspc-manager/issues/197)) ([7896096](https://github.com/SteerSpec/strspc-manager/commit/789609669a2a0cb4fc0d572c4154aa1a2ba318d7))
+
 ## [1.33.0](https://github.com/SteerSpec/strspc-manager/compare/v1.32.0...v1.33.0) (2026-10-31)
 
 
