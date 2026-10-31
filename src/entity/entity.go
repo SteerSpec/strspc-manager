@@ -34,6 +34,10 @@ type Entity struct {
 	// inherits (ENT-006): a short EUID in-realm or <realm-id>:<EUID> across
 	// realms; empty when the entity inherits nothing.
 	Inherits string `json:"inherits,omitempty"`
+	// Visibility limits who may inherit the entity and override its rules
+	// (ENT-011): one of the Visibility* constants, or empty when the entity
+	// takes the default (see EffectiveVisibility).
+	Visibility string `json:"visibility,omitempty"`
 }
 
 // RuleSet holds versioning and integrity metadata for an entity's rule set.
