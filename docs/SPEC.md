@@ -413,7 +413,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `realm-resolve` | Yes (cache) | Resolves Realm dependencies (local or `github://`) and cross-realm references. Validates EUID uniqueness across dependent Realms. |
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
-| `remote` | Yes (cache) | Downloads `github://` references into the local cache. Shared by `rule-resolve` and `realm-resolve`. |
+| `remote` | Yes (cache) | Downloads `github://` references into the local cache, and reports what it holds without the network. Shared by `rule-resolve` and `realm-resolve`. |
 | `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Takes the text from its caller. |
 
 ### 6.3 Diagnostic Codes
