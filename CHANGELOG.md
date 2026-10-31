@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.33.0](https://github.com/SteerSpec/strspc-manager/compare/v1.32.0...v1.33.0) (2026-10-31)
+
+
+### Features
+
+* **entity:** enforce entity visibility ([#191](https://github.com/SteerSpec/strspc-manager/issues/191)) ([cefb1f2](https://github.com/SteerSpec/strspc-manager/commit/cefb1f28d1c76000d33ba6c121e75d49375811d2))
+
 ## [1.32.0](https://github.com/SteerSpec/strspc-manager/compare/v1.31.0...v1.32.0) (2026-10-31)
 
 
