@@ -158,7 +158,7 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	coreDir := l.checkDependencies(ctx, dir, rf, realmPath, res)
 	checkSchemaDrift(dir, coreDir, res)
 
-	// RM008–RM011, RM013: Sub-realm validation.
+	// RM008–RM011, RM013, RM017: Sub-realm validation.
 	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, coreDir, res)
 
 	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
@@ -393,6 +393,20 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 		}
 	}
 	return coreDir
+}
+
+// declaresLanguage reports whether a manifest holds a realm.language key,
+// whatever its value. It reads the raw JSON because an empty or null value
+// decodes the same as an absent key, and schema validation may be unavailable.
+func declaresLanguage(data []byte) bool {
+	var m struct {
+		Realm map[string]json.RawMessage `json:"realm"`
+	}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return false
+	}
+	_, ok := m.Realm["language"]
+	return ok
 }
 
 // declaresCore reports whether rf itself pins the core Realm.
@@ -737,6 +751,18 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Code:     "RM013",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("sub-realm %q: rule_identifier_format must be null; a sub-realm inherits its parent's format (RLM-015)", srName),
+				Path:     srRealmPath,
+			})
+		}
+
+		// RM017: A sub-realm inherits its parent's language (RLM-018), so its
+		// manifest leaves language out.
+		if declaresLanguage(srData) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM017",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-018)", srName),
 				Path:     srRealmPath,
 			})
 		}

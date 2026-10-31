@@ -666,6 +666,15 @@
     "retired": false
   },
   {
+    "code": "RM017",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Sub-realm sets a language",
+    "summary": "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018).",
+    "fix": "Remove `language` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
+    "retired": false
+  },
+  {
     "code": "RR000",
     "module": "realm-resolve",
     "severity": "Error",
