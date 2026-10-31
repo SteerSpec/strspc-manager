@@ -16,16 +16,17 @@ var ruleRefRe = regexp.MustCompile(`\b(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)
 // resolveExtended maps each rule with an `extends` note, in the Realm, its
 // sub-realms and their inheritance chains, to the live rules the note names,
 // one hop only. An ancestor's references resolve from the ancestor's Realm.
-// It reports nothing: checkNoteRefs and resolveInheritance have reported what
-// the Realm answers for, and a reference that fails here is just left out.
-func (r *RealmResolver) resolveExtended(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm) map[string][]inherit.Extended {
+// It reports only cancellation (RR000): checkNoteRefs and resolveInheritance
+// have reported what the Realm answers for, and a reference that fails here
+// is just left out.
+func (r *RealmResolver) resolveExtended(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, res *result.Result) map[string][]inherit.Extended {
 	entities, paths := treeEntities(root, subs)
 	s := r.newChainState(ctx, root, subs, entities, &result.Result{})
 	out := make(map[string][]inherit.Extended)
 	visited := make(map[*entity.File]bool)
 	for _, id := range sortedIDs(entities) {
 		if ctx.Err() != nil {
-			return out
+			break
 		}
 		e := entities[id]
 		s.collectExtended(s.treeNode[id], e, visited, out)
@@ -39,6 +40,9 @@ func (r *RealmResolver) resolveExtended(ctx context.Context, root *ResolvedRealm
 		for _, hop := range ancestors {
 			s.collectExtended(s.holder[hop.Entity], hop.Entity, visited, out)
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		res.Add(result.Diagnostic{Module: module, Code: "RR000", Severity: result.Error, Message: err.Error(), Path: root.Dir})
 	}
 	return out
 }

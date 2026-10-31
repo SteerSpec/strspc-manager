@@ -409,7 +409,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	}
 	out.Inheritance = r.resolveInheritance(ctx, root, out.SubRealms, res)
 	r.checkNoteRefs(ctx, root, out.SubRealms, res)
-	out.Extended = r.resolveExtended(ctx, root, out.SubRealms)
+	out.Extended = r.resolveExtended(ctx, root, out.SubRealms, res)
 
 	return out, res
 }

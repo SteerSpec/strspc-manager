@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
 func TestResolveExtended(t *testing.T) {
@@ -32,5 +33,21 @@ func TestResolveExtended_NoExtendsNotes(t *testing.T) {
 	out, _ := New().Resolve(context.Background(), loadTestRealm(t, "note-refs-solo"), absTestdata(t, "note-refs-solo"))
 	if len(out.Extended) != 0 {
 		t.Errorf("Extended = %v, want none", out.Extended)
+	}
+}
+
+func TestResolveExtended_ReportsCancellation(t *testing.T) {
+	dir := absTestdata(t, "extended/root")
+	rf := loadTestRealm(t, "extended/root")
+	res := &result.Result{}
+	euids, entities := collectEUIDs(context.Background(), dir, res)
+	root := &ResolvedRealm{Realm: rf, Dir: dir, EUIDs: euids, Entities: entities}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	New().resolveExtended(ctx, root, nil, res)
+
+	if !hasDiagCode(res, "RR000") {
+		t.Errorf("expected RR000 for the cancelled context, got: %v", res.Diagnostics)
 	}
 }
