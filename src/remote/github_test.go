@@ -1877,6 +1877,9 @@ func TestEnsureDir_CacheInstallFailures(t *testing.T) {
 			wantErr: "remote: creating temp dir: ",
 		},
 		{
+			// A regular file, because renaming the staged directory onto one
+			// fails with ENOTDIR. A directory here would be a cache hit, and
+			// EnsureDir would return it without downloading.
 			name: "file where the cache entry belongs",
 			plant: func(t *testing.T, refDir, dir string) {
 				mustMkdir(t, refDir)
