@@ -124,7 +124,7 @@ Every note is rendered and sent to the evaluator; there is no latest-wins select
 | `clarification` | Interpretive guidance added after initial authoring. | Rules |
 | `deprecation_notice` | Explanation of why a rule is being retired. | Rules, Rule Sets |
 | `supersedes` | Declares that this rule replaces another rule (content is the superseded rule ID). | Rules |
-| `extends` | Declares that this rule builds on another rule. | Rules |
+| `extends` | Declares that this rule builds on another rule. The AI evaluator reads the body of each live rule it names alongside this rule, one hop only. | Rules |
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
 
 ### 2.7 Sub-Entities

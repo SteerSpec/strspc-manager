@@ -1,0 +1,17 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.mid",
+    "title": "dev.mid",
+    "version": "0.1.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.core",
+      "version": "0.1.0",
+      "source": "../core/"
+    }
+  ],
+  "rule_identifier_format": null,
+  "sub_realms": []
+}

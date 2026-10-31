@@ -17,12 +17,12 @@ import (
 
 // Version identifies the prompt revision. Bump it whenever a change to this
 // package could change verdicts so that cached results are invalidated.
-const Version = "v5"
+const Version = "v6"
 
 // noteOrder lists the note types sent to the evaluator, in the order they
 // are rendered. Other note types (changelog, reference, supersedes, …) are
 // bookkeeping and are omitted.
-var noteOrder = []string{"applies_to", "rationale", "example", "counter_example", "clarification"}
+var noteOrder = []string{"applies_to", "rationale", "example", "counter_example", "clarification", "extends"}
 
 const system = `You are the SteerSpec rule evaluator. You receive a unified diff and a list of governance rules, and you return one verdict per rule as JSON that conforms to the response schema.
 
@@ -30,6 +30,7 @@ How to evaluate:
 - Judge the change itself: the lines beginning with "+" (added or rewritten) and the lines beginning with "-" (removed) inside each hunk. A removal that breaks a rule is a violation just as an addition is: deleting a required element from code that remains is a regression introduced by this diff. Unchanged context lines are provided so you can understand the change; a pre-existing problem that the diff does not touch is never a violation of this diff.
 - For each rule choose exactly one verdict. "violated": an added or changed line breaks the rule. "compliant": the diff touches the rule's subject and respects it. "not_applicable": the diff does not touch the rule's subject at all; this is the default, so choose it whenever the rule's subject is absent from the diff rather than guessing.
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when the diff falls outside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
+- A rule with "extended rules" builds on the rules quoted there. Read it together with them to understand what it requires, and give a verdict for the rule itself only. An extended rule is not judged here: a change that breaks only the extended rule does not violate the rule that extends it.
 - A rule whose source has scope "local" applies only to files under that source's own directory. Files elsewhere in the diff make such a rule "not_applicable".
 - Entities can inherit rules. A rule marked "inherited by" is owned by the entity named in "entity" and applies to both that owner's subject and the inheriting entity's subject. A rule marked "overrides" replaces the named inherited rule for its own entity's subject. A rule marked "overridden by" lists the replacing rules with their entities' titles: it does not apply to those entities' subjects, and still applies to its own entity's subject everywhere else.
 - The verdict response is one JSON object with one key per rule id listed in the rules block and the verdict as its value. Every listed id is present, including when every verdict is "not_applicable".
@@ -51,7 +52,8 @@ func DiffBlock(diff string) string {
 // RulesBlock renders the rules to evaluate. Each rule carries its id,
 // owning entity, state, revision, source and scope, and for inheritance the
 // inheriting entity, the rule it overrides and the rules overriding it,
-// followed by its body and its notes grouped by type in a fixed order.
+// followed by its body, its notes grouped by type in a fixed order, and the
+// rules it extends.
 func RulesBlock(rules []ruleeval.RuleInput) string {
 	var b strings.Builder
 	b.WriteString("<rules>\n")
@@ -107,6 +109,12 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 		fmt.Fprintf(b, "%s:\n", typ)
 		for _, n := range notes {
 			fmt.Fprintf(b, "  - %s\n", indentContinuation(strings.TrimSpace(n.Content)))
+		}
+	}
+	if len(r.Extended) > 0 {
+		b.WriteString("extended rules:\n")
+		for _, e := range r.Extended {
+			fmt.Fprintf(b, "  - %s: %s\n", e.ID, indentContinuation(strings.TrimSpace(e.Body)))
 		}
 	}
 }

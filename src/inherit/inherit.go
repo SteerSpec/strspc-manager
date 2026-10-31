@@ -31,6 +31,17 @@ type Hop struct {
 	Entity *entity.File
 }
 
+// Extended is a live rule named by an `extends` note, as the evaluator reads
+// it alongside the rule that extends it.
+type Extended struct {
+	// ID is the reference as the note writes it.
+	ID string
+	// Revision is the rule's revision.
+	Revision int
+	// Body is the rule's text.
+	Body string
+}
+
 // Rule is one entry of an effective rule set.
 type Rule struct {
 	// Rule is the rule as declared by its owner.

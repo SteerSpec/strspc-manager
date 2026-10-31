@@ -97,3 +97,54 @@ func TestCacheKey_InheritanceMetadata(t *testing.T) {
 		t.Error("overridden-by order must not change the cache key")
 	}
 }
+
+func TestAnnotateExtended(t *testing.T) {
+	own := inherit.Extended{ID: "dep:DEP-001", Revision: 1, Body: "Own target."}
+	inherited := inherit.Extended{ID: "core:BASE-001", Revision: 2, Body: "Inherited target."}
+	inputs := []RuleInput{
+		{Rule: entity.Rule{ID: "SAV-001"}, EntityID: "SAV"},
+		{Rule: entity.Rule{ID: "ACCT-001"}, EntityID: "SAV", Owner: "dep:ACCT", InheritedBy: "SAV"},
+		{Rule: entity.Rule{ID: "SAV-002"}, EntityID: "SAV"},
+	}
+	AnnotateExtended(inputs, "app", map[string][]inherit.Extended{
+		"app:SAV-001":  {own},
+		"dep:ACCT-001": {inherited},
+		"app:ACCT-001": {own},
+	})
+	if len(inputs[0].Extended) != 1 || inputs[0].Extended[0] != own {
+		t.Errorf("own rule: Extended = %v", inputs[0].Extended)
+	}
+	if len(inputs[1].Extended) != 1 || inputs[1].Extended[0] != inherited {
+		t.Errorf("inherited rule: Extended = %v, want its owner's realm", inputs[1].Extended)
+	}
+	if len(inputs[2].Extended) != 0 {
+		t.Errorf("rule without targets: Extended = %v", inputs[2].Extended)
+	}
+}
+
+func TestCacheKey_Extended(t *testing.T) {
+	in := RuleInput{Rule: entity.Rule{ID: "A-001", Body: "x"}, Extended: []inherit.Extended{
+		{ID: "dep:B-001", Revision: 1, Body: "one"},
+		{ID: "dep:C-001", Revision: 1, Body: "two"},
+	}}
+	base := CacheKey(in, "d", "m", "v")
+
+	for name, change := range map[string]func(*inherit.Extended){
+		"body":     func(e *inherit.Extended) { e.Body = "changed" },
+		"revision": func(e *inherit.Extended) { e.Revision = 2 },
+		"id":       func(e *inherit.Extended) { e.ID = "dep:D-001" },
+	} {
+		changed := in
+		changed.Extended = append([]inherit.Extended(nil), in.Extended...)
+		change(&changed.Extended[0])
+		if CacheKey(changed, "d", "m", "v") == base {
+			t.Errorf("changing the target's %s kept the cache key", name)
+		}
+	}
+
+	swapped := in
+	swapped.Extended = []inherit.Extended{in.Extended[1], in.Extended[0]}
+	if CacheKey(swapped, "d", "m", "v") != base {
+		t.Error("target order changed the cache key")
+	}
+}

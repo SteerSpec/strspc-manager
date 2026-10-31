@@ -1,0 +1,44 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "MID",
+    "title": "MID"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "MID-001",
+      "revision": 2,
+      "state": "I",
+      "body": "Mid rule.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "MID-002",
+      "revision": 0,
+      "state": "A",
+      "body": "Abandoned mid rule.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "MID-001/01",
+      "rule_ref": "MID-001",
+      "type": "extends",
+      "content": "Extends dev.core:BASE-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ],
+  "sub_entities": []
+}
