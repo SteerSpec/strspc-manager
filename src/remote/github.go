@@ -206,24 +206,9 @@ type Fetcher struct {
 // Layout: <CacheDir>/github/<owner>/<repo>/<ref>/<sha256(path)[:12]>/
 // Metadata: <CacheDir>/github/<owner>/<repo>/.meta/latest.json
 func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
-	if f.CacheDir == "" {
-		return "", errors.New("remote: cache directory not configured")
-	}
-	if ref.Owner == "" || ref.Repo == "" || ref.Ref == "" {
-		return "", fmt.Errorf("remote: incomplete reference %q", ref.String())
-	}
-	for _, c := range []string{ref.Owner, ref.Repo, ref.Ref} {
-		if !safeComponent(c) {
-			return "", fmt.Errorf("remote: illegal component %q in reference %q", c, ref.String())
-		}
-	}
-	if hasDotDot(ref.Path) || strings.Contains(ref.Path, `\`) {
-		return "", fmt.Errorf("remote: illegal path in reference %q", ref.String())
-	}
-
-	repoDir, err := filepath.Abs(filepath.Join(f.CacheDir, "github", ref.Owner, ref.Repo))
+	repoDir, err := f.repoDir(ref)
 	if err != nil {
-		return "", fmt.Errorf("remote: resolving cache dir: %w", err)
+		return "", err
 	}
 
 	concrete := ref
@@ -244,6 +229,67 @@ func (f *Fetcher) EnsureDir(ctx context.Context, ref Ref) (string, error) {
 
 	if err := f.download(ctx, concrete, dir); err != nil {
 		return "", err
+	}
+	return dir, nil
+}
+
+// CacheEntry is what the cache holds for a reference, as Cached reports it.
+type CacheEntry struct {
+	// Dir is the cached directory, or "" when the reference isn't cached.
+	Dir string
+	// Ref is the concrete ref: the reference's own for an immutable one, the
+	// tag "latest" last resolved to, or "" when it never resolved.
+	Ref string
+	// ResolvedAt is when "latest" last resolved; zero for an immutable ref.
+	ResolvedAt time.Time
+	// Stale reports that "latest" resolved at least TTL ago, so EnsureDir would
+	// resolve it again. An immutable ref is never stale.
+	Stale bool
+}
+
+// Cached reports what the cache holds for ref, without the network and without
+// writing anything, so a read-only command can show it. A reference that isn't
+// cached is not an error. It rejects the references EnsureDir rejects.
+func (f *Fetcher) Cached(ref Ref) (CacheEntry, error) {
+	repoDir, err := f.repoDir(ref)
+	if err != nil {
+		return CacheEntry{}, err
+	}
+	entry := CacheEntry{Ref: ref.Ref}
+	if !ref.IsImmutable() {
+		rec := readLatestPointer(repoDir)
+		if rec == nil {
+			return CacheEntry{}, nil
+		}
+		entry = CacheEntry{Ref: rec.Tag, ResolvedAt: rec.ResolvedAt, Stale: f.clock().Sub(rec.ResolvedAt) >= f.ttl()}
+	}
+	dir := filepath.Join(repoDir, entry.Ref, pathKey(ref.Path))
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		entry.Dir = dir
+	}
+	return entry, nil
+}
+
+// repoDir validates ref and returns the absolute cache directory of its
+// repository.
+func (f *Fetcher) repoDir(ref Ref) (string, error) {
+	if f.CacheDir == "" {
+		return "", errors.New("remote: cache directory not configured")
+	}
+	if ref.Owner == "" || ref.Repo == "" || ref.Ref == "" {
+		return "", fmt.Errorf("remote: incomplete reference %q", ref.String())
+	}
+	for _, c := range []string{ref.Owner, ref.Repo, ref.Ref} {
+		if !safeComponent(c) {
+			return "", fmt.Errorf("remote: illegal component %q in reference %q", c, ref.String())
+		}
+	}
+	if hasDotDot(ref.Path) || strings.Contains(ref.Path, `\`) {
+		return "", fmt.Errorf("remote: illegal path in reference %q", ref.String())
+	}
+	dir, err := filepath.Abs(filepath.Join(f.CacheDir, "github", ref.Owner, ref.Repo))
+	if err != nil {
+		return "", fmt.Errorf("remote: resolving cache dir: %w", err)
 	}
 	return dir, nil
 }
@@ -269,26 +315,37 @@ type latestRecord struct {
 	ResolvedAt time.Time `json:"resolved_at"`
 }
 
+// readLatestPointer returns the cached "latest" pointer of a repository, or nil
+// when there is none. A pointer holding an unsafe tag is ignored, never trusted.
+func readLatestPointer(repoDir string) *latestRecord {
+	data, err := os.ReadFile(filepath.Join(repoDir, metaDir, latestPointer))
+	if err != nil {
+		return nil
+	}
+	var rec latestRecord
+	if json.Unmarshal(data, &rec) != nil || !safeComponent(rec.Tag) {
+		return nil
+	}
+	return &rec
+}
+
+// ttl returns how long a resolved "latest" tag is trusted.
+func (f *Fetcher) ttl() time.Duration {
+	if f.TTL <= 0 {
+		return DefaultTTL
+	}
+	return f.TTL
+}
+
 // resolveLatest returns the tag_name of the latest release, using the
 // cached pointer while it is younger than TTL. When the API is unreachable
 // and a stale pointer exists, the stale tag is returned so offline runs
 // keep working.
 func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (string, error) {
-	ttl := f.TTL
-	if ttl <= 0 {
-		ttl = DefaultTTL
-	}
 	pointer := filepath.Join(repoDir, metaDir, latestPointer)
 
-	var cached *latestRecord
-	if data, err := os.ReadFile(pointer); err == nil {
-		var rec latestRecord
-		// A pointer holding an unsafe tag is ignored, never trusted.
-		if json.Unmarshal(data, &rec) == nil && safeComponent(rec.Tag) {
-			cached = &rec
-		}
-	}
-	if cached != nil && !f.Force && f.clock().Sub(cached.ResolvedAt) < ttl {
+	cached := readLatestPointer(repoDir)
+	if cached != nil && !f.Force && f.clock().Sub(cached.ResolvedAt) < f.ttl() {
 		return cached.Tag, nil
 	}
 
@@ -469,10 +526,11 @@ func extractTarball(r io.Reader, sub, dest string) (int, error) {
 			if hdr.Size < 0 {
 				return files, fmt.Errorf("tar: negative size for %q", hdr.Name)
 			}
-			total += hdr.Size
-			if total > MaxExtractBytes {
+			// Compare before adding: a crafted size could wrap total negative.
+			if hdr.Size > MaxExtractBytes-total {
 				return files, fmt.Errorf("archive exceeds %d bytes extraction cap", MaxExtractBytes)
 			}
+			total += hdr.Size
 			target, err := safeJoin(destAbs, rel)
 			if err != nil {
 				return files, err

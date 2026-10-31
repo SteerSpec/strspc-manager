@@ -170,3 +170,32 @@ func TestInheritanceFieldsKeepHash(t *testing.T) {
 		t.Errorf("hash changed on rewrite: %s → %s", before, after)
 	}
 }
+
+func TestRealmFileLanguageRoundTrip(t *testing.T) {
+	in := `{
+		"$schema": "realm.v1.schema.json",
+		"realm": {"id": "dev.test", "title": "Test", "version": "0.1.0", "language": "en"}
+	}`
+	var rf RealmFile
+	if err := json.Unmarshal([]byte(in), &rf); err != nil {
+		t.Fatal(err)
+	}
+	out, err := json.Marshal(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `"language":"en"`) {
+		t.Errorf("language dropped on rewrite: %s", out)
+	}
+}
+
+func TestRealmFileLanguageOmitEmpty(t *testing.T) {
+	rf := RealmFile{Realm: RealmMeta{ID: "dev.test", Title: "Test", Version: "0.1.0"}}
+	out, err := json.Marshal(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), "language") {
+		t.Errorf("an absent language must stay absent: %s", out)
+	}
+}

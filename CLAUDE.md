@@ -26,6 +26,9 @@ make test         # run go test ./...
 make lint         # golangci-lint
 ```
 
+Every package under `src/` keeps at least 85% statement coverage from its own
+tests (GOTEST-001).
+
 ## Conventions
 
 - [Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`
