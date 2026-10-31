@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.30.0](https://github.com/SteerSpec/strspc-manager/compare/v1.29.0...v1.30.0) (2026-10-31)
+
+
+### Features
+
+* **realmresolve:** validate qualified references in relation notes ([#175](https://github.com/SteerSpec/strspc-manager/issues/175)) ([e68579d](https://github.com/SteerSpec/strspc-manager/commit/e68579d8cab716e8859c4c13c05cb2973fcba151))
+
+
+### Documentation
+
+* polish the README and bring it up to date ([#174](https://github.com/SteerSpec/strspc-manager/issues/174)) ([fb2fdd0](https://github.com/SteerSpec/strspc-manager/commit/fb2fdd06502f836ec0eb7f9a6161e5916d4f803a))
+
 ## [1.29.0](https://github.com/SteerSpec/strspc-manager/compare/v1.28.1...v1.29.0) (2026-10-31)
 
 
