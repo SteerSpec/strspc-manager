@@ -33,6 +33,7 @@ var ownedPrefix = map[string]string{
 	"src/ruleresolve":  "RSV",
 	"src/ruleeval":     "RE",
 	"src/evalcache":    "EC",
+	"src/rulerefs":     "RF",
 }
 
 // reservedCodesPath is the registry of every code that has shipped,
