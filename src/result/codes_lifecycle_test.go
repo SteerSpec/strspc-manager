@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-// MOD-007: a module emits diagnostic codes only from the prefix it owns.
+// MOD-008: a module emits diagnostic codes only from the prefix it owns.
 // MOD-003: a code that has shipped is never reused or renumbered; a retired
 // check keeps its code reserved.
 //
@@ -24,7 +24,7 @@ import (
 // failing the build.
 
 // ownedPrefix maps each module directory in codeModules to the single
-// diagnostic prefix it owns, as listed in MOD-007.
+// diagnostic prefix it owns, as listed in MOD-008.
 var ownedPrefix = map[string]string{
 	"src/rulelint":     "RL",
 	"src/rulediff":     "RD",
@@ -60,12 +60,12 @@ func TestDiagnosticCodesUseOwnedPrefix(t *testing.T) {
 	for _, mod := range codeModules {
 		prefix, ok := ownedPrefix[mod]
 		if !ok {
-			t.Errorf("%s is scanned for codes but owns no prefix; add it to ownedPrefix (MOD-007)", mod)
+			t.Errorf("%s is scanned for codes but owns no prefix; add it to ownedPrefix (MOD-008)", mod)
 			continue
 		}
 		for code, file := range collectCodesIn(t, filepath.Join(root, mod), root) {
 			if got := codePrefix(code); got != prefix {
-				t.Errorf("%s emits %s but owns only the %s prefix (MOD-007)", file, code, prefix)
+				t.Errorf("%s emits %s but owns only the %s prefix (MOD-008)", file, code, prefix)
 			}
 		}
 	}
