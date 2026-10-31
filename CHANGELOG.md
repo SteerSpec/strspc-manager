@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.0](https://github.com/SteerSpec/strspc-manager/compare/v1.28.1...v1.29.0) (2026-10-31)
+
+
+### Features
+
+* **remote:** limit the token to allowed owners ([#170](https://github.com/SteerSpec/strspc-manager/issues/170)) ([10ee7f6](https://github.com/SteerSpec/strspc-manager/commit/10ee7f6a6377d7d222dcebc6bc10373a6342498e))
+
 ## [1.28.1](https://github.com/SteerSpec/strspc-manager/compare/v1.28.0...v1.28.1) (2026-10-30)
 
 
