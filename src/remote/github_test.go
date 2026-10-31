@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -942,10 +943,10 @@ func assertNoStagingDirs(t *testing.T, dir string) {
 	}
 }
 
-func skipIfRoot(t *testing.T) {
+func skipWithoutUnixPerms(t *testing.T) {
 	t.Helper()
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory permissions")
+	if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+		t.Skip("needs Unix permissions enforced: not on Windows or as root")
 	}
 }
 
@@ -1268,6 +1269,9 @@ func TestExtractTarball_RejectsCorruptStreams(t *testing.T) {
 }
 
 func TestExtractTarball_PathCollisions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("asserts Unix errno values")
+	}
 	tests := []struct {
 		name    string
 		entries []rawEntry
@@ -1362,7 +1366,7 @@ func TestWriteFileAtomic(t *testing.T) {
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, p string)
-		perms   bool // needs directory permissions to be enforced
+		perms   bool // needs Unix permissions or errno values
 		wantErr error
 	}{
 		{
@@ -1395,6 +1399,7 @@ func TestWriteFileAtomic(t *testing.T) {
 				mustMkdir(t, filepath.Dir(grandparent))
 				mustWrite(t, grandparent, "blocker")
 			},
+			perms:   true, // ENOTDIR is a Unix errno.
 			wantErr: syscall.ENOTDIR,
 		},
 		{
@@ -1410,7 +1415,7 @@ func TestWriteFileAtomic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.perms {
-				skipIfRoot(t)
+				skipWithoutUnixPerms(t)
 			}
 			p := filepath.Join(t.TempDir(), "x", "y", "latest.json")
 			tt.setup(t, p)
@@ -1856,7 +1861,7 @@ func TestEnsureDir_CacheInstallFailures(t *testing.T) {
 	tests := []struct {
 		name    string
 		plant   func(t *testing.T, refDir, dir string)
-		perms   bool // needs directory permissions to be enforced
+		perms   bool // needs Unix permissions or errno values
 		wantErr string
 	}{
 		{
@@ -1891,7 +1896,7 @@ func TestEnsureDir_CacheInstallFailures(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.perms {
-				skipIfRoot(t)
+				skipWithoutUnixPerms(t)
 			}
 			g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": rulesTarball(t, "o-r-1")}}
 			f, _ := newFetcher(t, g)

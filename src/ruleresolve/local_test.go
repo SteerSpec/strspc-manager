@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -108,7 +109,7 @@ func TestLocalSource_ReportsAnUnreadableFileAndKeepsTheRest(t *testing.T) {
 	dir := goodEntityDir(t)
 	link := filepath.Join(dir, "dangling.json")
 	if err := os.Symlink(filepath.Join(dir, "gone"), link); err != nil {
-		t.Fatal(err)
+		t.Skipf("symlinks unavailable: %v", err)
 	}
 
 	files, res := (&LocalSource{}).Fetch(context.Background(), dir)
@@ -182,8 +183,8 @@ func TestLocalSource_StopsWhenTheContextEnds(t *testing.T) {
 }
 
 func TestLocalSource_ReportsAWalkFailureAsRSV002(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root ignores directory permissions")
+	if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+		t.Skip("needs directory modes enforced: not on Windows or as root")
 	}
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o000); err != nil {

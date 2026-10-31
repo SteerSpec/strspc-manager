@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"testing"
@@ -311,8 +312,8 @@ func TestWalkEntityFiles_ReportsUnreadableFileAndContinues(t *testing.T) {
 }
 
 func TestWalkEntityFiles_TraversalError(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root reads a directory regardless of its mode")
+	if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+		t.Skip("needs directory modes enforced: not on Windows or as root")
 	}
 	errStop := errors.New("stop")
 

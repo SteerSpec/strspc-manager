@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/schema"
@@ -42,7 +43,7 @@ func occupyWithSymlink(t *testing.T, path string) {
 		}
 	})
 	if err := os.Symlink(target, path); err != nil {
-		t.Fatal(err)
+		t.Skipf("symlinks unavailable: %v", err)
 	}
 }
 
@@ -156,7 +157,7 @@ func TestFetch_RefusesACacheDirectoryThatLeavesTheCache(t *testing.T) {
 	srv, calls := site(t, map[string]string{"/schemas/entity/v1.json": `"latest"`})
 	cache, outside := t.TempDir(), t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(cache, "entity")); err != nil {
-		t.Fatal(err)
+		t.Skipf("symlinks unavailable: %v", err)
 	}
 
 	f := schema.New(schema.WithBaseURL(srv.URL+"/schemas"), schema.WithCacheDir(cache))
@@ -214,8 +215,8 @@ func TestFetch_CacheFailureIsNotFatal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.needsFilePerm && os.Geteuid() == 0 {
-				t.Skip("root ignores directory permissions")
+			if tt.needsFilePerm && (os.Geteuid() == 0 || runtime.GOOS == "windows") {
+				t.Skip("needs directory modes enforced: not on Windows or as root")
 			}
 			srv, calls := site(t, map[string]string{"/schemas/entity/v1.json": `"served"`})
 			cache := t.TempDir()

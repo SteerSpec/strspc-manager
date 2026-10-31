@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -29,8 +30,8 @@ func TestRL000(t *testing.T) {
 		{
 			name: "unreadable file",
 			run: func(t *testing.T) *result.Result {
-				if os.Geteuid() == 0 {
-					t.Skip("root ignores file permissions")
+				if os.Geteuid() == 0 || runtime.GOOS == "windows" {
+					t.Skip("needs file modes enforced: not on Windows or as root")
 				}
 				dir := t.TempDir()
 				path := filepath.Join(dir, "ENT.json")

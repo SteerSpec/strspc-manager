@@ -136,7 +136,10 @@ func TestNew_DefaultCacheDir(t *testing.T) {
 		},
 		{
 			name: "temp directory when the user cache directory is unknown",
-			home: func(*testing.T) string { return "" },
+			home: func(t *testing.T) string {
+				t.Setenv("LocalAppData", "") // Windows reads this, not HOME.
+				return ""
+			},
 			wantRoot: func(t *testing.T, tmp string) string {
 				if dir, err := os.UserCacheDir(); err == nil {
 					t.Fatalf("test setup: UserCacheDir unexpectedly returned %s", dir)
@@ -152,6 +155,7 @@ func TestNew_DefaultCacheDir(t *testing.T) {
 			t.Setenv("HOME", tt.home(t))
 			t.Setenv("XDG_CACHE_HOME", "")
 			t.Setenv("TMPDIR", tmp)
+			t.Setenv("TMP", tmp) // The Windows name for it.
 			srv, _ := site(t, map[string]string{"/schemas/entity/v1.json": `"latest"`})
 
 			if _, err := schema.New(schema.WithBaseURL(srv.URL + "/schemas")).EntityV1(context.Background()); err != nil {
