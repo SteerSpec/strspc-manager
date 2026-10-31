@@ -688,6 +688,7 @@ For each changed entity file, the validator compares the before and after states
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
 16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
+17. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 
