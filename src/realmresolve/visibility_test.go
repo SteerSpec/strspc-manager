@@ -110,6 +110,11 @@ func TestVisibility(t *testing.T) {
 		// ENT-014: a sub-realm is outside the Realm for a `private` override.
 		{"RR023", "rule AUP-001 overrides dev.root:RPRIV-001: visibility `private` of dev.root:RPRIV does not permit it from realm dev.root.a"},
 		{"RR023", "rule BSIB-001 overrides dev.root:APRIV-001: visibility `private` of dev.root:APRIV does not permit it from realm dev.root.b"},
+		// A dependency that breaks the rules itself doesn't launder a Rule to
+		// whoever inherits from it.
+		{"RR022", "entity UDEEP (through dev.lib:LWIDE): inherits dev.deep:DPRIV, whose visibility `private` does not permit it from realm dev.lib"},
+		{"RR024", "entity UDEEP (through dev.lib:LWIDE): visibility `public` is wider than `private` of inherited entity dev.deep:DPRIV"},
+		{"RR023", "rule LWIDE-001 overrides dev.deep:DPRIV-001: visibility `private` of dev.deep:DPRIV does not permit it from realm dev.lib"},
 		// NTE-012: narrower target, also unqualified, and an unreachable one.
 		{"RR025", "note NOTES-001/01 references \"RPRIV-001\": visibility `private` is narrower than `public` of entity NOTES"},
 		{"RR025", "note NOTES-002/01 references \"dev.lib:LPRIV-001\": visibility `private` does not permit inheritance from realm dev.root"},
@@ -130,7 +135,7 @@ func TestVisibility(t *testing.T) {
 		}
 	}
 
-	// Anything else stays silent: UPUB, ROWN (stopping at the owner keeps AOWN
+	// Anything else stays silent: UKID, as UWIDE answers for itself; UPUB, ROWN (stopping at the owner keeps AOWN
 	// from being judged by the Entity above ROWN), ASAME in its own Realm,
 	// APROT within the tree, the Retired UPROT-005, NOTES-003's related note,
 	// the Retired NOTES-006, and NPRIV-001 within the tree.

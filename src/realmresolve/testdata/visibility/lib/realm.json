@@ -5,6 +5,12 @@
     "title": "dev.lib",
     "version": "0.1.0"
   },
-  "dependencies": [],
+  "dependencies": [
+    {
+      "realm_id": "dev.deep",
+      "version": "0.1.0",
+      "source": "../deep"
+    }
+  ],
   "rule_identifier_format": null
 }

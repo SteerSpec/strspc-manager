@@ -90,18 +90,34 @@ func outOfForce(state string) bool {
 	return state == entity.StateAbandoned || state == entity.StateRetired || state == entity.StateTerminated
 }
 
-// checkVisibility checks child, held by from, against the visibility of its
-// ancestors, given nearest first: RR022 when the inherited entity refuses the
-// inheritance, RR023 when an entity between it and the owner of an overridden
-// rule refuses the override (ENT-016), RR024 when child is wider than the
-// entity it inherits (ENT-015). ENT-015 keeps the inherited entity no wider
-// than those above it, so it alone answers for the inheritance. A refused
+// checkVisibility checks the chain of child, held by from, against ENT-015 and
+// ENT-016, ancestors given nearest first. Each entity of the tree answers for
+// itself, but a dependency's entities aren't otherwise read here, and a wider
+// entity there would hand down what its parent holds back, so each dependency
+// hop is checked too, from the Realm holding it. Hops resolve at their own pins,
+// so this only reports what that dependency's own run would. A refused
 // inheritance keeps its chain, so its overrides are still reported.
 func (s *chainState) checkVisibility(from *node, child inherit.Hop, ancestors []inherit.Hop, path string) {
+	s.checkHop(child.Entity.Entity.ID, from, child, ancestors, path)
+	for i, h := range ancestors {
+		at := s.holder[h.Entity]
+		if at.deps != nil {
+			continue
+		}
+		who := fmt.Sprintf("%s (through %s:%s)", child.Entity.Entity.ID, h.RealmID, h.Entity.Entity.ID)
+		s.checkHop(who, at, h, ancestors[i+1:], path)
+	}
+}
+
+// checkHop checks hop, held by from and named who in diagnostics, against the
+// ancestors above it: RR022 when the inherited entity refuses the inheritance,
+// RR024 when hop is wider than it, RR023 for each override that the entities up
+// to the rule's owner refuse. ENT-015 keeps the inherited entity no wider than
+// those above it, so it alone answers for the inheritance.
+func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors []inherit.Hop, path string) {
 	if len(ancestors) == 0 {
 		return
 	}
-	self := child.Entity.Entity
 	parent := ancestors[0]
 	at := s.holder[parent.Entity]
 	v := at.visibility(parent.Entity)
@@ -111,22 +127,22 @@ func (s *chainState) checkVisibility(from *node, child inherit.Hop, ancestors []
 			Module:   module,
 			Code:     "RR022",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("entity %s: inherits %s, whose visibility `%s` does not permit it from realm %s", self.ID, name, v, from.realm.Realm.Realm.ID),
+			Message:  fmt.Sprintf("entity %s: inherits %s, whose visibility `%s` does not permit it from realm %s", who, name, v, from.realm.Realm.Realm.ID),
 			Path:     path,
 		})
 	}
-	if own := from.visibility(child.Entity); entity.VisibilityWider(own, v) {
+	if own := from.visibility(hop.Entity); entity.VisibilityWider(own, v) {
 		s.res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR024",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("entity %s: visibility `%s` is wider than `%s` of inherited entity %s", self.ID, own, v, name),
+			Message:  fmt.Sprintf("entity %s: visibility `%s` is wider than `%s` of inherited entity %s", who, own, v, name),
 			Path:     path,
 		})
 	}
-	for _, r := range child.Entity.Rules {
+	for _, r := range hop.Entity.Rules {
 		if r.Overrides != nil && !outOfForce(r.State) {
-			s.checkOverrideVisibility(from, r.ID, inherit.Target(child, ancestors, *r.Overrides), ancestors, path)
+			s.checkOverrideVisibility(from, r.ID, inherit.Target(hop, ancestors, *r.Overrides), ancestors, path)
 		}
 	}
 }
