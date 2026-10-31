@@ -1,10 +1,12 @@
 package entity_test
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 
@@ -12,6 +14,24 @@ import (
 )
 
 const walkTestDir = "testdata/walk"
+
+// walkModes lists the two traversals; behaviour they must share is tested
+// against both.
+var walkModes = []struct {
+	name      string
+	recursive bool
+}{
+	{"recursive", true},
+	{"shallow", false},
+}
+
+// writeWalkFile writes content to name under dir.
+func writeWalkFile(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
+	}
+}
 
 func TestWalkEntityFiles_Recursive(t *testing.T) {
 	var found []string
@@ -180,6 +200,169 @@ func TestWalkEntityFiles_NonexistentDir(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("expected error for nonexistent directory")
+	}
+}
+
+func TestWalkEntityFiles_MissingRoot(t *testing.T) {
+	for _, mode := range walkModes {
+		t.Run(mode.name, func(t *testing.T) {
+			missing := filepath.Join(t.TempDir(), "missing")
+			err := entity.WalkEntityFiles(missing, func(string, []byte, *entity.File, error) error {
+				t.Error("callback must not run for a missing root")
+				return nil
+			}, entity.WithRecursive(mode.recursive))
+			if !errors.Is(err, fs.ErrNotExist) {
+				t.Errorf("error = %v, want it to wrap fs.ErrNotExist", err)
+			}
+		})
+	}
+}
+
+func TestWalkEntityFiles_CallbackResultControlsWalk(t *testing.T) {
+	errStop := errors.New("stop")
+
+	tests := []struct {
+		name    string
+		result  error
+		wantErr error
+	}{
+		{"fs.SkipAll ends the walk cleanly", fs.SkipAll, nil},
+		{"any other error aborts with that error", errStop, errStop},
+	}
+	for _, mode := range walkModes {
+		for _, tt := range tests {
+			t.Run(mode.name+"/"+tt.name, func(t *testing.T) {
+				dir := t.TempDir()
+				writeWalkFile(t, dir, "A.json", `{"entity": {"id": "AAA"}}`)
+				writeWalkFile(t, dir, "B.json", `{"entity": {"id": "BBB"}}`)
+
+				calls := 0
+				err := entity.WalkEntityFiles(dir, func(string, []byte, *entity.File, error) error {
+					calls++
+					return tt.result
+				}, entity.WithRecursive(mode.recursive))
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("error = %v, want %v", err, tt.wantErr)
+				}
+				if calls != 1 {
+					t.Errorf("callback ran %d times, want the walk to stop after 1", calls)
+				}
+			})
+		}
+	}
+}
+
+func TestWalkEntityFiles_SkipsRealmManifestUnderAnotherName(t *testing.T) {
+	for _, mode := range walkModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeWalkFile(t, dir, "ENT.json", `{"entity": {"id": "ENT"}}`)
+			writeWalkFile(t, dir, "manifest.json", `{"realm": {"id": "dev.test.example"}}`)
+
+			var seen []string
+			err := entity.WalkEntityFiles(dir, func(path string, _ []byte, _ *entity.File, _ error) error {
+				seen = append(seen, filepath.Base(path))
+				return nil
+			}, entity.WithRecursive(mode.recursive))
+			if err != nil {
+				t.Fatalf("WalkEntityFiles: %v", err)
+			}
+			if len(seen) != 1 || seen[0] != "ENT.json" {
+				t.Errorf("visited %v, want only ENT.json", seen)
+			}
+		})
+	}
+}
+
+func TestWalkEntityFiles_ReportsUnreadableFileAndContinues(t *testing.T) {
+	for _, mode := range walkModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeWalkFile(t, dir, "ENT.json", `{"entity": {"id": "ENT"}}`)
+			dangling := filepath.Join(dir, "broken.json")
+			if err := os.Symlink(filepath.Join(dir, "gone"), dangling); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+
+			var ids []string
+			var readErr error
+			err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
+				if path != dangling {
+					ids = append(ids, ef.Entity.ID)
+					return nil
+				}
+				if data != nil || ef != nil {
+					t.Errorf("read failure got data %q and file %+v, want both nil", data, ef)
+				}
+				readErr = parseErr
+				return nil
+			}, entity.WithRecursive(mode.recursive))
+			if err != nil {
+				t.Fatalf("WalkEntityFiles: %v", err)
+			}
+			if !errors.Is(readErr, fs.ErrNotExist) {
+				t.Errorf("parseErr = %v, want it to wrap fs.ErrNotExist", readErr)
+			}
+			if len(ids) != 1 || ids[0] != "ENT" {
+				t.Errorf("parsed %v, want the walk to reach ENT", ids)
+			}
+		})
+	}
+}
+
+func TestWalkEntityFiles_TraversalError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a directory regardless of its mode")
+	}
+	errStop := errors.New("stop")
+
+	tests := []struct {
+		name      string
+		result    error
+		wantErr   error
+		wantFiles []string
+	}{
+		{"callback continues past the directory", nil, nil, []string{"A.json", "z.json"}},
+		{"callback aborts the walk", errStop, errStop, []string{"A.json"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeWalkFile(t, dir, "A.json", `{"entity": {"id": "AAA"}}`)
+			writeWalkFile(t, dir, "z.json", `{"entity": {"id": "ZZZ"}}`)
+			locked := filepath.Join(dir, "locked")
+			if err := os.Mkdir(locked, 0o000); err != nil {
+				t.Fatalf("mkdir: %v", err)
+			}
+			t.Cleanup(func() {
+				if err := os.Chmod(locked, 0o755); err != nil {
+					t.Errorf("restore permissions: %v", err)
+				}
+			})
+
+			var files []string
+			var traversalErr error
+			err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
+				if path != locked {
+					files = append(files, filepath.Base(path))
+					return nil
+				}
+				if data != nil || ef != nil {
+					t.Errorf("traversal failure got data %q and file %+v, want both nil", data, ef)
+				}
+				traversalErr = parseErr
+				return tt.result
+			})
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("error = %v, want %v", err, tt.wantErr)
+			}
+			if !errors.Is(traversalErr, fs.ErrPermission) {
+				t.Errorf("parseErr = %v, want it to wrap fs.ErrPermission", traversalErr)
+			}
+			if !slices.Equal(files, tt.wantFiles) {
+				t.Errorf("visited %v, want %v", files, tt.wantFiles)
+			}
+		})
 	}
 }
 
