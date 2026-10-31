@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.12.0",
-    "timestamp": "2026-10-28T15:38:28Z",
-    "hash": "blake3:04ec2c6b99c960915371fd46b5afa85bcaf2a4bde074ab210638d6798d6b37fa"
+    "version": "0.12.2",
+    "timestamp": "2026-10-31T18:55:59Z",
+    "hash": "blake3:cdca4bbcbe6dc81870138cac265e7649085b90f7a800175b626ee6e030b84aab"
   },
   "rules": [
     {
@@ -73,6 +73,24 @@
       "added_by": "@pleberre",
       "added_at": "2026-10-28",
       "supersedes": "MOD-002"
+    },
+    {
+      "id": "MOD-008",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval, EC evalcache, RF rulerefs).",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": "MOD-007"
+    },
+    {
+      "id": "MOD-009",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST register every diagnostic code a module emits in result.Codes() with a non-empty Title and Fix.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": null
     }
   ],
   "notes": []

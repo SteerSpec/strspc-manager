@@ -92,7 +92,7 @@ Public packages live under `src/`, for example
 | ------- | ----------- |
 | `entity` | Shared domain types: `File`, `Entity`, `RuleSet`, `Rule`, `Note`, `RealmFile`. Includes `Parse([]byte)` and `Load(path)` for both file and HTTP consumers, the rule state machine, and the closed note-type enum (`NoteTypes`, `IsAppendOnlyNoteType`). |
 | `entityops` | Mutations of an entity file that keep it valid: create an entity, add, edit, promote, retire, abandon and supersede rules, add and revise notes. `NewFile` starts a file at `rule_set.version` 0.1.0; every other operation changes an existing file and bumps that version (minor on promote/retire, patch otherwise). All of them refresh the timestamp and hash (§2.4). Operations act on the `File` they are given; callers bump the ancestors of a sub-entity. |
-| `result` | Shared `Diagnostic`, `Severity`, and `Result` types returned by all modules. |
+| `result` | Shared `Diagnostic`, `Severity`, and `Result` types returned by all modules. `Codes` and `LookupCode` export the diagnostic code registry, each code with a title and a fix; [`docs/diagnostic-codes.json`](docs/diagnostic-codes.json) is the same data as JSON. |
 | `schema` | Fetches and caches JSON schemas from `steerspec.dev` at runtime. `ForRealm` selects the core version a Realm pins, so a schema change reaches it through its pin. A test keeps embedded copies out of the binary. |
 | `remote` | Fetches `github://` rule directories through the GitHub REST tarball endpoint and caches them locally (§6.4). Shared by `ruleresolve` and `realmresolve`, and limits which repository owners receive the GitHub token. |
 | `render` | Renders entity files to human-readable formats; Markdown today, with an optional custom template (`WithTemplate`). Rule IDs are displayed in the RLIFRMT default format unless a Realm's `rule_identifier_format` is passed through `NewRuleIDFormatter` and `WithRuleIDFormatter`. `WithInheritance` adds an "Inherited rules" section. |
@@ -107,6 +107,7 @@ Public packages live under `src/`, for example
 | `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules (§8.3). Batches rules per entity, caches verdicts, and degrades to static-only mode when no provider is configured. See [Evaluation providers](#evaluation-providers). |
 | `evalcache` | deterministic | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
 | `ruleresolve` | deterministic | Fetches, caches, and resolves rules from configured sources (§8.2) |
+| `rulerefs` | deterministic, stateless | Validates the rule identifiers that text files cite against a set of known rules (§6.3) |
 | `realmlint` | deterministic, stateless | Validates Realm structure, `realm.json` manifests including sub-realms, EUID uniqueness, and, with `WithDependencyFetcher`, the Realm against its pinned dependencies |
 | `realmresolve` | deterministic | Resolves Realm dependencies declared in `realm.json`, fetches remote Realms, and resolves inheritance chains across Realms |
 
