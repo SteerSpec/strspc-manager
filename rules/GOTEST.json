@@ -1,0 +1,36 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GOTEST",
+    "title": "Go test conventions",
+    "description": "Test conventions for the Go sources, on top of the Go conventions.",
+    "inherits": "GOCONV"
+  },
+  "rule_set": {
+    "version": "0.1.2",
+    "timestamp": "2026-10-31T22:51:40Z",
+    "hash": "blake3:24d4e09118ac0c4408c868e79eca300ed94c8c2cedf1fcef3db32a0feb3bbbf5"
+  },
+  "rules": [
+    {
+      "id": "GOTEST-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Every package under src/ MUST keep at least 85% statement coverage in its own tests.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "GOTEST-002",
+      "revision": 0,
+      "state": "D",
+      "body": "Tests that exercise several inputs of one code path MUST be table-driven.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": null,
+      "overrides": "GOCONV-006"
+    }
+  ],
+  "notes": []
+}
