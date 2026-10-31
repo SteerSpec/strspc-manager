@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.12.2",
-    "timestamp": "2026-10-31T18:55:59Z",
-    "hash": "blake3:cdca4bbcbe6dc81870138cac265e7649085b90f7a800175b626ee6e030b84aab"
+    "version": "0.15.0",
+    "timestamp": "2026-10-31T20:28:22Z",
+    "hash": "blake3:4fd8d518f1e063138521a2bf645c42062bb0dfd042ff47f6a9d09877e8ba5a10"
   },
   "rules": [
     {
@@ -68,7 +68,7 @@
     {
       "id": "MOD-007",
       "revision": 0,
-      "state": "I",
+      "state": "R",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval, EC evalcache).",
       "added_by": "@pleberre",
       "added_at": "2026-10-28",
@@ -77,7 +77,7 @@
     {
       "id": "MOD-008",
       "revision": 0,
-      "state": "D",
+      "state": "I",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval, EC evalcache, RF rulerefs).",
       "added_by": "@pleberre",
       "added_at": "2026-10-31",

@@ -119,7 +119,7 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 		})
 		return res
 	}
-	l.lintEntity(ef, res, "")
+	l.lintEntity(ef, entity.VisibilityPublic, res, "")
 	checkFileInheritance(ef, res)
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -204,7 +204,7 @@ func (l *Linter) lintParsed(ctx context.Context, f *entity.File, data []byte) *r
 	l.checkHash(f, data, res)
 
 	// Remaining checks on parsed structure.
-	l.lintEntity(f, res, "")
+	l.lintEntity(f, entity.VisibilityPublic, res, "")
 
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -339,7 +339,9 @@ func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.Wal
 // lintEntity runs checks RL003–RL010, RL013, RL015, RL021, RL022 on a single
 // entity and recurses into sub-entities. The path prefix is used for sub-entity
 // context.
-func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix string) {
+// lintEntity runs the per-entity checks on ef and its sub-entities. container
+// is the effective visibility of the entity containing ef.
+func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Result, pathPrefix string) {
 	path := pathPrefix
 	if path != "" {
 		path += " > "
@@ -356,12 +358,62 @@ func (l *Linter) lintEntity(ef *entity.File, res *result.Result, pathPrefix stri
 	checkNoteTypes(ef, res, path)
 	checkSemver(ef, res, path)
 	checkDraftBodies(ef, res, path)
+	checkVisibility(ef, container, res, path)
+	checkSupersedesEntity(ef, res, path)
 
+	effective := entity.EffectiveVisibility(ef.Entity.Visibility, container)
 	for i := range ef.SubEntities {
 		sub := &ef.SubEntities[i]
 		subPath := path + " > " + sub.Entity.ID
 		checkSubEntityParent(sub, ef.Entity.ID, res, subPath)
-		l.lintEntity(sub, res, path)
+		l.lintEntity(sub, effective, res, path)
+	}
+}
+
+// checkVisibility runs RL023 and RL024: a declared visibility is a known value
+// and no wider than the effective visibility of the entity containing it
+// (ENT-015). The limit from the inherited entity needs the chain, so it stays
+// with realm-resolve.
+func checkVisibility(ef *entity.File, container string, res *result.Result, path string) {
+	v := ef.Entity.Visibility
+	if v == "" {
+		return
+	}
+	if !entity.ValidVisibility(v) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RL023",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("visibility %q is not private, protected or public", v),
+			Path:     path + "/entity.visibility",
+		})
+		return
+	}
+	if entity.VisibilityWider(v, container) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RL024",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("visibility `%s` is wider than `%s` of the containing entity", v, container),
+			Path:     path + "/entity.visibility",
+		})
+	}
+}
+
+// checkSupersedesEntity runs RL025: `supersedes` names a rule of the same
+// entity (RUL-012). Whether that rule exists is RL012's check.
+func checkSupersedesEntity(ef *entity.File, res *result.Result, path string) {
+	for _, r := range ef.Rules {
+		if r.Supersedes == nil || strings.HasPrefix(*r.Supersedes, ef.Entity.ID+"-") {
+			continue
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RL025",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("rule %s supersedes %q, which is not a rule of entity %s", r.ID, *r.Supersedes, ef.Entity.ID),
+			Path:     path + "/rules/" + r.ID,
+		})
 	}
 }
 

@@ -71,7 +71,7 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 
 	checkVersion(baseEnt, headEnt, res, headEnt.Entity.ID)
 	checkTimestamp(baseEnt, headEnt, res, headEnt.Entity.ID)
-	d.diffEntityTree(baseEnt, headEnt, res, headEnt.Entity.ID)
+	d.diffEntityTree(baseEnt, headEnt, entity.VisibilityPublic, entity.VisibilityPublic, res, headEnt.Entity.ID)
 	checkHashBytes(headEnt, headData, res, headEnt.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
@@ -80,7 +80,7 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 }
 
 // Diff compares parsed entity files and validates the lifecycle transition.
-// Runs checks RD001–RD007, RD009–RD018. For RD008 (hash verification), use DiffBytes.
+// Runs checks RD001–RD007, RD009–RD020. For RD008 (hash verification), use DiffBytes.
 func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	res := &result.Result{}
 	if base == nil || head == nil {
@@ -94,7 +94,7 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	}
 	checkVersion(base, head, res, head.Entity.ID)
 	checkTimestamp(base, head, res, head.Entity.ID)
-	d.diffEntityTree(base, head, res, head.Entity.ID)
+	d.diffEntityTree(base, head, entity.VisibilityPublic, entity.VisibilityPublic, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
 	}
@@ -124,9 +124,14 @@ func (d *Differ) DiffNew(head *entity.File) *result.Result {
 // diffEntityTree runs rule/note diff checks for one entity and recurses into sub-entities.
 // RD007 (version) and RD009 (timestamp) are intentionally NOT run here — they apply only
 // to the top-level entity file and are called directly by Diff/DiffBytes.
-func (d *Differ) diffEntityTree(base, head *entity.File, res *result.Result, path string) {
+// baseVisibility and headVisibility are the effective visibilities of the
+// entity containing this one on each side.
+func (d *Differ) diffEntityTree(base, head *entity.File, baseVisibility, headVisibility string, res *result.Result, path string) {
 	checkRules(base, head, res, path)
 	checkInherits(base, head, res, path)
+	checkVisibility(base, head, baseVisibility, headVisibility, res, path)
+	baseVisibility = entity.EffectiveVisibility(base.Entity.Visibility, baseVisibility)
+	headVisibility = entity.EffectiveVisibility(head.Entity.Visibility, headVisibility)
 
 	// Index base sub-entities for O(1) lookup.
 	baseSubMap := make(map[string]*entity.File, len(base.SubEntities))
@@ -137,7 +142,7 @@ func (d *Differ) diffEntityTree(base, head *entity.File, res *result.Result, pat
 		sub := &head.SubEntities[i]
 		subPath := path + " > " + sub.Entity.ID
 		if baseSub, ok := baseSubMap[sub.Entity.ID]; ok {
-			d.diffEntityTree(baseSub, sub, res, subPath)
+			d.diffEntityTree(baseSub, sub, baseVisibility, headVisibility, res, subPath)
 			delete(baseSubMap, sub.Entity.ID)
 		} else {
 			checkNewEntityTree(sub, res, subPath)

@@ -1,0 +1,142 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NOTES",
+    "title": "NOTES"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "NOTES-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-002",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 2 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-003",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 3 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-004",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 4 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-005",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 5 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": "NOTES-004"
+    },
+    {
+      "id": "NOTES-006",
+      "revision": 0,
+      "state": "R",
+      "body": "Rule 6 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-007",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 7 of NOTES.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "NOTES-001/01",
+      "rule_ref": "NOTES-001",
+      "type": "extends",
+      "content": "Builds on RPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-002/01",
+      "rule_ref": "NOTES-002",
+      "type": "extends",
+      "content": "Builds on dev.lib:LPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-003/01",
+      "rule_ref": "NOTES-003",
+      "type": "extends",
+      "content": "Builds on dev.lib:LPUB-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-003/02",
+      "rule_ref": "NOTES-003",
+      "type": "related",
+      "content": "See dev.lib:LPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-004/01",
+      "rule_ref": "NOTES-004",
+      "type": "extends",
+      "content": "Builds on dev.lib:LPROT-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-006/01",
+      "rule_ref": "NOTES-006",
+      "type": "extends",
+      "content": "Builds on dev.lib:LPRIV-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-007/01",
+      "rule_ref": "NOTES-007",
+      "type": "extends",
+      "content": "Builds on dev.lib:LSUB-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ]
+}

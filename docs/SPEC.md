@@ -51,6 +51,18 @@ An entity MAY declare `inherits`, the EUID of one other entity whose effective r
 
 **Effective rule set.** An inheriting entity's effective rule set is computed by the `inherit` package from its resolved chain. Starting from the root-most ancestor, each ancestor contributes its Published and Implemented rules after removing the inherited rules its own Published and Implemented rules override; then the entity's own rules that pass the consumer's evaluate states (default `D`, `P`, `I`) are added after removing the rules they override. Filtering before overriding lets an inherited rule reappear once the rule overriding it is Retired or Terminated. Inherited rules stay owned by their entity (ENT-009) and never count towards the inheriting entity's hash (ENT-010). Given an entity's resolved chain (`render.WithInheritance`), the Markdown renderer adds an "Inherited rules" section listing each inherited rule with its owner, Realm and state, and marking those the entity's own rules override; the rules are listed, never copied into the entity.
 
+**Visibility.** An entity MAY declare `visibility`, which limits who may build on it (ENT-011). When it is absent, a sub-entity takes the visibility of the entity containing it and any other entity is `public`.
+
+| Visibility | Same Realm | Same Realm tree | Any other Realm |
+|------------|------------|-----------------|-----------------|
+| `public` | inherit, override | inherit, override | inherit, override |
+| `protected` | inherit, override | inherit, override | inherit |
+| `private` | inherit, override | inherit | nothing |
+
+A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a sub-realm and its siblings are in the same tree but are different Realms (RLM-016). `inherits` needs the permission of the inherited entity. `overrides` needs that of every entity from the inherited entity up to the owner of the rule, measured from the declaring Realm, so a `protected` entity shields the rules it inherits from a `public` one (ENT-016). An entity MUST NOT be wider than the entity it inherits or the entity containing it (ENT-015): it would otherwise re-expose what those entities hold back. An `extends` note follows the inherit column, and its target's entity MUST NOT be narrower than the note's, since whoever inherits the note reads the target in evaluation (NTE-012). `related` notes and bodies are citations and aren't limited. Rules that are Abandoned, Retired or Terminated are exempt, because their `overrides` and notes can't change; a superseded rule isn't, because it stays in force until it is Retired.
+
+`realm-resolve` enforces these (RR022 to RR025), so they run in `strspc check` and `strspc render`, not `strspc realm validate`. Each chain is checked hop by hop, a dependency's hops included, so a dependency that breaks these rules fails its consumers too. `rule-lint` checks the value and the limit from the containing entity (RL023, RL024). Tree checks hold from a top-level Realm: a sub-realm's manifest doesn't list its siblings, so a sub-realm used as a source or a dependency on its own sees them as other Realms. Realm identity is the Realm ID at any version, and the ID in a manifest is trusted (RLM-008). Visibility is a reference contract, not secrecy.
+
 **Chain resolution.** `realm-resolve` resolves the chain of every entity of a Realm and its sub-realms. Each hop resolves its target against the Realm holding that hop's entity: a short EUID, or one qualified with that Realm or a sub-realm of it, names an entity of the same Realm tree; any other qualifier must be a declared dependency of that Realm, with that Realm's version pin. Dependencies of dependencies are therefore loaded on demand when a chain reaches them, relative to the dependency's own directory (rebased onto its repository when it was fetched), and cached by `realm_id@version`. Entities inside a dependency's sub-realm directories resolve their targets against the dependency's root `dependencies`.
 
 ### 2.3 Rule
@@ -85,6 +97,8 @@ A Rule Set groups all rules applicable to a specific entity. Every entity has ex
 | `hash` | string or null | `blake3:<hex>` hash of the canonical JSON content. |
 
 **Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update).
+
+**Visibility and `realm.version`:** narrowing an entity's `visibility` can break Realms that inherit it, so it needs a MAJOR bump of `realm.version`; widening needs a MINOR one. `strspc diff` says which (RD020); it can't enforce it, because it doesn't read `realm.json`.
 
 **Hash computation:** The Blake3 hash is computed over the entire entity file's canonical JSON (sorted keys, minified). Any change to any part of the file — rules, sub-entities, notes — changes the hash.
 
@@ -409,7 +423,7 @@ scans the module sources and fails when a code is missing from these tables, or 
 emitted. Severities are those assigned at emission: `rule-lint`, `rule-diff`, `realm-lint` and `rule-refs` promote
 every Warning to Error when run with `WithStrict`.
 
-Each module emits codes only from the prefix named in its heading (MOD-007), and a code that has shipped is
+Each module emits codes only from the prefix named in its heading (MOD-008), and a code that has shipped is
 never reused or renumbered (MOD-003). The registry `src/result/testdata/reserved_codes.txt` lists every
 shipped code as `active` or `retired` with a stable meaning slug; `src/result/codes_lifecycle_test.go`
 enforces both rules against it and compares the registry with the one shipped by the latest release tag, so
@@ -449,6 +463,9 @@ differs from these tables, from `reserved_codes.txt`, or from the JSON file.
 | RL020 | Warning | The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies. |
 | RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
 | RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
+| RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
+| RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015). |
+| RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
 
 #### `rule-diff` (RD)
 
@@ -471,9 +488,10 @@ differs from these tables, from `reserved_codes.txt`, or from the JSON file.
 | RD014 | Error | A note that is not append-only and is present in the base version was removed. |
 | RD015 | Error | A new note has revision ≠ 0. |
 | RD016 | Error | The content of an append-only note changed. |
-| RD017 | Error | `inherits` changed or was removed on an entity whose base version has a rule beyond Draft. |
+| RD017 | Error | `inherits` changed on an entity whose base version has a rule beyond Draft, or was removed on one whose base version has a Published or Implemented rule. |
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
 | RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
+| RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
 
 #### `realm-lint` (RM)
 
@@ -527,6 +545,10 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RR019 | Warning | An `extends`/`related` note or the body of a live rule makes a qualified reference to a rule that is Abandoned, Terminated or superseded. Text in backticks is ignored in bodies. |
 | RR020 | Warning | The body of a live rule qualifies a reference with a Realm outside the tree that is neither a dependency of the rule's Realm nor a declared sub-realm of one. Text in backticks is ignored. |
 | RR021 | Warning | The body of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version. Text in backticks is ignored. |
+| RR022 | Error | An entity inherits an entity whose visibility does not permit inheritance from its Realm (ENT-014, ENT-016). |
+| RR023 | Error | A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-016). |
+| RR024 | Error | An entity is wider than the entity it inherits (ENT-015). An absent `visibility` counts as `public`. |
+| RR025 | Error | An `extends` note on a rule that is not Abandoned, Retired or Terminated references a rule whose entity's visibility does not permit inheritance from the note's Realm or is narrower than that of the entity holding the note (NTE-012). Short references count. |
 
 #### `rule-resolve` (RSV)
 
@@ -635,6 +657,8 @@ github://<owner>/<repo>@<ref>[/<path>]
 20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
 21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
 22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
+23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-015).
+24. A rule's `supersedes` names a rule of the same entity (RUL-012).
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
@@ -662,8 +686,9 @@ For each changed entity file, the validator compares the before and after states
 12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
-15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change or be removed; adding it where there was none is allowed.
+15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
 16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
+17. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 

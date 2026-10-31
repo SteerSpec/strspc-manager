@@ -266,7 +266,8 @@ func TestLintDir_CrossRefs(t *testing.T) {
 	// Should have an RL012 warning for MISSING-001.
 	assertHasCode(t, res, "RL012")
 
-	// The valid supersedes (ENT-001) should not trigger RL012.
+	// The target ENT-001 exists, so no RL012; RL025 reports that it's in
+	// another entity.
 	count := 0
 	for _, d := range res.Diagnostics {
 		if d.Code == "RL012" {
@@ -426,7 +427,7 @@ func TestLintRealm_CrossEntitySupersedes(t *testing.T) {
 	l := New()
 	res := l.LintRealm(context.Background(), testdataPath("realm"))
 
-	// ENT-001 supersedes RUL-001 — valid cross-entity reference, no RL012 for it.
+	// ENT-001 supersedes RUL-001 — an existing target, so no RL012 for it.
 	// SUB-001 supersedes MISSING-999 — invalid, should trigger RL012.
 
 	// Check that we have exactly 1 RL012 diagnostic (for MISSING-999).
@@ -766,5 +767,70 @@ func TestRL017_SingleFileSubEntitySuperseder(t *testing.T) {
 	}
 	if got := diagsWithCode(New().LintFile(ef), "RL017"); len(got) != 0 {
 		t.Errorf("expected no RL017, got %v", got)
+	}
+}
+
+func TestLintFile_Visibility(t *testing.T) {
+	file := func(visibility string, subs ...entity.File) *entity.File {
+		return &entity.File{Entity: entity.Entity{ID: "ABC", Title: "ABC", Visibility: visibility}, SubEntities: subs}
+	}
+	sub := func(id, visibility string, subs ...entity.File) entity.File {
+		return entity.File{Entity: entity.Entity{ID: id, Title: id, Parent: "ABC", Visibility: visibility}, SubEntities: subs}
+	}
+	tests := []struct {
+		name string
+		file *entity.File
+		code string
+	}{
+		{"absent", file(""), ""},
+		{"valid", file("protected"), ""},
+		{"unknown", file("internal"), "RL023"},
+		{"unknown sub-entity", file("", sub("SUB", "internal")), "RL023"},
+		{"sub-entity as wide as container", file("protected", sub("SUB", "protected")), ""},
+		{"sub-entity narrower than container", file("protected", sub("SUB", "private")), ""},
+		{"sub-entity takes the container's", file("private", sub("SUB", "")), ""},
+		{"sub-entity wider than container", file("protected", sub("SUB", "public")), "RL024"},
+		{"sub-entity wider than absent container's default", file("", sub("SUB", "public")), ""},
+		{"wider than an inherited default", file("private", sub("SUB", "", sub("LEAF", "protected"))), "RL024"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := New().LintFile(tt.file)
+			for _, code := range []string{"RL023", "RL024"} {
+				found := false
+				for _, d := range res.Diagnostics {
+					if d.Code == code {
+						found = true
+						if d.Severity != result.Error {
+							t.Errorf("%s severity = %s, want Error", code, d.Severity)
+						}
+					}
+				}
+				if found != (code == tt.code) {
+					t.Errorf("%s reported = %v: %v", code, found, res.Diagnostics)
+				}
+			}
+		})
+	}
+}
+
+func TestLintFile_SupersedesAnotherEntity(t *testing.T) {
+	other, own := "XYZ-001", "ABC-001"
+	file := &entity.File{
+		Entity: entity.Entity{ID: "ABC", Title: "ABC"},
+		Rules: []entity.Rule{
+			{ID: "ABC-001", State: entity.StateDraft, Body: "MUST hold."},
+			{ID: "ABC-002", State: entity.StateDraft, Body: "MUST hold.", Supersedes: &own},
+			{ID: "ABC-003", State: entity.StateDraft, Body: "MUST hold.", Supersedes: &other},
+		},
+	}
+	var got []result.Diagnostic
+	for _, d := range New().LintFile(file).Diagnostics {
+		if d.Code == "RL025" {
+			got = append(got, d)
+		}
+	}
+	if len(got) != 1 || !strings.Contains(got[0].Message, "ABC-003") || got[0].Severity != result.Error {
+		t.Errorf("RL025 diagnostics = %v, want one Error on ABC-003", got)
 	}
 }

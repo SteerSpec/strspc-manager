@@ -3,8 +3,9 @@
 // caches results, and detects EUID collisions across dependent Realms
 // (RR001–RR012). It also resolves the inheritance chains of the Realm's
 // entities across Realms, loading dependencies of dependencies on demand
-// (RR013–RR016), and checks the realm-qualified references in their relation
-// notes (RR017, RR018).
+// (RR013–RR016), checks the realm-qualified references in their relation notes
+// and bodies (RR017–RR021), and checks both against entity visibility
+// (RR022–RR025).
 package realmresolve
 
 import (

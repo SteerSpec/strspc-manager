@@ -1062,3 +1062,96 @@ func TestDiff_RD018_OverridesImmutable(t *testing.T) {
 		})
 	}
 }
+
+func TestDiff_RD020_Visibility(t *testing.T) {
+	tests := []struct {
+		name       string
+		base, head string
+		sev        result.Severity
+		substr     string
+	}{
+		{"added at the same width", "", "public", result.Info, "absent to `public`"},
+		{"added and narrowed", "", "protected", result.Info, "MAJOR"},
+		{"narrowed", "protected", "private", result.Info, "MAJOR"},
+		{"widened", "private", "protected", result.Info, "MINOR"},
+		{"removed", "protected", "", result.Error, "set `public`"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBase()
+			base.Entity.Visibility = tt.base
+			head := makeHead(base)
+			head.Entity.Visibility = tt.head
+			var got []result.Diagnostic
+			for _, d := range New().Diff(base, head).Diagnostics {
+				if d.Code == "RD020" {
+					got = append(got, d)
+				}
+			}
+			if len(got) != 1 || got[0].Severity != tt.sev || !strings.Contains(got[0].Message, tt.substr) {
+				t.Errorf("RD020 diagnostics = %v, want one %s with %q", got, tt.sev, tt.substr)
+			}
+		})
+	}
+}
+
+func TestDiff_RD020_Unchanged(t *testing.T) {
+	base := makeBase()
+	base.Entity.Visibility = "protected"
+	head := makeHead(base)
+	head.Entity.Visibility = "protected"
+	assertNoCode(t, New().Diff(base, head), "RD020")
+}
+
+func TestDiff_RD020_InfoStaysInfoInStrictMode(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Entity.Visibility = "private"
+	res := New(WithStrict(true)).Diff(base, head)
+	if !res.OK() {
+		t.Errorf("a visibility change must not fail strict mode: %v", res.Diagnostics)
+	}
+}
+
+func TestDiff_RD020_SubEntity(t *testing.T) {
+	base := makeBase()
+	base.Entity.Visibility = "protected"
+	base.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID}}}
+	head := makeHead(base)
+	head.Entity.Visibility = "protected"
+	head.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID, Visibility: "private"}}}
+	var found bool
+	for _, d := range New().Diff(base, head).Diagnostics {
+		// Absent takes the container's `protected`, so this narrows.
+		if d.Code == "RD020" && strings.Contains(d.Path, "SUB") && strings.Contains(d.Message, "MAJOR") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected RD020 narrowing the sub-entity")
+	}
+}
+
+func TestDiff_RD017_RemovedFromEntityOutOfForce(t *testing.T) {
+	for _, state := range []string{entity.StateAbandoned, entity.StateRetired, entity.StateTerminated} {
+		base := makeBase()
+		base.Entity.Inherits = "core:ACCT"
+		for i := range base.Rules {
+			base.Rules[i].State = state
+		}
+		head := makeHead(base)
+		head.Entity.Inherits = ""
+		assertNoCode(t, New().Diff(base, head), "RD017")
+	}
+}
+
+func TestDiff_RD017_ChangedOnEntityOutOfForce(t *testing.T) {
+	base := makeBase()
+	base.Entity.Inherits = "core:ACCT"
+	for i := range base.Rules {
+		base.Rules[i].State = entity.StateRetired
+	}
+	head := makeHead(base)
+	head.Entity.Inherits = "core:OTHER"
+	assertHasCode(t, New().Diff(base, head), "RD017")
+}
