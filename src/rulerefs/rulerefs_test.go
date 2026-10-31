@@ -260,6 +260,63 @@ func TestFirstSourceWins(t *testing.T) {
 	}
 }
 
+func TestFirstSourceWinsForItsRealm(t *testing.T) {
+	first := rulerefs.Source{RealmID: "dev.acme.app", Entities: []*entity.File{{
+		Entity: entity.Entity{ID: "APP"},
+		Rules:  []entity.Rule{{ID: "APP-001", State: entity.StateImplemented}},
+	}}}
+	second := rulerefs.Source{RealmID: "dev.acme.app", Entities: []*entity.File{{
+		Entity: entity.Entity{ID: "APP"},
+		Rules:  []entity.Rule{{ID: "APP-001", State: entity.StateAbandoned}},
+	}}}
+	if got := findings(check(t, "dev.acme.app:APP-001", []rulerefs.Source{first, second})); got != nil {
+		t.Errorf("got %v", got)
+	}
+}
+
+func TestSupersessionStaysInItsRealm(t *testing.T) {
+	other := func(id string, rules ...entity.Rule) rulerefs.Source {
+		return rulerefs.Source{RealmID: id, Entities: []*entity.File{{Entity: entity.Entity{ID: "RUL"}, Rules: rules}}}
+	}
+	sources := []rulerefs.Source{
+		other("dev.first", entity.Rule{ID: "RUL-001", State: entity.StateImplemented}),
+		other("dev.second",
+			entity.Rule{ID: "RUL-001", State: entity.StateImplemented},
+			entity.Rule{ID: "RUL-002", State: entity.StateImplemented, Supersedes: strPtr("RUL-001")}),
+	}
+	tests := []struct {
+		text string
+		want []finding
+	}{
+		{"dev.second:RUL-001", []finding{{"RF004", result.Error, 1}}},
+		{"dev.first:RUL-001", nil},
+		{"RUL-001", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			if got := findings(check(t, tt.text, sources)); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// A sub-realm is a source of its own, and its rule can replace a parent's.
+func TestSupersessionAcrossSources(t *testing.T) {
+	parent := rulerefs.Source{RealmID: "dev.app", Entities: []*entity.File{{
+		Entity: entity.Entity{ID: "APP"},
+		Rules:  []entity.Rule{{ID: "APP-001", State: entity.StateImplemented}},
+	}}}
+	sub := rulerefs.Source{RealmID: "dev.app.sub", Entities: []*entity.File{{
+		Entity: entity.Entity{ID: "SUBE"},
+		Rules:  []entity.Rule{{ID: "SUBE-001", State: entity.StateImplemented, Supersedes: strPtr("APP-001")}},
+	}}}
+	want := []finding{{"RF004", result.Error, 1}}
+	if got := findings(check(t, "APP-001", []rulerefs.Source{parent, sub})); !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 func TestNewRejectsBadInput(t *testing.T) {
 	tests := []struct {
 		name    string

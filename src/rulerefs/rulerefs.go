@@ -134,7 +134,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		c.ignored[id] = true
 	}
 
-	var replaced []*entity.Rule
+	var unmatched []*entity.Rule // superseders whose target is in another source
 	for _, s := range sources {
 		formatter, err := render.NewRuleIDFormatter(s.Format)
 		if err != nil {
@@ -142,9 +142,17 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		}
 		own := make(map[string]*citedRule)
 		euids := make(map[string]bool)
+		var replaced []*entity.Rule
 		for _, ef := range s.Entities {
 			if err := collect(ef, own, euids, &replaced); err != nil {
 				return nil, fmt.Errorf("realm %q: %w", s.RealmID, err)
+			}
+		}
+		for _, r := range replaced {
+			if target := own[*r.Supersedes]; target != nil {
+				target.recordSuccessor(r)
+			} else {
+				unmatched = append(unmatched, r)
 			}
 		}
 		for id, r := range own {
@@ -155,14 +163,14 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		for euid := range euids {
 			c.euids[euid] = true
 		}
-		if s.RealmID != "" {
+		if _, dup := c.realms[s.RealmID]; s.RealmID != "" && !dup {
 			c.realms[s.RealmID] = own
 		}
 		if f, ok := newForm(formatter, euids); ok {
 			c.forms = append(c.forms, f)
 		}
 	}
-	for _, r := range replaced {
+	for _, r := range unmatched {
 		if target := c.rules[*r.Supersedes]; target != nil {
 			target.recordSuccessor(r)
 		}
