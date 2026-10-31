@@ -35,6 +35,7 @@ var codeModules = []string{
 	"src/ruleresolve",
 	"src/ruleeval",
 	"src/evalcache",
+	"src/rulerefs",
 }
 
 // minExpectedCodes guards against a regexp that silently matches nothing.
@@ -184,7 +185,7 @@ func diagnosticSection(t *testing.T, spec string) string {
 	return section
 }
 
-// MOD-008: every diagnostic code has an entry in the registry that
+// MOD-009: every diagnostic code has an entry in the registry that
 // result.Codes() exports, with a title and a fix. The tests below hold that
 // registry to the three sources it repeats: the Diagnostic Codes section of
 // docs/SPEC.md, testdata/reserved_codes.txt and docs/diagnostic-codes.json.
@@ -263,7 +264,7 @@ func TestCodeRegistryMatchesSpec(t *testing.T) {
 	}
 	for _, code := range sortedKeys(rows) {
 		if !registered[code] {
-			t.Errorf("%s has a row in docs/SPEC.md but no entry in src/result/codes_table.go (MOD-008)", code)
+			t.Errorf("%s has a row in docs/SPEC.md but no entry in src/result/codes_table.go (MOD-009)", code)
 		}
 	}
 }
@@ -276,10 +277,10 @@ func TestCodeRegistryEntriesAreComplete(t *testing.T) {
 		}
 		seen[info.Code] = true
 		if strings.TrimSpace(info.Title) == "" {
-			t.Errorf("%s has no Title (MOD-008)", info.Code)
+			t.Errorf("%s has no Title (MOD-009)", info.Code)
 		}
 		if strings.TrimSpace(info.Fix) == "" {
-			t.Errorf("%s has no Fix (MOD-008)", info.Code)
+			t.Errorf("%s has no Fix (MOD-009)", info.Code)
 		}
 	}
 }
@@ -289,7 +290,7 @@ func TestCodeRegistryCoversEmittedCodes(t *testing.T) {
 	for _, code := range sortedKeys(emitted) {
 		info, ok := result.LookupCode(code)
 		if !ok {
-			t.Errorf("%s is emitted by %s but has no entry in src/result/codes_table.go (MOD-008)", code, emitted[code])
+			t.Errorf("%s is emitted by %s but has no entry in src/result/codes_table.go (MOD-009)", code, emitted[code])
 			continue
 		}
 		if info.Retired {
@@ -315,7 +316,7 @@ func TestCodeRegistryMatchesReservedCodes(t *testing.T) {
 	}
 	for _, code := range sortedKeys(reserved) {
 		if !registered[code] {
-			t.Errorf("%s is in %s but has no entry in src/result/codes_table.go (MOD-008)", code, reservedCodesPath)
+			t.Errorf("%s is in %s but has no entry in src/result/codes_table.go (MOD-009)", code, reservedCodesPath)
 		}
 	}
 }

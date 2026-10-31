@@ -400,13 +400,14 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache. Shared by `rule-resolve` and `realm-resolve`. |
+| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Takes the text from its caller. |
 
 ### 6.3 Diagnostic Codes
 
 Every diagnostic code a module emits is listed below (MOD-006). The test `src/result/codes_doc_test.go`
 scans the module sources and fails when a code is missing from these tables, or listed here but no longer
-emitted. Severities are those assigned at emission: `rule-lint`, `rule-diff` and `realm-lint` promote every
-Warning to Error when run with `WithStrict`.
+emitted. Severities are those assigned at emission: `rule-lint`, `rule-diff`, `realm-lint` and `rule-refs` promote
+every Warning to Error when run with `WithStrict`.
 
 Each module emits codes only from the prefix named in its heading (MOD-007), and a code that has shipped is
 never reused or renumbered (MOD-003). The registry `src/result/testdata/reserved_codes.txt` lists every
@@ -416,7 +417,7 @@ a shipped line can neither be deleted nor change meaning. A retired check keeps 
 retired, and its code is never emitted again.
 
 `result.Codes()` and `result.LookupCode()` in `src/result/codes.go` export every code below to consumers, with
-a short title and a fix (MOD-008). `docs/diagnostic-codes.json` is the same data for consumers without a Go
+a short title and a fix (MOD-009). `docs/diagnostic-codes.json` is the same data for consumers without a Go
 toolchain; regenerate it with `go test ./src/result -run TestCodesJSONIsCurrent -update`. `Severity` and
 `Summary` repeat the cells below word for word, and `src/result/codes_doc_test.go` fails when the registry
 differs from these tables, from `reserved_codes.txt`, or from the JSON file.
@@ -549,6 +550,19 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 | RE002 | Warning | The AI provider failed for a rule or entity, or returned no verdict or an unrecognized one. |
 | RE003 | Info | AI evaluation skipped because the evaluator runs in static-only mode. |
 | RE004 | Info | The diff is empty; nothing to evaluate. |
+
+#### `rule-refs` (RF)
+
+The stored `<EUID>-<NNN>` form always matches, which also covers a rendered identifier under the default format. A Realm's other rendered shapes match only that Realm's EUIDs. An unknown prefix is reported only when it is uppercase and starts with a letter, so `feat-123` and `100-200` are not citations. URLs, identifiers inside a longer hyphenated token, identifiers passed to `WithIgnore` and states passed to `WithAllowedStates` are skipped, as is a line holding `strspc-refs: ignore` and the line after it. A superseder in `D` or `A` replaces nothing.
+
+| Code | Severity | When it fires |
+|------|----------|---------------|
+| RF001 | Error | The cited rule does not exist in the sources, or the citation names a Realm that is not one of them. |
+| RF002 | Error | The cited rule is in state `A`. |
+| RF003 | Warning | The cited rule is in state `R` or `T`, whether or not a rule supersedes it. |
+| RF004 | Error | The cited rule, in `D`, `P` or `I`, is superseded by a rule in `I`, `R` or `T`. |
+| RF005 | Warning | The cited rule, in `D`, `P` or `I`, is superseded by a rule in `P`, so it stays in force until that rule reaches `I` (§3.3). |
+| RF006 | Warning | The cited rule is in state `D` and no rule supersedes it. |
 
 #### `eval-cache` (EC)
 

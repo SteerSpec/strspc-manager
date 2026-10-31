@@ -225,6 +225,60 @@
     "retired": false
   },
   {
+    "code": "RF001",
+    "module": "rule-refs",
+    "severity": "Error",
+    "title": "Citation of an unknown rule",
+    "summary": "The cited rule does not exist in the sources, or the citation names a Realm that is not one of them.",
+    "fix": "Correct the rule ID or its Realm qualifier, or add the Realm to the sources the check reads.",
+    "retired": false
+  },
+  {
+    "code": "RF002",
+    "module": "rule-refs",
+    "severity": "Error",
+    "title": "Citation of an abandoned rule",
+    "summary": "The cited rule is in state `A`.",
+    "fix": "Cite a rule still in force, or remove the citation.",
+    "retired": false
+  },
+  {
+    "code": "RF003",
+    "module": "rule-refs",
+    "severity": "Warning",
+    "title": "Citation of a retired rule",
+    "summary": "The cited rule is in state `R` or `T`, whether or not a rule supersedes it.",
+    "fix": "Cite the rule that replaced it, if there is one, or remove the citation.",
+    "retired": false
+  },
+  {
+    "code": "RF004",
+    "module": "rule-refs",
+    "severity": "Error",
+    "title": "Citation of a superseded rule",
+    "summary": "The cited rule, in `D`, `P` or `I`, is superseded by a rule in `I`, `R` or `T`.",
+    "fix": "Cite the rule that supersedes it, which the message names.",
+    "retired": false
+  },
+  {
+    "code": "RF005",
+    "module": "rule-refs",
+    "severity": "Warning",
+    "title": "Citation of a rule being replaced",
+    "summary": "The cited rule, in `D`, `P` or `I`, is superseded by a rule in `P`, so it stays in force until that rule reaches `I` (§3.3).",
+    "fix": "Move the citation to the replacement, which the message names, before that rule reaches `I`.",
+    "retired": false
+  },
+  {
+    "code": "RF006",
+    "module": "rule-refs",
+    "severity": "Warning",
+    "title": "Citation of a Draft rule",
+    "summary": "The cited rule is in state `D` and no rule supersedes it.",
+    "fix": "Promote the rule with `strspc rule promote`, or cite a rule already Published.",
+    "retired": false
+  },
+  {
     "code": "RL000",
     "module": "rule-lint",
     "severity": "Error",
