@@ -962,7 +962,7 @@ func checkBodyCrossRefs(ef *entity.File, fpath string, allRuleIDs, states map[st
 		reported := make(map[string]bool)
 		for _, m := range crossRefRe.FindAllStringSubmatch(inlineCodeRe.ReplaceAllString(r.Body, " "), -1) {
 			if strings.Contains(m[0], ":") {
-				continue // qualified reference; rule bodies are not checked across realms
+				continue // qualified reference; checked by realm-resolve (RR019–RR021)
 			}
 			ref := m[1] + "-" + m[2]
 			if ref == r.ID || reported[ref] {

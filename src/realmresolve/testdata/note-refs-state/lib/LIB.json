@@ -1,0 +1,61 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIB",
+    "title": "LIB"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "LIB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule LIB-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "LIB-002",
+      "revision": 0,
+      "state": "A",
+      "body": "Rule LIB-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "LIB-003",
+      "revision": 0,
+      "state": "T",
+      "body": "Rule LIB-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "LIB-004",
+      "revision": 0,
+      "state": "R",
+      "body": "Rule LIB-004.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "LIB-005",
+      "revision": 0,
+      "state": "I",
+      "body": "Rule LIB-005.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": "LIB-004"
+    }
+  ],
+  "notes": [],
+  "sub_entities": []
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BODY",
+    "title": "BODY"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-10-31T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "BODY-001",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:LIB-001 and dev.root:BODY-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-002",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:LIB-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-003",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:LIB-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-004",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:LIB-004.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-005",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.other:OTHER-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-006",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:LIB-999.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-007",
+      "revision": 0,
+      "state": "I",
+      "body": "Works with dev.lib:NOPE-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-008",
+      "revision": 0,
+      "state": "I",
+      "body": "Quotes `dev.other:OTHER-002` as an example.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-009",
+      "revision": 0,
+      "state": "A",
+      "body": "Dead rule: dev.other:OTHER-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "BODY-010",
+      "revision": 0,
+      "state": "I",
+      "body": "Twice: dev.other:OTHER-004 and dev.other:OTHER-004.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "BODY-001/01",
+      "rule_ref": "BODY-001",
+      "type": "extends",
+      "content": "Extends dev.lib:LIB-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "BODY-001/02",
+      "rule_ref": "BODY-001",
+      "type": "related",
+      "content": "See dev.lib:LIB-003.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "BODY-001/03",
+      "rule_ref": "BODY-001",
+      "type": "related",
+      "content": "See dev.lib:LIB-001.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "BODY-001/04",
+      "rule_ref": "BODY-001",
+      "type": "supersedes",
+      "content": "Replaces dev.lib:LIB-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    },
+    {
+      "id": "BODY-009/01",
+      "rule_ref": "BODY-009",
+      "type": "extends",
+      "content": "Dead rule: dev.lib:LIB-002.",
+      "added_by": "t",
+      "added_at": "2026-10-31",
+      "revision": 0
+    }
+  ],
+  "sub_entities": []
+}

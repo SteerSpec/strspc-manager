@@ -94,3 +94,47 @@ func TestCheckNoteRefs_StopsWhenCancelled(t *testing.T) {
 		t.Errorf("expected no note diagnostics, got: %v", got)
 	}
 }
+
+func TestCheckNoteRefs_TargetNotLive(t *testing.T) {
+	_, res := New().Resolve(context.Background(), loadTestRealm(t, "note-refs-state/root"), absTestdata(t, "note-refs-state/root"))
+
+	tests := []struct{ code, substr string }{
+		{"RR019", `note BODY-001/01 (extends) references "dev.lib:LIB-002": rule LIB-002 is Abandoned`},
+		{"RR019", `note BODY-001/02 (related) references "dev.lib:LIB-003": rule LIB-003 is Terminated`},
+		{"RR019", `rule BODY-002 body references "dev.lib:LIB-002": rule LIB-002 is Abandoned`},
+		{"RR019", `rule BODY-003 body references "dev.lib:LIB-003": rule LIB-003 is Terminated`},
+		{"RR019", `rule BODY-004 body references "dev.lib:LIB-004": rule LIB-004 is superseded`},
+		{"RR020", `rule BODY-005 body references "dev.other:OTHER-001": realm dev.other is not a dependency of realm dev.root`},
+		{"RR020", `rule BODY-010 body references "dev.other:OTHER-004"`},
+		{"RR021", `rule BODY-006 body references "dev.lib:LIB-999": no rule LIB-999 in realm dev.lib`},
+		{"RR021", `rule BODY-007 body references "dev.lib:NOPE-001": no entity NOPE in realm dev.lib`},
+	}
+	for _, tt := range tests {
+		got := diagsFor(res, tt.code, tt.substr)
+		if len(got) != 1 {
+			t.Errorf("%s %q: got %d diagnostics, want 1", tt.code, tt.substr, len(got))
+			continue
+		}
+		if got[0].Severity != result.Warning {
+			t.Errorf("%s %q: severity = %v, want Warning", tt.code, tt.substr, got[0].Severity)
+		}
+		if want := absTestdata(t, "note-refs-state/root/BODY.json"); got[0].Path != want {
+			t.Errorf("%s %q: path = %s, want %s", tt.code, tt.substr, got[0].Path, want)
+		}
+	}
+
+	// Anything else stays silent: live targets, a supersedes note naming a
+	// dead rule, backticked text, and the body and notes of a dead rule.
+	var warnings int
+	for _, d := range res.Diagnostics {
+		if d.Code == "RR019" || d.Code == "RR020" || d.Code == "RR021" {
+			warnings++
+		}
+	}
+	if warnings != len(tests) {
+		t.Errorf("got %d warnings, want %d: %v", warnings, len(tests), res.Diagnostics)
+	}
+	if errs := res.Errors(); len(errs) != 0 {
+		t.Errorf("unexpected errors: %v", errs)
+	}
+}
