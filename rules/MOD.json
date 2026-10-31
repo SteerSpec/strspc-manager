@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.12.1",
-    "timestamp": "2026-10-31T18:37:39Z",
-    "hash": "blake3:998f70bd341f600c3747cf08fb06a07d9ef8f05ec6aed07c8134a5888faf9ff5"
+    "version": "0.12.2",
+    "timestamp": "2026-10-31T18:55:59Z",
+    "hash": "blake3:cdca4bbcbe6dc81870138cac265e7649085b90f7a800175b626ee6e030b84aab"
   },
   "rules": [
     {
@@ -82,6 +82,15 @@
       "added_by": "@pleberre",
       "added_at": "2026-10-31",
       "supersedes": "MOD-007"
+    },
+    {
+      "id": "MOD-009",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST register every diagnostic code a module emits in result.Codes() with a non-empty Title and Fix.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": null
     }
   ],
   "notes": []

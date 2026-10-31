@@ -416,6 +416,12 @@ enforces both rules against it and compares the registry with the one shipped by
 a shipped line can neither be deleted nor change meaning. A retired check keeps its row below, marked
 retired, and its code is never emitted again.
 
+`result.Codes()` and `result.LookupCode()` in `src/result/codes.go` export every code below to consumers, with
+a short title and a fix (MOD-009). `docs/diagnostic-codes.json` is the same data for consumers without a Go
+toolchain; regenerate it with `go test ./src/result -run TestCodesJSONIsCurrent -update`. `Severity` and
+`Summary` repeat the cells below word for word, and `src/result/codes_doc_test.go` fails when the registry
+differs from these tables, from `reserved_codes.txt`, or from the JSON file.
+
 #### `rule-lint` (RL)
 
 | Code | Severity | When it fires |
