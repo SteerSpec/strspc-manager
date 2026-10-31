@@ -61,6 +61,10 @@ type chainState struct {
 	// treeNode maps each EUID of the resolved Realm tree to the node of the
 	// Realm or sub-realm that holds it.
 	treeNode map[string]*node
+	// superseded caches supersededRules by node.
+	superseded map[*node]map[string]bool
+	// holder maps each ancestor reached by walk to the node holding it.
+	holder map[*entity.File]*node
 }
 
 // resolveInheritance resolves the inheritance chain of every entity of the
@@ -138,12 +142,14 @@ func sortedIDs(entities map[string]*entity.File) []string {
 // made by the entities of the root Realm and its sub-realms.
 func (r *RealmResolver) newChainState(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, entities map[string]*entity.File, res *result.Result) *chainState {
 	s := &chainState{
-		r:        r,
-		ctx:      ctx,
-		res:      res,
-		loaded:   make(map[string]*ResolvedRealm),
-		nodes:    make(map[*ResolvedRealm]*node),
-		treeNode: make(map[string]*node),
+		r:          r,
+		ctx:        ctx,
+		res:        res,
+		loaded:     make(map[string]*ResolvedRealm),
+		nodes:      make(map[*ResolvedRealm]*node),
+		treeNode:   make(map[string]*node),
+		superseded: make(map[*node]map[string]bool),
+		holder:     make(map[*entity.File]*node),
 	}
 	rootSubs := subRealmIDs(root.Realm)
 	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
@@ -268,6 +274,7 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 		}
 		seen[key] = true
 		ancestors = append(ancestors, inherit.Hop{RealmID: next.ns, SubRealmIDs: next.subRealmIDs, Entity: target})
+		s.holder[target] = next
 		cur, curEnt = next, target
 	}
 	return ancestors, true

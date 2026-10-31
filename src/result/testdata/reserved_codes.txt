@@ -93,6 +93,9 @@ RR015 active override-target-not-inherited
 RR016 active override-target-not-in-force
 RR017 active note-ref-realm-undeclared
 RR018 active note-ref-rule-missing
+RR019 active ref-rule-not-live
+RR020 active body-ref-realm-undeclared
+RR021 active body-ref-rule-missing
 RSV000 active context-cancelled
 RSV002 active local-source-unreadable
 RSV003 active entity-parse-or-id-empty

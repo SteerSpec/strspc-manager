@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
@@ -35,6 +36,10 @@ type ResolveResult struct {
 	// its sub-realms that declares `inherits` and whose chain resolved, in
 	// EUID order.
 	Inheritance []*Inheritance
+	// Extended maps the qualified ID (<realm-id>:<rule id>) of each rule of
+	// the Realm, its sub-realms and their inheritance chains that has an
+	// `extends` note to the live rules the note names, in note order.
+	Extended map[string][]inherit.Extended
 }
 
 // ResolvedRealm represents a single resolved dependency or sub-realm.
@@ -404,6 +409,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	}
 	out.Inheritance = r.resolveInheritance(ctx, root, out.SubRealms, res)
 	r.checkNoteRefs(ctx, root, out.SubRealms, res)
+	out.Extended = r.resolveExtended(ctx, root, out.SubRealms, res)
 
 	return out, res
 }

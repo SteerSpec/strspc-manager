@@ -170,6 +170,7 @@ var DefaultEvaluateStates = []string{"D", "P", "I"}
 // It is the hex-encoded BLAKE3 hash of the rule ID, revision, body, notes
 // (type and content, order-independent), entity, source and scope, and the
 // inheritance metadata (owner, inheritor, overrides, overridden-by) together
+// and the extended rules (ID, revision and body, order-independent) together
 // with diffHash, the model and the prompt version. The entity, source, scope
 // and inheritance metadata are part of the prompt (a local rule applies only
 // under its source directory; an inherited rule is judged against its
@@ -184,6 +185,11 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	sort.Strings(notes)
 	overriddenBy := append([]string(nil), rule.OverriddenBy...)
 	sort.Strings(overriddenBy)
+	extended := make([]string, 0, len(rule.Extended))
+	for _, e := range rule.Extended {
+		extended = append(extended, e.ID+"\x1f"+strconv.Itoa(e.Revision)+"\x1f"+e.Body)
+	}
+	sort.Strings(extended)
 
 	var b strings.Builder
 	fields := []string{
@@ -198,6 +204,7 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 		rule.InheritedBy,
 		rule.Overrides,
 		strings.Join(overriddenBy, "\x1e"),
+		strings.Join(extended, "\x1e"),
 		diffHash,
 		model,
 		promptVersion,
