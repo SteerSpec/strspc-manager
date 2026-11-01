@@ -3,8 +3,10 @@ package qa_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -134,6 +136,9 @@ func stamp(data []byte) ([]byte, error) {
 	var root map[string]any
 	if err := dec.Decode(&root); err != nil {
 		return nil, fmt.Errorf("parsing: %w", err)
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, errors.New("parsing: data after the JSON value")
 	}
 	hashes, err := treeHashes(root)
 	if err != nil {
