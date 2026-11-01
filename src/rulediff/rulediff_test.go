@@ -1155,3 +1155,115 @@ func TestDiff_RD017_ChangedOnEntityOutOfForce(t *testing.T) {
 	head.Entity.Inherits = "core:OTHER"
 	assertHasCode(t, New().Diff(base, head), "RD017")
 }
+
+func TestRD021_RevisionMovedWithoutBody(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[1].Revision = 1
+	assertHasCode(t, New().Diff(base, head), "RD021")
+}
+
+func TestRD021_DraftBodyEditStaysClean(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Body = "Draft body, edited"
+	head.Rules[0].Revision = 1
+	assertNoCode(t, New().Diff(base, head), "RD021")
+}
+
+func TestRD021_MappingOnImplementedRule(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes = append(head.Notes, entity.Note{
+		ID: "TSTENT-003/01", RuleRef: "TSTENT-003", Type: entity.NoteTypeStandard, Content: "owasp.asvs:2.1.1",
+		AddedBy: "test@example.com", AddedAt: "2026-01-01",
+	})
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD021")
+	assertNoCode(t, res, "RD022")
+}
+
+func TestRD022_StandardRetype(t *testing.T) {
+	note := func(typ, content string, rev int) entity.Note {
+		return entity.Note{
+			ID: "TSTENT-003/01", RuleRef: "TSTENT-003", Type: typ, Content: content,
+			AddedBy: "test@example.com", AddedAt: "2026-01-01", Revision: rev,
+		}
+	}
+	const mapping = "owasp.asvs:2.1.1"
+	tests := []struct {
+		name      string
+		from, to  entity.Note
+		wantRD022 bool
+	}{
+		{"withdrawal", note("standard", mapping, 0), note("reference", mapping, 1), false},
+		{"restored", note("reference", mapping, 0), note("standard", mapping, 1), false},
+		{"withdrawal changes content", note("standard", mapping, 0), note("reference", "gone", 1), true},
+		{"standard to rationale", note("standard", mapping, 0), note("rationale", mapping, 1), true},
+		{"rationale to standard", note("rationale", mapping, 0), note("standard", mapping, 1), true},
+		{"clause revised", note("standard", mapping, 0), note("standard", "owasp.asvs:2.1.2", 1), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBase()
+			base.Notes = append(base.Notes, tt.from)
+			head := makeHead(base)
+			head.Notes[1] = tt.to
+			res := New().Diff(base, head)
+			if tt.wantRD022 {
+				assertHasCode(t, res, "RD022")
+			} else {
+				assertNoCode(t, res, "RD022")
+			}
+		})
+	}
+}
+
+// An `overrides` or `supersedes` edit on a Draft rule is an edit to the rule.
+func TestRD021_DraftReferenceEdits(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 1
+	assertNoCode(t, New().Diff(base, head), "RD021")
+
+	head = makeHead(base)
+	head.Rules[0].Supersedes = ptr("TSTENT-002")
+	head.Rules[0].Revision = 1
+	assertNoCode(t, New().Diff(base, head), "RD021")
+}
+
+// Only a Draft rule can be edited, and each edit is one revision.
+func TestRD021_ReferenceEditsOutsideDraft(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[1].Supersedes = ptr("TSTENT-001")
+	head.Rules[1].Revision = 1
+	assertHasCode(t, New().Diff(base, head), "RD021")
+
+	head = makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 7
+	assertHasCode(t, New().Diff(base, head), "RD021")
+}
+
+// A reference edit that also leaves Draft is not an edit of a Draft rule.
+func TestRD021_ReferenceEditWithPromotion(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 1
+	head.Rules[0].State = entity.StatePublished
+	assertHasCode(t, New().Diff(base, head), "RD021")
+}
+
+// An append-only note retyped to `standard` breaks both rules.
+func TestRD022_AppendOnlyToStandard(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes[0].Type = entity.NoteTypeStandard
+	head.Notes[0].Revision = 1
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD012")
+	assertHasCode(t, res, "RD022")
+}

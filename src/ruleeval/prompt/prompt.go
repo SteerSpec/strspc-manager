@@ -20,11 +20,6 @@ import (
 // package could change verdicts so that cached results are invalidated.
 const Version = "v7"
 
-// noteOrder lists the note types sent to the evaluator, in the order they
-// are rendered. Other note types (changelog, reference, supersedes, …) are
-// bookkeeping and are omitted.
-var noteOrder = []string{"applies_to", "rationale", "example", "counter_example", "clarification", "extends"}
-
 const system = `You are the SteerSpec rule evaluator. You receive a unified diff and a list of governance rules, and you return one verdict per rule as JSON that conforms to the response schema.
 
 How to evaluate:
@@ -129,7 +124,7 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 	for _, n := range r.Notes {
 		byType[n.Type] = append(byType[n.Type], n)
 	}
-	for _, typ := range noteOrder {
+	for _, typ := range ruleeval.PromptNoteTypes {
 		notes := byType[typ]
 		if len(notes) == 0 {
 			continue

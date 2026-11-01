@@ -38,6 +38,11 @@ type Entity struct {
 	// (ENT-011): one of the Visibility* constants, or empty when the entity
 	// takes the default (see EffectiveVisibility).
 	Visibility string `json:"visibility,omitempty"`
+	// Standards lists the external standards the entity cites (ENT-017). They
+	// apply to the entity and the entities it contains, and an inheriting
+	// entity does not receive them (STDREF-009). It stays omitted when empty,
+	// so files that declare none keep their bytes and hash.
+	Standards []StandardRef `json:"standards,omitempty"`
 }
 
 // RuleSet holds versioning and integrity metadata for an entity's rule set.
@@ -147,6 +152,10 @@ type RealmMeta struct {
 	// language for a sub-realm, which leaves it out (RLM-018). It stays
 	// omitted when empty, because the schema rejects an empty value.
 	Language string `json:"language,omitempty"`
+	// Standards lists the external standards the Realm cites (RLMMNFST-007).
+	// It stays omitted when empty, so a manifest declaring none keeps its
+	// bytes.
+	Standards []StandardRef `json:"standards,omitempty"`
 }
 
 // RealmDep declares a dependency on another Realm.
