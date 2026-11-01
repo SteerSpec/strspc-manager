@@ -41,6 +41,8 @@ RL022 active rule-body-multiple-sentences
 RL023 active visibility-value-unknown
 RL024 active visibility-wider-than-container
 RL025 active supersedes-other-entity
+RL026 active inline-example
+RL027 active rule-body-multiple-key-words
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited

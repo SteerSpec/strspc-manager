@@ -201,3 +201,134 @@ func TestDraftBodies_StrictIsError(t *testing.T) {
 		}
 	}
 }
+
+func TestRL026_InlineExamples(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		body  string
+		want  bool
+	}{
+		{"such as", "D", "MUST name a tool such as Claude.", true},
+		{"such as over two spaces", "D", "MUST name a tool such  as Claude.", true},
+		{"e.g.", "D", "MUST name a tool (e.g., Claude).", true},
+		{"for example", "D", "MUST name a tool, for example Claude.", true},
+		{"cf.", "D", "MUST name a directory (cf. a dotfile).", true},
+		{"capitalised", "D", "For example, a tool MUST run.", true},
+		{"uppercase", "D", "MUST name a tool, E.G. Claude.", true},
+		{"none", "D", "MUST name a tool.", false},
+		{"inside a longer word", "D", "MUST report such assets and a pdf.", false},
+		{"in code", "D", "MUST reject the text `such as` and `e.g.`.", false},
+		{"published", "P", "MUST name a tool such as Claude.", false},
+		{"implemented", "I", "MUST name a tool such as Claude.", false},
+		{"abandoned", "A", "MUST name a tool such as Claude.", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := lintRulesDir(t, false, []entity.Rule{{ID: "TST-001", State: tt.state, Body: tt.body}}, nil)
+			ds := diagsWithCode(res, "RL026")
+			if got := len(ds) > 0; got != tt.want {
+				t.Fatalf("RL026 = %v, want %v: %v", got, tt.want, res.Diagnostics)
+			}
+			if tt.want && ds[0].Severity != result.Warning {
+				t.Errorf("RL026 severity = %v, want Warning", ds[0].Severity)
+			}
+		})
+	}
+}
+
+func TestRL026_Notes(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    string
+		noteType string
+		content  string
+		want     bool
+	}{
+		{"rationale", "D", "rationale", "Tools differ, such as Claude.", true},
+		{"clarification", "D", "clarification", "Tools differ, e.g. Claude.", true},
+		{"changelog", "D", "changelog", "Added a tool, for example Claude.", true},
+		{"example", "D", "example", "A tool such as Claude.", false},
+		{"counter_example", "D", "counter_example", "A tool such as Claude.", false},
+		{"in code", "D", "rationale", "The text `such as` is rejected.", false},
+		{"no marker", "D", "rationale", "Tools differ.", false},
+		{"on a published rule", "P", "rationale", "Tools differ, such as Claude.", false},
+		{"on an implemented rule", "I", "rationale", "Tools differ, such as Claude.", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := lintRulesDir(t, false,
+				[]entity.Rule{{ID: "TST-001", State: tt.state, Body: "MUST hold."}},
+				[]entity.Note{{ID: "TST-001/01", RuleRef: "TST-001", Type: tt.noteType, Content: tt.content}})
+			if got := len(diagsWithCode(res, "RL026")) > 0; got != tt.want {
+				t.Errorf("RL026 = %v, want %v: %v", got, tt.want, res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestRL026_NoteOnUnknownRule(t *testing.T) {
+	res := lintRulesDir(t, false,
+		[]entity.Rule{{ID: "TST-001", State: "D", Body: "MUST hold."}},
+		[]entity.Note{{ID: "TST-009/01", RuleRef: "TST-009", Type: "rationale", Content: "Tools differ, such as Claude."}})
+	assertNoCode(t, res, "RL026")
+}
+
+func TestRL027_TwoKeyWords(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		body  string
+		want  bool
+	}{
+		{"two", "D", "MUST hold and MUST stay.", true},
+		{"three", "D", "MUST hold, MAY stop and SHOULD log.", true},
+		{"mixed", "D", "HAS a type which MUST be known.", true},
+		{"one", "D", "MUST hold.", false},
+		{"must not counts once", "D", "MUST NOT fail.", false},
+		{"should not counts once", "D", "SHOULD NOT fail.", false},
+		{"second in code", "D", "MUST set `MAY`.", false},
+		{"second in a rule ID", "D", "MUST apply HAS-001.", false},
+		{"lowercase second", "D", "MUST hold when it is set.", false},
+		{"published", "P", "MUST hold and MUST stay.", false},
+		{"implemented", "I", "MUST hold and MUST stay.", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := lintRulesDir(t, false, []entity.Rule{{ID: "TST-001", State: tt.state, Body: tt.body}}, nil)
+			if got := len(diagsWithCode(res, "RL027")) > 0; got != tt.want {
+				t.Errorf("RL027 = %v, want %v: %v", got, tt.want, res.Diagnostics)
+			}
+		})
+	}
+}
+
+func TestDraftText_Strict(t *testing.T) {
+	res := lintRulesDir(t, true, []entity.Rule{
+		{ID: "TST-001", State: "D", Body: "MUST name a tool such as Claude."},
+		{ID: "TST-002", State: "D", Body: "MUST hold and MUST stay."},
+	}, nil)
+	if ds := diagsWithCode(res, "RL026"); len(ds) != 1 || ds[0].Severity != result.Error {
+		t.Errorf("RL026 under strict = %v, want one Error", ds)
+	}
+	if ds := diagsWithCode(res, "RL027"); len(ds) != 1 || ds[0].Severity != result.Info {
+		t.Errorf("RL027 under strict = %v, want one Info", ds)
+	}
+}
+
+func TestDraftText_SubEntity(t *testing.T) {
+	res := New().LintFile(&entity.File{
+		Entity:  entity.Entity{ID: "TST", Title: "Test"},
+		RuleSet: entity.RuleSet{Version: "1.0.0"},
+		SubEntities: []entity.File{{
+			Entity:  entity.Entity{ID: "SUB", Title: "Sub", Parent: "TST"},
+			RuleSet: entity.RuleSet{Version: "1.0.0"},
+			Rules:   []entity.Rule{{ID: "SUB-001", State: "D", Body: "MUST hold and MUST name a tool such as Claude."}},
+			Notes:   []entity.Note{{ID: "SUB-001/01", RuleRef: "SUB-001", Type: "rationale", Content: "Tools differ, e.g. Claude."}},
+		}},
+	})
+	if got := len(diagsWithCode(res, "RL026")); got != 2 {
+		t.Errorf("RL026 count = %d, want 2: %v", got, res.Diagnostics)
+	}
+	assertHasCode(t, res, "RL027")
+}

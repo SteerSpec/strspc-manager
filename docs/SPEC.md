@@ -473,6 +473,8 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
 | RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
+| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
+| RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
 
 #### `rule-diff` (RD)
 
@@ -667,9 +669,11 @@ github://<owner>/<repo>@<ref>[/<path>]
 19. Bodies of `D`, `P` and `I` rules: every unqualified `<EUID>-<NNN>` reference outside backticks points to an existing rule ID within the scanned realm. Qualified references are checked by `realm-resolve` (RR019 to RR021).
 20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
 21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
-22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
+22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21, 22, 25 and 26 do not apply to them.
 23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-015).
 24. A rule's `supersedes` names a rule of the same entity (RUL-012).
+25. Bodies of `D` rules, and notes on them other than `example` and `counter_example`, hold no inline example outside backticks (NTE-020). Notes on other rules are not checked.
+26. Bodies of `D` rules with more than one key word outside backticks and rule IDs are reported at Info, since a relative clause can carry its own key word (RUL-004).
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
