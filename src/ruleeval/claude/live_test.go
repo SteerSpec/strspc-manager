@@ -59,13 +59,15 @@ func TestLive_PartialDiffListsTheOtherChunk(t *testing.T) {
 	tests := []struct {
 		name     string
 		diff     string
-		violated bool
+		want     ruleeval.Verdict
+		requests int // one verdict request per chunk, plus a detail request if violated
 	}{
-		{name: "SPEC in the other chunk", diff: specDiff + codeDiff},
+		{name: "SPEC in the other chunk", diff: specDiff + codeDiff, want: ruleeval.Compliant, requests: 2},
 		{
 			name:     "SPEC not in the diff",
 			diff:     strings.ReplaceAll(specDiff, "docs/SPEC.md", "docs/README.md") + codeDiff,
-			violated: true,
+			want:     ruleeval.Violated,
+			requests: 3,
 		},
 	}
 	for _, tt := range tests {
@@ -84,16 +86,16 @@ func TestLive_PartialDiffListsTheOtherChunk(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if n := p.Usage().Requests; n < 2 {
-				t.Fatalf("%d request(s): the diff did not split, so this proves nothing", n)
+			if n := p.Usage().Requests; n < tt.requests {
+				t.Fatalf("%d request(s), want %d: the diff did not split, so this proves nothing", n, tt.requests)
 			}
 			v := resp.Verdicts["MOD-006"]
 			if v == nil {
 				t.Fatalf("no verdict returned: %+v", resp)
 			}
 			t.Logf("verdict=%s explanation=%q", v.Verdict, v.Explanation)
-			if got := v.Verdict == ruleeval.Violated; got != tt.violated {
-				t.Errorf("violated = %v, want %v: %s", got, tt.violated, v.Explanation)
+			if v.Verdict != tt.want {
+				t.Errorf("verdict = %s, want %s: %s", v.Verdict, tt.want, v.Explanation)
 			}
 		})
 	}
