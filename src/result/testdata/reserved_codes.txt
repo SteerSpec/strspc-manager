@@ -41,6 +41,10 @@ RL022 active rule-body-multiple-sentences
 RL023 active visibility-value-unknown
 RL024 active visibility-wider-than-container
 RL025 active supersedes-other-entity
+RL026 active standards-entry-invalid
+RL027 active standard-note-malformed
+RL028 active standard-note-duplicate
+RL029 active standard-undeclared
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -62,6 +66,8 @@ RD017 active inherits-changed
 RD018 active overrides-changed
 RD019 active added-by-invalid
 RD020 active visibility-changed
+RD021 active revision-without-body-change
+RD022 active standard-note-retyped
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
@@ -79,6 +85,7 @@ RM014 active dependency-pin-mismatch
 RM015 active schema-differs-from-dependency
 RM016 active dependency-unavailable
 RM017 active sub-realm-language
+RM018 active realm-standards-invalid
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable

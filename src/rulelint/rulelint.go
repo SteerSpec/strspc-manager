@@ -1,6 +1,6 @@
 // Package rulelint provides stateless validation of SteerSpec entity files.
 // It checks a single entity file against the JSON schema and the business
-// rules defined in the Rule Manager Spec §7.1 (RL001–RL022).
+// rules defined in the Rule Manager Spec §7.1 (RL001–RL029).
 package rulelint
 
 import (
@@ -226,7 +226,8 @@ func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
 }
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
-// and runs cross-entity reference checks (RL012, RL014). ctx bounds the JSON
+// and runs cross-entity reference checks (RL012, RL014) and, given a manifest,
+// the check of `standard` notes against declarations (RL029). ctx bounds the JSON
 // Schema fetch (RL002).
 // When the realm declares sub_realms, each sub-realm directory is linted
 // separately, and cross-references are validated globally across the
@@ -234,14 +235,21 @@ func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
 func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 	// Try to load realm.json to check for sub_realms.
 	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
-	if err != nil || len(rf.SubRealms) == 0 {
-		// No realm.json or no sub-realms: fall back to recursive walk.
+	if err != nil {
+		// No realm.json: fall back to recursive walk.
 		return l.lintDir(ctx, dir)
 	}
 
-	// Sub-realm-aware linting: lint parent excluding sub-realm dirs,
-	// then lint each sub-realm dir, and validate cross-refs globally.
-	return l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
+	var res *result.Result
+	if len(rf.SubRealms) == 0 {
+		res = l.lintDir(ctx, dir)
+	} else {
+		// Sub-realm-aware linting: lint parent excluding sub-realm dirs,
+		// then lint each sub-realm dir, and validate cross-refs globally.
+		res = l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
+	}
+	checkRealmStandards(dir, rf, res)
+	return res
 }
 
 // lintRealmWithSubs lints the parent realm and each sub-realm separately,
@@ -358,6 +366,7 @@ func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Resul
 	checkNoteTypes(ef, res, path)
 	checkSemver(ef, res, path)
 	checkDraftBodies(ef, res, path)
+	checkStandards(ef, res, path)
 	checkVisibility(ef, container, res, path)
 	checkSupersedesEntity(ef, res, path)
 

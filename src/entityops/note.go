@@ -28,6 +28,11 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 	if addedBy == "" {
 		return "", fmt.Errorf("added_by must not be empty")
 	}
+	if noteType == entity.NoteTypeStandard {
+		if _, _, err := entity.ParseStandardNote(content); err != nil {
+			return "", err
+		}
+	}
 
 	num := nextNoteNumber(f, ruleID)
 	if num > maxNoteNumber {
@@ -103,6 +108,9 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 	if content == n.Content && noteType == n.Type {
 		return fmt.Errorf("note %q unchanged: content and type are the same", noteID)
 	}
+	if err := checkStandardChange(n, content, noteType); err != nil {
+		return err
+	}
 
 	n.Content = content
 	n.Type = noteType
@@ -115,6 +123,27 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
+	}
+	return nil
+}
+
+// checkStandardChange refuses a change to a note that a `standard` note may not
+// undergo: a retype other than to or from `reference` (NTE-017), a withdrawal
+// that changes the content (NTE-019), or malformed content (NTE-014).
+func checkStandardChange(n *entity.Note, content, noteType string) error {
+	if noteType == entity.NoteTypeStandard {
+		if _, _, err := entity.ParseStandardNote(content); err != nil {
+			return fmt.Errorf("note %q: %w", n.ID, err)
+		}
+	}
+	if n.Type == noteType || (n.Type != entity.NoteTypeStandard && noteType != entity.NoteTypeStandard) {
+		return nil
+	}
+	if n.Type != entity.NoteTypeReference && noteType != entity.NoteTypeReference {
+		return fmt.Errorf("cannot retype note %q from %q to %q: a `standard` note changes only to or from `reference`", n.ID, n.Type, noteType)
+	}
+	if noteType == entity.NoteTypeReference && content != n.Content {
+		return fmt.Errorf("note %q: withdrawing a mapping keeps the note's content", n.ID)
 	}
 	return nil
 }

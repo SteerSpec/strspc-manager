@@ -28,7 +28,7 @@ var (
 // maxDomainLen is the longest domain name DNS allows.
 const maxDomainLen = 253
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018 and RD019 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD019, RD021 and RD022 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -111,6 +111,18 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			Code:     "RD018",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("rule overrides is immutable in state %q: changed from %s to %s; supersede the rule to change it", b.State, refString(b.Overrides), refString(h.Overrides)),
+			Path:     path,
+		})
+	}
+
+	// RD021: a rule's revision counts edits to its body (NTE-018), so nothing
+	// else may move it, a mapping to a standard above all.
+	if h.Revision != b.Revision && h.Body == b.Body {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD021",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("rule revision changed from %d to %d with no change to its body", b.Revision, h.Revision),
 			Path:     path,
 		})
 	}
@@ -277,6 +289,7 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 			})
 		default:
 			checkNoteRevision(b, h, res, notePath)
+			checkStandardRetype(b, h, res, notePath)
 		}
 	}
 
@@ -289,6 +302,30 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 			checkNewNote(n, res, path+"/notes/"+n.ID)
 		}
 	}
+}
+
+// checkStandardRetype runs RD022: a `standard` note is retyped only to or from
+// `reference` (NTE-017), and a withdrawal keeps its content (NTE-019).
+func checkStandardRetype(b, h entity.Note, res *result.Result, path string) {
+	if b.Type == h.Type || (b.Type != entity.NoteTypeStandard && h.Type != entity.NoteTypeStandard) {
+		return
+	}
+	var msg string
+	switch {
+	case b.Type != entity.NoteTypeReference && h.Type != entity.NoteTypeReference:
+		msg = fmt.Sprintf("note retyped from %q to %q: a `standard` note changes only to or from `reference`", b.Type, h.Type)
+	case h.Type == entity.NoteTypeReference && h.Content != b.Content:
+		msg = "withdrawing a mapping keeps the note's content"
+	default:
+		return
+	}
+	res.Add(result.Diagnostic{
+		Module:   module,
+		Code:     "RD022",
+		Severity: result.Error,
+		Message:  msg,
+		Path:     path,
+	})
 }
 
 // checkNoteRevision runs RD013 for a note present in both versions: a change

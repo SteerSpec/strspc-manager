@@ -276,3 +276,70 @@ func TestUpdateNote(t *testing.T) {
 		}
 	})
 }
+
+func TestAddNote_StandardContent(t *testing.T) {
+	f := makeFileWithRule(t, entity.StatePublished)
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "not a mapping", "@alice"); err == nil {
+		t.Fatal("malformed content must be refused (NTE-014)")
+	}
+}
+
+func TestUpdateNote_StandardRetype(t *testing.T) {
+	add := func(t *testing.T, typ, content string) *entity.File {
+		f := makeFileWithRule(t, entity.StateImplemented)
+		if _, err := AddNote(f, "TST-001", typ, content, "@alice"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		return f
+	}
+	const noteID = "TST-001/01"
+
+	t.Run("withdraws to reference", func(t *testing.T) {
+		f := add(t, entity.NoteTypeStandard, "owasp.asvs:2.1.1")
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeReference); err != nil {
+			t.Fatalf("UpdateNote: %v", err)
+		}
+		if f.Rules[0].Revision != 0 {
+			t.Errorf("rule revision moved to %d (NTE-018)", f.Rules[0].Revision)
+		}
+	})
+	t.Run("withdrawal keeps the content", func(t *testing.T) {
+		f := add(t, entity.NoteTypeStandard, "owasp.asvs:2.1.1")
+		if err := UpdateNote(f, noteID, "other", entity.NoteTypeReference); err == nil {
+			t.Fatal("a withdrawal must keep its content (NTE-019)")
+		}
+	})
+	t.Run("restores from reference", func(t *testing.T) {
+		f := add(t, entity.NoteTypeReference, "owasp.asvs:2.1.1")
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeStandard); err != nil {
+			t.Fatalf("UpdateNote: %v", err)
+		}
+	})
+	t.Run("refuses any other retype from standard", func(t *testing.T) {
+		f := add(t, entity.NoteTypeStandard, "owasp.asvs:2.1.1")
+		if err := UpdateNote(f, noteID, "", "rationale"); err == nil {
+			t.Fatal("standard to rationale must be refused (NTE-017)")
+		}
+	})
+	t.Run("refuses any other retype to standard", func(t *testing.T) {
+		f := add(t, "rationale", "owasp.asvs:2.1.1")
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeStandard); err == nil {
+			t.Fatal("rationale to standard must be refused (NTE-017)")
+		}
+	})
+	t.Run("revises a clause", func(t *testing.T) {
+		f := add(t, entity.NoteTypeStandard, "owasp.asvs:2.1.1")
+		if err := UpdateNoteContent(f, noteID, "owasp.asvs:2.1.2"); err != nil {
+			t.Fatalf("UpdateNoteContent: %v", err)
+		}
+	})
+	t.Run("refuses malformed revised content", func(t *testing.T) {
+		f := add(t, entity.NoteTypeStandard, "owasp.asvs:2.1.1")
+		if err := UpdateNoteContent(f, noteID, "2.1.2"); err == nil {
+			t.Fatal("malformed content must be refused (NTE-014)")
+		}
+	})
+}

@@ -293,6 +293,17 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 			Path:     realmPath,
 		})
 	}
+
+	// RM018: The realm's `standards` array (RLMMNFST-007).
+	for _, err := range entity.ValidateStandardRefs(rf.Realm.Standards) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM018",
+			Severity: result.Error,
+			Message:  err.Error(),
+			Path:     realmPath,
+		})
+	}
 }
 
 // RM003 + RM004: Validate _schema/ directory structure.

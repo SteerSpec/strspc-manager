@@ -59,6 +59,8 @@ An entity MAY declare `inherits`, the EUID of one other entity whose effective r
 | `protected` | inherit, override | inherit, override | inherit |
 | `private` | inherit, override | inherit | nothing |
 
+**Standards.** An entity MAY declare a `standards` array of Standard References (ENT-017), and so MAY a Realm (RLMMNFST-007). Each holds `id`, `relation` (`implements` or `derived_from`) and optional `version` and `url`. A rule maps to a clause through a `standard` note (§2.6), whose `id` resolves in the entity owning the rule, its containing entities nearest first, its Realm, then that Realm's parent (NTE-016). `inherits` passes on no references (STDREF-009).
+
 A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a sub-realm and its siblings are in the same tree but are different Realms (RLM-016). `inherits` needs the permission of the inherited entity. `overrides` needs that of every entity from the inherited entity up to the owner of the rule, measured from the declaring Realm, so a `protected` entity shields the rules it inherits from a `public` one (ENT-016). An entity MUST NOT be wider than the entity it inherits or the entity containing it (ENT-015): it would otherwise re-expose what those entities hold back. An `extends` note follows the inherit column, and its target's entity MUST NOT be narrower than the note's, since whoever inherits the note reads the target in evaluation (NTE-012). `related` notes and bodies are citations and aren't limited. Rules that are Abandoned, Retired or Terminated are exempt, because their `overrides` and notes can't change; a superseded rule isn't, because it stays in force until it is Retired.
 
 `realm-resolve` enforces these (RR022 to RR025), so they run in `strspc check` and `strspc render`, not `strspc realm validate`. Each chain is checked hop by hop, a dependency's hops included, so a dependency that breaks these rules fails its consumers too. `rule-lint` checks the value and the limit from the containing entity (RL023, RL024). Tree checks hold from a top-level Realm: a sub-realm's manifest doesn't list its siblings, so a sub-realm used as a source or a dependency on its own sees them as other Realms. Realm identity is the Realm ID at any version, and the ID in a manifest is trusted (RLM-008). Visibility is a reference contract, not secrecy.
@@ -121,9 +123,10 @@ Notes are stored in the same entity file as the rules they reference and are edi
 - A note is never removed once added. A note that no longer applies is revised in place.
 - Notes of type `changelog`, `supersedes`, `extends` and `related` are immutable: neither their content nor their type may change once added.
 - Any other note may be revised; each change to its content or type increments its `revision` by exactly one.
+- A `standard` note changes type only to or from `reference`. A withdrawal to `reference` keeps the content (NTE-017, NTE-019).
 - Note IDs under a rule are sequential from `01`. Since no note is ever removed, an ID is never reused.
 
-Every note is rendered and sent to the evaluator; there is no latest-wins selection.
+The evaluator receives the note types listed in `ruleeval.PromptNoteTypes`, every note of those types; there is no latest-wins selection. The other types are bookkeeping, and they stay out of the evaluation cache key too.
 
 ### 2.6 Note Types (Closed Enum)
 
@@ -140,6 +143,7 @@ Every note is rendered and sent to the evaluator; there is no latest-wins select
 | `supersedes` | Declares that this rule replaces another rule (content is the superseded rule ID). | Rules |
 | `extends` | Declares that this rule builds on another rule. The AI evaluator reads the body of each live rule it names alongside this rule, one hop only. | Rules |
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
+| `standard` | Maps the rule to one clause of an external standard, as `<id>:<clause>` split at the first colon (NTE-013, NTE-014). Can be added, revised or withdrawn in any rule state, and never moves the rule's revision (NTE-017, NTE-018). | Rules |
 
 ### 2.7 Sub-Entities
 
@@ -177,6 +181,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017). A sub-realm leaves it out and inherits its parent's language (RLM-018, RM017). |
+| `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
 | `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.14.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
@@ -293,6 +298,7 @@ The PR validator enforces consistency: if a rule declares `supersedes` and reach
 - It increments by exactly `+1` on every edit to the rule.
 - Revisions only change while the rule is in Draft state (since non-Draft rules are immutable).
 - State transitions do not increment the revision — they change the `state` field only.
+- Nothing but a body edit moves it: a `standard` note leaves it unchanged (NTE-018).
 - Notes carry their own revision counter with the same semantics, independent of the rule's (§2.5).
 
 ---
@@ -473,6 +479,10 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
 | RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
+| RL026 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
+| RL027 | Error | The content of a `standard` note is not `<id>:<clause>` (NTE-014). |
+| RL028 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
+| RL029 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
 
 #### `rule-diff` (RD)
 
@@ -499,6 +509,8 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
 | RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
+| RD021 | Error | A rule's `revision` changed while its body did not (NTE-018). |
+| RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 
 #### `realm-lint` (RM)
 
@@ -526,6 +538,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
 | RM017 | Error | A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018). |
+| RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
 
 #### `realm-resolve` (RR)
 
@@ -670,6 +683,9 @@ github://<owner>/<repo>@<ref>[/<path>]
 22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
 23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-015).
 24. A rule's `supersedes` names a rule of the same entity (RUL-012).
+25. Each `entity.standards` entry is valid and its `id` unique (STDREF-002 to STDREF-004, STDREF-008).
+26. Each `standard` note holds `<id>:<clause>`, and no rule holds the same one twice (NTE-014, NTE-015).
+27. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs when a Realm is linted with its `realm.json`.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
