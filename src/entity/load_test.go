@@ -1,8 +1,12 @@
 package entity_test
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -94,5 +98,65 @@ func TestParseRealm_Valid(t *testing.T) {
 	}
 	if r.Realm.ID != "dev.test.example" {
 		t.Errorf("got realm ID %q, want %q", r.Realm.ID, "dev.test.example")
+	}
+}
+
+func TestParseRealm_Invalid(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"malformed", `{bad`},
+		{"empty", ``},
+		{"realm of the wrong type", `{"realm": "dev.test.example"}`},
+		{"dependencies of the wrong type", `{"dependencies": {}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := entity.ParseRealm([]byte(tt.input))
+			if err == nil || !strings.HasPrefix(err.Error(), "parsing realm JSON: ") {
+				t.Fatalf("ParseRealm(%q) error = %v, want a parsing realm JSON error", tt.input, err)
+			}
+			if r != nil {
+				t.Errorf("ParseRealm(%q) = %+v, want nil on error", tt.input, r)
+			}
+		})
+	}
+}
+
+func TestLoadRealm_Errors(t *testing.T) {
+	missing := testdataPath("nonexistent.json")
+
+	tests := []struct {
+		name       string
+		path       string
+		wantPrefix string
+		wantIs     error
+	}{
+		{
+			name:       "missing file",
+			path:       missing,
+			wantPrefix: fmt.Sprintf("reading realm file %q: ", missing),
+			wantIs:     fs.ErrNotExist,
+		},
+		{
+			name:       "malformed file",
+			path:       testdataPath("invalid", "bad_json.json"),
+			wantPrefix: "parsing realm JSON: ",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := entity.LoadRealm(tt.path)
+			if err == nil || !strings.HasPrefix(err.Error(), tt.wantPrefix) {
+				t.Fatalf("LoadRealm(%q) error = %v, want prefix %q", tt.path, err, tt.wantPrefix)
+			}
+			if tt.wantIs != nil && !errors.Is(err, tt.wantIs) {
+				t.Errorf("LoadRealm(%q) error = %v, want it to wrap %v", tt.path, err, tt.wantIs)
+			}
+			if r != nil {
+				t.Errorf("LoadRealm(%q) = %+v, want nil on error", tt.path, r)
+			}
+		})
 	}
 }
