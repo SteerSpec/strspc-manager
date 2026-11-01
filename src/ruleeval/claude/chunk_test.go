@@ -140,6 +140,34 @@ func TestChunkDiff_OversizeHunkReported(t *testing.T) {
 	}
 }
 
+func TestChangedFiles(t *testing.T) {
+	big := fileDiff("big.go", hunk(1, "a"), hunk(9, "b"))
+	got := changedFiles("preamble\n" + fileDiff("a.go", hunk(1, "x")) + big)
+	if strings.Join(got, ",") != "a.go,big.go" {
+		t.Errorf("changedFiles = %q, want each file once and no preamble", got)
+	}
+}
+
+func TestCapFiles(t *testing.T) {
+	files := []string{"aa", "bb", "cc"} // 5 bytes each as "- aa\n"
+	cases := []struct {
+		budget   int
+		kept     string
+		unlisted int
+	}{
+		{15, "aa,bb,cc", 0},
+		{14, "aa,bb", 1},
+		{5, "aa", 2},
+		{4, "", 3},
+	}
+	for _, tc := range cases {
+		kept, unlisted := capFiles(files, tc.budget)
+		if strings.Join(kept, ",") != tc.kept || unlisted != tc.unlisted {
+			t.Errorf("capFiles(%d) = %q, %d; want %q, %d", tc.budget, kept, unlisted, tc.kept, tc.unlisted)
+		}
+	}
+}
+
 func TestMergeVerdict_Precedence(t *testing.T) {
 	dst := map[string]*ruleeval.EvalResponse{}
 	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.NotApplicable, Explanation: "na"})

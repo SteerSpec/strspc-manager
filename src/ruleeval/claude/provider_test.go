@@ -121,6 +121,19 @@ var diffReadme = strings.Join([]string{
 	"+More words about the project.",
 }, "\n") + "\n"
 
+const specRule = "MUST describe every diagnostic code a module emits in the specification."
+
+var (
+	specDiff = strings.ReplaceAll(diffWithLong, "src/cmd/lint.go", "docs/SPEC.md")
+	codeDiff = strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/result/codes_table.go")
+)
+
+// twoChunks leaves room for one fixture file per chunk: ~265 tokens past the
+// system prompt and the overhead of 256 pay for the rules (~55), the file
+// list (~55) and one ~430-byte file. It follows the system prompt's size, so
+// rewording the prompt does not move the split.
+func twoChunks(c *claude.Config) { c.MaxInputTokens = (len(prompt.System())+2)/3 + 256 + 265 }
+
 // --- synthetic Messages API responses -------------------------------------
 
 type locationJSON struct {
@@ -218,6 +231,20 @@ func scenarios() []scenario {
 				return
 			}
 			writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+		}
+	}
+	// specModel stands in for a model judging MOD-006: it reports a violation
+	// unless the request shows, in hunks or in the file list, that SPEC changed.
+	specModel := func(w http.ResponseWriter, body string, _ int) {
+		seen := strings.Contains(body, "b/docs/SPEC.md") || strings.Contains(body, "- docs/SPEC.md")
+		switch {
+		case seen:
+			writeJSON(w, 200, message("end_turn", verdictsText("MOD-006", "compliant"), nil))
+		case isDetailRequest(body):
+			writeJSON(w, 200, message("end_turn", detailText("The new code is not described in the spec.", 0.9,
+				locationJSON{File: "src/result/codes_table.go", Line: 9, Excerpt: "func newLintCmd"}), nil))
+		default:
+			writeJSON(w, 200, message("end_turn", verdictsText("MOD-006", "violated"), nil))
 		}
 	}
 	return []scenario{
@@ -405,13 +432,9 @@ func scenarios() []scenario {
 			// Two files: the first complies, the second violates. A small input
 			// budget forces one request per file.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg: func(c *claude.Config) {
-				// system ≈ 1280 tokens + rules ≈ 50 + overhead 256 = 1586; the
-				// remaining ~170 tokens (510 bytes) fit one ~400-byte file per chunk.
-				c.MaxInputTokens = 1757
-			},
+			cfg:  twoChunks,
 			script: func(w http.ResponseWriter, body string, call int) {
-				if strings.Contains(body, "src/cmd/sync.go") {
+				if strings.Contains(body, "b/src/cmd/sync.go") {
 					violated("src/cmd/sync.go")(w, body, call)
 					return
 				}
@@ -437,6 +460,44 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "two_chunk_cross_file",
+			inputs: []ruleeval.RuleInput{rule("MOD-006", specRule)},
+			// PR 209: the SPEC change and the code it documents land in
+			// different chunks. The chunk holding only the code must be told
+			// that SPEC changed, or it reports the change as missing.
+			diff:   specDiff + codeDiff,
+			cfg:    twoChunks,
+			script: specModel,
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected one verdict request per chunk and no detail, transport saw %d", rt.Requests())
+				}
+				if v := resp.Verdicts["MOD-006"]; v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("merged verdict = %+v, want compliant: SPEC changed in the other chunk", v)
+				}
+			},
+		},
+		{
+			name:   "two_chunk_cross_file_violated",
+			inputs: []ruleeval.RuleInput{rule("MOD-006", specRule)},
+			// The same rule when SPEC is really untouched: the file list must
+			// not hide the violation.
+			diff:   strings.ReplaceAll(specDiff, "docs/SPEC.md", "docs/README.md") + codeDiff,
+			cfg:    twoChunks,
+			script: specModel,
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v := resp.Verdicts["MOD-006"]; v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("merged verdict = %+v, want violated: SPEC is not in the diff", v)
+				}
+			},
+		},
+		{
 			name:   "two_chunk_missing_verdict",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			// Same two-chunk split as above, but the first chunk's response omits
@@ -444,9 +505,9 @@ func scenarios() []scenario {
 			// violation from the second chunk must still win, and the omission
 			// must be reported so the evaluator warns and does not cache.
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1757 },
+			cfg:  twoChunks,
 			script: func(w http.ResponseWriter, body string, call int) {
-				if strings.Contains(body, "src/cmd/sync.go") {
+				if strings.Contains(body, "b/src/cmd/sync.go") {
 					violated("src/cmd/sync.go")(w, body, call)
 					return
 				}
@@ -471,7 +532,7 @@ func scenarios() []scenario {
 			name:   "oversize_hunk",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong + bigHunkDiff("src/generated/big.go", 60),
-			cfg:    func(c *claude.Config) { c.MaxInputTokens = 1757 },
+			cfg:    twoChunks,
 			script: ok,
 			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
 				if err != nil {
@@ -585,12 +646,12 @@ func scenarios() []scenario {
 			// and then withdrawn to not_applicable with an explanation. The
 			// merged result must keep that explanation (strspc-manager#89).
 			diff: diffWithLong + strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/sync.go"),
-			cfg:  func(c *claude.Config) { c.MaxInputTokens = 1757 },
+			cfg:  twoChunks,
 			script: func(w http.ResponseWriter, body string, _ int) {
 				switch {
 				case isDetailRequest(body):
 					writeJSON(w, 200, message("end_turn", withdrawnDetailText("not_applicable", "The sync command is a test double, not a cobra command.", 0.85), nil))
-				case strings.Contains(body, "src/cmd/sync.go"):
+				case strings.Contains(body, "b/src/cmd/sync.go"):
 					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
 				default:
 					writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "not_applicable"), nil))
@@ -653,10 +714,10 @@ func scenarios() []scenario {
 			// the second chunk's explanation and the first chunk's failure.
 			diff: strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/a.go") +
 				strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/cmd/b.go"),
-			cfg: func(c *claude.Config) { c.MaxInputTokens = 1757 },
+			cfg: twoChunks,
 			script: func(w http.ResponseWriter, body string, _ int) {
 				switch {
-				case isDetailRequest(body) && strings.Contains(body, "src/cmd/a.go"):
+				case isDetailRequest(body) && strings.Contains(body, "b/src/cmd/a.go"):
 					writeJSON(w, 200, message("max_tokens", `{"explanation":"a.go`, nil))
 				case isDetailRequest(body):
 					writeJSON(w, 200, message("end_turn", detailText("b.go constructs a cobra.Command without Long.", 0.9,
@@ -1020,9 +1081,8 @@ func TestPromptVersion_IncludesEffort(t *testing.T) {
 	}
 }
 
-// cassetteBody returns the recorded request body of a cassette's first
-// interaction.
-func cassetteBody(t *testing.T, name string) string {
+// cassetteBodies returns the recorded request bodies of a cassette.
+func cassetteBodies(t *testing.T, name string) []string {
 	t.Helper()
 	raw, err := os.ReadFile(cassettePath(name))
 	if err != nil {
@@ -1035,7 +1095,50 @@ func cassetteBody(t *testing.T, name string) string {
 	if len(c.Interactions) == 0 {
 		t.Fatalf("cassette %s has no interactions", name)
 	}
-	return c.Interactions[0].Request.Body
+	bodies := make([]string, len(c.Interactions))
+	for i, in := range c.Interactions {
+		bodies[i] = in.Request.Body
+	}
+	return bodies
+}
+
+// cassetteBody returns the recorded request body of a cassette's first
+// interaction.
+func cassetteBody(t *testing.T, name string) string {
+	t.Helper()
+	return cassetteBodies(t, name)[0]
+}
+
+// TestPartialDiff_RequestsListEveryFile inspects the recorded bodies: every
+// request that shows part of a diff, detail requests included, must say so
+// and list the whole diff's files, and a complete diff must not.
+func TestPartialDiff_RequestsListEveryFile(t *testing.T) {
+	if os.Getenv("STRSPC_SYNTHESIZE") == "1" {
+		t.Skip("cassettes are being regenerated")
+	}
+	const notice = "Only part of the diff is shown below."
+	for name, files := range map[string][]string{
+		"two_chunk_cross_file":          {"docs/SPEC.md", "src/result/codes_table.go"},
+		"two_chunk_cross_file_violated": {"docs/README.md", "src/result/codes_table.go"},
+		"two_chunk_withdrawn":           {"src/cmd/lint.go", "src/cmd/sync.go"},
+		"oversize_hunk":                 {"src/cmd/lint.go", "src/generated/big.go"}, // one chunk, one hunk left out
+	} {
+		for i, body := range cassetteBodies(t, name) {
+			if !strings.Contains(body, notice) {
+				t.Errorf("%s request %d lacks the partial-diff notice", name, i)
+			}
+			for _, f := range files {
+				if !strings.Contains(body, "- "+f+`\n`) {
+					t.Errorf("%s request %d does not list %s", name, i, f)
+				}
+			}
+		}
+	}
+	for _, body := range cassetteBodies(t, "violated_with_evidence") {
+		if strings.Contains(body, notice) {
+			t.Error("a complete diff must not be described as partial")
+		}
+	}
 }
 
 // TestSingleRuleRequest_CarriesMetadata inspects the recorded body of the

@@ -153,6 +153,30 @@ func unquoteGit(s string) string {
 	return s[1 : len(s)-1]
 }
 
+// changedFiles returns the path of every file in a diff, in diff order.
+func changedFiles(diff string) []string {
+	var files []string
+	for _, f := range splitFiles(diff) {
+		if p := filePath(f); p != "<unknown>" {
+			files = append(files, p)
+		}
+	}
+	return files
+}
+
+// capFiles keeps the leading files whose list entries fit in budget bytes
+// and counts the rest.
+func capFiles(files []string, budget int) (kept []string, unlisted int) {
+	for i, f := range files {
+		budget -= len(f) + len("- \n")
+		if budget < 0 {
+			return kept, len(files) - i
+		}
+		kept = append(kept, f)
+	}
+	return kept, 0
+}
+
 // chunkDiff packs the diff into chunks of at most budget bytes. Whole
 // files are kept together when they fit; larger files are split on hunk
 // boundaries with the file header repeated once per chunk. A single hunk

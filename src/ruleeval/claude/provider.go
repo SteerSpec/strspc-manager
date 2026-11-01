@@ -7,7 +7,9 @@
 // One request carries the shared system prompt and the diff (both marked
 // as prompt-cache breakpoints) followed by up to MaxRulesPerRequest rules.
 // Diffs larger than the input budget are split on file and hunk boundaries
-// and the verdicts are merged, a violation in any chunk winning. Requests
+// and the verdicts are merged, a violation in any chunk winning. Each
+// request that shows only part of a diff also lists the files of the whole
+// diff, so that a rule spanning files is not judged on half of them. Requests
 // are retried by the SDK on 429/5xx (honouring Retry-After); credential
 // and model errors are reported as ruleeval.ErrUnavailable.
 package claude
@@ -57,6 +59,9 @@ const (
 	// requestOverheadTokens reserves room for message framing and the
 	// response schema when computing the diff budget.
 	requestOverheadTokens = 256
+	// fileListShare is the fraction of the diff budget, as a divisor, that the
+	// list of changed files may take from a partial diff.
+	fileListShare = 4
 )
 
 // Sentinel errors. All of them are wrapped with context; test with errors.Is.
@@ -220,7 +225,8 @@ type work struct {
 // split into groups of MaxRulesPerRequest and the diff into chunks that fit
 // the input budget; every chunk×group pair is one request. Any request
 // failure aborts the batch (the evaluator reports it per rule). Hunks too
-// large to send are skipped and reported in BatchResponse.Errors.
+// large to send are skipped and reported in BatchResponse.Errors. Whenever
+// a request cannot show the whole diff, its diff block lists the diff's files.
 func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest) (*ruleeval.BatchResponse, error) {
 	out := &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{}}
 	if len(req.Inputs) == 0 {
@@ -251,6 +257,13 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	}
 	budgetTokens := available - maxRulesTokens
 	chunks, oversize := chunkDiff(req.Diff, budgetTokens*3)
+	diffBlock := prompt.DiffBlock
+	if len(chunks) > 1 || len(oversize) > 0 {
+		files, unlisted := capFiles(changedFiles(req.Diff), budgetTokens*3/fileListShare)
+		diffBlock = func(chunk string) string { return prompt.PartialDiffBlock(chunk, files, unlisted) }
+		budgetTokens -= estimateTokens(diffBlock("")) - estimateTokens(prompt.DiffBlock(""))
+		chunks, oversize = chunkDiff(req.Diff, budgetTokens*3)
+	}
 	for _, o := range oversize {
 		out.Errors = append(out.Errors, fmt.Errorf(
 			"hunk in %s (%d bytes, ~%d tokens) exceeds the input budget of ~%d tokens and was not evaluated",
@@ -282,7 +295,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		go func(i int, it work) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i], errs[i] = p.call(ctx, chunks[it.chunk], groups[it.group], rulesBlocks[it.group])
+			results[i], errs[i] = p.call(ctx, diffBlock(chunks[it.chunk]), groups[it.group], rulesBlocks[it.group])
 			if errs[i] != nil {
 				cancel() // no point finishing the batch; the evaluator reports it
 			}
@@ -442,18 +455,18 @@ func (v wireVerdict) toResponse() *ruleeval.EvalResponse {
 	return r
 }
 
-// call evaluates one diff chunk against one group of rules: a verdict
-// request keyed by rule id, then one detail request per violated rule.
-// Ids the model was not asked about are kept so that EvaluateBatch can
+// call evaluates one rendered diff block against one group of rules: a
+// verdict request keyed by rule id, then one detail request per violated
+// rule. Ids the model was not asked about are kept so that EvaluateBatch can
 // report them; they never trigger a detail request.
-func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.RuleInput, rulesBlock string) (*wireResponse, error) {
+func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.RuleInput, rulesBlock string) (*wireResponse, error) {
 	ids := make([]string, len(group))
 	byID := make(map[string]ruleeval.RuleInput, len(group))
 	for i, in := range group {
 		ids[i] = in.Rule.ID
 		byID[in.Rule.ID] = in
 	}
-	text, err := p.send(ctx, chunk, []anthropic.ContentBlockParamUnion{
+	text, err := p.send(ctx, diffBlock, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(rulesBlock),
 	}, prompt.VerdictSchema(ids))
 	if err != nil {
@@ -482,7 +495,7 @@ func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.Rule
 		seen[id] = true
 		wv := wireVerdict{RuleID: id, Verdict: v}
 		if ruleeval.Verdict(v) == ruleeval.Violated {
-			d, err := p.detail(ctx, chunk, byID[id])
+			d, err := p.detail(ctx, diffBlock, byID[id])
 			switch {
 			case err == nil:
 				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
@@ -518,8 +531,8 @@ func (p *Provider) call(ctx context.Context, chunk string, group []ruleeval.Rule
 // detail asks for the explanation, confidence and evidence of a rule the
 // verdict request judged violated. The diff block is byte-identical to the
 // verdict request's so the prompt cache prefix is reused.
-func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInput) (*wireDetail, error) {
-	text, err := p.send(ctx, chunk, []anthropic.ContentBlockParamUnion{
+func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.RuleInput) (*wireDetail, error) {
+	text, err := p.send(ctx, diffBlock, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(prompt.RulesBlock([]ruleeval.RuleInput{in})),
 		anthropic.NewTextBlock(prompt.DetailInstruction(in.Rule.ID)),
 	}, prompt.DetailSchema())
@@ -544,9 +557,9 @@ func (p *Provider) detail(ctx context.Context, chunk string, in ruleeval.RuleInp
 // send performs one Messages request (system prompt, cached diff block, then
 // blocks) with the structured-output schema and returns the response text.
 // Usage is accumulated for every completed response.
-func (p *Provider) send(ctx context.Context, chunk string, blocks []anthropic.ContentBlockParamUnion, schema map[string]any) (string, error) {
+func (p *Provider) send(ctx context.Context, diffBlock string, blocks []anthropic.ContentBlockParamUnion, schema map[string]any) (string, error) {
 	content := append([]anthropic.ContentBlockParamUnion{{OfText: &anthropic.TextBlockParam{
-		Text:         prompt.DiffBlock(chunk),
+		Text:         diffBlock,
 		CacheControl: anthropic.NewCacheControlEphemeralParam(),
 	}}}, blocks...)
 	params := anthropic.MessageNewParams{
