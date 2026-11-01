@@ -1,0 +1,170 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/team"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM014",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM014",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM014",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM015",
+    "severity": "warning",
+    "path": "realm/_schema/entity.v1.schema.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM015",
+    "severity": "warning",
+    "path": "realm/_schema/extra.schema.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM015",
+    "severity": "warning",
+    "path": "realm/team/_schema/entity.v1.schema.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM016",
+    "severity": "warning",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR001",
+    "severity": "error",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR001",
+    "severity": "error",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR002",
+    "severity": "error",
+    "path": "deps/gone"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR002",
+    "severity": "error",
+    "path": "deps/nomanifest/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR003",
+    "severity": "error",
+    "path": "deps/wrongid/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR004",
+    "severity": "error",
+    "path": "deps/wrongver/realm.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR006",
+    "severity": "error",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR006",
+    "severity": "error",
+    "path": "realm/team"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR012",
+    "severity": "error",
+    "path": "github://acme/rules@v1.0.0/core"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR012",
+    "severity": "error",
+    "path": "github://acme/rules@v2.0.0/core"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR012",
+    "severity": "error",
+    "path": "github://not-a-reference"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR012",
+    "severity": "error",
+    "path": "s3://acme/rules"
+  }
+]

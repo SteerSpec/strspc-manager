@@ -1,0 +1,13 @@
+{
+  "claims": [
+    "RM006",
+    "RM012",
+    "RR005",
+    "RR011",
+    "RSV005"
+  ],
+  "rule_sources": [
+    "realm",
+    "deps/one"
+  ]
+}

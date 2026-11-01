@@ -1,0 +1,44 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "OVER",
+    "title": "QA entity OVER"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:58388e0c73f05bcf2e17e73e1cc54ce1a4dcce83577c2d74f0950a8502a184be"
+  },
+  "rules": [
+    {
+      "id": "OVER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of over MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-009"
+    },
+    {
+      "id": "OVER-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of over MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "OVER-003",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of over MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-003"
+    }
+  ],
+  "notes": []
+}

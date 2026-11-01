@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NOENT",
+    "title": "QA entity NOENT",
+    "inherits": "GHOST"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:2866e0031c772774648dda1ba3205d8050892470f70769cf2d8c39c22322fb60"
+  },
+  "rules": [
+    {
+      "id": "NOENT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of noent MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

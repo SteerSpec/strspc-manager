@@ -1,0 +1,38 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/MALFORMED.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL011",
+    "severity": "error",
+    "path": "realm/MALFORMED.json: MALFORMED/rule_set.hash"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL011",
+    "severity": "error",
+    "path": "realm/STALE.json: STALE/rule_set.hash"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV004",
+    "severity": "error",
+    "path": "realm/MALFORMED.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV004",
+    "severity": "error",
+    "path": "realm/STALE.json"
+  }
+]

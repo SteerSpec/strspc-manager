@@ -1,0 +1,19 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.layout",
+    "title": "QA realm dev.steerspec.qa.layout",
+    "version": "1.0.0"
+  },
+  "sub_realms": [
+    "missing",
+    "../outside",
+    "plain",
+    "nomanifest",
+    "badmanifest",
+    "wrongid",
+    "nested",
+    "fmtset",
+    "language"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PLAIN",
+    "title": "QA entity PLAIN"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:111e96478d87e5b99a12cbf6f8003457ba49c0f79ff1a5b4499269e787be7256"
+  },
+  "rules": [
+    {
+      "id": "PLAIN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of plain MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-003"
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "BRANDNEW"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "BRANDNEW \u003e BRANDSUB/BRANDSUB-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "BRANDNEW/BRANDNEW-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "NEWSUB \u003e NEWCHILD/NEWCHILD-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD005",
+    "severity": "error",
+    "path": "SUBBED \u003e SUBCHILD"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD005",
+    "severity": "error",
+    "path": "base/DROPPED.json"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD017",
+    "severity": "error",
+    "path": "ORPHAN/entity.inherits"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD017",
+    "severity": "error",
+    "path": "PARENT/entity.inherits"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD020",
+    "severity": "error",
+    "path": "VISGONE/entity.visibility"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD020",
+    "severity": "info",
+    "path": "VISFIRST/entity.visibility"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD020",
+    "severity": "info",
+    "path": "VISNARROW/entity.visibility"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD020",
+    "severity": "info",
+    "path": "VISWIDE/entity.visibility"
+  }
+]

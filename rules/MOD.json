@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.15.0",
-    "timestamp": "2026-10-31T20:28:22Z",
-    "hash": "blake3:4fd8d518f1e063138521a2bf645c42062bb0dfd042ff47f6a9d09877e8ba5a10"
+    "version": "0.15.1",
+    "timestamp": "2026-10-31T23:45:13Z",
+    "hash": "blake3:6ac280e2cd30989014a73dd2d4df758be6e47d9c75e86f74764fcc5ae409020f"
   },
   "rules": [
     {
@@ -88,6 +88,15 @@
       "revision": 0,
       "state": "D",
       "body": "MUST register every diagnostic code a module emits in result.Codes() with a non-empty Title and Fix.",
+      "added_by": "@pleberre",
+      "added_at": "2026-10-31",
+      "supersedes": null
+    },
+    {
+      "id": "MOD-010",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST prove every diagnostic code fires through a public API, with a scenario or case in src/qa.",
       "added_by": "@pleberre",
       "added_at": "2026-10-31",
       "supersedes": null

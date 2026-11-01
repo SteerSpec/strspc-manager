@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LONGC",
+    "title": "QA entity LONGC",
+    "inherits": "LONGD"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:60829cefe25af0025a4de3b4bf8d4d9086c7b1b0c25f634924f944c0648c332c"
+  },
+  "rules": [
+    {
+      "id": "LONGC-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of longc MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

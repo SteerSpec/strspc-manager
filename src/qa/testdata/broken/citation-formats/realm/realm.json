@@ -1,0 +1,14 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.formats",
+    "title": "QA realm dev.steerspec.qa.formats",
+    "version": "1.0.0"
+  },
+  "sub_realms": [
+    "team"
+  ],
+  "rule_identifier_format": {
+    "id_splitter": "_"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "HOPD",
+    "title": "QA entity HOPD",
+    "inherits": "HOPE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:45a18b5ef138323b4c511d620c9e923084c96415ce98c3272629ed9b49f81fb2"
+  },
+  "rules": [
+    {
+      "id": "HOPD-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of hopd MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

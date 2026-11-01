@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "FRESH",
+    "title": "QA entity FRESH"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:3459d8611d689dfd908070008ac925e9abf87e1f2dc33558708c4db5a4edc61e"
+  },
+  "rules": [
+    {
+      "id": "FRESH-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of fresh MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

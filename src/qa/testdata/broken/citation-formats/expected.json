@@ -1,0 +1,38 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/team"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/prompt.txt:4"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF002",
+    "severity": "error",
+    "path": "cited/prompt.txt:2"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF002",
+    "severity": "error",
+    "path": "cited/prompt.txt:3"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF002",
+    "severity": "error",
+    "path": "cited/prompt.txt:6"
+  }
+]

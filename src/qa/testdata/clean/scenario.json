@@ -1,0 +1,17 @@
+{
+  "claims": [],
+  "eval": [
+    {
+      "diff": "diff --git a/app.go b/app.go\n+// an unrelated change\n",
+      "fail_on": [
+        "I"
+      ]
+    },
+    {
+      "static_only": true
+    },
+    {
+      "diff": ""
+    }
+  ]
+}

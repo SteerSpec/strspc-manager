@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SAMETIME",
+    "title": "QA entity SAMETIME"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:50ab97207453d9300f832d85b78104946f8e4632707148585152a2fb6a841992"
+  },
+  "rules": [
+    {
+      "id": "SAMETIME-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of sametime MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

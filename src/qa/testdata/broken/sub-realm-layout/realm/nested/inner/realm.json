@@ -1,0 +1,8 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.layout.nested.inner",
+    "title": "QA realm dev.steerspec.qa.layout.nested.inner",
+    "version": "1.0.0"
+  }
+}

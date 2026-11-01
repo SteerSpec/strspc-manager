@@ -1,0 +1,10 @@
+{
+  "claims": [
+    "RD000"
+  ],
+  "bad_hash": [
+    "base/BROKENBASE.json",
+    "head/BROKENHEAD.json",
+    "head/BROKENNEW.json"
+  ]
+}

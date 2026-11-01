@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BROKENBASE",
+    "title": "QA entity BROKENBASE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:378d8519b49a4fba0f0dcaefdd11b5b51d0c035ddef002cf358fefbec9e562be"
+  },
+  "rules": [
+    {
+      "id": "BROKENBASE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of brokenbase MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

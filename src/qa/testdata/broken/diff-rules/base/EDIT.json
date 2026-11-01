@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "EDIT",
+    "title": "QA entity EDIT"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:a51d8933febfb7091d66917734d19c804896cc01f6f0dfcb859f8b025931378b"
+  },
+  "rules": [
+    {
+      "id": "EDIT-001",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of edit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "EDIT-002",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of edit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

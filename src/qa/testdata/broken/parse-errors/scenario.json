@@ -1,0 +1,12 @@
+{
+  "claims": [
+    "RL001",
+    "RL003",
+    "RR002",
+    "RSV003"
+  ],
+  "bad_hash": [
+    "realm/TRUNC.json",
+    "realm/WRONGTYPE.json"
+  ]
+}

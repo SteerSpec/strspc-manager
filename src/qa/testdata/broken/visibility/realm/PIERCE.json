@@ -1,0 +1,27 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PIERCE",
+    "title": "QA entity PIERCE",
+    "inherits": "dev.steerspec.qa.vislib:LIBSHIELD",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:2ce92e32aefbfe9e4ad92aa35a39b849bcb1f1c74e47e990fd64411feb3b3a4e"
+  },
+  "rules": [
+    {
+      "id": "PIERCE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of pierce MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.vislib:LIBOWN-001"
+    }
+  ],
+  "notes": []
+}

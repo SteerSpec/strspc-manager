@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "REMOVED",
+    "title": "QA entity REMOVED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:95ff5b34ec6adb9e5275ba442e2802eb0a025f853db4b51f5e826027d4c52a02"
+  },
+  "rules": [
+    {
+      "id": "REMOVED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of removed MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "REMOVED-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of removed MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

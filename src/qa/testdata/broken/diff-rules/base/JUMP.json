@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "JUMP",
+    "title": "QA entity JUMP"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:e8cc691ea70223d888d7faa0a3c990f01c5662d18d0b2d7f0fa4c650e8e54acc"
+  },
+  "rules": [
+    {
+      "id": "JUMP-001",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of jump MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "JUMP-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of jump MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

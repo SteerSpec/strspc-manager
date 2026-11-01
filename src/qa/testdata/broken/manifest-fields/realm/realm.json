@@ -1,0 +1,15 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.fields",
+    "title": "QA realm dev.steerspec.qa.fields",
+    "version": "one"
+  },
+  "sub_realms": [
+    "blank",
+    "badid",
+    "bare",
+    "flat"
+  ],
+  "surplus": true
+}

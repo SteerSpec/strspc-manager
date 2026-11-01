@@ -1,0 +1,53 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "CONT",
+    "title": "QA entity CONT",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:a190cff0a8201dce1746ae2b5226753a08edf15ea464c22273b6ef0f01791b8d"
+  },
+  "rules": [
+    {
+      "id": "CONT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cont MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "CONTSUB",
+        "title": "QA entity CONTSUB",
+        "parent": "CONT",
+        "visibility": "public"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:62e5691f37fa7f1dbb5e33727cd0f3afa7d505939d5a62cd22092503aff0bcf9"
+      },
+      "rules": [
+        {
+          "id": "CONTSUB-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of contsub MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

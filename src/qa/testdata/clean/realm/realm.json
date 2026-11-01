@@ -1,0 +1,18 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.clean",
+    "title": "QA realm dev.steerspec.qa.clean",
+    "version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.shared",
+      "version": "1.2.0",
+      "source": "../deps/shared/"
+    }
+  ],
+  "sub_realms": [
+    "audit"
+  ]
+}

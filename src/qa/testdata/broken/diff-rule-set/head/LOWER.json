@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LOWER",
+    "title": "QA entity LOWER"
+  },
+  "rule_set": {
+    "version": "1.9.9",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:0b52d68b51869e1825c55016f62dbdc7970ae584b7958fa31a01cf7fdcad8b1a"
+  },
+  "rules": [
+    {
+      "id": "LOWER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of lower MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

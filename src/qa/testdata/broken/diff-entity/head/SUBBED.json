@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SUBBED",
+    "title": "QA entity SUBBED"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:317fd4a555efe2e3b475ffb76d13d7d9a350fd7c2e89de7d2d200eb43d74bf77"
+  },
+  "rules": [
+    {
+      "id": "SUBBED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of subbed MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [],
+  "notes": []
+}

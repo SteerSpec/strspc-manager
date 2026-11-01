@@ -1,0 +1,56 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/SEMVER.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/STATES.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL006",
+    "severity": "error",
+    "path": "realm/STATES.json: STATES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL007",
+    "severity": "error",
+    "path": "realm/SUBP.json: SUBP \u003e SUBC"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL013",
+    "severity": "error",
+    "path": "realm/SEMVER.json: SEMVER"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL021",
+    "severity": "warning",
+    "path": "realm/PROSE.json: PROSE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL022",
+    "severity": "warning",
+    "path": "realm/PROSE.json: PROSE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL025",
+    "severity": "error",
+    "path": "realm/CROSS.json: CROSS/rules/CROSS-001"
+  }
+]

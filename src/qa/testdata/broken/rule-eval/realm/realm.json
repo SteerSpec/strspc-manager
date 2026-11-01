@@ -1,0 +1,8 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.eval",
+    "title": "QA realm dev.steerspec.qa.eval",
+    "version": "1.0.0"
+  }
+}

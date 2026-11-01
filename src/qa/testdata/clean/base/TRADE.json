@@ -1,0 +1,106 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TRADE",
+    "title": "QA entity TRADE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:eecccb4248439b545890a4eda5e28a22675e53116c5434476114b2e9f7affff0"
+  },
+  "rules": [
+    {
+      "id": "TRADE-001",
+      "revision": 0,
+      "state": "D",
+      "body": "A trade SHOULD be settled.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-002",
+      "revision": 0,
+      "state": "P",
+      "body": "A trade MUST name its desk.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-003",
+      "revision": 0,
+      "state": "D",
+      "body": "A trade MAY carry a tag.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-004",
+      "revision": 0,
+      "state": "I",
+      "body": "A trade MUST be booked.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-005",
+      "revision": 0,
+      "state": "P",
+      "body": "A trade MUST be booked twice.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "TRADE-004"
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "TRADELEG",
+        "title": "QA entity TRADELEG",
+        "parent": "TRADE"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:b58668155b4461277be3a63e200630bb84a12c73af550ab7f4b7f96c96fbfbb4"
+      },
+      "rules": [
+        {
+          "id": "TRADELEG-001",
+          "revision": 0,
+          "state": "D",
+          "body": "A leg MUST name its side.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": [
+    {
+      "id": "TRADE-001/01",
+      "rule_ref": "TRADE-001",
+      "type": "clarification",
+      "content": "Settled means paid.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "TRADE-002/01",
+      "rule_ref": "TRADE-002",
+      "type": "changelog",
+      "content": "First release.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

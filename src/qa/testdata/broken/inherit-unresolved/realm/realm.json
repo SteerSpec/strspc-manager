@@ -1,0 +1,20 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.unresolved",
+    "title": "QA realm dev.steerspec.qa.unresolved",
+    "version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.lib",
+      "version": "1.0.0",
+      "source": "../deps/lib/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.broken",
+      "version": "1.0.0",
+      "source": "../deps/gone/"
+    }
+  ]
+}

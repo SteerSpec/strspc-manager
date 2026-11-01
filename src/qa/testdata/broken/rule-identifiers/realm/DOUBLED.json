@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "DOUBLED",
+    "title": "QA entity DOUBLED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:8c96b1de5019b6c5274663986917b438bc5aad59070f57c61df085933cbdcb32"
+  },
+  "rules": [
+    {
+      "id": "DOUBLED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of doubled MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "DOUBLED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of doubled MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

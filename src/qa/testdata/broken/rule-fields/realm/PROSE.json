@@ -1,0 +1,42 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PROSE",
+    "title": "QA entity PROSE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:30319b9a45446fb8ab81bcb67540a226a058789884d41306cfc795ebcc94e42d"
+  },
+  "rules": [
+    {
+      "id": "PROSE-001",
+      "revision": 0,
+      "state": "D",
+      "body": "Orders are nice to have.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "PROSE-002",
+      "revision": 0,
+      "state": "D",
+      "body": "An order MUST be paid. A refund MUST follow.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "PROSE-003",
+      "revision": 0,
+      "state": "I",
+      "body": "Orders are nice to have. Implemented bodies are immutable.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

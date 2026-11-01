@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PINNED",
+    "title": "QA entity PINNED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:49ae6fda8f27b65ccdcb23bfed57d055e4ad6c997690737dc37d6fe3051898be"
+  },
+  "rules": [
+    {
+      "id": "PINNED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of pinned MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

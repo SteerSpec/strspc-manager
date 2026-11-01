@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "HOPB",
+    "title": "QA entity HOPB",
+    "inherits": "HOPC"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:e6c085d5c9809b1176e28679777f8d3cb0a8a22bc4c01e8c9ea42dbe1533605c"
+  },
+  "rules": [
+    {
+      "id": "HOPB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of hopb MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

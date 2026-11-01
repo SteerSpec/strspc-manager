@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "QUALGONE",
+    "title": "QA entity QUALGONE",
+    "inherits": "dev.steerspec.qa.lib:NOPE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:835a446b17e357b1c2476dfa98b0fa41e609f1de066a7398a446f3c4cdb989de"
+  },
+  "rules": [
+    {
+      "id": "QUALGONE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of qualgone MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBSHIELD",
+    "title": "QA entity LIBSHIELD",
+    "inherits": "LIBOWN",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:23cb369e3d4b0c40847eef2d5ef51740c63e2648bd7d7035f16f81bf4a611d54"
+  },
+  "rules": [
+    {
+      "id": "LIBSHIELD-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of libshield MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}
