@@ -3,6 +3,9 @@ package schema_test
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -154,26 +157,128 @@ func TestWithLocalDir_SkipsAnUnusableSchema(t *testing.T) {
 }
 
 func TestFetch_RefusesACacheDirectoryThatLeavesTheCache(t *testing.T) {
-	srv, calls := site(t, map[string]string{"/schemas/entity/v1.json": `"latest"`})
-	cache, outside := t.TempDir(), t.TempDir()
-	if err := os.Symlink(outside, filepath.Join(cache, "entity")); err != nil {
+	pinned := []schema.Option{schema.WithCoreVersion("1.2.3")}
+	tests := []struct {
+		name    string
+		link    string // below the cache, leads outside it
+		path    string
+		opts    []schema.Option
+		planted string // below outside, a schema a fetch must not serve
+	}{
+		{name: "parent of the entry", link: "entity", path: "entity/v1.json"},
+		{name: "above a missing directory", link: "entity", path: "entity/sub/v1.json"},
+		{name: "release cache", link: "versions", path: "entity/v1.json", opts: pinned},
+		{name: "release cache of the pin", link: "versions/1.2.3", path: "entity/v1.json", opts: pinned},
+		{
+			name: "release copy outside", link: "versions", path: "entity/v1.json", opts: pinned,
+			planted: "1.2.3/entity/v1.json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, calls := site(t, map[string]string{
+				"/schemas/" + tt.path:                         `"latest"`,
+				"/rules/v1.2.3/_schema/entity.v1.schema.json": `"release"`,
+			})
+			cache, outside := t.TempDir(), t.TempDir()
+			want := 0
+			if tt.planted != "" {
+				plantFile(t, filepath.Join(outside, tt.planted), `"planted"`)
+				want = 1
+			}
+			link := filepath.Join(cache, tt.link)
+			if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(outside, link); err != nil {
+				t.Skipf("symlinks unavailable: %v", err)
+			}
+
+			opts := append([]schema.Option{schema.WithBaseURL(srv.URL + "/schemas"), schema.WithCacheDir(cache)}, tt.opts...)
+			got, err := schema.New(opts...).Fetch(context.Background(), tt.path)
+			if err == nil {
+				t.Fatalf("expected an error, got %s", got)
+			}
+			if msg := fmt.Sprintf("invalid schema path: %q", tt.path); err.Error() != msg {
+				t.Errorf("error = %q, want %q", err, msg)
+			}
+			if *calls != 0 {
+				t.Errorf("expected no server call, got %d", *calls)
+			}
+			if n := countFiles(t, outside); n != want {
+				t.Errorf("%d files outside the cache, want %d", n, want)
+			}
+		})
+	}
+}
+
+func TestFetch_FollowsALinkThatStaysInTheCache(t *testing.T) {
+	srv, _ := site(t, map[string]string{"/schemas/entity/v1.json": `"served"`})
+	cache := t.TempDir()
+	real := filepath.Join(cache, "real")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, filepath.Join(cache, "entity")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
 	f := schema.New(schema.WithBaseURL(srv.URL+"/schemas"), schema.WithCacheDir(cache))
-	_, err := f.EntityV1(context.Background())
-	if err == nil {
-		t.Fatal("expected an error")
+	if _, err := f.EntityV1(context.Background()); err != nil {
+		t.Fatalf("EntityV1: %v", err)
 	}
-	if want := `invalid schema path: "entity/v1.json"`; err.Error() != want {
-		t.Errorf("error = %q, want %q", err, want)
+	if on, _ := os.ReadFile(filepath.Join(real, "v1.json")); string(on) != `"served"` {
+		t.Errorf("cache holds %s", on)
 	}
-	if *calls != 0 {
-		t.Errorf("expected no server call, got %d", *calls)
+}
+
+func TestFetch_DanglingLinkCreatesNothingOutside(t *testing.T) {
+	srv, _ := site(t, map[string]string{"/schemas/entity/sub/v1.json": `"served"`})
+	cache, outside := t.TempDir(), t.TempDir()
+	target := filepath.Join(outside, "missing")
+	if err := os.Symlink(target, filepath.Join(cache, "entity")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
 	}
-	if entries, _ := os.ReadDir(outside); len(entries) != 0 {
-		t.Errorf("wrote outside the cache: %v", entries)
+
+	f := schema.New(schema.WithBaseURL(srv.URL+"/schemas"), schema.WithCacheDir(cache))
+	got, err := f.Fetch(context.Background(), "entity/sub/v1.json")
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
 	}
+	if string(got) != `"served"` {
+		t.Errorf("got %s", got)
+	}
+	if _, err := os.Lstat(target); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("created %s: Lstat err = %v", target, err)
+	}
+}
+
+// plantFile writes content at path, creating its directories.
+func plantFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// countFiles returns how many regular files dir holds at any depth.
+func countFiles(t *testing.T, dir string) int {
+	t.Helper()
+	n := 0
+	err := filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
+		if err == nil && d.Type().IsRegular() {
+			n++
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
 }
 
 func TestFetch_CacheFailureIsNotFatal(t *testing.T) {
