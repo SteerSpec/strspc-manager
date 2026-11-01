@@ -184,7 +184,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.version` | string | Semantic version of the Realm. |
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017). A sub-realm leaves it out and inherits its parent's language (RLM-018, RM017). |
 | `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.14.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.15.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
