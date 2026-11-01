@@ -75,6 +75,9 @@ func TestFilePath(t *testing.T) {
 		"deleted":       {"diff --git a/gone.go b/gone.go\ndeleted file mode 100644\n--- a/gone.go\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n", "gone.go"},
 		"timestamp":     {"--- a/t.go\t2026-01-01 00:00:00\n+++ b/t.go\t2026-01-02 00:00:00\n@@ -1 +1 @@\n", "t.go"},
 		"rename-header": {"diff --git a/old name.go b/new name.go\nsimilarity index 90%\n", "new name.go"},
+		"rename-to":     {"diff --git a/old b/y b/docs/SPEC.md\nsimilarity index 100%\nrename from old\nrename to y b/docs/SPEC.md\n", "y b/docs/SPEC.md"},
+		"rename-quoted": {"diff --git a/old \"b/caf\\303\\251 b/x.go\"\nrename from old\nrename to \"caf\\303\\251 b/x.go\"\n", "café b/x.go"},
+		"copy-to":       {"diff --git a/old b/y b/docs/SPEC.md\nsimilarity index 100%\ncopy from old\ncopy to y b/docs/SPEC.md\n", "y b/docs/SPEC.md"},
 	}
 	for name, tc := range cases {
 		if got := filePath(tc.diff); got != tc.want {
@@ -137,6 +140,39 @@ func TestChunkDiff_OversizeHunkReported(t *testing.T) {
 	_, oversize = chunkDiff("diff --git a/bin b/bin\n"+strings.Repeat("Binary files differ\n", 20), 50)
 	if len(oversize) != 1 || oversize[0].File != "bin" {
 		t.Fatalf("hunk-less oversize = %+v", oversize)
+	}
+}
+
+func TestChangedFiles(t *testing.T) {
+	big := fileDiff("big.go", hunk(1, "a"), hunk(9, "b"))
+	got := changedFiles("preamble\n" + fileDiff("a.go", hunk(1, "x")) + big)
+	if strings.Join(got, ",") != "a.go,big.go" {
+		t.Errorf("changedFiles = %q, want each file once and no preamble", got)
+	}
+}
+
+func TestCapFiles(t *testing.T) {
+	files := []string{"aa", "bb", "cc"} // 5 bytes each as "- aa\n"
+	cases := []struct {
+		budget   int
+		kept     string
+		unlisted int
+	}{
+		{15, "aa,bb,cc", 0},
+		{14, "aa,bb", 1},
+		{5, "aa", 2},
+		{4, "", 3},
+	}
+	for _, tc := range cases {
+		kept, unlisted := capFiles(files, tc.budget)
+		if strings.Join(kept, ",") != tc.kept || unlisted != tc.unlisted {
+			t.Errorf("capFiles(%d) = %q, %d; want %q, %d", tc.budget, kept, unlisted, tc.kept, tc.unlisted)
+		}
+	}
+	// Escaping lengthens an entry, and the cap counts what is rendered: "<<"
+	// takes 11 bytes as `- \x3c\x3c` with its newline, not 5.
+	if kept, unlisted := capFiles([]string{"<<"}, 10); len(kept) != 0 || unlisted != 1 {
+		t.Errorf("capFiles must measure the escaped entry, got %q, %d", kept, unlisted)
 	}
 }
 
