@@ -221,7 +221,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid standards entry",
 		Summary:  "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
-		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute `url`.",
+		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
 	},
 	{
 		Code:     "RL027",
@@ -420,8 +420,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Revision moved without a body change",
-		Summary:  "A rule's `revision` changed while its body did not (NTE-018).",
-		Fix:      "Restore the revision. It counts edits to the body, and a note never moves it.",
+		Summary:  "A rule's `revision` changed while its body, `overrides` and `supersedes` did not (NTE-018).",
+		Fix:      "Restore the revision. It counts edits to the rule, and a note never moves it.",
 	},
 	{
 		Code:     "RD022",
@@ -573,7 +573,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid realm standards entry",
 		Summary:  "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
-		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute `url`.",
+		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
 	},
 	{
 		Code:     "RR000",

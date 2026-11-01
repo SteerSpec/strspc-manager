@@ -1218,3 +1218,17 @@ func TestRD022_StandardRetype(t *testing.T) {
 		})
 	}
 }
+
+// An `overrides` or `supersedes` edit on a Draft rule is an edit to the rule.
+func TestRD021_DraftReferenceEdits(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 1
+	assertNoCode(t, New().Diff(base, head), "RD021")
+
+	head = makeHead(base)
+	head.Rules[0].Supersedes = ptr("TSTENT-002")
+	head.Rules[0].Revision = 1
+	assertNoCode(t, New().Diff(base, head), "RD021")
+}

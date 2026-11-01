@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // The relations a Standard Reference can declare (STDREF-004).
@@ -45,8 +46,9 @@ func ValidateStandardRef(ref StandardRef) error {
 		return fmt.Errorf("standard %s: relation %q must be %s or %s (STDREF-004)", ref.ID, ref.Relation, RelationImplements, RelationDerivedFrom)
 	}
 	if ref.URL != "" {
-		if u, err := url.Parse(ref.URL); err != nil || !u.IsAbs() || u.Host == "" {
-			return fmt.Errorf("standard %s: url %q must be absolute (STDREF-008)", ref.ID, ref.URL)
+		u, err := url.Parse(ref.URL)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+			return fmt.Errorf("standard %s: url %q must be an absolute http or https URL (STDREF-008)", ref.ID, ref.URL)
 		}
 	}
 	return nil
@@ -73,10 +75,19 @@ func ValidateStandardRefs(refs []StandardRef) []error {
 // into the standard's id and the clause (NTE-014).
 func ParseStandardNote(content string) (id, clause string, err error) {
 	id, clause, ok := strings.Cut(content, ":")
-	if !ok || !standardIDRe.MatchString(id) || strings.TrimSpace(clause) == "" {
+	if !ok || !standardIDRe.MatchString(id) || !validClause(clause) {
 		return "", "", fmt.Errorf("content %q must be <id>:<clause> (NTE-014)", content)
 	}
 	return id, clause, nil
+}
+
+// validClause reports whether a clause is printable and not blank, with nothing
+// around it. Clauses identify what a report groups (STDREF-011), so two that
+// read the same must be the same string.
+func validClause(clause string) bool {
+	return clause != "" && strings.TrimSpace(clause) == clause && strings.IndexFunc(clause, func(r rune) bool {
+		return !unicode.IsPrint(r)
+	}) < 0
 }
 
 // FindStandard returns the reference with the given id, or nil.

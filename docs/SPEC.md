@@ -298,7 +298,7 @@ The PR validator enforces consistency: if a rule declares `supersedes` and reach
 - It increments by exactly `+1` on every edit to the rule.
 - Revisions only change while the rule is in Draft state (since non-Draft rules are immutable).
 - State transitions do not increment the revision — they change the `state` field only.
-- Nothing but a body edit moves it: a `standard` note leaves it unchanged (NTE-018).
+- Nothing else moves it: a `standard` note leaves it unchanged (NTE-018).
 - Notes carry their own revision counter with the same semantics, independent of the rule's (§2.5).
 
 ---
@@ -509,12 +509,12 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
 | RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
-| RD021 | Error | A rule's `revision` changed while its body did not (NTE-018). |
+| RD021 | Error | A rule's `revision` changed while its body, `overrides` and `supersedes` did not (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 
 #### `realm-lint` (RM)
 
-RM002, RM003, RM004, RM007 and RM014–RM016 fire for the parent manifest and for each sub-realm manifest.
+RM002, RM003, RM004, RM007, RM014–RM016 and RM018 fire for the parent manifest and for each sub-realm manifest.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
 RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's.
 RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its strict-mode unit test.
@@ -685,7 +685,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 24. A rule's `supersedes` names a rule of the same entity (RUL-012).
 25. Each `entity.standards` entry is valid and its `id` unique (STDREF-002 to STDREF-004, STDREF-008).
 26. Each `standard` note holds `<id>:<clause>`, and no rule holds the same one twice (NTE-014, NTE-015).
-27. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs when a Realm is linted with its `realm.json`.
+27. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs with the Realm-wide pass, `strspc realm validate --recursive`, and only for a Realm with a `realm.json`. A sub-realm linted alone reads its parent from `../realm.json`.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
@@ -715,7 +715,9 @@ For each changed entity file, the validator compares the before and after states
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
 16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
-17. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
+17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body, `overrides` or `supersedes` does. A `standard` note never moves it.
+18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
+19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 

@@ -29,7 +29,7 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 		return "", fmt.Errorf("added_by must not be empty")
 	}
 	if noteType == entity.NoteTypeStandard {
-		if _, _, err := entity.ParseStandardNote(content); err != nil {
+		if err := checkMapping(f, ruleID, "", content); err != nil {
 			return "", err
 		}
 	}
@@ -108,7 +108,7 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 	if content == n.Content && noteType == n.Type {
 		return fmt.Errorf("note %q unchanged: content and type are the same", noteID)
 	}
-	if err := checkStandardChange(n, content, noteType); err != nil {
+	if err := checkStandardChange(f, n, content, noteType); err != nil {
 		return err
 	}
 
@@ -129,10 +129,10 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 
 // checkStandardChange refuses a change to a note that a `standard` note may not
 // undergo: a retype other than to or from `reference` (NTE-017), a withdrawal
-// that changes the content (NTE-019), or malformed content (NTE-014).
-func checkStandardChange(n *entity.Note, content, noteType string) error {
+// that changes the content (NTE-019), or content that isn't a new mapping.
+func checkStandardChange(f *entity.File, n *entity.Note, content, noteType string) error {
 	if noteType == entity.NoteTypeStandard {
-		if _, _, err := entity.ParseStandardNote(content); err != nil {
+		if err := checkMapping(f, n.RuleRef, n.ID, content); err != nil {
 			return fmt.Errorf("note %q: %w", n.ID, err)
 		}
 	}
@@ -144,6 +144,22 @@ func checkStandardChange(n *entity.Note, content, noteType string) error {
 	}
 	if noteType == entity.NoteTypeReference && content != n.Content {
 		return fmt.Errorf("note %q: withdrawing a mapping keeps the note's content", n.ID)
+	}
+	return nil
+}
+
+// checkMapping refuses content that isn't well formed (NTE-014) or that another
+// `standard` note on the rule already holds (NTE-015). noteID is the note being
+// changed, or empty for a new one. Refusing here matters because a note can
+// never be removed.
+func checkMapping(f *entity.File, ruleID, noteID, content string) error {
+	if _, _, err := entity.ParseStandardNote(content); err != nil {
+		return err
+	}
+	for _, n := range f.Notes {
+		if n.RuleRef == ruleID && n.ID != noteID && n.Type == entity.NoteTypeStandard && n.Content == content {
+			return fmt.Errorf("rule %q already maps %q in note %q (NTE-015)", ruleID, content, n.ID)
+		}
 	}
 	return nil
 }

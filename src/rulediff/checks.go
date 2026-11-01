@@ -115,14 +115,14 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		})
 	}
 
-	// RD021: a rule's revision counts edits to its body (NTE-018), so nothing
-	// else may move it, a mapping to a standard above all.
-	if h.Revision != b.Revision && h.Body == b.Body {
+	// RD021: a rule's revision counts edits to the rule, so nothing else may
+	// move it, a mapping to a standard above all (NTE-018).
+	if h.Revision != b.Revision && h.Body == b.Body && sameRef(b.Overrides, h.Overrides) && sameRef(b.Supersedes, h.Supersedes) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD021",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule revision changed from %d to %d with no change to its body", b.Revision, h.Revision),
+			Message:  fmt.Sprintf("rule revision changed from %d to %d with no change to the rule", b.Revision, h.Revision),
 			Path:     path,
 		})
 	}

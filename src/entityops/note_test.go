@@ -343,3 +343,25 @@ func TestUpdateNote_StandardRetype(t *testing.T) {
 		}
 	})
 }
+
+func TestStandardMappingsStayUnique(t *testing.T) {
+	f := makeFileWithRule(t, entity.StateImplemented)
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err == nil {
+		t.Fatal("a duplicate mapping must be refused (NTE-015)")
+	}
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeReference, "owasp.asvs:2.1.1", "@alice"); err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+	if err := UpdateNote(f, "TST-001/02", "", entity.NoteTypeStandard); err == nil {
+		t.Fatal("a retype that duplicates a mapping must be refused (NTE-015)")
+	}
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.2", "@alice"); err != nil {
+		t.Fatalf("AddNote: %v", err)
+	}
+	if err := UpdateNoteContent(f, "TST-001/03", "owasp.asvs:2.1.1"); err == nil {
+		t.Fatal("a revision that duplicates a mapping must be refused (NTE-015)")
+	}
+}

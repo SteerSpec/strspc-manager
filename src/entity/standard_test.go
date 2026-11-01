@@ -23,6 +23,10 @@ func TestValidateStandardRef(t *testing.T) {
 		{"missing relation", StandardRef{ID: "owasp.asvs"}, "relation"},
 		{"unknown relation", StandardRef{ID: "owasp.asvs", Relation: "cites"}, "relation"},
 		{"relative url", StandardRef{ID: "owasp.asvs", Relation: RelationImplements, URL: "owasp.org/asvs"}, "url"},
+		{"script url", StandardRef{ID: "owasp.asvs", Relation: RelationImplements, URL: "javascript://x/%0aalert(1)"}, "url"},
+		{"no host", StandardRef{ID: "owasp.asvs", Relation: RelationImplements, URL: "https://:443"}, "url"},
+		{"unknown scheme", StandardRef{ID: "owasp.asvs", Relation: RelationImplements, URL: "x://y"}, "url"},
+		{"http url", StandardRef{ID: "owasp.asvs", Relation: RelationImplements, URL: "http://owasp.org/asvs"}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,6 +64,10 @@ func TestParseStandardNote(t *testing.T) {
 		{"owasp.asvs", "", "", false},
 		{":2.1.1", "", "", false},
 		{"owasp:2.1.1", "", "", false},
+		{"owasp.asvs: 2.1.1", "", "", false},
+		{"owasp.asvs:2.1.1\n", "", "", false},
+		{"owasp.asvs:\u200b", "", "", false},
+		{"iso.27001:A 5.1", "iso.27001", "A 5.1", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.content, func(t *testing.T) {
