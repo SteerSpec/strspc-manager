@@ -220,7 +220,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Invalid standards entry",
-		Summary:  "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
+		Summary:  "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
 		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
 	},
 	{
@@ -228,7 +228,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Malformed standard note",
-		Summary:  "The content of a `standard` note is not `<id>:<clause>` (NTE-014).",
+		Summary:  "The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014).",
 		Fix:      "Write the standard's `id`, a colon and a clause that is not blank.",
 	},
 	{
@@ -420,7 +420,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Revision moved without a body change",
-		Summary:  "A rule's `revision` changed while its body, `overrides` and `supersedes` did not (NTE-018).",
+		Summary:  "A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018).",
 		Fix:      "Restore the revision. It counts edits to the rule, and a note never moves it.",
 	},
 	{
@@ -572,7 +572,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Invalid realm standards entry",
-		Summary:  "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a non-absolute `url`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
+		Summary:  "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
 		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
 	},
 	{

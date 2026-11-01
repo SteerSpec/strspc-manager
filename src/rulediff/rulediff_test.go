@@ -1232,3 +1232,17 @@ func TestRD021_DraftReferenceEdits(t *testing.T) {
 	head.Rules[0].Revision = 1
 	assertNoCode(t, New().Diff(base, head), "RD021")
 }
+
+// Only a Draft rule can be edited, and each edit is one revision.
+func TestRD021_ReferenceEditsOutsideDraft(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[1].Supersedes = ptr("TSTENT-001")
+	head.Rules[1].Revision = 1
+	assertHasCode(t, New().Diff(base, head), "RD021")
+
+	head = makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 7
+	assertHasCode(t, New().Diff(base, head), "RD021")
+}

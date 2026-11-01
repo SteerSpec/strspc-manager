@@ -117,7 +117,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 
 	// RD021: a rule's revision counts edits to the rule, so nothing else may
 	// move it, a mapping to a standard above all (NTE-018).
-	if h.Revision != b.Revision && h.Body == b.Body && sameRef(b.Overrides, h.Overrides) && sameRef(b.Supersedes, h.Supersedes) {
+	if h.Revision != b.Revision && h.Body == b.Body && !isDraftReferenceEdit(b, h) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD021",
@@ -165,6 +165,13 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			})
 		}
 	}
+}
+
+// isDraftReferenceEdit reports whether h is one edit of the Draft rule b's
+// `overrides` or `supersedes`, the only other edits that move a revision.
+func isDraftReferenceEdit(b, h entity.Rule) bool {
+	changed := !sameRef(b.Overrides, h.Overrides) || !sameRef(b.Supersedes, h.Supersedes)
+	return b.State == entity.StateDraft && changed && h.Revision == b.Revision+1
 }
 
 // checkNewRule runs RD004, RD010, RD011 for a rule that appears only in head.
