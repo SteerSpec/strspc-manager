@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.36.1](https://github.com/SteerSpec/strspc-manager/compare/v1.36.0...v1.36.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **schema:** keep cache paths inside the cache ([#227](https://github.com/SteerSpec/strspc-manager/issues/227)) ([bcf169d](https://github.com/SteerSpec/strspc-manager/commit/bcf169d4fd3130377116f89d6a6b41244486f97f))
+
 ## [1.36.0](https://github.com/SteerSpec/strspc-manager/compare/v1.35.1...v1.36.0) (2026-11-01)
 
 
