@@ -183,3 +183,59 @@ func TestOverriddenBy_InheritedReplacementNamesTheInheritor(t *testing.T) {
 		t.Errorf("OverriddenBy = %v, want %v", got, want)
 	}
 }
+
+func TestDisplaced_OwnOverride(t *testing.T) {
+	base := hop("core", "BASE", rule("BASE-001", "I", nil))
+	child := hop("prod", "SAV", rule("SAV-001", "P", ptr("core:BASE-001")))
+	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, []string{"core:BASE-001"}) {
+		t.Errorf("Displaced = %v", got)
+	}
+}
+
+func TestDisplaced_DraftOverrideCounts(t *testing.T) {
+	base := hop("core", "BASE", rule("BASE-001", "I", nil))
+	child := hop("prod", "SAV", rule("SAV-001", "D", ptr("core:BASE-001")))
+	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, []string{"core:BASE-001"}) {
+		t.Errorf("Displaced = %v", got)
+	}
+}
+
+func TestDisplaced_ThroughTheChain(t *testing.T) {
+	// G → C → P. C-001 replaces P-001, and G-001 replaces C-001.
+	p := hop("core", "PAR", rule("PAR-001", "I", nil))
+	c := hop("bank", "CHI", rule("CHI-001", "I", ptr("core:PAR-001")))
+	g := hop("prod", "GRA", rule("GRA-001", "P", ptr("bank:CHI-001")))
+	want := []string{"core:PAR-001", "bank:CHI-001"}
+	if got := ids(Displaced(g, []Hop{c, p})); !reflect.DeepEqual(got, want) {
+		t.Errorf("Displaced = %v, want %v", got, want)
+	}
+}
+
+func TestDisplaced_RetiredAlongTheChain(t *testing.T) {
+	base := hop("core", "BASE", rule("BASE-001", "R", nil), rule("BASE-002", "T", nil), rule("BASE-003", "A", nil), rule("BASE-004", "I", nil))
+	child := hop("prod", "SAV", rule("SAV-001", "R", nil))
+	want := []string{"prod:SAV-001", "core:BASE-001", "core:BASE-002"}
+	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, want) {
+		t.Errorf("Displaced = %v, want %v", got, want)
+	}
+}
+
+func TestRuleStandards_ComeFromTheOwner(t *testing.T) {
+	asvs := []entity.StandardRef{{ID: "owasp.asvs", Relation: entity.RelationImplements}}
+	realm := []entity.StandardRef{{ID: "iab.tcf", Relation: entity.RelationImplements}}
+	base := hop("core", "BASE", rule("BASE-001", "I", nil))
+	base.Entity.Entity.Standards = asvs
+	base.Scopes = [][]entity.StandardRef{realm}
+	child := hop("prod", "SAV")
+	child.Entity.Entity.Standards = []entity.StandardRef{{ID: "owasp.asvs", Relation: entity.RelationDerivedFrom}}
+	set := Effective(child, []Hop{base}, nil)
+	if len(set) != 1 {
+		t.Fatalf("Effective = %v", ids(set))
+	}
+	if got := entity.ResolveStandard("owasp.asvs", set[0].Standards...); got == nil || got.Relation != entity.RelationImplements {
+		t.Errorf("resolved %+v, want the owner's declaration", got)
+	}
+	if got := entity.ResolveStandard("iab.tcf", set[0].Standards...); got == nil {
+		t.Error("the owner's realm must resolve")
+	}
+}

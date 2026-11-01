@@ -37,6 +37,11 @@ type ResolveResult struct {
 	// its sub-realms that declares `inherits` and whose chain resolved, in
 	// EUID order.
 	Inheritance []*Inheritance
+	// Entities holds every entity of the Realm and its sub-realms, sorted by
+	// EUID: those of Inheritance as they are there, and each other one with no
+	// Ancestors. An entity whose chain failed to resolve has none either, and
+	// a diagnostic says why.
+	Entities []*Inheritance
 	// Extended maps the qualified ID (<realm-id>:<rule id>) of each rule of
 	// the Realm, its sub-realms and their inheritance chains that has an
 	// `extends` note to the live rules the note names, in note order.
@@ -409,6 +414,7 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 		origin:       r.cfg.Origin,
 	}
 	out.Inheritance = r.resolveInheritance(ctx, root, out.SubRealms, res)
+	out.Entities = treeChains(root, out.SubRealms, out.Inheritance)
 	r.checkNoteRefs(ctx, root, out.SubRealms, res)
 	out.Extended = r.resolveExtended(ctx, root, out.SubRealms, res)
 

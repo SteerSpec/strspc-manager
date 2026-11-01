@@ -46,6 +46,69 @@ type node struct {
 	// deps holds the resolved effective dependencies by realm ID, or nil
 	// for a dependency Realm, whose own dependencies load on demand.
 	deps map[string]*ResolvedRealm
+	// parent is the manifest of the Realm declaring this one as a sub-realm,
+	// or nil.
+	parent *entity.RealmFile
+}
+
+// hop returns e as a hop of this node.
+func (n *node) hop(e *entity.File) inherit.Hop {
+	return inherit.Hop{
+		RealmID: n.ns, SubRealmIDs: n.subRealmIDs, Entity: e,
+		Scopes: standardScopes(e, n.entities, n.realm.Realm, n.parent),
+	}
+}
+
+// standardScopes returns the Standard References around e, nearest first: its
+// containing entities, realm, then parent (NTE-016). entities resolves
+// `parent`. An `inherits` target is no part of them (STDREF-009).
+func standardScopes(e *entity.File, entities map[string]*entity.File, realm, parent *entity.RealmFile) [][]entity.StandardRef {
+	var scopes [][]entity.StandardRef
+	seen := map[string]bool{e.Entity.ID: true}
+	for cur := e; ; {
+		next, ok := entities[cur.Entity.Parent]
+		if cur.Entity.Parent == "" || !ok || seen[next.Entity.ID] {
+			break
+		}
+		seen[next.Entity.ID] = true
+		scopes = append(scopes, next.Entity.Standards)
+		cur = next
+	}
+	scopes = append(scopes, realm.Realm.Standards)
+	if parent != nil {
+		scopes = append(scopes, parent.Realm.Standards)
+	}
+	return scopes
+}
+
+// treeChains lists every entity of the root Realm and its sub-realms, with the
+// chains of those in chains.
+func treeChains(root *ResolvedRealm, subs []*ResolvedRealm, chains []*Inheritance) []*Inheritance {
+	entities, paths := treeEntities(root, subs)
+	byID := make(map[string]*Inheritance, len(chains))
+	for _, c := range chains {
+		byID[c.Entity.Entity.Entity.ID] = c
+	}
+	rootSubs := subRealmIDs(root.Realm)
+	nodes := make(map[string]*node, len(entities))
+	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
+		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities}
+		if rr != root {
+			n.parent = root.Realm
+		}
+		for id := range rr.Entities {
+			nodes[id] = n
+		}
+	}
+	out := make([]*Inheritance, 0, len(entities))
+	for _, id := range sortedIDs(entities) {
+		if c, ok := byID[id]; ok {
+			out = append(out, c)
+			continue
+		}
+		out = append(out, &Inheritance{Entity: nodes[id].hop(entities[id]), Path: paths[id]})
+	}
+	return out
 }
 
 // chainState carries one Resolve call's inheritance resolution: the
@@ -78,7 +141,6 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		return nil
 	}
 	s := r.newChainState(ctx, root, subs, entities, res)
-	rootSubs := subRealmIDs(root.Realm)
 	ids := sortedIDs(entities)
 
 	var out []*Inheritance
@@ -100,7 +162,7 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		}
 		chains[id] = ancestors
 		out = append(out, &Inheritance{
-			Entity:    inherit.Hop{RealmID: root.Realm.Realm.ID, SubRealmIDs: rootSubs, Entity: e},
+			Entity:    s.treeNode[id].hop(e),
 			Ancestors: ancestors,
 			Path:      paths[id],
 		})
@@ -111,7 +173,7 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		if failed[id] {
 			continue
 		}
-		child := inherit.Hop{RealmID: root.Realm.Realm.ID, SubRealmIDs: rootSubs, Entity: entities[id]}
+		child := s.treeNode[id].hop(entities[id])
 		checkOverrides(child, chains[id], superseded, paths[id], res)
 		s.checkVisibility(s.treeNode[id], child, chains[id], paths[id])
 	}
@@ -158,6 +220,9 @@ func (r *RealmResolver) newChainState(ctx context.Context, root *ResolvedRealm, 
 	rootSubs := subRealmIDs(root.Realm)
 	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
 		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm)}
+		if rr != root {
+			n.parent = root.Realm
+		}
 		for _, d := range rr.Dependencies {
 			n.deps[d.Realm.Realm.ID] = d
 			s.loaded[d.Realm.Realm.ID+"@"+d.Realm.Realm.Version] = d
@@ -277,7 +342,7 @@ func (s *chainState) walk(start *node, e *entity.File, path string) ([]inherit.H
 			return nil, false
 		}
 		seen[key] = true
-		ancestors = append(ancestors, inherit.Hop{RealmID: next.ns, SubRealmIDs: next.subRealmIDs, Entity: target})
+		ancestors = append(ancestors, next.hop(target))
 		s.holder[target] = next
 		cur, curEnt = next, target
 	}
