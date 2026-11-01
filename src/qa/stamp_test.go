@@ -195,8 +195,15 @@ func TestFixtureHashes(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, name := range bad {
-				if _, err := os.Stat(filepath.Join(root, name)); err != nil {
+				data, err := os.ReadFile(filepath.Join(root, name))
+				if err != nil {
 					t.Errorf("bad_hash lists %s: %v", name, err)
+					continue
+				}
+				// A file that doesn't parse may stay listed; one with a correct
+				// hash would escape this test for nothing.
+				if stamped, err := stamp(data); err == nil && bytes.Equal(data, stamped) {
+					t.Errorf("bad_hash lists %s, whose hash is correct", name)
 				}
 			}
 			files, err := entityFiles(root, bad)
