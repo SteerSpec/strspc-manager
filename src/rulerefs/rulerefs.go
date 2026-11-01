@@ -1,8 +1,9 @@
 // Package rulerefs validates the rule identifiers that text files cite, such as
 // agent prompts, READMEs and CI config, against a set of known rules. It
 // reports citations that are unknown or no longer live (RF001–RF006) and text
-// that copies a rule's body instead of citing it (RF007). It is deterministic and reads no files: the caller chooses them and passes their
-// content to Checker.CheckText.
+// that copies a rule's body instead of citing it (RF007). It is deterministic
+// and reads no files: the caller chooses them and passes their content to
+// Checker.CheckText.
 package rulerefs
 
 import (
@@ -40,6 +41,9 @@ var (
 	// urlRe finds URLs, whose path segments are not citations. Schemes are
 	// case-insensitive.
 	urlRe = regexp.MustCompile(`(?i)[a-z][a-z0-9+.-]*://\S+`)
+
+	// markupRe finds HTML comments and tags, which a rendered copy doesn't show.
+	markupRe = regexp.MustCompile(`<!--.*?-->|</?[A-Za-z][^<>]*>`)
 
 	// reportableEUIDRe selects the unknown prefixes worth reporting. EUIDs in
 	// practice are uppercase, while a lowercase or numeric shape is usually a
@@ -208,7 +212,11 @@ func (c *Checker) collect(ef *entity.File, rules map[string]*citedRule, euids ma
 			return fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
 		}
 		rules[r.ID] = &citedRule{state: r.State}
-		c.addBody(r)
+		// c.rules holds the earlier sources only, so a later rule that loses to
+		// one of them on its ID isn't indexed.
+		if _, dup := c.rules[r.ID]; !dup {
+			c.addBody(r)
+		}
 		if r.Supersedes != nil {
 			*replaced = append(*replaced, r)
 		}
@@ -234,8 +242,10 @@ func (c *Checker) addBody(r *entity.Rule) {
 	}
 }
 
-// normalize returns the lowercased words of s, without punctuation or markup.
+// normalize returns the lowercased words of s, without URLs, punctuation or
+// markup.
 func normalize(s string) []string {
+	s = markupRe.ReplaceAllString(urlRe.ReplaceAllString(s, " "), " ")
 	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})

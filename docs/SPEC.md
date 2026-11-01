@@ -585,7 +585,7 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 
 The stored `<EUID>-<NNN>` form always matches, which also covers a rendered identifier under the default format. A Realm's other rendered shapes match only that Realm's EUIDs. An unknown prefix is reported only when it is uppercase and starts with a letter, so `feat-123` and `100-200` are not citations. URLs, identifiers inside a longer hyphenated token, identifiers passed to `WithIgnore` and states passed to `WithAllowedStates` are skipped, as is a line holding `strspc-refs: ignore` and the line after it. A superseder in `D` or `A` replaces nothing.
 
-RF007 compares whole bodies in every rule state, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-001 leaves that to the evaluator.
+RF007 compares whole bodies in every rule state, after dropping URLs and HTML tags and comments, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found, and a rule that loses to an earlier source on its ID isn't compared. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-001 leaves that to the evaluator.
 
 | Code | Severity | When it fires |
 |------|----------|---------------|

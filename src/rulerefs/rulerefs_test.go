@@ -346,8 +346,6 @@ func TestNewRejectsBadInput(t *testing.T) {
 	}
 }
 
-// A long line must not cost more than a linear scan, and the position of a
-// finding must stay correct after a URL is blanked out.
 func copySource() rulerefs.Source {
 	const body = "The `order` total MUST equal the sum of its lines."
 	return rulerefs.Source{
@@ -390,6 +388,10 @@ func TestCopiedBody(t *testing.T) {
 		{name: "partial copy", text: "The order total MUST equal the sum."},
 		{name: "longer words at the edges", text: "xThe order total MUST equal the sum of its linesx."},
 		{name: "short body", text: "MAY possess many lines."},
+		{name: "html tags", text: "<strong>The</strong> order total<br>MUST equal <em>the sum</em> of its lines.", want: []finding{rf007(1)}},
+		{name: "html comment inside", text: "The order total <!-- note --> MUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "comment line inside a wrap", text: "The order total\n<!-- strspc-refs: ignore -->\nMUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "url slug", text: "https://example.com/the-order-total-must-equal-the-sum-of-its-lines"},
 		{name: "marker on the line", text: copied + " <!-- strspc-refs: ignore -->"},
 		{name: "marker above", text: "<!-- strspc-refs: ignore -->\n" + copied},
 		{name: "marker above the start of a wrap", text: "<!-- strspc-refs: ignore -->\nThe order total\nMUST equal the sum of its lines."},
@@ -397,6 +399,36 @@ func TestCopiedBody(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := findings(check(t, tt.text, []rulerefs.Source{copySource()})); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCopiedBodyFirstSourceWins(t *testing.T) {
+	source := func(realm, body string) rulerefs.Source {
+		return rulerefs.Source{
+			RealmID: realm,
+			Entities: []*entity.File{{
+				Entity: entity.Entity{ID: "ORD"},
+				Rules:  []entity.Rule{{ID: "ORD-001", State: entity.StateImplemented, Body: body}},
+			}},
+		}
+	}
+	sources := []rulerefs.Source{
+		source("dev.steerspec.first", "The first source MUST win this rule."),
+		source("dev.steerspec.second", "The second source MUST lose this rule."),
+	}
+	tests := []struct {
+		text string
+		want []finding
+	}{
+		{text: "The first source MUST win this rule.", want: []finding{{"RF007", result.Error, 1}}},
+		{text: "The second source MUST lose this rule."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			if got := findings(check(t, tt.text, sources)); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
 		})
@@ -415,6 +447,8 @@ func TestCopiedBodyOptions(t *testing.T) {
 	}
 }
 
+// A long line must not cost more than a linear scan, and the position of a
+// finding must stay correct after a URL is blanked out.
 func TestLongLine(t *testing.T) {
 	var b strings.Builder
 	for i := 0; i < 2000; i++ {
