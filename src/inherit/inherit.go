@@ -7,6 +7,7 @@
 package inherit
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -29,6 +30,9 @@ type Hop struct {
 	SubRealmIDs []string
 	// Entity is the entity file or sub-entity.
 	Entity *entity.File
+	// Scopes holds the Standard References around the entity, nearest first:
+	// its containing entities, its Realm, then that Realm's parent (NTE-016).
+	Scopes [][]entity.StandardRef
 }
 
 // Extended is a live rule named by an `extends` note, as the evaluator reads
@@ -62,6 +66,10 @@ type Rule struct {
 	// Overrides is the qualified ID of the inherited rule this rule
 	// replaced, empty when it replaced none.
 	Overrides string
+	// Standards holds the Standard References a `standard` note on the rule
+	// resolves against, nearest first, from the entity owning the rule
+	// (NTE-016).
+	Standards [][]entity.StandardRef
 }
 
 // QualifiedID returns the rule's ID qualified with its owner's namespace.
@@ -106,6 +114,48 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 	}
 	ns := namespaces(append([]Hop{child}, ancestors...))
 	return apply(set, ownRules(child, ns, func(r entity.Rule) bool { return keep[r.State] }))
+}
+
+// Displaced returns the rules child no longer has that it or an ancestor once
+// held in force: those an override along the chain replaced, a Draft override of
+// child's included, as in Effective with its default states, then those in state
+// Retired or Terminated owned by child or an ancestor. Ancestors are given
+// nearest first. A rule displaced twice appears twice.
+func Displaced(child Hop, ancestors []Hop) []Rule {
+	publishedOrImplemented := func(r entity.Rule) bool {
+		return r.State == entity.StatePublished || r.State == entity.StateImplemented
+	}
+	var out, set []Rule
+	step := func(added []Rule) {
+		out = append(out, replaced(set, added)...)
+		set = apply(set, added)
+	}
+	ns := namespaces(ancestors)
+	for i := len(ancestors) - 1; i >= 0; i-- {
+		step(ownRules(ancestors[i], ns, publishedOrImplemented))
+	}
+	hops := append([]Hop{child}, ancestors...)
+	ns = namespaces(hops)
+	step(ownRules(child, ns, func(r entity.Rule) bool { return slices.Contains(DefaultStates, r.State) }))
+
+	for _, h := range hops {
+		out = append(out, ownRules(h, ns, func(r entity.Rule) bool {
+			return r.State == entity.StateRetired || r.State == entity.StateTerminated
+		})...)
+	}
+	return out
+}
+
+// replaced returns the rules of set that the added rules override.
+func replaced(set, added []Rule) []Rule {
+	var out []Rule
+	for _, r := range set {
+		id := r.QualifiedID()
+		if slices.ContainsFunc(added, func(a Rule) bool { return a.Overrides == id }) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // OverriddenBy maps the qualified ID of every rule replaced in the given
@@ -172,7 +222,10 @@ func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 		if !keep(r) {
 			continue
 		}
-		e := Rule{Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title}
+		e := Rule{
+			Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title,
+			Standards: append([][]entity.StandardRef{h.Entity.Entity.Standards}, h.Scopes...),
+		}
 		if r.Overrides != nil && *r.Overrides != "" {
 			e.Overrides = normalise(Qualify(h.RealmID, *r.Overrides), ns)
 		}

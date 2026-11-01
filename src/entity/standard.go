@@ -3,7 +3,10 @@ package entity
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -98,6 +101,26 @@ func FindStandard(refs []StandardRef, id string) *StandardRef {
 		}
 	}
 	return nil
+}
+
+// ParentRealm returns the manifest of the Realm that lists dir as a sub-realm
+// and whose ID makes childID that sub-realm's ID (RLM-011), or nil when there is
+// none on disk.
+func ParentRealm(dir, childID string) *RealmFile {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil
+	}
+	path := filepath.Join(filepath.Dir(abs), "realm.json")
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	parent, err := LoadRealm(path)
+	base := filepath.Base(abs)
+	if err != nil || !slices.Contains(parent.SubRealms, base) || parent.Realm.ID+"."+base != childID {
+		return nil
+	}
+	return parent
 }
 
 // ResolveStandard returns the first reference with the given id, searching
