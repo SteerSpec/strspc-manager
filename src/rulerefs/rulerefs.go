@@ -1,14 +1,17 @@
 // Package rulerefs validates the rule identifiers that text files cite, such as
 // agent prompts, READMEs and CI config, against a set of known rules. It
-// reports citations that are unknown or no longer live (RF001–RF006). It is
-// deterministic and reads no files: the caller chooses them and passes their
-// content to Checker.CheckText.
+// reports citations that are unknown or no longer live (RF001–RF006) and text
+// that copies a rule's body instead of citing it (RF007). It is deterministic
+// and reads no files: the caller chooses them and passes their content to
+// Checker.CheckText.
 package rulerefs
 
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/render"
@@ -20,6 +23,10 @@ const module = "rule-refs"
 // ignoreMarker exempts the line that holds it and the next line. Any comment
 // syntax can carry it, such as an HTML comment in markdown.
 const ignoreMarker = "strspc-refs: ignore"
+
+// minCopyWords is the shortest body the copy check compares. A shorter one, such
+// as "MAY possess one or more properties", reads as ordinary prose.
+const minCopyWords = 5
 
 // realmQualifier matches an optional realm prefix, as group 1 of a pattern.
 const realmQualifier = `(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)?`
@@ -34,6 +41,9 @@ var (
 	// urlRe finds URLs, whose path segments are not citations. Schemes are
 	// case-insensitive.
 	urlRe = regexp.MustCompile(`(?i)[a-z][a-z0-9+.-]*://\S+`)
+
+	// markupRe finds HTML comments and tags, which a rendered copy doesn't show.
+	markupRe = regexp.MustCompile(`(?s:<!--.*?-->)|</?[A-Za-z][^<>]*>`)
 
 	// reportableEUIDRe selects the unknown prefixes worth reporting. EUIDs in
 	// practice are uppercase, while a lowercase or numeric shape is usually a
@@ -108,6 +118,15 @@ type Checker struct {
 	realms  map[string]map[string]*citedRule // by realm ID, then rule ID
 	euids   map[string]bool
 	forms   []form
+	bodies  []ruleBody
+	seen    map[string]bool // normalized bodies already in bodies
+}
+
+// ruleBody is a rule's normalized body. Rules that share a body are one entry,
+// under the first rule found.
+type ruleBody struct {
+	id    string
+	words string
 }
 
 // New creates a Checker for the given sources, in priority order. It returns an
@@ -120,6 +139,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		rules:   make(map[string]*citedRule),
 		realms:  make(map[string]map[string]*citedRule),
 		euids:   make(map[string]bool),
+		seen:    make(map[string]bool),
 	}
 	for _, opt := range opts {
 		opt(&c.cfg)
@@ -144,7 +164,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		euids := make(map[string]bool)
 		var replaced []*entity.Rule
 		for _, ef := range s.Entities {
-			if err := collect(ef, own, euids, &replaced); err != nil {
+			if err := c.collect(ef, s.RealmID, own, euids, &replaced); err != nil {
 				return nil, fmt.Errorf("realm %q: %w", s.RealmID, err)
 			}
 		}
@@ -179,9 +199,10 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 }
 
 // collect adds the rules of ef and of its sub-entities to rules and euids, and
-// appends every rule that supersedes another to replaced. A rule in an unknown
-// state is an error: no citation of it could be judged.
-func collect(ef *entity.File, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
+// appends every rule that supersedes another to replaced. realm is the source's
+// Realm. A rule in an unknown state is an error: no citation of it could be
+// judged.
+func (c *Checker) collect(ef *entity.File, realm string, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
 	if ef == nil {
 		return nil
 	}
@@ -192,16 +213,58 @@ func collect(ef *entity.File, rules map[string]*citedRule, euids map[string]bool
 			return fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
 		}
 		rules[r.ID] = &citedRule{state: r.State}
+		if c.citable(realm, r.ID) {
+			c.addBody(r)
+		}
 		if r.Supersedes != nil {
 			*replaced = append(*replaced, r)
 		}
 	}
 	for i := range ef.SubEntities {
-		if err := collect(&ef.SubEntities[i], rules, euids, replaced); err != nil {
+		if err := c.collect(&ef.SubEntities[i], realm, rules, euids, replaced); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// citable reports whether a citation can resolve to rule id of the source being
+// collected, in realm: by its realm qualifier, unless an earlier source holds
+// that Realm, or by the bare ID, unless an earlier source holds that ID.
+func (c *Checker) citable(realm, id string) bool {
+	if _, held := c.realms[realm]; realm != "" && !held {
+		return true
+	}
+	_, held := c.rules[id]
+	return !held
+}
+
+// addBody indexes the body of r for the copy check.
+func (c *Checker) addBody(r *entity.Rule) {
+	body := words(blank(r.Body))
+	if len(body) < minCopyWords {
+		return
+	}
+	joined := strings.Join(body, " ")
+	if !c.seen[joined] {
+		c.seen[joined] = true
+		c.bodies = append(c.bodies, ruleBody{r.ID, joined})
+	}
+}
+
+// blank removes the URLs and the markup of s, keeping its line breaks so that
+// lines stay where they were.
+func blank(s string) string {
+	return markupRe.ReplaceAllStringFunc(urlRe.ReplaceAllString(s, " "), func(m string) string {
+		return " " + strings.Repeat("\n", strings.Count(m, "\n"))
+	})
+}
+
+// words returns the lowercased words of s, without punctuation.
+func words(s string) []string {
+	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
 }
 
 // successorRank orders the states of a superseder by how much they replace the
@@ -251,18 +314,22 @@ func (s site) add(res *result.Result, d result.Diagnostic) {
 	res.Add(d)
 }
 
-// CheckText reports the citations in data that are unknown or no longer live.
-// path names the text in the diagnostics.
+// CheckText reports the citations in data that are unknown or no longer live,
+// and the copies of a rule's body. path names the text in the diagnostics.
 func (c *Checker) CheckText(path string, data []byte) *result.Result {
 	res := &result.Result{}
+	lines := strings.Split(string(data), "\n")
+	skipped := make([]bool, len(lines))
 	exempt := false
-	for i, line := range strings.Split(string(data), "\n") {
+	for i, line := range lines {
 		marked := strings.Contains(line, ignoreMarker)
-		if !marked && !exempt {
+		skipped[i] = marked || exempt
+		if !skipped[i] {
 			c.checkLine(line, site{path, i + 1}, res)
 		}
 		exempt = marked
 	}
+	c.checkCopies(string(data), skipped, path, res)
 	if c.cfg.Strict {
 		for i := range res.Diagnostics {
 			if res.Diagnostics[i].Severity == result.Warning {
@@ -271,6 +338,48 @@ func (c *Checker) CheckText(path string, data []byte) *result.Result {
 		}
 	}
 	return res
+}
+
+// checkCopies reports each copy of a rule's body in data, whose lines are those
+// of skipped. It compares normalized words, so a copy may differ in case and
+// punctuation and may wrap across lines. A copy is exempt when the line it starts
+// on is. The state of the rule doesn't matter: a copy goes stale in any state.
+func (c *Checker) checkCopies(data string, skipped []bool, path string, res *result.Result) {
+	var text strings.Builder
+	var starts, wordLines []int
+	text.WriteByte(' ')
+	for i, line := range strings.Split(blank(data), "\n") {
+		for _, w := range words(line) {
+			starts = append(starts, text.Len())
+			wordLines = append(wordLines, i)
+			text.WriteString(w)
+			text.WriteByte(' ')
+		}
+	}
+	joined := text.String()
+	for _, b := range c.bodies {
+		if c.ignored[b.id] {
+			continue
+		}
+		needle := " " + b.words + " "
+		for from := 0; ; {
+			at := strings.Index(joined[from:], needle)
+			if at < 0 {
+				break
+			}
+			at += from
+			// The closing space opens the next match, so copies can abut.
+			from = at + len(needle) - 1
+			word, _ := slices.BinarySearch(starts, at+1)
+			if line := wordLines[word]; !skipped[line] {
+				site{path, line + 1}.add(res, result.Diagnostic{
+					Code:     "RF007",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("text copies the body of rule %s; cite its ID instead", b.id),
+				})
+			}
+		}
+	}
 }
 
 // checkLine judges each distinct citation on line.

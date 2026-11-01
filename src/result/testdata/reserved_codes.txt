@@ -123,3 +123,4 @@ RF003 active citation-retired-or-terminated
 RF004 active citation-superseded
 RF005 active citation-superseder-published
 RF006 active citation-draft
+RF007 active copied-rule-body
