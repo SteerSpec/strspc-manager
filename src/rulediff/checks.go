@@ -28,7 +28,7 @@ var (
 // maxDomainLen is the longest domain name DNS allows.
 const maxDomainLen = 253
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018 and RD019 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD019, RD021 and RD022 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -115,6 +115,18 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		})
 	}
 
+	// RD021: a rule's revision counts edits to the rule, so nothing else may
+	// move it, a mapping to a standard above all (NTE-018).
+	if h.Revision != b.Revision && h.Body == b.Body && !isDraftReferenceEdit(b, h) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD021",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("rule revision changed from %d to %d with no change to the rule", b.Revision, h.Revision),
+			Path:     path,
+		})
+	}
+
 	// RD003: state transitions must follow the forward-only state machine.
 	if h.State != b.State {
 		if err := entity.ValidateTransition(b.State, h.State); err != nil {
@@ -153,6 +165,13 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			})
 		}
 	}
+}
+
+// isDraftReferenceEdit reports whether h is one edit of the Draft rule b's
+// `overrides` or `supersedes`, the only other edits that move a revision.
+func isDraftReferenceEdit(b, h entity.Rule) bool {
+	changed := !sameRef(b.Overrides, h.Overrides) || !sameRef(b.Supersedes, h.Supersedes)
+	return b.State == entity.StateDraft && h.State == entity.StateDraft && changed && h.Revision == b.Revision+1
 }
 
 // checkNewRule runs RD004, RD010, RD011 for a rule that appears only in head.
@@ -257,6 +276,9 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 				Message:  fmt.Sprintf("append-only note %q (type %q) was removed or retyped", b.ID, b.Type),
 				Path:     notePath,
 			})
+			if ok {
+				checkStandardRetype(b, h, res, notePath)
+			}
 		case !ok:
 			// RD014: no note is ever removed; append-only removal is RD012.
 			res.Add(result.Diagnostic{
@@ -277,6 +299,7 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 			})
 		default:
 			checkNoteRevision(b, h, res, notePath)
+			checkStandardRetype(b, h, res, notePath)
 		}
 	}
 
@@ -289,6 +312,30 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 			checkNewNote(n, res, path+"/notes/"+n.ID)
 		}
 	}
+}
+
+// checkStandardRetype runs RD022: a `standard` note is retyped only to or from
+// `reference` (NTE-017), and a withdrawal keeps its content (NTE-019).
+func checkStandardRetype(b, h entity.Note, res *result.Result, path string) {
+	if b.Type == h.Type || (b.Type != entity.NoteTypeStandard && h.Type != entity.NoteTypeStandard) {
+		return
+	}
+	var msg string
+	switch {
+	case b.Type != entity.NoteTypeReference && h.Type != entity.NoteTypeReference:
+		msg = fmt.Sprintf("note retyped from %q to %q: a `standard` note changes only to or from `reference`", b.Type, h.Type)
+	case h.Type == entity.NoteTypeReference && h.Content != b.Content:
+		msg = "withdrawing a mapping keeps the note's content"
+	default:
+		return
+	}
+	res.Add(result.Diagnostic{
+		Module:   module,
+		Code:     "RD022",
+		Severity: result.Error,
+		Message:  msg,
+		Path:     path,
+	})
 }
 
 // checkNoteRevision runs RD013 for a note present in both versions: a change

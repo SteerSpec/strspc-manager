@@ -167,6 +167,12 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
 
+	// RL031: Without a rule linter here the caller runs LintRealm, which holds
+	// this check.
+	if l.cfg.RuleLinter != nil {
+		rulelint.CheckRealmStandards(dir, rf, res)
+	}
+
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}
@@ -290,6 +296,17 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 			Code:     "RM007",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("invalid realm version %q: must be valid semver", rf.Realm.Version),
+			Path:     realmPath,
+		})
+	}
+
+	// RM018: The realm's `standards` array (RLMMNFST-007).
+	for _, err := range entity.ValidateStandardRefs(rf.Realm.Standards) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM018",
+			Severity: result.Error,
+			Message:  err.Error(),
 			Path:     realmPath,
 		})
 	}

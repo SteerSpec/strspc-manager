@@ -584,3 +584,20 @@ func TestEvaluate_PerRuleFallback_CarriesMetadata(t *testing.T) {
 		t.Errorf("Input() = %+v, want %+v", got.Input(), in)
 	}
 }
+
+// A mapping to a standard, or its withdrawal, can't change a verdict, so it
+// keeps the cached one (NTE-018).
+func TestCacheKey_BookkeepingNotes(t *testing.T) {
+	rule := ruleeval.RuleInput{Rule: entity.Rule{ID: "ABC-001", Body: "body"}}
+	want := ruleeval.CacheKey(rule, "diff", "model", "v1")
+	for _, typ := range []string{entity.NoteTypeStandard, entity.NoteTypeReference, "changelog"} {
+		rule.Notes = []entity.Note{{Type: typ, Content: "owasp.asvs:2.1.1"}}
+		if got := ruleeval.CacheKey(rule, "diff", "model", "v1"); got != want {
+			t.Errorf("a %s note changed the key", typ)
+		}
+	}
+	rule.Notes = []entity.Note{{Type: "rationale", Content: "why"}}
+	if got := ruleeval.CacheKey(rule, "diff", "model", "v1"); got == want {
+		t.Error("a note the prompt shows must change the key")
+	}
+}

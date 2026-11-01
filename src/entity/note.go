@@ -1,5 +1,15 @@
 package entity
 
+// Note types with their own handling in this module's callers.
+const (
+	// NoteTypeStandard marks a Note that maps its Rule to one clause of a
+	// standard (NTE-013).
+	NoteTypeStandard = "standard"
+	// NoteTypeReference marks a free-text reference, and a withdrawn mapping
+	// (NTE-019).
+	NoteTypeReference = "reference"
+)
+
 // noteTypes is the closed enum of note types (SPEC §2.6), in schema order.
 var noteTypes = []string{
 	"rationale",
@@ -13,6 +23,7 @@ var noteTypes = []string{
 	"supersedes",
 	"extends",
 	"related",
+	NoteTypeStandard,
 }
 
 // validNoteTypes is the set form of noteTypes.

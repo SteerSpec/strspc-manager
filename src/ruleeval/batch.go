@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -166,9 +167,16 @@ func (f ObserverFunc) Observe(ev Event) { f(ev) }
 // WithEvaluateStates is not given: Draft, Published and Implemented.
 var DefaultEvaluateStates = []string{"D", "P", "I"}
 
+// PromptNoteTypes lists the note types sent to the evaluator, in the order they
+// are rendered. Other note types (changelog, reference, standard, supersedes, …)
+// are bookkeeping: they are omitted from the prompt and from CacheKey, so adding
+// a mapping to a standard (NTE-018) keeps a rule's cached verdicts.
+var PromptNoteTypes = []string{"applies_to", "rationale", "example", "counter_example", "clarification", "extends"}
+
 // CacheKey derives the cache key for one rule evaluated against one diff.
-// It is the hex-encoded BLAKE3 hash of the rule ID, revision, body, notes
-// (type and content, order-independent), entity, source and scope, and the
+// It is the hex-encoded BLAKE3 hash of the rule ID, revision, body, the notes
+// the prompt shows (type and content, order-independent), entity, source and
+// scope, and the
 // inheritance metadata (owner, inheritor, overrides, overridden-by) together
 // and the extended rules (ID, revision and body, order-independent) together
 // with diffHash, the model and the prompt version. The entity, source, scope
@@ -180,7 +188,9 @@ var DefaultEvaluateStates = []string{"D", "P", "I"}
 func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	notes := make([]string, 0, len(rule.Notes))
 	for _, n := range rule.Notes {
-		notes = append(notes, n.Type+"\x1f"+n.Content)
+		if slices.Contains(PromptNoteTypes, n.Type) {
+			notes = append(notes, n.Type+"\x1f"+n.Content)
+		}
 	}
 	sort.Strings(notes)
 	overriddenBy := append([]string(nil), rule.OverriddenBy...)

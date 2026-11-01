@@ -4,8 +4,8 @@ import "testing"
 
 func TestNoteTypes(t *testing.T) {
 	got := NoteTypes()
-	if len(got) != 11 {
-		t.Fatalf("NoteTypes() has %d entries, want 11", len(got))
+	if len(got) != 12 {
+		t.Fatalf("NoteTypes() has %d entries, want 12", len(got))
 	}
 	for _, nt := range got {
 		if !IsValidNoteType(nt) {

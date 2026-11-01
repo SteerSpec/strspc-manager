@@ -2,7 +2,9 @@ package qa_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,6 +24,42 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/ruleresolve"
 	"github.com/SteerSpec/strspc-manager/src/schema"
 )
+
+// asvsRef is a sound Standard Reference.
+var asvsRef = entity.StandardRef{ID: "owasp.asvs", Relation: entity.RelationImplements}
+
+// standardsFile is a sound entity declaring ref, with a `standard` note on its
+// rule for each content.
+func standardsFile(ref entity.StandardRef, contents ...string) *entity.File {
+	f := &entity.File{
+		Schema:  "./_schema/entity.v1.schema.json",
+		Entity:  entity.Entity{ID: "STDNOTE", Title: "Standards", Standards: []entity.StandardRef{ref}},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-01-01T00:00:00Z"},
+		Rules: []entity.Rule{{
+			ID: "STDNOTE-001", State: entity.StatePublished, Body: "The system MUST work.",
+			AddedBy: "@qa", AddedAt: "2026-01-01",
+		}},
+	}
+	for i, c := range contents {
+		f.Notes = append(f.Notes, entity.Note{
+			ID: fmt.Sprintf("STDNOTE-001/%02d", i+1), RuleRef: "STDNOTE-001", Type: entity.NoteTypeStandard,
+			Content: c, AddedBy: "@qa", AddedAt: "2026-01-01",
+		})
+	}
+	return f
+}
+
+// writeQAJSON writes v to path.
+func writeQAJSON(t *testing.T, path string, v any) {
+	t.Helper()
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // sound is an entity file every module accepts.
 const sound = "testdata/broken/rule-sources/realm/SOURCED.json"
@@ -45,6 +83,74 @@ type goCase struct {
 // goCases covers what the scenarios under testdata/broken cannot. The
 // completeness test reads the codes from want.
 var goCases = []goCase{
+	{
+		name: "rule-lint reports a bad standards entry",
+		want: []string{"RL028 error"},
+		run: func(*testing.T) *result.Result {
+			f := standardsFile(entity.StandardRef{ID: "owasp", Relation: entity.RelationImplements})
+			return rulelint.New().LintFile(f)
+		},
+	},
+	{
+		name: "rule-lint reports a malformed standard note",
+		want: []string{"RL029 error"},
+		run: func(*testing.T) *result.Result {
+			return rulelint.New().LintFile(standardsFile(asvsRef, "no mapping"))
+		},
+	},
+	{
+		name: "rule-lint reports a duplicate standard note",
+		want: []string{"RL030 error"},
+		run: func(*testing.T) *result.Result {
+			return rulelint.New().LintFile(standardsFile(asvsRef, "owasp.asvs:1", "owasp.asvs:1"))
+		},
+	},
+	{
+		name: "rule-lint reports an undeclared standard",
+		want: []string{"RL002 info", "RL031 error"},
+		run: func(t *testing.T) *result.Result {
+			dir := t.TempDir()
+			f := standardsFile(entity.StandardRef{}, "owasp.asvs:1")
+			f.Entity.Standards = nil
+			writeQAJSON(t, filepath.Join(dir, "STDNOTE.json"), f)
+			writeQAJSON(t, filepath.Join(dir, "realm.json"), entity.RealmFile{Realm: entity.RealmMeta{ID: "dev.qa.std", Title: "S", Version: "1.0.0"}})
+			return rulelint.New().LintRealm(t.Context(), dir)
+		},
+	},
+	{
+		name: "realm-lint reports a bad realm standards entry",
+		want: []string{"RM002 info", "RM003 error", "RM005 info", "RM018 error"},
+		run: func(t *testing.T) *result.Result {
+			dir := t.TempDir()
+			writeQAJSON(t, filepath.Join(dir, "realm.json"), entity.RealmFile{Realm: entity.RealmMeta{
+				ID: "dev.qa.std", Title: "S", Version: "1.0.0",
+				Standards: []entity.StandardRef{{ID: "owasp", Relation: entity.RelationImplements}},
+			}})
+			return realmlint.New().Lint(t.Context(), dir)
+		},
+	},
+	{
+		name: "rule-diff reports a revision moved without a body change",
+		want: []string{"RD021 error"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef)
+			head := standardsFile(asvsRef)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			head.Rules[0].Revision = 1
+			return rulediff.New().Diff(base, head)
+		},
+	},
+	{
+		name: "rule-diff reports a standard note retyped past reference",
+		want: []string{"RD013 error", "RD022 error"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef, "owasp.asvs:1")
+			head := standardsFile(asvsRef, "owasp.asvs:1")
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			head.Notes[0].Type = "rationale"
+			return rulediff.New().Diff(base, head)
+		},
+	},
 	{
 		name: "rule-lint reports a nil file",
 		want: []string{"RL000 error"},

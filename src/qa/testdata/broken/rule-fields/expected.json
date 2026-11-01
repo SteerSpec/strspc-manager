@@ -52,5 +52,29 @@
     "code": "RL025",
     "severity": "error",
     "path": "realm/CROSS.json: CROSS/rules/CROSS-001"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL026",
+    "severity": "warning",
+    "path": "realm/PROSE.json: PROSE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL026",
+    "severity": "warning",
+    "path": "realm/PROSE.json: PROSE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL027",
+    "severity": "info",
+    "path": "realm/PROSE.json: PROSE"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL027",
+    "severity": "info",
+    "path": "realm/PROSE.json: PROSE"
   }
 ]
