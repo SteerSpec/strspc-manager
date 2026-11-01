@@ -61,7 +61,7 @@ func CheckRealmStandards(dir string, rf *entity.RealmFile, res *result.Result) {
 	if len(rf.SubRealms) > 0 {
 		opts = append(opts, entity.WithExcludeDirs(rf.SubRealms))
 	}
-	checkDirStandards(dir, rf.Realm.Standards, parentStandards(dir), res, opts...)
+	checkDirStandards(dir, rf.Realm.Standards, parentStandards(dir, rf.Realm.ID), res, opts...)
 	for _, name := range rf.SubRealms {
 		subDir := filepath.Join(dir, name)
 		sub, err := entity.LoadRealm(filepath.Join(subDir, "realm.json"))
@@ -74,8 +74,8 @@ func CheckRealmStandards(dir string, rf *entity.RealmFile, res *result.Result) {
 
 // parentStandards returns the references of the Realm whose manifest lists dir
 // as a sub-realm, for a sub-realm linted on its own.
-func parentStandards(dir string) []entity.StandardRef {
-	if parent := entity.ParentRealm(dir); parent != nil {
+func parentStandards(dir, id string) []entity.StandardRef {
+	if parent := entity.ParentRealm(dir, id); parent != nil {
 		return parent.Realm.Standards
 	}
 	return nil

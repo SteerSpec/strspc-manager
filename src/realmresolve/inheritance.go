@@ -101,7 +101,7 @@ func parentOf(rr, root *ResolvedRealm) *entity.RealmFile {
 	if rr != root {
 		return root.Realm
 	}
-	return entity.ParentRealm(root.Dir)
+	return entity.ParentRealm(root.Dir, root.Realm.Realm.ID)
 }
 
 // holds reports whether f holds the entity id in its `sub_entities`.
@@ -115,7 +115,7 @@ func holds(f *entity.File, id string) bool {
 func dependencySubManifests(dep *ResolvedRealm) map[string]*entity.RealmFile {
 	out := make(map[string]*entity.RealmFile, len(dep.Realm.SubRealms))
 	for _, name := range dep.Realm.SubRealms {
-		if !filepath.IsLocal(name) || strings.ContainsAny(name, `/\`) {
+		if name == "." || !filepath.IsLocal(name) || strings.ContainsAny(name, `/\`) {
 			continue
 		}
 		dir := filepath.Join(dep.Dir, name)
@@ -563,7 +563,7 @@ func (s *chainState) depNode(dep *ResolvedRealm) *node {
 	}
 	n := &node{
 		realm: dep, ns: dep.Realm.Realm.ID, subRealmIDs: subRealmIDs(dep.Realm), entities: dep.Entities,
-		parent: entity.ParentRealm(dep.Dir), subManifests: dependencySubManifests(dep),
+		parent: entity.ParentRealm(dep.Dir, dep.Realm.Realm.ID), subManifests: dependencySubManifests(dep),
 	}
 	s.nodes[dep] = n
 	return n

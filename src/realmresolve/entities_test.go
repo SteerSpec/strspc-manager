@@ -1,6 +1,8 @@
 package realmresolve
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -64,5 +66,24 @@ func TestResolve_Entities(t *testing.T) {
 				t.Errorf("%d entities with a chain, want %d", withChain, len(out.Inheritance))
 			}
 		})
+	}
+}
+
+// TestDependencySubManifests checks that only a single directory name counts.
+func TestDependencySubManifests(t *testing.T) {
+	dir := t.TempDir()
+	data := []byte(`{"realm":{"id":"dev.test.dep.team","title":"T","version":"1.0.0"}}`)
+	if err := os.MkdirAll(filepath.Join(dir, "team"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{filepath.Join(dir, "realm.json"), filepath.Join(dir, "team", "realm.json")} {
+		if err := os.WriteFile(p, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dep := &ResolvedRealm{Dir: dir, Realm: &entity.RealmFile{SubRealms: []string{".", "..", "a/b", "team"}}}
+	got := dependencySubManifests(dep)
+	if len(got) != 1 || got[filepath.Join(dir, "team")] == nil {
+		t.Errorf("got %v, want only team", got)
 	}
 }

@@ -177,3 +177,42 @@ func TestResolveStandard_NearestFirst(t *testing.T) {
 		t.Fatalf("got %+v, want nil", got)
 	}
 }
+
+// TestParentRealm checks when a manifest above a directory is its parent.
+func TestParentRealm(t *testing.T) {
+	write := func(t *testing.T, id string, subs ...string) string {
+		t.Helper()
+		dir := t.TempDir()
+		data, err := json.Marshal(RealmFile{Realm: RealmMeta{ID: id, Title: "R", Version: "1.0.0"}, SubRealms: subs})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "realm.json"), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+	tests := []struct {
+		name    string
+		realm   string
+		subs    []string
+		childID string
+		want    bool
+	}{
+		{"lists it", "dev.test.root", []string{"team"}, "dev.test.root.team", true},
+		{"doesn't list it", "dev.test.root", nil, "dev.test.root.team", false},
+		{"another realm's id", "dev.test.other", []string{"team"}, "dev.test.root.team", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := write(t, tt.realm, tt.subs...)
+			got := ParentRealm(filepath.Join(dir, "team"), tt.childID)
+			if (got != nil) != tt.want {
+				t.Errorf("ParentRealm = %+v, want found=%v", got, tt.want)
+			}
+		})
+	}
+	if got := ParentRealm(t.TempDir(), "dev.test.root.team"); got != nil {
+		t.Errorf("no manifest above: got %+v", got)
+	}
+}
