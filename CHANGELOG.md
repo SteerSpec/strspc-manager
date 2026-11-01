@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.36.0](https://github.com/SteerSpec/strspc-manager/compare/v1.35.1...v1.36.0) (2026-11-01)
+
+
+### Features
+
+* **coverage:** report how rules map to external standards ([#224](https://github.com/SteerSpec/strspc-manager/issues/224)) ([71ef4a4](https://github.com/SteerSpec/strspc-manager/commit/71ef4a4e6a0d7e1181b2feb495079e9a2f7636de))
+* **entity:** add standards references and standard notes ([#221](https://github.com/SteerSpec/strspc-manager/issues/221)) ([375246b](https://github.com/SteerSpec/strspc-manager/commit/375246badd502b6035446f4aed0179f30fad3843))
+* **rulelint:** report inline examples and likely two statements on Draft rules ([#223](https://github.com/SteerSpec/strspc-manager/issues/223)) ([d0ff0e7](https://github.com/SteerSpec/strspc-manager/commit/d0ff0e706c666ce749357358372fefa2a9955312))
+
 ## [1.35.1](https://github.com/SteerSpec/strspc-manager/compare/v1.35.0...v1.35.1) (2026-11-01)
 
 
