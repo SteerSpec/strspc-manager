@@ -1,6 +1,9 @@
 package entityops
 
 import (
+	"encoding/json"
+	"errors"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -493,6 +496,418 @@ func TestUpdateMeta(t *testing.T) {
 	}
 	if len(*f.RuleSet.Hash) != len("blake3:")+64 {
 		t.Errorf("Hash length = %d, want %d", len(*f.RuleSet.Hash), len("blake3:")+64)
+	}
+}
+
+func TestUpdateMeta_NilFile(t *testing.T) {
+	err := UpdateMeta(nil)
+	if err == nil || err.Error() != "entity file is nil" {
+		t.Errorf("UpdateMeta(nil) error = %v, want entity file is nil", err)
+	}
+}
+
+func TestUpdateMeta_TracksContent(t *testing.T) {
+	f := makeFileWithRule(t, entity.StateDraft)
+	before := *f.RuleSet.Hash
+
+	f.RuleSet.Timestamp = ""
+	f.Rules[0].Body = "changed body"
+	if err := UpdateMeta(f); err != nil {
+		t.Fatalf("UpdateMeta: %v", err)
+	}
+
+	if f.RuleSet.Timestamp != "2026-03-23T12:00:00Z" {
+		t.Errorf("Timestamp = %q, want %q", f.RuleSet.Timestamp, "2026-03-23T12:00:00Z")
+	}
+	if *f.RuleSet.Hash == before {
+		t.Error("Hash should change with the file content")
+	}
+	assertHashCurrent(t, f)
+}
+
+func TestNextRuleNumber_Table(t *testing.T) {
+	tests := []struct {
+		name string
+		f    *entity.File
+		want int
+	}{
+		{"nil file", nil, 1},
+		{"only foreign prefixes", fileWithRuleIDs("OTHER-005", "OTHER-900"), 1},
+		{"foreign prefix does not raise the maximum", fileWithRuleIDs("TST-002", "OTHER-500"), 3},
+		{"prefix match is case sensitive", fileWithRuleIDs("tst-007"), 1},
+		{"too few digits", fileWithRuleIDs("TST-1"), 1},
+		{"too many digits", fileWithRuleIDs("TST-1000"), 1},
+		{"no separator", fileWithRuleIDs("TST001"), 1},
+		{"malformed IDs are skipped, valid ones count", fileWithRuleIDs("bad", "TST-004", ""), 5},
+		{"highest number wins over file order", fileWithRuleIDs("TST-009", "TST-002"), 10},
+		{"past the last valid number", fileWithRuleIDs("TST-999"), 1000},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NextRuleNumber(tt.f); got != tt.want {
+				t.Errorf("NextRuleNumber = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseSemver(t *testing.T) {
+	valid := []struct {
+		in                  string
+		major, minor, patch int
+	}{
+		{"0.0.0", 0, 0, 0},
+		{"10.20.30", 10, 20, 30},
+		{"1.2.3-rc.1", 1, 2, 3},
+		{"1.2.3+build.5", 1, 2, 3},
+		{"1.2.3-rc.1+build.5", 1, 2, 3},
+	}
+	for _, tt := range valid {
+		t.Run(tt.in, func(t *testing.T) {
+			major, minor, patch, err := parseSemver(tt.in)
+			if err != nil {
+				t.Fatalf("parseSemver(%q): %v", tt.in, err)
+			}
+			if major != tt.major || minor != tt.minor || patch != tt.patch {
+				t.Errorf("parseSemver(%q) = %d.%d.%d, want %d.%d.%d",
+					tt.in, major, minor, patch, tt.major, tt.minor, tt.patch)
+			}
+		})
+	}
+
+	invalid := []struct {
+		in      string
+		wantErr string
+		wantIs  error
+	}{
+		{in: "", wantErr: `invalid semver: ""`},
+		{in: "1.2", wantErr: `invalid semver: "1.2"`},
+		{in: ".2.3", wantErr: `invalid semver ".2.3": empty major`},
+		{in: "1..3", wantErr: `invalid semver "1..3": empty minor`},
+		{in: "1.2.", wantErr: `invalid semver "1.2.": empty patch`},
+		{in: "1.2.-rc", wantErr: `invalid semver "1.2.-rc": empty patch`},
+		{in: "01.2.3", wantErr: `invalid semver "01.2.3": major "01" has leading zero`},
+		{in: "1.02.3", wantErr: `invalid semver "1.02.3": minor "02" has leading zero`},
+		{in: "1.2.03", wantErr: `invalid semver "1.2.03": patch "03" has leading zero`},
+		{in: "a.2.3", wantErr: `invalid semver "a.2.3": invalid major "a"`, wantIs: strconv.ErrSyntax},
+		{in: "1.b.3", wantErr: `invalid semver "1.b.3": invalid minor "b"`, wantIs: strconv.ErrSyntax},
+		{in: "1.2.c", wantErr: `invalid semver "1.2.c": invalid patch "c"`, wantIs: strconv.ErrSyntax},
+		{in: "1.2.3.4", wantErr: `invalid semver "1.2.3.4": invalid patch "3.4"`, wantIs: strconv.ErrSyntax},
+		{
+			in:      "99999999999999999999.0.0",
+			wantErr: `invalid semver "99999999999999999999.0.0": invalid major "99999999999999999999"`,
+			wantIs:  strconv.ErrRange,
+		},
+		{in: "-1.2.3", wantErr: `invalid semver "-1.2.3": major must be non-negative`},
+		{in: "1.-2.3", wantErr: `invalid semver "1.-2.3": minor must be non-negative`},
+	}
+	for _, tt := range invalid {
+		t.Run("invalid "+tt.in, func(t *testing.T) {
+			_, _, _, err := parseSemver(tt.in)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("parseSemver(%q) error = %v, want %q", tt.in, err, tt.wantErr)
+			}
+			if tt.wantIs != nil && !errors.Is(err, tt.wantIs) {
+				t.Errorf("parseSemver(%q) error = %v, want it to wrap %v", tt.in, err, tt.wantIs)
+			}
+		})
+	}
+}
+
+func TestAddRule_Rejected(t *testing.T) {
+	tests := []struct {
+		name    string
+		f       *entity.File
+		body    string
+		addedBy string
+		wantErr string
+	}{
+		{name: "nil file", body: "body", addedBy: "@user", wantErr: "entity file is nil"},
+		{name: "empty body", f: fileWithRuleIDs(), addedBy: "@user", wantErr: "rule body must not be empty"},
+		{name: "empty addedBy", f: fileWithRuleIDs(), body: "body", wantErr: "added_by must not be empty"},
+		{
+			name:    "invalid entity ID",
+			f:       &entity.File{Entity: entity.Entity{ID: "AB"}},
+			body:    "body",
+			addedBy: "@user",
+			wantErr: `invalid entity ID: invalid EUID "AB": must be 3-18 alphanumeric characters`,
+		},
+		{
+			name:    "no rule number left",
+			f:       fileWithRuleIDs("TST-999"),
+			body:    "body",
+			addedBy: "@user",
+			wantErr: `cannot add rule: maximum number of rules (999) exceeded for entity "TST"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := AddRule(tt.f, tt.body, tt.addedBy)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("AddRule error = %v, want %q", err, tt.wantErr)
+			}
+			if id != "" {
+				t.Errorf("AddRule returned ID %q alongside the error", id)
+			}
+		})
+	}
+}
+
+func TestAddRule_LastRuleNumber(t *testing.T) {
+	f := fileWithRuleIDs("TST-998")
+
+	id, err := AddRule(f, "body", "@user")
+	if err != nil {
+		t.Fatalf("AddRule: %v", err)
+	}
+	if id != "TST-999" {
+		t.Errorf("ID = %q, want %q", id, "TST-999")
+	}
+	assertHashCurrent(t, f)
+}
+
+func TestSupersedeRule_AllowedStates(t *testing.T) {
+	for _, state := range []string{entity.StatePublished, entity.StateImplemented, entity.StateRetired} {
+		t.Run(state, func(t *testing.T) {
+			f := makeFileWithRule(t, state)
+			oldVersion := f.RuleSet.Version
+
+			id, err := SupersedeRule(f, "TST-001", "replacement body", "@author")
+			if err != nil {
+				t.Fatalf("SupersedeRule: %v", err)
+			}
+			if id != "TST-002" {
+				t.Errorf("new ID = %q, want %q", id, "TST-002")
+			}
+			if len(f.Rules) != 2 {
+				t.Fatalf("Rules = %d, want 2", len(f.Rules))
+			}
+			r := f.Rules[1]
+			if r.ID != "TST-002" || r.State != entity.StateDraft || r.Revision != 0 ||
+				r.Body != "replacement body" || r.AddedBy != "@author" || r.AddedAt != "2026-03-23" {
+				t.Errorf("unexpected new rule: %+v", r)
+			}
+			if r.Supersedes == nil || *r.Supersedes != "TST-001" {
+				t.Errorf("Supersedes = %v, want %q", r.Supersedes, "TST-001")
+			}
+			if f.Rules[0].State != state {
+				t.Errorf("old rule State = %q, want %q", f.Rules[0].State, state)
+			}
+			wantVersion, err := BumpPatch(oldVersion)
+			if err != nil {
+				t.Fatalf("BumpPatch: %v", err)
+			}
+			if f.RuleSet.Version != wantVersion {
+				t.Errorf("Version = %q, want %q", f.RuleSet.Version, wantVersion)
+			}
+			assertHashCurrent(t, f)
+		})
+	}
+}
+
+func TestSupersedeRule_InvalidInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutate  func(*entity.File)
+		body    string
+		addedBy string
+		wantErr string
+	}{
+		{name: "empty body", addedBy: "@user", wantErr: "rule body must not be empty"},
+		{name: "empty addedBy", body: "body", wantErr: "added_by must not be empty"},
+		{
+			name:    "invalid entity ID",
+			mutate:  func(f *entity.File) { f.Entity.ID = "AB" },
+			body:    "body",
+			addedBy: "@user",
+			wantErr: `invalid entity ID: invalid EUID "AB": must be 3-18 alphanumeric characters`,
+		},
+		{
+			name:    "no rule number left",
+			mutate:  func(f *entity.File) { f.Rules = append(f.Rules, entity.Rule{ID: "TST-999"}) },
+			body:    "body",
+			addedBy: "@user",
+			wantErr: `cannot add rule: maximum number of rules (999) exceeded for entity "TST"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := makeFileWithRule(t, entity.StatePublished)
+			if tt.mutate != nil {
+				tt.mutate(f)
+			}
+			rules := len(f.Rules)
+
+			id, err := SupersedeRule(f, "TST-001", tt.body, tt.addedBy)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("SupersedeRule error = %v, want %q", err, tt.wantErr)
+			}
+			if id != "" {
+				t.Errorf("SupersedeRule returned ID %q alongside the error", id)
+			}
+			if len(f.Rules) != rules {
+				t.Errorf("Rules = %d, want the file left at %d", len(f.Rules), rules)
+			}
+		})
+	}
+}
+
+func TestLifecycleOps_RejectedStates(t *testing.T) {
+	const (
+		cannotPromote   = `: cannot promote`
+		cannotRetire    = `: cannot retire`
+		cannotAbandon   = `: only Draft rules can be abandoned`
+		cannotSupersede = `: only Published, Implemented, or Retired rules can be superseded`
+	)
+	tests := []struct {
+		op      string
+		state   string
+		wantErr string
+	}{
+		{"PromoteRule", entity.StateAbandoned, cannotPromote},
+		{"PromoteRule", entity.StateImplemented, cannotPromote},
+		{"PromoteRule", entity.StateRetired, cannotPromote},
+		{"PromoteRule", entity.StateTerminated, cannotPromote},
+		{"RetireRule", entity.StateDraft, cannotRetire},
+		{"RetireRule", entity.StatePublished, cannotRetire},
+		{"RetireRule", entity.StateAbandoned, cannotRetire},
+		{"RetireRule", entity.StateTerminated, cannotRetire},
+		{"AbandonRule", entity.StatePublished, cannotAbandon},
+		{"AbandonRule", entity.StateImplemented, cannotAbandon},
+		{"AbandonRule", entity.StateRetired, cannotAbandon},
+		{"AbandonRule", entity.StateAbandoned, cannotAbandon},
+		{"AbandonRule", entity.StateTerminated, cannotAbandon},
+		{"SupersedeRule", entity.StateDraft, cannotSupersede},
+		{"SupersedeRule", entity.StateAbandoned, cannotSupersede},
+		{"SupersedeRule", entity.StateTerminated, cannotSupersede},
+	}
+	for _, tt := range tests {
+		t.Run(tt.op+"/"+tt.state, func(t *testing.T) {
+			f := makeFileWithRule(t, tt.state)
+			version, hash := f.RuleSet.Version, *f.RuleSet.Hash
+
+			err := ruleOps[tt.op](f, "TST-001")
+
+			want := `rule "TST-001" is in state "` + tt.state + `"` + tt.wantErr
+			if err == nil || err.Error() != want {
+				t.Fatalf("%s error = %v, want %q", tt.op, err, want)
+			}
+			if f.Rules[0].State != tt.state {
+				t.Errorf("State = %q, want it left at %q", f.Rules[0].State, tt.state)
+			}
+			if f.RuleSet.Version != version || *f.RuleSet.Hash != hash {
+				t.Errorf("rule_set changed to %q, %q on a rejected transition", f.RuleSet.Version, *f.RuleSet.Hash)
+			}
+		})
+	}
+}
+
+func TestRuleOps_UnknownRule(t *testing.T) {
+	for op, run := range ruleOps {
+		t.Run(op+"/missing rule", func(t *testing.T) {
+			err := run(makeFileWithRule(t, entity.StateDraft), "TST-999")
+			if err == nil || err.Error() != `rule "TST-999" not found` {
+				t.Errorf("%s error = %v, want rule not found", op, err)
+			}
+		})
+		t.Run(op+"/nil file", func(t *testing.T) {
+			err := run(nil, "TST-001")
+			if err == nil || err.Error() != "entity file is nil" {
+				t.Errorf("%s error = %v, want entity file is nil", op, err)
+			}
+		})
+	}
+}
+
+func TestOps_InvalidVersion(t *testing.T) {
+	tests := []struct {
+		name  string
+		state string
+		run   func(*entity.File) error
+	}{
+		{"AddRule", entity.StateDraft, func(f *entity.File) error {
+			_, err := AddRule(f, "body", "@user")
+			return err
+		}},
+		{"UpdateRuleBody", entity.StateDraft, func(f *entity.File) error {
+			return UpdateRuleBody(f, "TST-001", "new body")
+		}},
+		{"PromoteRule", entity.StateDraft, func(f *entity.File) error {
+			return PromoteRule(f, "TST-001")
+		}},
+		{"RetireRule", entity.StateImplemented, func(f *entity.File) error {
+			return RetireRule(f, "TST-001")
+		}},
+		{"AbandonRule", entity.StateDraft, func(f *entity.File) error {
+			return AbandonRule(f, "TST-001")
+		}},
+		{"SupersedeRule", entity.StatePublished, func(f *entity.File) error {
+			_, err := SupersedeRule(f, "TST-001", "body", "@user")
+			return err
+		}},
+		{"AddNote", entity.StatePublished, func(f *entity.File) error {
+			_, err := AddNote(f, "TST-001", "rationale", "Because.", "@user")
+			return err
+		}},
+		{"UpdateNote", entity.StatePublished, func(f *entity.File) error {
+			f.Notes = append(f.Notes, entity.Note{ID: "TST-001/01", RuleRef: "TST-001", Type: "rationale", Content: "Old."})
+			return UpdateNote(f, "TST-001/01", "New.", "")
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := makeFileWithRule(t, tt.state)
+			f.RuleSet.Version = "not-semver"
+
+			err := tt.run(f)
+
+			want := `bumping version: invalid semver: "not-semver"`
+			if err == nil || err.Error() != want {
+				t.Errorf("%s error = %v, want %q", tt.name, err, want)
+			}
+		})
+	}
+}
+
+// ruleOps maps each lifecycle operation that acts on an existing rule to a
+// common signature.
+var ruleOps = map[string]func(*entity.File, string) error{
+	"PromoteRule": PromoteRule,
+	"RetireRule":  RetireRule,
+	"AbandonRule": AbandonRule,
+	"SupersedeRule": func(f *entity.File, ruleID string) error {
+		_, err := SupersedeRule(f, ruleID, "body", "@user")
+		return err
+	},
+}
+
+// fileWithRuleIDs returns a valid TST file, version 0.1.0, holding rules with
+// the given IDs.
+func fileWithRuleIDs(ids ...string) *entity.File {
+	f := &entity.File{
+		Entity:  entity.Entity{ID: "TST"},
+		RuleSet: entity.RuleSet{Version: "0.1.0"},
+	}
+	for _, id := range ids {
+		f.Rules = append(f.Rules, entity.Rule{ID: id})
+	}
+	return f
+}
+
+// assertHashCurrent fails the test unless the stored rule_set hash is the hash
+// of the file as it now stands.
+func assertHashCurrent(t *testing.T, f *entity.File) {
+	t.Helper()
+	data, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	want, err := entity.ComputeHash(data)
+	if err != nil {
+		t.Fatalf("ComputeHash: %v", err)
+	}
+	if f.RuleSet.Hash == nil || *f.RuleSet.Hash != want {
+		t.Errorf("Hash = %v, want %q", f.RuleSet.Hash, want)
 	}
 }
 

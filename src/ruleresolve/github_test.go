@@ -148,6 +148,44 @@ func TestGitHubSource_FetchFailureIsRSV007(t *testing.T) {
 	}
 }
 
+func TestGitHubSource_FailsBeforeDownloading(t *testing.T) {
+	tests := []struct {
+		name     string
+		ref      string
+		wantMsg  string
+		wantPath string
+	}{
+		{
+			name:     "invalid ref",
+			ref:      "github://o/r",
+			wantMsg:  `invalid github source "github://o/r": missing @ref (use an exact tag, a commit SHA, or @latest)`,
+			wantPath: "github://o/r",
+		},
+		{
+			name:     "no fetcher",
+			ref:      "github://o/r@v1/rules/",
+			wantMsg:  "github source has no fetcher configured",
+			wantPath: "github://o/r@v1/rules",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, res := (&GitHubSource{}).Fetch(context.Background(), tt.ref)
+			if files != nil {
+				t.Errorf("expected no files, got %d", len(files))
+			}
+			d := diagnostic(t, res, "RSV007")
+			if d.Message != tt.wantMsg {
+				t.Errorf("message = %q, want %q", d.Message, tt.wantMsg)
+			}
+			if d.Path != tt.wantPath {
+				t.Errorf("path = %q, want %q", d.Path, tt.wantPath)
+			}
+		})
+	}
+}
+
 func TestGitHubSource_CollisionWithLocal(t *testing.T) {
 	tb := tarballFromDirs(t, "o-r-1", map[string]string{
 		"rules": testdataPath("collision_a"),
