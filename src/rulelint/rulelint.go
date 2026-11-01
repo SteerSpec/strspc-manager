@@ -50,7 +50,8 @@ var (
 	sentenceBreakRe = regexp.MustCompile(`[.!?]["')\]]*\s+\S`)
 	// inlineExampleRe finds the phrases that introduce an example in prose,
 	// which NTE-020 keeps out of rule bodies and of most notes.
-	inlineExampleRe = regexp.MustCompile(`(?i)\bsuch\s+as\b|\bfor\s+example\b|\be\.g\.|\bcf\.`)
+	// An abbreviation must end there, or `cf.foo` would count.
+	inlineExampleRe = regexp.MustCompile(`(?i)\bsuch\s+as\b|\bfor\s+example\b|\b(?:e\.g|cf)\.(?:\W|$)`)
 )
 
 // maxInheritHops is the longest inheritance chain allowed by ENT-008.
