@@ -76,5 +76,11 @@
     "code": "RF006",
     "severity": "warning",
     "path": "cited/prompt.txt:11"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF007",
+    "severity": "error",
+    "path": "cited/copied.txt:2"
   }
 ]

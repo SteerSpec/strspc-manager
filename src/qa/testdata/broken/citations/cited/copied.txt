@@ -1,0 +1,3 @@
+The next lines copy the body of a rule, wrapped.
+The subject of
+cit MUST hold.
