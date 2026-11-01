@@ -167,6 +167,12 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
 
+	// RL031: Without a rule linter here the caller runs LintRealm, which holds
+	// this check.
+	if l.cfg.RuleLinter != nil {
+		rulelint.CheckRealmStandards(dir, rf, res)
+	}
+
 	if l.cfg.Strict {
 		promoteWarnings(res)
 	}

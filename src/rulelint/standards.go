@@ -52,11 +52,12 @@ func checkStandards(ef *entity.File, res *result.Result, path string) {
 	}
 }
 
-// checkRealmStandards runs RL031 over a Realm and its sub-realms: the id of a
+// CheckRealmStandards runs RL031 over a Realm and its sub-realms: the id of a
 // `standard` note resolves in the tree of declarations around its rule
-// (NTE-016). A source with no manifest has no Realm to resolve against, so
-// LintRealm doesn't call this for it.
-func checkRealmStandards(dir string, rf *entity.RealmFile, res *result.Result) {
+// (NTE-016). LintRealm calls it, and realm-lint when it lints entity files
+// itself. A source with no manifest has no Realm to resolve against, so neither
+// reaches it for one.
+func CheckRealmStandards(dir string, rf *entity.RealmFile, res *result.Result) {
 	var opts []entity.WalkOption
 	if len(rf.SubRealms) > 0 {
 		opts = append(opts, entity.WithExcludeDirs(rf.SubRealms))

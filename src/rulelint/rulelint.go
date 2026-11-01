@@ -258,7 +258,7 @@ func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 		// then lint each sub-realm dir, and validate cross-refs globally.
 		res = l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
 	}
-	checkRealmStandards(dir, rf, res)
+	CheckRealmStandards(dir, rf, res)
 	return res
 }
 

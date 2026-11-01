@@ -171,7 +171,7 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 // `overrides` or `supersedes`, the only other edits that move a revision.
 func isDraftReferenceEdit(b, h entity.Rule) bool {
 	changed := !sameRef(b.Overrides, h.Overrides) || !sameRef(b.Supersedes, h.Supersedes)
-	return b.State == entity.StateDraft && changed && h.Revision == b.Revision+1
+	return b.State == entity.StateDraft && h.State == entity.StateDraft && changed && h.Revision == b.Revision+1
 }
 
 // checkNewRule runs RD004, RD010, RD011 for a rule that appears only in head.
@@ -276,6 +276,9 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 				Message:  fmt.Sprintf("append-only note %q (type %q) was removed or retyped", b.ID, b.Type),
 				Path:     notePath,
 			})
+			if ok {
+				checkStandardRetype(b, h, res, notePath)
+			}
 		case !ok:
 			// RD014: no note is ever removed; append-only removal is RD012.
 			res.Add(result.Diagnostic{

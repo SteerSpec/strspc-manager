@@ -1246,3 +1246,24 @@ func TestRD021_ReferenceEditsOutsideDraft(t *testing.T) {
 	head.Rules[0].Revision = 7
 	assertHasCode(t, New().Diff(base, head), "RD021")
 }
+
+// A reference edit that also leaves Draft is not an edit of a Draft rule.
+func TestRD021_ReferenceEditWithPromotion(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Overrides = ptr("OTHER-001")
+	head.Rules[0].Revision = 1
+	head.Rules[0].State = entity.StatePublished
+	assertHasCode(t, New().Diff(base, head), "RD021")
+}
+
+// An append-only note retyped to `standard` breaks both rules.
+func TestRD022_AppendOnlyToStandard(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Notes[0].Type = entity.NoteTypeStandard
+	head.Notes[0].Revision = 1
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD012")
+	assertHasCode(t, res, "RD022")
+}

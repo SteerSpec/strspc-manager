@@ -689,7 +689,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 26. Bodies of `D` rules with more than one key word outside backticks and rule IDs are reported at Info, since a relative clause can carry its own key word (RUL-004).
 27. Each `entity.standards` entry is valid and its `id` unique (STDREF-002 to STDREF-004, STDREF-008).
 28. Each `standard` note holds `<id>:<clause>`, and no rule holds the same one twice (NTE-014, NTE-015).
-29. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs with the Realm-wide pass, `strspc realm validate --recursive`, and only for a Realm with a `realm.json`. A sub-realm linted alone reads its parent from `../realm.json`.
+29. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs in `strspc realm validate` and only for a Realm with a `realm.json`, not in `strspc lint`. A sub-realm linted alone reads its parent from `../realm.json`.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 
