@@ -7,15 +7,15 @@
     "inherits": "GOCONV"
   },
   "rule_set": {
-    "version": "0.2.0",
-    "timestamp": "2026-11-01T07:12:02Z",
-    "hash": "blake3:5f4d1a5597bedebed3a6387fb7547f14c9ec767b91b558545ba6a5d48677c0e8"
+    "version": "0.3.0",
+    "timestamp": "2026-11-01T07:42:45Z",
+    "hash": "blake3:603e10aeb85ff6cf9ccacc9af0f102efefbdb92b7619b210e3564f011b6420fc"
   },
   "rules": [
     {
       "id": "GOTEST-001",
       "revision": 0,
-      "state": "P",
+      "state": "I",
       "body": "Every package under src/ MUST keep at least 85% statement coverage in its own tests.",
       "added_by": "@pleberre",
       "added_at": "2026-10-31",
