@@ -7,7 +7,7 @@ LDFLAGS := -s -w \
 	-X github.com/SteerSpec/strspc-manager/src/internal/version.Commit=$(COMMIT) \
 	-X github.com/SteerSpec/strspc-manager/src/internal/version.Date=$(DATE)
 
-.PHONY: setup build test lint fmt clean
+.PHONY: setup build test cover lint fmt clean
 
 setup:
 	@command -v pre-commit >/dev/null 2>&1 || { echo "pre-commit not found — see https://pre-commit.com/#installation"; exit 1; }
@@ -22,6 +22,9 @@ build:
 test:
 	go test ./...
 
+cover:
+	scripts/coverage-gate.sh
+
 lint:
 	golangci-lint run
 
@@ -29,4 +32,4 @@ fmt:
 	golangci-lint fmt
 
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) coverage.out

@@ -162,11 +162,12 @@ Rules are organized into **Realms** — namespaces where Entity Unique Identifie
 make setup   # install the pre-commit hooks
 make build   # build the strspc-manager binary
 make test    # run the tests
+make cover   # run the tests with the race detector and the coverage floor
 make lint    # run golangci-lint
 make fmt     # format the code
 ```
 
-CI runs the tests with `go test -race ./...`. See
+CI runs `make cover`, which fails any package under 85% statement coverage (GOTEST-001). See
 [`AGENTS.md`](AGENTS.md) for the agent workflow and the
 [SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/main/CONTRIBUTING.md) for
 everything else.

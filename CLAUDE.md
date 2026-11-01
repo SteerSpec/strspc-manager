@@ -23,11 +23,12 @@ Go library consumed by strspc-CLI (OSS) and strspc-cloud (SaaS).
 ```bash
 make build        # build binary
 make test         # run go test ./...
+make cover        # run the tests with -race and the coverage floor, as CI does
 make lint         # golangci-lint
 ```
 
 Every package under `src/` keeps at least 85% statement coverage from its own
-tests (GOTEST-001).
+tests (GOTEST-001). `make cover` fails any package below that.
 
 ## Conventions
 

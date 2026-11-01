@@ -31,8 +31,8 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: Test
-        run: go test -race ./...
+      - name: Test with the coverage floor
+        run: make cover
 
   lint-go:
     runs-on: ubuntu-latest
