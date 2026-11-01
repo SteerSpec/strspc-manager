@@ -217,6 +217,7 @@ func TestRL026_InlineExamples(t *testing.T) {
 		{"capitalised", "D", "For example, a tool MUST run.", true},
 		{"uppercase", "D", "MUST name a tool, E.G. Claude.", true},
 		{"none", "D", "MUST name a tool.", false},
+		{"e.g without the final full stop", "D", "MUST name the host e.g in a log.", false},
 		{"inside a longer word", "D", "MUST report such assets and a pdf.", false},
 		{"in code", "D", "MUST reject the text `such as` and `e.g.`.", false},
 		{"published", "P", "MUST name a tool such as Claude.", false},
