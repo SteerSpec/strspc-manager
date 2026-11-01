@@ -70,10 +70,12 @@ func splitHunks(file string) (header string, hunks []string) {
 	return header, hunks
 }
 
-// filePath extracts the path of a file diff for diagnostics. It prefers
-// the "+++" line (the "---" line for deletions), decoding Git's C-style
-// quoting, and falls back to the "diff --git a/X b/X" header, which it
-// splits in the middle so that paths containing spaces survive.
+// filePath extracts the path of a file diff, which diagnostics and the file
+// list of a partial diff both use. It prefers the exact "rename to" or
+// "copy to" line, then the "+++" line (the "---" line for deletions),
+// decoding Git's C-style quoting, and falls back to the "diff --git a/X b/X"
+// header, which it splits in the middle so that paths containing spaces
+// survive.
 func filePath(file string) string {
 	var header, oldSide string
 	for _, line := range strings.SplitAfter(file, "\n") {
@@ -81,6 +83,10 @@ func filePath(file string) string {
 		switch {
 		case strings.HasPrefix(line, "diff --git "):
 			header = strings.TrimPrefix(line, "diff --git ")
+		case strings.HasPrefix(line, "rename to "):
+			return unquoteGit(strings.TrimPrefix(line, "rename to "))
+		case strings.HasPrefix(line, "copy to "):
+			return unquoteGit(strings.TrimPrefix(line, "copy to "))
 		case strings.HasPrefix(line, "--- "):
 			oldSide = strings.TrimPrefix(line, "--- ")
 		case strings.HasPrefix(line, "+++ "):

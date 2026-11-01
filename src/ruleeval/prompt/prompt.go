@@ -54,12 +54,13 @@ func DiffBlock(diff string) string {
 // PartialDiffBlock wraps a part of a diff too large for one request. A part
 // cannot show what changed elsewhere, so a <diff_scope> block ahead of it
 // lists files, the paths the whole diff changes; unlisted counts the paths
-// left off that list.
+// left off that list. Paths come from the diff under review, so they are
+// escaped: a crafted file name must not forge a list entry or end the block.
 func PartialDiffBlock(chunk string, files []string, unlisted int) string {
 	var b strings.Builder
 	b.WriteString("<diff_scope>\nOnly part of the diff is shown below. Files changed by the whole diff:\n")
 	for _, f := range files {
-		fmt.Fprintf(&b, "- %s\n", f)
+		fmt.Fprintf(&b, "- %s\n", escapePath(f))
 	}
 	if unlisted > 0 {
 		fmt.Fprintf(&b, "%d more files are not listed.\n", unlisted)
@@ -67,6 +68,13 @@ func PartialDiffBlock(chunk string, files []string, unlisted int) string {
 	b.WriteString("</diff_scope>\n")
 	b.WriteString(DiffBlock(chunk))
 	return b.String()
+}
+
+// escapePath renders a path on one line with no tag delimiters; an ordinary
+// path comes back unchanged.
+func escapePath(path string) string {
+	q := strconv.Quote(path)
+	return strings.NewReplacer("<", `\x3c`, ">", `\x3e`).Replace(q[1 : len(q)-1])
 }
 
 // RulesBlock renders the rules to evaluate. Each rule carries its id,

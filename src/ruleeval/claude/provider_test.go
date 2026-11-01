@@ -498,6 +498,26 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "file_list_capped",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// More files than the list's share of the budget can name. The
+			// result stands, but it must be reported as incomplete.
+			diff:   manyFiles(60),
+			cfg:    twoChunks,
+			script: ok,
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant {
+					t.Errorf("verdict = %+v", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "of 60 files left off") {
+					t.Fatalf("expected one error reporting the capped list, got %v", resp.Errors)
+				}
+			},
+		},
+		{
 			name:   "two_chunk_missing_verdict",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			// Same two-chunk split as above, but the first chunk's response omits
@@ -888,6 +908,15 @@ func bigHunkDiff(path string, n int) string {
 	fmt.Fprintf(&b, "diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n@@ -0,0 +1,%d @@\n", path, path, path, path, n)
 	for i := 0; i < n; i++ {
 		fmt.Fprintf(&b, "+var generated%03d = %q\n", i, strings.Repeat("x", 40))
+	}
+	return b.String()
+}
+
+// manyFiles is a diff of n header-only files.
+func manyFiles(n int) string {
+	var b strings.Builder
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&b, "diff --git a/f%03d.go b/f%03d.go\n", i, i)
 	}
 	return b.String()
 }

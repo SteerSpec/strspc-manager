@@ -75,6 +75,9 @@ func TestFilePath(t *testing.T) {
 		"deleted":       {"diff --git a/gone.go b/gone.go\ndeleted file mode 100644\n--- a/gone.go\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n", "gone.go"},
 		"timestamp":     {"--- a/t.go\t2026-01-01 00:00:00\n+++ b/t.go\t2026-01-02 00:00:00\n@@ -1 +1 @@\n", "t.go"},
 		"rename-header": {"diff --git a/old name.go b/new name.go\nsimilarity index 90%\n", "new name.go"},
+		"rename-to":     {"diff --git a/old b/y b/docs/SPEC.md\nsimilarity index 100%\nrename from old\nrename to y b/docs/SPEC.md\n", "y b/docs/SPEC.md"},
+		"rename-quoted": {"diff --git a/old \"b/caf\\303\\251 b/x.go\"\nrename from old\nrename to \"caf\\303\\251 b/x.go\"\n", "café b/x.go"},
+		"copy-to":       {"diff --git a/old b/y b/docs/SPEC.md\nsimilarity index 100%\ncopy from old\ncopy to y b/docs/SPEC.md\n", "y b/docs/SPEC.md"},
 	}
 	for name, tc := range cases {
 		if got := filePath(tc.diff); got != tc.want {

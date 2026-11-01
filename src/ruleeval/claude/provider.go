@@ -260,6 +260,13 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	diffBlock := prompt.DiffBlock
 	if len(chunks) > 1 || len(oversize) > 0 {
 		files, unlisted := capFiles(changedFiles(req.Diff), budgetTokens*3/fileListShare)
+		if unlisted > 0 {
+			// Without the full list a rule spanning files cannot be judged on
+			// what a part leaves out, so the result must not pass as complete.
+			out.Errors = append(out.Errors, fmt.Errorf(
+				"diff too large to list every file: %d of %d files left off, so rules spanning files were judged on less",
+				unlisted, len(files)+unlisted))
+		}
 		diffBlock = func(chunk string) string { return prompt.PartialDiffBlock(chunk, files, unlisted) }
 		budgetTokens -= estimateTokens(diffBlock("")) - estimateTokens(prompt.DiffBlock(""))
 		chunks, oversize = chunkDiff(req.Diff, budgetTokens*3)
