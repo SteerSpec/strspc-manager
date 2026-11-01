@@ -437,10 +437,9 @@ toolchain; regenerate it with `go test ./src/result -run TestCodesJSONIsCurrent 
 `Summary` repeat the cells below word for word, and `src/result/codes_doc_test.go` fails when the registry
 differs from these tables, from `reserved_codes.txt`, or from the JSON file.
 
-The test-only package `src/qa` proves each code fires through the public APIs (MOD-010). It runs a clean Realm and a
-set of deliberately broken ones through every module and compares the exact diagnostics with each scenario's
-`expected.json`; what no file can provoke, such as a cancelled context or a failed provider, is a table of Go
-cases. `TestEveryCodeIsCovered` fails when a code in `result.Codes()` has no scenario, no Go case and no
+The test-only package `src/qa` implements MOD-010. It runs a clean Realm and a set of deliberately broken ones
+through every module and compares the exact diagnostics with each scenario's `expected.json`; what no file can
+provoke, such as a cancelled context or a failed provider, is a table of Go cases. `TestEveryCodeIsCovered` fails when a code in `result.Codes()` has no scenario, no Go case and no
 exception with a stated reason, so a new code needs a scenario in the change that adds it.
 `src/qa/testdata/README.md` says how to add one.
 

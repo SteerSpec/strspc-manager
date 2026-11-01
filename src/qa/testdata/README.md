@@ -1,8 +1,8 @@
 # QA realm fixtures
 
-These fixtures prove that every diagnostic code fires through a public API. `clean/` passes every module. Each directory under `broken/` is a themed scenario that runs through every module it has input for, and `src/qa` compares the exact diagnostics with the scenario's `expected.json`. Codes no file can provoke, such as a cancelled context or a failed provider, are the Go cases in `src/qa/cases_test.go`.
+These fixtures implement MOD-010. `clean/` passes every module. Each directory under `broken/` is a themed scenario that runs through every module it has input for, and `src/qa` compares the exact diagnostics with the scenario's `expected.json`. Codes no file can provoke, such as a cancelled context or a failed provider, are the Go cases in `src/qa/cases_test.go`.
 
-**These fixtures are broken on purpose.** The rule against hand-editing rule JSON does not apply here: `strspc rule ...` would refuse most of what they hold, so edit them by hand, then run `-update` to restore their hashes. Don't copy them as examples of valid rules, except `clean/`.
+**These fixtures are broken on purpose.** `strspc rule ...` would refuse most of what they hold, so edit them by hand, then run `-update` to restore their hashes. Don't copy them as examples of valid rules, except `clean/`.
 
 ## Layout
 

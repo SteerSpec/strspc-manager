@@ -27,8 +27,8 @@ make cover        # run the tests with -race and the coverage floor, as CI does
 make lint         # golangci-lint
 ```
 
-Every package under `src/` keeps at least 85% statement coverage from its own
-tests (GOTEST-001). `make cover` fails any package below that.
+Per-package coverage floor: 85% (GOTEST-001). `make cover` fails any package
+below it.
 
 ## Conventions
 
