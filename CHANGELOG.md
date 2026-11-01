@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.1](https://github.com/SteerSpec/strspc-manager/compare/v1.35.0...v1.35.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **ruleeval:** tell the model when it sees only part of a diff ([#217](https://github.com/SteerSpec/strspc-manager/issues/217)) ([1b29312](https://github.com/SteerSpec/strspc-manager/commit/1b293128fc60f3e6610111627a19514653fe8e08))
+
 ## [1.35.0](https://github.com/SteerSpec/strspc-manager/compare/v1.34.0...v1.35.0) (2026-11-01)
 
 
