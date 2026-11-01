@@ -39,9 +39,9 @@ An **Entity file** is the atomic unit of storage. It contains one top-level enti
 
 ### 2.2 Entity
 
-An Entity is an object with a unique identity that persists over time. It may transition through multiple states during its lifecycle and may possess one or more properties. The behavior of an entity is defined entirely by the rules applicable to its identity, properties, and states.
+An Entity is what rules are written about (ENT-001 to ENT-004).
 
-Each entity has an **Entity Unique Identifier** (EUID):
+Each entity carries its **Entity Unique Identifier** (EUID, ENT-005):
 
 - 3 to 18 characters in length.
 - Alphanumeric characters only (letters and numbers).
@@ -67,7 +67,7 @@ A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a su
 
 ### 2.3 Rule
 
-A Rule defines a single property of an entity or describes the behavior of that property. Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
+A Rule is the unit of the model (RUL-001). Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
 
 Each rule carries:
 
@@ -151,25 +151,25 @@ Sub-entities follow the same schema as top-level entities. The nesting can be ar
 
 ### 2.8 Realm
 
-A **Realm** is a namespace in which Entity Unique Identifiers are unique (RLM-001). It is the organizational boundary for rule authoring — every entity file resides in exactly one Realm's directory tree (RLM-007).
+A **Realm** is the namespace of Entity Unique Identifiers (RLM-001). It is the organizational boundary for rule authoring — every entity file resides in exactly one Realm's directory tree (RLM-007).
 
 **Realm Identifier:** Each Realm has an identifier that follows reverse domain notation (e.g., `dev.steerspec.core`, `com.acme.security`) to ensure global uniqueness across organizations (RLM-008). The identifier pattern is `^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$`.
 
-**Structure:** A Realm directory MUST contain:
+**Structure:** A Realm directory holds:
 
-- A `_schema/` directory with schema files used to validate its entities (RLM-003).
-- A `realm.json` manifest at its root (RLM-004).
+- Its `_schema/` directory (RLM-003).
+- Its `realm.json` manifest (RLM-004).
 - One or more entity JSON files.
 
-**Rule Identifier Format:** Each Realm HAS a Rule Identifier Format configuration (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4). A sub-realm inherits its parent Realm's format (RLM-015) and leaves `rule_identifier_format` null (RM013); a Realm never inherits the format of a Realm it depends on.
+**Rule Identifier Format:** Each Realm carries a Rule Identifier Format (RLM-002) that determines how rule identifiers are rendered. If not overridden, the Realm inherits the RLIFRMT defaults (see §4). A sub-realm inherits its parent Realm's format (RLM-015) and leaves `rule_identifier_format` null (RM013); a Realm never inherits the format of a Realm it depends on.
 
-**Dependencies:** A Realm MAY declare dependencies on other Realms, importing their rules as read-only references (RLM-005). When dependencies exist, the Realm MUST NOT define Entity Unique Identifiers that collide with any Realm it depends on (RLM-006).
+**Dependencies:** A Realm can import the rules of other Realms read-only (RLM-005), and its EUIDs stay clear of theirs (RLM-006).
 
 **Cross-Realm References:** Entity references across Realm boundaries MUST use the qualified form `<realm-id>:<EUID>` (e.g., `dev.steerspec.core:ENT`). Within the same Realm, the short form (EUID only) is sufficient (RLM-009).
 
 #### Realm Manifest
 
-The Realm Manifest is a JSON file named `realm.json` at the root of a Realm directory (RLMMNFST-001). It declares the Realm's identity and configuration:
+The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's identity and configuration:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -177,11 +177,11 @@ The Realm Manifest is a JSON file named `realm.json` at the root of a Realm dire
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017). A sub-realm leaves it out and inherits its parent's language (RLM-018, RM017). |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.13.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.14.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
-The manifest MUST declare the Realm's identifier, title, and version (RLMMNFST-002). Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
+RLMMNFST-002 sets the required fields. Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
 The `realm.v1.schema.json` schema validates this manifest format. It is a hand-maintained axiom — the same bootstrap pattern as `bootstrap.schema.json`.
 
@@ -206,7 +206,7 @@ platform/
 
 **Nesting depth:** Sub-realms are limited to one level — a sub-realm MUST NOT declare its own `sub_realms` (RLM-012).
 
-**EUID uniqueness:** EUID uniqueness (RLM-001) spans the parent Realm and all its declared sub-realms (RLM-013). No EUID may appear in both the parent and a sub-realm, or in two sibling sub-realms.
+**EUID uniqueness:** RLM-013 extends RLM-001 to a Realm tree. No EUID may appear in both the parent and a sub-realm, or in two sibling sub-realms.
 
 **Dependency inheritance:** A sub-realm inherits its parent's dependencies (RLM-014). It MAY declare additional dependencies of its own; a sub-realm dependency with the same `realm_id` as a parent dependency overrides it. `realm-resolve` resolves this effective list for each sub-realm — inherited entries reuse the parent's resolution, own entries are resolved relative to the sub-realm directory — checks sub-realm EUIDs against the effective dependency set (RR011), and checks each own dependency's EUIDs against the dependencies already in that set (RR005).
 
@@ -214,15 +214,15 @@ platform/
 
 The **Configuration** is the consumer-side complement to a Realm. Where a Realm defines rules, the Configuration declares which rules a project subscribes to and how they are enforced.
 
-A Configuration IS a directory named `.strspc/` at the root of a project that consumes SteerSpec rules (SPCFG-001). It MUST contain a `config.yaml` manifest file (SPCFG-002) and MAY contain a local cache for resolved rules and evaluation results (SPCFG-003).
+A Configuration is the `.strspc/` directory of a project (SPCFG-001), with its `config.yaml` (SPCFG-002) and an optional local cache (SPCFG-003).
 
 A project may have both a Configuration (consuming rules) and a local Realm (authoring rules). They are complementary — the Configuration MAY reference a local Realm as a rule source (SPCFG-005).
 
-**Severity principle:** The severity of a rule violation IS determined by the consumer configuration, not by the rule itself (SPCFG-008). A rule defines what must be true; how critical a violation is depends on the consuming project's context.
+**Severity principle:** Severity belongs to the consumer, not the rule (SPCFG-008). A rule defines what must be true; how critical a violation is depends on the consuming project's context.
 
 #### Rule Sources
 
-The Configuration MUST declare at least one rule source (SPCFG-004). Each source is an entry in the `rules` array of `config.yaml` with:
+The Configuration lists its rule sources (SPCFG-004), each one in the `rules` array of `config.yaml` (SPCFGSRC-001) with:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -233,7 +233,7 @@ Source formats include remote references (`github://SteerSpec/strspc-rules@v1/ru
 
 #### Evaluator
 
-The Configuration MAY configure an evaluator for rule enforcement (SPCFG-006). The `evaluator` object declares:
+The optional `evaluator` object (SPCFG-006) declares:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -252,7 +252,7 @@ The Configuration MAY declare which rule lifecycle states are sent to the evalua
 
 #### Fail Conditions
 
-The Configuration MAY declare fail conditions referencing rule lifecycle states (SPCFG-007). The `fail_on` array contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails. Violations of evaluated rules whose state is not listed in `fail_on` are reported as warnings.
+The optional `fail_on` array (SPCFG-007) contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails. Violations of evaluated rules whose state is not listed in `fail_on` are reported as warnings.
 
 **Schema:** The `config.v1.schema.json` schema validates this configuration format. Unlike hand-maintained axioms (`bootstrap.schema.json`, `realm.v1.schema.json`), the config schema is **generated** from SPCFG entity rules by `tools/build-schema.py`. This follows the same self-referential pattern as `entity.v1.schema.json` — the rules define the schema that validates the artifact.
 
@@ -415,7 +415,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache, and reports what it holds without the network. Shared by `rule-resolve` and `realm-resolve`. |
-| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Takes the text from its caller. |
+| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Also reports text that copies a rule's body. Takes the text from its caller. |
 
 ### 6.3 Diagnostic Codes
 
@@ -585,6 +585,8 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 
 The stored `<EUID>-<NNN>` form always matches, which also covers a rendered identifier under the default format. A Realm's other rendered shapes match only that Realm's EUIDs. An unknown prefix is reported only when it is uppercase and starts with a letter, so `feat-123` and `100-200` are not citations. URLs, identifiers inside a longer hyphenated token, identifiers passed to `WithIgnore` and states passed to `WithAllowedStates` are skipped, as is a line holding `strspc-refs: ignore` and the line after it. A superseder in `D` or `A` replaces nothing.
 
+RF007 compares whole bodies in every rule state, after dropping URLs and HTML tags and comments, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found, and a rule no citation can reach, because earlier sources hold its ID and its Realm, isn't compared. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-001 leaves that to the evaluator.
+
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RF001 | Error | The cited rule does not exist in the sources, or the citation names a Realm that is not one of them. |
@@ -593,6 +595,7 @@ The stored `<EUID>-<NNN>` form always matches, which also covers a rendered iden
 | RF004 | Error | The cited rule, in `D`, `P` or `I`, is superseded by a rule in `I`, `R` or `T`. |
 | RF005 | Warning | The cited rule, in `D`, `P` or `I`, is superseded by a rule in `P`, so it stays in force until that rule reaches `I` (§3.3). |
 | RF006 | Warning | The cited rule is in state `D` and no rule supersedes it. |
+| RF007 | Error | The text holds the whole body of a rule of five words or more, ignoring case, punctuation and line breaks. |
 
 #### `eval-cache` (EC)
 

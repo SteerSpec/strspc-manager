@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "DOC",
+    "title": "Documentation conventions",
+    "description": "How text outside the rules refers to them."
+  },
+  "rule_set": {
+    "version": "0.1.1",
+    "timestamp": "2026-11-01T07:09:46Z",
+    "hash": "blake3:4053104896a6ffe2867d3f15eadddd9f0ab14c8f02de0d3cd3206f68d137d720"
+  },
+  "rules": [
+    {
+      "id": "DOC-001",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST cite a rule by its identifier and MUST NOT restate its body.",
+      "added_by": "@pleberre",
+      "added_at": "2026-11-01",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

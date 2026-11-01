@@ -288,6 +288,15 @@
     "retired": false
   },
   {
+    "code": "RF007",
+    "module": "rule-refs",
+    "severity": "Error",
+    "title": "Copied rule body",
+    "summary": "The text holds the whole body of a rule of five words or more, ignoring case, punctuation and line breaks.",
+    "fix": "Replace the copied text with a citation of the rule's ID, which the message names.",
+    "retired": false
+  },
+  {
     "code": "RL000",
     "module": "rule-lint",
     "severity": "Error",

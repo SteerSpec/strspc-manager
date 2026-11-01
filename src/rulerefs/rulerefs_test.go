@@ -346,6 +346,113 @@ func TestNewRejectsBadInput(t *testing.T) {
 	}
 }
 
+func copySource() rulerefs.Source {
+	const body = "The `order` total MUST equal the sum of its lines."
+	return rulerefs.Source{
+		RealmID: "dev.steerspec.copy",
+		Entities: []*entity.File{{
+			Entity: entity.Entity{ID: "ORD"},
+			Rules: []entity.Rule{
+				{ID: "ORD-001", State: entity.StateImplemented, Body: body},
+				{ID: "ORD-002", State: entity.StateAbandoned, Body: "An abandoned rule MUST stay abandoned forever."},
+				{ID: "ORD-003", State: entity.StateImplemented, Body: "MAY possess many lines."},
+				// ORD-004 repeats ORD-001, so a copy is reported once.
+				{ID: "ORD-004", State: entity.StateImplemented, Body: body},
+			},
+			SubEntities: []entity.File{{
+				Entity: entity.Entity{ID: "SUB", Parent: "ORD"},
+				Rules:  []entity.Rule{{ID: "SUB-001", State: entity.StateImplemented, Body: "A sub entity rule MUST match too."}},
+			}},
+		}},
+	}
+}
+
+func TestCopiedBody(t *testing.T) {
+	const copied = "The order total MUST equal the sum of its lines."
+	rf007 := func(line int) finding { return finding{"RF007", result.Error, line} }
+	tests := []struct {
+		name string
+		text string
+		want []finding
+	}{
+		{name: "citation only", text: "See ORD-001."},
+		{name: "exact copy", text: "The `order` total MUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "case and markup differ", text: "**the ORDER total** must equal *the sum* of its lines!", want: []finding{rf007(1)}},
+		{name: "inside a sentence", text: "Remember: " + copied + " Always.", want: []finding{rf007(1)}},
+		{name: "wrapped across lines", text: "intro\n\nThe order total MUST\n> equal the sum\n\nof its lines.\n", want: []finding{rf007(3)}},
+		{name: "citation beside the copy", text: "ORD-001: " + copied, want: []finding{rf007(1)}},
+		{name: "two copies", text: copied + "\n" + copied, want: []finding{rf007(1), rf007(2)}},
+		{name: "abandoned rule", text: "An abandoned rule MUST stay abandoned forever.", want: []finding{rf007(1)}},
+		{name: "sub-entity rule", text: "A sub entity rule MUST match too.", want: []finding{rf007(1)}},
+		{name: "one word differs", text: "The order total SHOULD equal the sum of its lines."},
+		{name: "partial copy", text: "The order total MUST equal the sum."},
+		{name: "longer words at the edges", text: "xThe order total MUST equal the sum of its linesx."},
+		{name: "short body", text: "MAY possess many lines."},
+		{name: "html tags", text: "<strong>The</strong> order total<br>MUST equal <em>the sum</em> of its lines.", want: []finding{rf007(1)}},
+		{name: "html comment inside", text: "The order total <!-- note --> MUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "comment line inside a wrap", text: "The order total\n<!-- strspc-refs: ignore -->\nMUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "multi-line html comment inside", text: "The order total <!-- a\nnote\n--> MUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "line after a multi-line comment", text: "<!--\nnote\n-->\n" + copied, want: []finding{rf007(4)}},
+		{name: "url slug", text: "https://example.com/the-order-total-must-equal-the-sum-of-its-lines"},
+		{name: "marker on the line", text: copied + " <!-- strspc-refs: ignore -->"},
+		{name: "marker above", text: "<!-- strspc-refs: ignore -->\n" + copied},
+		{name: "marker above the start of a wrap", text: "<!-- strspc-refs: ignore -->\nThe order total\nMUST equal the sum of its lines."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := findings(check(t, tt.text, []rulerefs.Source{copySource()})); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCopiedBodyBySource(t *testing.T) {
+	const first, second = "The first source MUST win this rule.", "The second source MUST lose this rule."
+	source := func(realm, body string) rulerefs.Source {
+		return rulerefs.Source{
+			RealmID: realm,
+			Entities: []*entity.File{{
+				Entity: entity.Entity{ID: "ORD"},
+				Rules:  []entity.Rule{{ID: "ORD-001", State: entity.StateImplemented, Body: body}},
+			}},
+		}
+	}
+	rf007 := []finding{{"RF007", result.Error, 1}}
+	tests := []struct {
+		name       string
+		realm      string
+		wantSecond []finding
+	}{
+		{name: "another Realm stays citable by its qualifier", realm: "dev.steerspec.second", wantSecond: rf007},
+		{name: "same Realm loses to the first source", realm: "dev.steerspec.first"},
+		{name: "no Realm loses to the first source", realm: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sources := []rulerefs.Source{source("dev.steerspec.first", first), source(tt.realm, second)}
+			if got := findings(check(t, first, sources)); !reflect.DeepEqual(got, rf007) {
+				t.Errorf("first body: got %v, want %v", got, rf007)
+			}
+			if got := findings(check(t, second, sources)); !reflect.DeepEqual(got, tt.wantSecond) {
+				t.Errorf("second body: got %v, want %v", got, tt.wantSecond)
+			}
+		})
+	}
+}
+
+func TestCopiedBodyOptions(t *testing.T) {
+	const text = "The order total MUST equal the sum of its lines."
+	sources := []rulerefs.Source{copySource()}
+	if got := findings(check(t, text, sources, rulerefs.WithIgnore("ORD-001"))); got != nil {
+		t.Errorf("WithIgnore kept %v", got)
+	}
+	got := findings(check(t, text, sources, rulerefs.WithAllowedStates(entity.StateImplemented)))
+	if want := []finding{{"RF007", result.Error, 1}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("WithAllowedStates: got %v, want %v", got, want)
+	}
+}
+
 // A long line must not cost more than a linear scan, and the position of a
 // finding must stay correct after a URL is blanked out.
 func TestLongLine(t *testing.T) {

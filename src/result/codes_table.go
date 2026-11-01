@@ -864,6 +864,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Promote the rule with `strspc rule promote`, or cite a rule already Published.",
 	},
 	{
+		Code:     "RF007",
+		Module:   "rule-refs",
+		Severity: "Error",
+		Title:    "Copied rule body",
+		Summary:  "The text holds the whole body of a rule of five words or more, ignoring case, punctuation and line breaks.",
+		Fix:      "Replace the copied text with a citation of the rule's ID, which the message names.",
+	},
+	{
 		Code:     "EC001",
 		Module:   "eval-cache",
 		Severity: "Info",
