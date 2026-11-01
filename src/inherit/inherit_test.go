@@ -184,42 +184,55 @@ func TestOverriddenBy_InheritedReplacementNamesTheInheritor(t *testing.T) {
 	}
 }
 
-func TestDisplaced_OwnOverride(t *testing.T) {
+// TestDisplaced checks which rules an entity no longer has along its chain.
+func TestDisplaced(t *testing.T) {
 	base := hop("core", "BASE", rule("BASE-001", "I", nil))
-	child := hop("prod", "SAV", rule("SAV-001", "P", ptr("core:BASE-001")))
-	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, []string{"core:BASE-001"}) {
-		t.Errorf("Displaced = %v", got)
+	tests := []struct {
+		name      string
+		child     Hop
+		ancestors []Hop
+		want      []string
+	}{
+		{
+			name:      "own override",
+			child:     hop("prod", "SAV", rule("SAV-001", "P", ptr("core:BASE-001"))),
+			ancestors: []Hop{base},
+			want:      []string{"core:BASE-001"},
+		},
+		{
+			name:      "a Draft override counts",
+			child:     hop("prod", "SAV", rule("SAV-001", "D", ptr("core:BASE-001"))),
+			ancestors: []Hop{base},
+			want:      []string{"core:BASE-001"},
+		},
+		{
+			name:  "through the chain",
+			child: hop("prod", "GRA", rule("GRA-001", "P", ptr("bank:CHI-001"))),
+			ancestors: []Hop{
+				hop("bank", "CHI", rule("CHI-001", "I", ptr("core:PAR-001"))),
+				hop("core", "PAR", rule("PAR-001", "I", nil)),
+			},
+			want: []string{"core:PAR-001", "bank:CHI-001"},
+		},
+		{
+			name:  "retired along the chain",
+			child: hop("prod", "SAV", rule("SAV-001", "R", nil)),
+			ancestors: []Hop{hop("core", "BASE",
+				rule("BASE-001", "R", nil), rule("BASE-002", "T", nil), rule("BASE-003", "A", nil), rule("BASE-004", "I", nil))},
+			want: []string{"prod:SAV-001", "core:BASE-001", "core:BASE-002"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ids(Displaced(tt.child, tt.ancestors)); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Displaced = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestDisplaced_DraftOverrideCounts(t *testing.T) {
-	base := hop("core", "BASE", rule("BASE-001", "I", nil))
-	child := hop("prod", "SAV", rule("SAV-001", "D", ptr("core:BASE-001")))
-	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, []string{"core:BASE-001"}) {
-		t.Errorf("Displaced = %v", got)
-	}
-}
-
-func TestDisplaced_ThroughTheChain(t *testing.T) {
-	// G → C → P. C-001 replaces P-001, and G-001 replaces C-001.
-	p := hop("core", "PAR", rule("PAR-001", "I", nil))
-	c := hop("bank", "CHI", rule("CHI-001", "I", ptr("core:PAR-001")))
-	g := hop("prod", "GRA", rule("GRA-001", "P", ptr("bank:CHI-001")))
-	want := []string{"core:PAR-001", "bank:CHI-001"}
-	if got := ids(Displaced(g, []Hop{c, p})); !reflect.DeepEqual(got, want) {
-		t.Errorf("Displaced = %v, want %v", got, want)
-	}
-}
-
-func TestDisplaced_RetiredAlongTheChain(t *testing.T) {
-	base := hop("core", "BASE", rule("BASE-001", "R", nil), rule("BASE-002", "T", nil), rule("BASE-003", "A", nil), rule("BASE-004", "I", nil))
-	child := hop("prod", "SAV", rule("SAV-001", "R", nil))
-	want := []string{"prod:SAV-001", "core:BASE-001", "core:BASE-002"}
-	if got := ids(Displaced(child, []Hop{base})); !reflect.DeepEqual(got, want) {
-		t.Errorf("Displaced = %v, want %v", got, want)
-	}
-}
-
+// TestRuleStandards_ComeFromTheOwner checks that an inherited rule resolves
+// against its owner's declarations, not the inheriting entity's.
 func TestRuleStandards_ComeFromTheOwner(t *testing.T) {
 	asvs := []entity.StandardRef{{ID: "owasp.asvs", Relation: entity.RelationImplements}}
 	realm := []entity.StandardRef{{ID: "iab.tcf", Relation: entity.RelationImplements}}

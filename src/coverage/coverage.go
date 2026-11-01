@@ -66,8 +66,9 @@ type Report struct {
 	Declared []entity.StandardRef
 	// Clauses lists the clauses, sorted by standard, version, clause and entity.
 	Clauses []Clause
-	// Unresolved lists the `standard` notes whose `<id>` resolves to no
-	// reference, which RL031 reports for the Realm's own rules.
+	// Unresolved lists the `standard` notes that are malformed or whose `<id>`
+	// resolves to no reference, which RL029 and RL031 report for the Realm's own
+	// rules, not a dependency's.
 	Unresolved []Mapping
 }
 
@@ -85,13 +86,13 @@ func Compute(entities []*realmresolve.Inheritance) *Report {
 				declared[ref] = true
 			}
 		}
-		r.measure(e)
+		r.measure(e, declared)
 	}
 	for ref := range declared {
 		r.Declared = append(r.Declared, ref)
 	}
 	slices.SortFunc(r.Declared, func(a, b entity.StandardRef) int {
-		return cmp.Or(cmp.Compare(a.ID, b.ID), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Relation, b.Relation))
+		return cmp.Or(cmp.Compare(a.ID, b.ID), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Relation, b.Relation), cmp.Compare(a.URL, b.URL))
 	})
 	slices.SortFunc(r.Clauses, func(a, b Clause) int {
 		return cmp.Or(cmp.Compare(a.Standard, b.Standard), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Clause, b.Clause), cmp.Compare(a.Entity, b.Entity), cmp.Compare(a.Status, b.Status))
@@ -99,8 +100,9 @@ func Compute(entities []*realmresolve.Inheritance) *Report {
 	return r
 }
 
-// measure adds the clauses of one entity.
-func (r *Report) measure(e *realmresolve.Inheritance) {
+// measure adds the clauses of one entity, and to declared the references they
+// resolve to, which an inherited rule's owner may hold outside its scopes.
+func (r *Report) measure(e *realmresolve.Inheritance, declared map[entity.StandardRef]bool) {
 	euid := e.Entity.Entity.Entity.ID
 	claims := make(map[clauseKey]*Clause)
 	cites := make(map[clauseKey]*Clause)
@@ -120,6 +122,7 @@ func (r *Report) measure(e *realmresolve.Inheritance) {
 
 	for _, rule := range inherit.Effective(e.Entity, e.Ancestors, nil) {
 		r.eachMapping(rule, func(key clauseKey, ref *entity.StandardRef, m Mapping) {
+			declared[*ref] = true
 			switch {
 			case ref.Relation != entity.RelationImplements:
 				add(cites, key, StatusCited, m)
@@ -133,6 +136,7 @@ func (r *Report) measure(e *realmresolve.Inheritance) {
 	lapsed := make(map[clauseKey]*Clause)
 	for _, rule := range inherit.Displaced(e.Entity, e.Ancestors) {
 		r.eachMapping(rule, func(key clauseKey, ref *entity.StandardRef, m Mapping) {
+			declared[*ref] = true
 			if _, live := claims[key]; !live && ref.Relation == entity.RelationImplements {
 				add(lapsed, key, StatusLapsed, m)
 			}
@@ -149,8 +153,8 @@ func (r *Report) measure(e *realmresolve.Inheritance) {
 	}
 }
 
-// eachMapping calls f for each `standard` note on rule that resolves, from the
-// entity owning the rule (NTE-016), and records those that don't.
+// eachMapping calls f for each `standard` note on rule that parses and resolves,
+// from the entity owning the rule (NTE-016), and records those that don't.
 func (r *Report) eachMapping(rule inherit.Rule, f func(clauseKey, *entity.StandardRef, Mapping)) {
 	for _, n := range rule.Notes {
 		if n.Type != entity.NoteTypeStandard {
@@ -158,11 +162,8 @@ func (r *Report) eachMapping(rule inherit.Rule, f func(clauseKey, *entity.Standa
 		}
 		m := Mapping{Rule: rule.QualifiedID(), State: rule.Rule.State, Note: n.ID}
 		id, clause, err := entity.ParseStandardNote(n.Content)
-		if err != nil {
-			continue // RL029.
-		}
 		ref := entity.ResolveStandard(id, rule.Standards...)
-		if ref == nil {
+		if err != nil || ref == nil {
 			if !slices.Contains(r.Unresolved, m) {
 				r.Unresolved = append(r.Unresolved, m)
 			}

@@ -65,95 +65,120 @@ func check(t *testing.T, r *Report, want ...string) {
 	}
 }
 
-func TestStateDecidesStatus(t *testing.T) {
-	f := file("AUTH", []entity.StandardRef{asvs5},
-		[]entity.Rule{rule("AUTH-001", "I"), rule("AUTH-002", "P"), rule("AUTH-003", "D"), rule("AUTH-004", "A")},
-		map[string][]string{
-			"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:2"}, "AUTH-003": {"owasp.asvs:3"}, "AUTH-004": {"owasp.asvs:4"},
+// TestCompute checks the class of each clause over a chain given as child and
+// ancestors.
+func TestCompute(t *testing.T) {
+	asIs := entity.StandardRef{ID: "owasp.asvs", Version: "5.0", Relation: entity.RelationDerivedFrom}
+	base := func(ref entity.StandardRef, state string) inherit.Hop {
+		return *hop("core", file("BASE", []entity.StandardRef{ref}, []entity.Rule{rule("BASE-001", state)},
+			map[string][]string{"BASE-001": {"owasp.asvs:1"}}))
+	}
+	refs := []entity.StandardRef{asvs5}
+	tests := []struct {
+		name      string
+		child     *entity.File
+		ancestors []inherit.Hop
+		want      []string
+	}{
+		{
+			name: "state decides the class",
+			child: file("AUTH", refs,
+				[]entity.Rule{rule("AUTH-001", "I"), rule("AUTH-002", "P"), rule("AUTH-003", "D"), rule("AUTH-004", "A")},
+				map[string][]string{
+					"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:2"}, "AUTH-003": {"owasp.asvs:3"}, "AUTH-004": {"owasp.asvs:4"},
+				}),
+			want: []string{"AUTH owasp.asvs@5.0:1 covered", "AUTH owasp.asvs@5.0:2 mapped", "AUTH owasp.asvs@5.0:3 mapped"},
+		},
+		{
+			name: "an Implemented rule covers a clause a Published rule maps",
+			child: file("AUTH", refs, []entity.Rule{rule("AUTH-001", "P"), rule("AUTH-002", "I")},
+				map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:1"}}),
+			want: []string{"AUTH owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name: "derived_from is cited and never covered",
+			child: file("KWRD", []entity.StandardRef{cited}, []entity.Rule{rule("KWRD-001", "I")},
+				map[string][]string{"KWRD-001": {"ietf.rfc2119:1"}}),
+			want: []string{"KWRD ietf.rfc2119@:1 cited"},
+		},
+		{
+			name: "a retired or terminated rule lapses",
+			child: file("AUTH", refs, []entity.Rule{rule("AUTH-001", "R"), rule("AUTH-002", "T"), rule("AUTH-003", "A")},
+				map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:2"}, "AUTH-003": {"owasp.asvs:3"}}),
+			want: []string{"AUTH owasp.asvs@5.0:1 lapsed", "AUTH owasp.asvs@5.0:2 lapsed"},
+		},
+		{
+			name: "a retired citation does not lapse",
+			child: file("KWRD", []entity.StandardRef{cited}, []entity.Rule{rule("KWRD-001", "R")},
+				map[string][]string{"KWRD-001": {"ietf.rfc2119:1"}}),
+		},
+		{
+			name: "covered beats lapsed",
+			child: file("AUTH", refs, []entity.Rule{rule("AUTH-001", "R"), rule("AUTH-002", "I")},
+				map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:1"}}),
+			want: []string{"AUTH owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name:      "an inherited rule covers through its owner",
+			child:     file("SAV", nil, nil, nil),
+			ancestors: []inherit.Hop{base(asvs5, "I")},
+			want:      []string{"SAV owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name:      "an override with no mapping of its own lapses the clause",
+			child:     file("SAV", nil, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")}, nil),
+			ancestors: []inherit.Hop{base(asvs5, "I")},
+			want:      []string{"SAV owasp.asvs@5.0:1 lapsed"},
+		},
+		{
+			name: "an override with its own mapping covers",
+			child: file("SAV", refs, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")},
+				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),
+			ancestors: []inherit.Hop{base(asvs5, "I")},
+			want:      []string{"SAV owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name: "two editions are two clauses",
+			child: file("SAV", refs, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")},
+				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),
+			ancestors: []inherit.Hop{base(asvs4, "I")},
+			want:      []string{"SAV owasp.asvs@4.0:1 lapsed", "SAV owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name: "relation is read per note",
+			child: file("SAV", []entity.StandardRef{asIs}, []entity.Rule{rule("SAV-001", "D")},
+				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),
+			ancestors: []inherit.Hop{base(asvs5, "T")},
+			want:      []string{"SAV owasp.asvs@5.0:1 cited", "SAV owasp.asvs@5.0:1 lapsed"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", tt.child), tt.ancestors...)}), tt.want...)
 		})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}),
-		"AUTH owasp.asvs@5.0:1 covered", "AUTH owasp.asvs@5.0:2 mapped", "AUTH owasp.asvs@5.0:3 mapped")
+	}
 }
 
-func TestImplementedAndPublishedOnOneClauseIsCovered(t *testing.T) {
+// TestComputeListsEveryRuleOfAClause checks that a clause keeps all its rules.
+func TestComputeListsEveryRuleOfAClause(t *testing.T) {
 	f := file("AUTH", []entity.StandardRef{asvs5}, []entity.Rule{rule("AUTH-001", "P"), rule("AUTH-002", "I")},
 		map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:1"}})
 	r := Compute([]*realmresolve.Inheritance{chain(hop("r", f))})
-	check(t, r, "AUTH owasp.asvs@5.0:1 covered")
 	if got := len(r.Clauses[0].Rules); got != 2 {
 		t.Errorf("rules = %d, want 2", got)
 	}
 }
 
-func TestDerivedFromIsCitedNeverCovered(t *testing.T) {
-	f := file("KWRD", []entity.StandardRef{cited}, []entity.Rule{rule("KWRD-001", "I")}, map[string][]string{"KWRD-001": {"ietf.rfc2119:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}), "KWRD ietf.rfc2119@:1 cited")
-}
-
-func TestRetiredRuleLapses(t *testing.T) {
-	f := file("AUTH", []entity.StandardRef{asvs5}, []entity.Rule{rule("AUTH-001", "R"), rule("AUTH-002", "T"), rule("AUTH-003", "A")},
-		map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:2"}, "AUTH-003": {"owasp.asvs:3"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}),
-		"AUTH owasp.asvs@5.0:1 lapsed", "AUTH owasp.asvs@5.0:2 lapsed")
-}
-
-func TestRetiredDerivedFromDoesNotLapse(t *testing.T) {
-	f := file("KWRD", []entity.StandardRef{cited}, []entity.Rule{rule("KWRD-001", "R")}, map[string][]string{"KWRD-001": {"ietf.rfc2119:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}))
-}
-
-func TestCoveredBeatsLapsed(t *testing.T) {
-	f := file("AUTH", []entity.StandardRef{asvs5}, []entity.Rule{rule("AUTH-001", "R"), rule("AUTH-002", "I")},
-		map[string][]string{"AUTH-001": {"owasp.asvs:1"}, "AUTH-002": {"owasp.asvs:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}), "AUTH owasp.asvs@5.0:1 covered")
-}
-
-func TestInheritedRuleCoversThroughItsOwner(t *testing.T) {
-	base := file("BASE", []entity.StandardRef{asvs5}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
-	child := file("SAV", nil, nil, nil)
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", child), *hop("core", base))}),
-		"SAV owasp.asvs@5.0:1 covered")
-}
-
-func TestOverrideLapsesWithoutItsOwnMapping(t *testing.T) {
-	base := file("BASE", []entity.StandardRef{asvs5}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
-	child := file("SAV", nil, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")}, nil)
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", child), *hop("core", base))}),
-		"SAV owasp.asvs@5.0:1 lapsed")
-}
-
-func TestOverrideWithItsOwnMappingCovers(t *testing.T) {
-	base := file("BASE", []entity.StandardRef{asvs5}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
-	child := file("SAV", []entity.StandardRef{asvs5}, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")}, map[string][]string{"SAV-001": {"owasp.asvs:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", child), *hop("core", base))}),
-		"SAV owasp.asvs@5.0:1 covered")
-}
-
-// Two editions of a standard renumber, so a clause under each is two clauses.
-func TestEditionsDoNotMerge(t *testing.T) {
-	base := file("BASE", []entity.StandardRef{asvs4}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
-	child := file("SAV", []entity.StandardRef{asvs5}, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")}, map[string][]string{"SAV-001": {"owasp.asvs:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", child), *hop("core", base))}),
-		"SAV owasp.asvs@4.0:1 lapsed", "SAV owasp.asvs@5.0:1 covered")
-}
-
-// The same id and version with different relations: the note whose own
-// reference is `implements` decides the class, and the citation stays one.
-func TestRelationIsReadPerNote(t *testing.T) {
-	asIs := entity.StandardRef{ID: "owasp.asvs", Version: "5.0", Relation: entity.RelationDerivedFrom}
-	base := file("BASE", []entity.StandardRef{asvs5}, []entity.Rule{rule("BASE-001", "T")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
-	child := file("SAV", []entity.StandardRef{asIs}, []entity.Rule{rule("SAV-001", "D")}, map[string][]string{"SAV-001": {"owasp.asvs:1"}})
-	check(t, Compute([]*realmresolve.Inheritance{chain(hop("prod", child), *hop("core", base))}),
-		"SAV owasp.asvs@5.0:1 cited", "SAV owasp.asvs@5.0:1 lapsed")
-}
-
-func TestWithdrawnMappingIsIgnored(t *testing.T) {
+// TestComputeIgnoresWithdrawnMappings checks that a note retyped to `reference`
+// maps nothing.
+func TestComputeIgnoresWithdrawnMappings(t *testing.T) {
 	f := file("AUTH", []entity.StandardRef{asvs5}, []entity.Rule{rule("AUTH-001", "I")}, map[string][]string{"AUTH-001": {"owasp.asvs:1"}})
 	f.Notes[0].Type = entity.NoteTypeReference
 	check(t, Compute([]*realmresolve.Inheritance{chain(hop("r", f))}))
 }
 
-func TestUnresolvedNoteIsReported(t *testing.T) {
+// TestComputeReportsUnresolvedNotes checks a note whose id resolves to nothing.
+func TestComputeReportsUnresolvedNotes(t *testing.T) {
 	f := file("AUTH", nil, []entity.Rule{rule("AUTH-001", "I")}, map[string][]string{"AUTH-001": {"owasp.asvs:1"}})
 	r := Compute([]*realmresolve.Inheritance{chain(hop("r", f))})
 	check(t, r)
@@ -162,7 +187,8 @@ func TestUnresolvedNoteIsReported(t *testing.T) {
 	}
 }
 
-func TestDeclaredListsStandardsNothingMaps(t *testing.T) {
+// TestComputeListsDeclaredStandards checks a standard that nothing maps.
+func TestComputeListsDeclaredStandards(t *testing.T) {
 	h := hop("r", file("AUTH", []entity.StandardRef{asvs5}, nil, nil))
 	h.Scopes = [][]entity.StandardRef{{cited}}
 	r := Compute([]*realmresolve.Inheritance{chain(h)})
@@ -189,8 +215,9 @@ func manifest(id string, refs []entity.StandardRef, subs []string, deps ...entit
 	return entity.RealmFile{Realm: entity.RealmMeta{ID: id, Title: id, Version: "1.0.0", Standards: refs}, SubRealms: subs, Dependencies: deps}
 }
 
-// Through real resolution: a rule inherited from a dependency resolves its note
-// against the dependency's manifest, and a sub-realm's against its parent's.
+// TestComputeFromResolvedRealm goes through real resolution: a rule inherited
+// from a dependency resolves its note against the dependency's manifest, and a
+// sub-realm's against its parent's.
 func TestComputeFromResolvedRealm(t *testing.T) {
 	dir := t.TempDir()
 	depDir, rootDir := filepath.Join(dir, "dep"), filepath.Join(dir, "root")
@@ -220,4 +247,95 @@ func TestComputeFromResolvedRealm(t *testing.T) {
 		"SAV owasp.asvs@4.0:1 covered",
 		"SAV owasp.asvs@4.0:2 lapsed",
 		"TEAM owasp.asvs@5.0:9 mapped")
+}
+
+// TestComputeDependencySubRealm checks that an entity in a dependency's
+// sub-realm resolves against that sub-realm's manifest, then the dependency's.
+func TestComputeDependencySubRealm(t *testing.T) {
+	tests := []struct {
+		name string
+		sub  []entity.StandardRef
+		want string
+	}{
+		{"nearest edition wins", []entity.StandardRef{asvs5}, "SAV owasp.asvs@5.0:1 covered"},
+		{
+			"nearest relation wins",
+			[]entity.StandardRef{{ID: "owasp.asvs", Version: "5.0", Relation: entity.RelationDerivedFrom}},
+			"SAV owasp.asvs@5.0:1 cited",
+		},
+		{"falls back to the parent", nil, "SAV owasp.asvs@4.0:1 covered"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			depDir, rootDir := filepath.Join(dir, "dep"), filepath.Join(dir, "root")
+			writeJSON(t, filepath.Join(depDir, "realm.json"), manifest("dev.test.dep", []entity.StandardRef{asvs4}, []string{"team"}))
+			writeJSON(t, filepath.Join(depDir, "team", "realm.json"), manifest("dev.test.dep.team", tt.sub, nil))
+			writeJSON(t, filepath.Join(depDir, "team", "TEAM.json"), file("TEAM", nil, []entity.Rule{rule("TEAM-001", "I")},
+				map[string][]string{"TEAM-001": {"owasp.asvs:1"}}))
+
+			root := manifest("dev.test.root", nil, nil, entity.RealmDep{RealmID: "dev.test.dep", Version: "1.0.0", Source: "../dep"})
+			writeJSON(t, filepath.Join(rootDir, "realm.json"), root)
+			child := file("SAV", nil, nil, nil)
+			child.Entity.Inherits = "dev.test.dep.team:TEAM"
+			writeJSON(t, filepath.Join(rootDir, "SAV.json"), child)
+
+			out, res := realmresolve.New().Resolve(t.Context(), &root, rootDir)
+			if !res.OK() {
+				t.Fatalf("Resolve: %v", res.Diagnostics)
+			}
+			check(t, Compute(out.Entities), tt.want)
+		})
+	}
+}
+
+// TestComputeSubRealmAlone checks a sub-realm resolved on its own, which finds
+// its parent on disk as RL031 does.
+func TestComputeSubRealmAlone(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, filepath.Join(dir, "realm.json"), manifest("dev.test.root", []entity.StandardRef{asvs5}, []string{"team"}))
+	sub := manifest("dev.test.root.team", nil, nil)
+	subDir := filepath.Join(dir, "team")
+	writeJSON(t, filepath.Join(subDir, "realm.json"), sub)
+	writeJSON(t, filepath.Join(subDir, "TEAM.json"), file("TEAM", nil, []entity.Rule{rule("TEAM-001", "I")},
+		map[string][]string{"TEAM-001": {"owasp.asvs:1"}}))
+
+	out, res := realmresolve.New().Resolve(t.Context(), &sub, subDir)
+	if !res.OK() {
+		t.Fatalf("Resolve: %v", res.Diagnostics)
+	}
+	check(t, Compute(out.Entities), "TEAM owasp.asvs@5.0:1 covered")
+}
+
+// TestComputeDeclaresEveryResolvedReference checks a row whose reference is
+// declared only by a dependency.
+func TestComputeDeclaresEveryResolvedReference(t *testing.T) {
+	base := file("BASE", []entity.StandardRef{asvs4}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs:1"}})
+	r := Compute([]*realmresolve.Inheritance{chain(hop("prod", file("SAV", nil, nil, nil)), *hop("core", base))})
+	if want := []entity.StandardRef{asvs4}; !reflect.DeepEqual(r.Declared, want) {
+		t.Errorf("Declared = %+v, want %+v", r.Declared, want)
+	}
+}
+
+// TestComputeOrdersDeclaredByURL checks the sort is total.
+func TestComputeOrdersDeclaredByURL(t *testing.T) {
+	a := entity.StandardRef{ID: "owasp.asvs", Relation: entity.RelationImplements, URL: "https://a.example"}
+	b := entity.StandardRef{ID: "owasp.asvs", Relation: entity.RelationImplements, URL: "https://b.example"}
+	x, y := hop("r", file("AAA", []entity.StandardRef{b}, nil, nil)), hop("r", file("BBB", []entity.StandardRef{a}, nil, nil))
+	for range 50 {
+		r := Compute([]*realmresolve.Inheritance{chain(x), chain(y)})
+		if want := []entity.StandardRef{a, b}; !reflect.DeepEqual(r.Declared, want) {
+			t.Fatalf("Declared = %+v, want %+v", r.Declared, want)
+		}
+	}
+}
+
+// TestComputeReportsMalformedNotes checks a note RL029 can't reach, on a
+// dependency's rule.
+func TestComputeReportsMalformedNotes(t *testing.T) {
+	base := file("BASE", []entity.StandardRef{asvs5}, []entity.Rule{rule("BASE-001", "I")}, map[string][]string{"BASE-001": {"owasp.asvs: 2"}})
+	r := Compute([]*realmresolve.Inheritance{chain(hop("prod", file("SAV", nil, nil, nil)), *hop("core", base))})
+	if len(r.Unresolved) != 1 || r.Unresolved[0].Note != "BASE-001/01" {
+		t.Errorf("Unresolved = %+v", r.Unresolved)
+	}
 }
