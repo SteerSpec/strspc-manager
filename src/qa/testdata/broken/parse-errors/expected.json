@@ -1,0 +1,62 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR002",
+    "severity": "error",
+    "path": "realm/TRUNC.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR002",
+    "severity": "error",
+    "path": "realm/WRONGTYPE.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL001",
+    "severity": "error",
+    "path": "realm/TRUNC.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL001",
+    "severity": "error",
+    "path": "realm/WRONGTYPE.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/NOID.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL003",
+    "severity": "error",
+    "path": "realm/NOID.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV003",
+    "severity": "error",
+    "path": "realm/NOID.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV003",
+    "severity": "error",
+    "path": "realm/TRUNC.json"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV003",
+    "severity": "error",
+    "path": "realm/WRONGTYPE.json"
+  }
+]

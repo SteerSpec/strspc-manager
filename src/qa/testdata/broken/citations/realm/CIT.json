@@ -1,0 +1,123 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "CIT",
+    "title": "QA entity CIT"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:3d89cc71812425a5908a683818d11c412747605f4a445f68f36ac521a5a52487"
+  },
+  "rules": [
+    {
+      "id": "CIT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-002",
+      "revision": 0,
+      "state": "A",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-003",
+      "revision": 0,
+      "state": "R",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-004",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "CIT-003"
+    },
+    {
+      "id": "CIT-005",
+      "revision": 0,
+      "state": "T",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-006",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-007",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-008",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "CIT-007"
+    },
+    {
+      "id": "CIT-009",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-010",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "CIT-009"
+    },
+    {
+      "id": "CIT-011",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "CIT-012",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of cit MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "CIT-011"
+    }
+  ],
+  "notes": []
+}

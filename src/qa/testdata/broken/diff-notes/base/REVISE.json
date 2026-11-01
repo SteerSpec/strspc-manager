@@ -1,0 +1,43 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "REVISE",
+    "title": "QA entity REVISE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:39948c89d9bbb9513033dddeec3b1d2b14f85e72a514bc69ab3ac7c421fcb9c5"
+  },
+  "rules": [
+    {
+      "id": "REVISE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of revise MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "REVISE-001/01",
+      "rule_ref": "REVISE-001",
+      "type": "clarification",
+      "content": "Reworded without a revision.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "REVISE-001/02",
+      "rule_ref": "REVISE-001",
+      "type": "rationale",
+      "content": "Revision moved without a change.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

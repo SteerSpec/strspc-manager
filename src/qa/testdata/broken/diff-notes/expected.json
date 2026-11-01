@@ -1,0 +1,56 @@
+[
+  {
+    "module": "rule-diff",
+    "code": "RD011",
+    "severity": "error",
+    "path": "FRESH/notes/FRESH-001/02"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD012",
+    "severity": "error",
+    "path": "APPEND/notes/APPEND-001/01"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD012",
+    "severity": "error",
+    "path": "APPEND/notes/APPEND-001/02"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD013",
+    "severity": "error",
+    "path": "REVISE/notes/REVISE-001/01"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD013",
+    "severity": "error",
+    "path": "REVISE/notes/REVISE-001/02"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD014",
+    "severity": "error",
+    "path": "GONE/notes/GONE-001/01"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD015",
+    "severity": "error",
+    "path": "FRESH/notes/FRESH-001/01"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD016",
+    "severity": "error",
+    "path": "APPEND/notes/APPEND-001/03"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD019",
+    "severity": "error",
+    "path": "FRESH/notes/FRESH-001/03"
+  }
+]

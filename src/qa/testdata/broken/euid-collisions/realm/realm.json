@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.collide",
+    "title": "QA realm dev.steerspec.qa.collide",
+    "version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.one",
+      "version": "1.0.0",
+      "source": "../deps/one/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.two",
+      "version": "1.0.0",
+      "source": "../deps/two/"
+    }
+  ],
+  "sub_realms": [
+    "alpha",
+    "beta"
+  ]
+}

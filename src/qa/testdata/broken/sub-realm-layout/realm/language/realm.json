@@ -1,0 +1,9 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.layout.language",
+    "title": "QA realm dev.steerspec.qa.layout.language",
+    "version": "1.0.0",
+    "language": "en"
+  }
+}

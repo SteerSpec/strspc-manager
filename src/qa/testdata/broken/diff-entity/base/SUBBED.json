@@ -1,0 +1,51 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SUBBED",
+    "title": "QA entity SUBBED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:b30d36ae0776470f059aae80483b0803854e1d4bba3bf9260bbd89a44fec6f8d"
+  },
+  "rules": [
+    {
+      "id": "SUBBED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of subbed MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "SUBCHILD",
+        "title": "QA entity SUBCHILD",
+        "parent": "SUBBED"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:8e421b3bd27318b350a63bc177fe14b4b978af606d3c6085e40c211d5e62ca28"
+      },
+      "rules": [
+        {
+          "id": "SUBCHILD-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of subchild MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

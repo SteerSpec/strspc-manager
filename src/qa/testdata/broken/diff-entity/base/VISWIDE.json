@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "VISWIDE",
+    "title": "QA entity VISWIDE",
+    "visibility": "private"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9b86850f14eb1086a1fe0153c6484c2a71eee2135b8eef7b36cd254ba0791fc3"
+  },
+  "rules": [
+    {
+      "id": "VISWIDE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of viswide MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

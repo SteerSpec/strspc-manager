@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "STATES",
+    "title": "QA entity STATES"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:ec65b639e379acd748e4e51a6d2e96a3febd4f0fb1f02a1218f8aa3223925e61"
+  },
+  "rules": [
+    {
+      "id": "STATES-001",
+      "revision": 0,
+      "state": "Z",
+      "body": "The subject of states MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

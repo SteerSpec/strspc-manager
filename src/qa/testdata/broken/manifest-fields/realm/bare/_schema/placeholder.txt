@@ -1,0 +1,1 @@
+This _schema/ deliberately lacks entity.v1.schema.json.

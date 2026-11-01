@@ -1,0 +1,14 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "WRONGTYPE",
+    "title": "x"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": null
+  },
+  "rules": "none",
+  "notes": []
+}

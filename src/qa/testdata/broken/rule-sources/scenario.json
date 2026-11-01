@@ -1,0 +1,12 @@
+{
+  "claims": [
+    "RSV002",
+    "RSV006"
+  ],
+  "rule_sources": [
+    "realm",
+    "absent",
+    "plain.txt",
+    "vacant"
+  ]
+}

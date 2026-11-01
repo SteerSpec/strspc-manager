@@ -1,0 +1,42 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "PAY",
+    "title": "QA entity PAY"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:0feb2db5929f51485eca929c78fb6034d89d08d300b7f34d87b3ce27927b855c"
+  },
+  "rules": [
+    {
+      "id": "PAY-001",
+      "revision": 0,
+      "state": "I",
+      "body": "A payment MUST name its currency.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "PAY-002",
+      "revision": 0,
+      "state": "P",
+      "body": "A payment MUST carry a reference.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "PAY-003",
+      "revision": 0,
+      "state": "I",
+      "body": "A refund MUST reference its payment.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

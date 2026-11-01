@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "VISNARROW",
+    "title": "QA entity VISNARROW",
+    "visibility": "public"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:9812d678f3b20c5ba233123594df1c5f235b00aba89da80a78ba5411538748d5"
+  },
+  "rules": [
+    {
+      "id": "VISNARROW-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of visnarrow MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

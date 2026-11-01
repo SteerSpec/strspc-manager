@@ -1,0 +1,26 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV002",
+    "severity": "error",
+    "path": "absent"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV002",
+    "severity": "error",
+    "path": "plain.txt"
+  },
+  {
+    "module": "rule-resolve",
+    "code": "RSV006",
+    "severity": "warning",
+    "path": "vacant"
+  }
+]

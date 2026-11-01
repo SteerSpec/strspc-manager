@@ -1,0 +1,52 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "APPEND",
+    "title": "QA entity APPEND"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:6865c73487ff2f8ac4b0f5d92496cb0baccfe0ca2275eed6e6b271e62efa956f"
+  },
+  "rules": [
+    {
+      "id": "APPEND-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of append MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "APPEND-001/01",
+      "rule_ref": "APPEND-001",
+      "type": "changelog",
+      "content": "Removed in head.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "APPEND-001/02",
+      "rule_ref": "APPEND-001",
+      "type": "related",
+      "content": "APPEND-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "APPEND-001/03",
+      "rule_ref": "APPEND-001",
+      "type": "changelog",
+      "content": "Reworded in head.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

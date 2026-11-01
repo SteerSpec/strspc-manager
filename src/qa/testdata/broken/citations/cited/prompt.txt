@@ -1,0 +1,12 @@
+CIT-001 is Implemented and draws no finding.
+GHOST-001 is in no source.
+CIT-099 has a known EUID and an unknown number.
+dev.steerspec.qa.other:CIT-001 names a Realm that is not a source.
+dev.steerspec.qa.cite:CIT-099 names a known Realm that lacks the rule.
+CIT-002 is Abandoned.
+CIT-003 is Retired and CIT-005 is Terminated.
+CIT-009 is replaced by an Implemented rule.
+CIT-007 will be replaced by a Published rule.
+CIT-006 is a Draft nothing supersedes.
+CIT-011 is a Draft that only a Draft supersedes.
+Branch feat-123 and the range 100-200 are not citations.

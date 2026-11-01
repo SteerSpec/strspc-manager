@@ -1,0 +1,6 @@
+FMT_001 is the rendered form of a live rule.
+FMT_002 is the rendered form of an Abandoned rule.
+FMT-002 is its stored form, which always matches.
+FMT_099 has a known EUID and an unknown number.
+MAX_100 has no known EUID, so it is no citation.
+TEAM_001 uses the format the sub-realm inherits.

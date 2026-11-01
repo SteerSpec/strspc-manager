@@ -1,0 +1,6 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "title": "No identity"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "HUSH",
+    "title": "QA entity HUSH",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:75a2c306fd8773b1922c846edae0ec4ee668d8c2f8fd66617e3c1bbd7238b3a5"
+  },
+  "rules": [
+    {
+      "id": "HUSH-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of hush MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

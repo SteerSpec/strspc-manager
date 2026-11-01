@@ -1,0 +1,150 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TRADE",
+    "title": "QA entity TRADE",
+    "visibility": "public"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:338a5ea23c583c6a35369860eb4ffba57715119d1816f05c85805986d118fcd7"
+  },
+  "rules": [
+    {
+      "id": "TRADE-001",
+      "revision": 1,
+      "state": "D",
+      "body": "A trade MUST be settled.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-002",
+      "revision": 0,
+      "state": "I",
+      "body": "A trade MUST name its desk.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-003",
+      "revision": 0,
+      "state": "A",
+      "body": "A trade MAY carry a tag.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-004",
+      "revision": 0,
+      "state": "R",
+      "body": "A trade MUST be booked.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "TRADE-005",
+      "revision": 0,
+      "state": "I",
+      "body": "A trade MUST be booked twice.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": "TRADE-004"
+    },
+    {
+      "id": "TRADE-006",
+      "revision": 0,
+      "state": "D",
+      "body": "A trade MUST name its broker.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "TRADELEG",
+        "title": "QA entity TRADELEG",
+        "parent": "TRADE"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:b58668155b4461277be3a63e200630bb84a12c73af550ab7f4b7f96c96fbfbb4"
+      },
+      "rules": [
+        {
+          "id": "TRADELEG-001",
+          "revision": 0,
+          "state": "D",
+          "body": "A leg MUST name its side.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    },
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "TRADEFEE",
+        "title": "QA entity TRADEFEE",
+        "parent": "TRADE"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:c4dc188c0d2dd8a6bccf3dfd70cf53d97f5facada16d88375099c7171d3814cc"
+      },
+      "rules": [
+        {
+          "id": "TRADEFEE-001",
+          "revision": 0,
+          "state": "D",
+          "body": "A fee MUST be itemised.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": [
+    {
+      "id": "TRADE-001/01",
+      "rule_ref": "TRADE-001",
+      "type": "clarification",
+      "content": "Settled means paid in full.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 1
+    },
+    {
+      "id": "TRADE-002/01",
+      "rule_ref": "TRADE-002",
+      "type": "changelog",
+      "content": "First release.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "TRADE-002/02",
+      "rule_ref": "TRADE-002",
+      "type": "rationale",
+      "content": "Desks own their trades.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

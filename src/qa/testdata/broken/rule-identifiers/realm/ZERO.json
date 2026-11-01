@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ZERO",
+    "title": "QA entity ZERO"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:f7fc817a76d6371a30767cc31b5d32dce748c09300b2f12f662d843ee65dbd9c"
+  },
+  "rules": [
+    {
+      "id": "ZERO-000",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of zero MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

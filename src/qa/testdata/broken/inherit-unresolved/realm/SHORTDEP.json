@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SHORTDEP",
+    "title": "QA entity SHORTDEP",
+    "inherits": "LIB"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:c2b0e95d75b3632fc71f6a56bd3977a032ff0dbde71fd8e177c4e0588bdb255b"
+  },
+  "rules": [
+    {
+      "id": "SHORTDEP-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of shortdep MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

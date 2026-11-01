@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "BADSEMVER",
+    "title": "QA entity BADSEMVER"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:d3f33c5a615615d6dbfe43cc3f1b15bcdc691169b101762455f93cb77f6ebd8e"
+  },
+  "rules": [
+    {
+      "id": "BADSEMVER-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of badsemver MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

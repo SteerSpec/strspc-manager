@@ -1,0 +1,56 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR014",
+    "severity": "error",
+    "path": "realm/CYCA.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR014",
+    "severity": "error",
+    "path": "realm/CYCB.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR014",
+    "severity": "error",
+    "path": "realm/HOPA.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR014",
+    "severity": "error",
+    "path": "realm/XCYC.json"
+  },
+  {
+    "module": "realm-resolve",
+    "code": "RR014",
+    "severity": "error",
+    "path": "realm/XLONG.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL018",
+    "severity": "error",
+    "path": "realm/CYCA.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL018",
+    "severity": "error",
+    "path": "realm/CYCB.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL018",
+    "severity": "error",
+    "path": "realm/HOPA.json"
+  }
+]

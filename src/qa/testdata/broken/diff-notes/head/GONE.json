@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GONE",
+    "title": "QA entity GONE"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:fec116e05d1218abc479a8bc5428c15cdb8c8bcbe6f500d12fc2d801416506f7"
+  },
+  "rules": [
+    {
+      "id": "GONE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of gone MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

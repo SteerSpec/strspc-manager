@@ -1,0 +1,8 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM001",
+    "severity": "error",
+    "path": "realm/realm.json"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL002",
+    "severity": "error",
+    "path": "realm/NOTES.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL008",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL009",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL009",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL010",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL015",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL015",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL015",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
+  }
+]

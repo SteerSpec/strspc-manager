@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "SOUND",
+    "title": "QA entity SOUND"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:6176992a712dbc83b66242f6aff86a637b85582cfce92e08f6d7651862d40ad3"
+  },
+  "rules": [
+    {
+      "id": "SOUND-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of sound MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

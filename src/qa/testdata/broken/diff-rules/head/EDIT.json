@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "EDIT",
+    "title": "QA entity EDIT"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:d95e97d894e74be46311cead6c68d20f31e48b1b81f71fe60508a7385e2189f1"
+  },
+  "rules": [
+    {
+      "id": "EDIT-001",
+      "revision": 0,
+      "state": "D",
+      "body": "The edit MUST bump the revision.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "EDIT-002",
+      "revision": 1,
+      "state": "P",
+      "body": "The edit MUST leave the state alone.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,110 @@
+[
+  {
+    "module": "rule-diff",
+    "code": "RD001",
+    "severity": "error",
+    "path": "EDIT/EDIT-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD001",
+    "severity": "error",
+    "path": "EDIT/EDIT-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD002",
+    "severity": "error",
+    "path": "FROZEN/FROZEN-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD003",
+    "severity": "error",
+    "path": "JUMP/JUMP-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD003",
+    "severity": "error",
+    "path": "JUMP/JUMP-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "ADDED"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "ADDED/ADDED-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "ADDED/ADDED-003"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD004",
+    "severity": "error",
+    "path": "REUSED"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD005",
+    "severity": "error",
+    "path": "REMOVED/REMOVED-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD006",
+    "severity": "warning",
+    "path": "SUPER/SUPER-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD006",
+    "severity": "warning",
+    "path": "SUPER/SUPER-003"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD010",
+    "severity": "error",
+    "path": "REUSED/OTHER-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD011",
+    "severity": "error",
+    "path": "AUTHOR/AUTHOR-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD018",
+    "severity": "error",
+    "path": "OVER/OVER-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD018",
+    "severity": "error",
+    "path": "OVER/OVER-002"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD018",
+    "severity": "error",
+    "path": "OVER/OVER-003"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD019",
+    "severity": "error",
+    "path": "AUTHOR/AUTHOR-003"
+  }
+]

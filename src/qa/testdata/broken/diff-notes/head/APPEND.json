@@ -1,0 +1,43 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "APPEND",
+    "title": "QA entity APPEND"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:c87ef967c84a02c1529124c6e554ee626b349aee7a2a3388b2728b59afb808c3"
+  },
+  "rules": [
+    {
+      "id": "APPEND-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of append MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "APPEND-001/02",
+      "rule_ref": "APPEND-001",
+      "type": "rationale",
+      "content": "APPEND-001",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "APPEND-001/03",
+      "rule_ref": "APPEND-001",
+      "type": "changelog",
+      "content": "Reworded.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

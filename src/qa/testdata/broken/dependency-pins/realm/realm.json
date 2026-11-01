@@ -1,0 +1,73 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.pins",
+    "title": "QA realm dev.steerspec.qa.pins",
+    "version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.emptysource",
+      "version": "1.0.0",
+      "source": ""
+    },
+    {
+      "realm_id": "dev.steerspec.qa.absolute",
+      "version": "1.0.0",
+      "source": "/opt/qa/nowhere"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.gone",
+      "version": "1.0.0",
+      "source": "../deps/gone/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.nomanifest",
+      "version": "1.0.0",
+      "source": "../deps/nomanifest/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.declared",
+      "version": "1.0.0",
+      "source": "../deps/wrongid/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.wrongver",
+      "version": "1.0.0",
+      "source": "../deps/wrongver/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.pins",
+      "version": "1.0.0",
+      "source": "./"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.download",
+      "version": "1.0.0",
+      "source": "github://acme/rules@v1.0.0/core"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.badref",
+      "version": "1.0.0",
+      "source": "github://not-a-reference"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.scheme",
+      "version": "1.0.0",
+      "source": "s3://acme/rules"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.tagdrift",
+      "version": "1.0.0",
+      "source": "github://acme/rules@v2.0.0/core"
+    },
+    {
+      "realm_id": "dev.steerspec.core",
+      "version": "1.0.0",
+      "source": "../deps/core/"
+    }
+  ],
+  "sub_realms": [
+    "team"
+  ]
+}

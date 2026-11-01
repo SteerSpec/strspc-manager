@@ -1,0 +1,15 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.pins.team",
+    "title": "QA realm dev.steerspec.qa.pins.team",
+    "version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.pins.team",
+      "version": "1.0.0",
+      "source": "./"
+    }
+  ]
+}

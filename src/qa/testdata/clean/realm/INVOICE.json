@@ -1,0 +1,35 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "INVOICE",
+    "title": "QA entity INVOICE",
+    "inherits": "ORDER"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:303ebdf0d0b25573356aeca937c8eaef5dc70d31cfdbffc71f246ea1d088091e"
+  },
+  "rules": [
+    {
+      "id": "INVOICE-001",
+      "revision": 0,
+      "state": "I",
+      "body": "An invoice MUST name its customer and its tax number.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "ORDER-002"
+    },
+    {
+      "id": "INVOICE-002",
+      "revision": 0,
+      "state": "P",
+      "body": "An invoice MUST be numbered.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

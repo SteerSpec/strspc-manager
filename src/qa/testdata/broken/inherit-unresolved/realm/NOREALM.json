@@ -1,0 +1,25 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NOREALM",
+    "title": "QA entity NOREALM",
+    "inherits": "dev.steerspec.qa.nowhere:THING"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:339e84051d8e1553096255cbdc9bf5a5c108677ab520e2c211e789a1b2173b6d"
+  },
+  "rules": [
+    {
+      "id": "NOREALM-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of norealm MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

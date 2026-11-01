@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "STRAY",
+    "title": "QA entity STRAY"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:0b4d794da36fddbcf3f5776a2e8df74f3e5f3eaf08a949ee1a43b028776baeed"
+  },
+  "rules": [
+    {
+      "id": "STRAY-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of stray MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

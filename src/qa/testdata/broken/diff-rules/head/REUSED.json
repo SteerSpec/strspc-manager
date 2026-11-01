@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "REUSED",
+    "title": "QA entity REUSED"
+  },
+  "rule_set": {
+    "version": "1.1.0",
+    "timestamp": "2026-02-20T10:00:00Z",
+    "hash": "blake3:c95945ed5c0ace6a09291ce1fd0cd773ddf692f5f076e25e5a5749a1c3f85d72"
+  },
+  "rules": [
+    {
+      "id": "REUSED-001",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of reused MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "OTHER-001",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of other MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

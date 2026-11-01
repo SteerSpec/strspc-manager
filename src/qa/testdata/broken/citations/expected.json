@@ -1,0 +1,80 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/prompt.txt:2"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/prompt.txt:3"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/prompt.txt:4"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/prompt.txt:5"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF001",
+    "severity": "error",
+    "path": "cited/readme.txt:1"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF002",
+    "severity": "error",
+    "path": "cited/prompt.txt:6"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF003",
+    "severity": "warning",
+    "path": "cited/prompt.txt:7"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF003",
+    "severity": "warning",
+    "path": "cited/prompt.txt:7"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF004",
+    "severity": "error",
+    "path": "cited/prompt.txt:8"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF005",
+    "severity": "warning",
+    "path": "cited/prompt.txt:9"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF006",
+    "severity": "warning",
+    "path": "cited/prompt.txt:10"
+  },
+  {
+    "module": "rule-refs",
+    "code": "RF006",
+    "severity": "warning",
+    "path": "cited/prompt.txt:11"
+  }
+]

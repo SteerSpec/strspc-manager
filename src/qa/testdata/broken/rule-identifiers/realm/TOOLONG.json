@@ -1,0 +1,14 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "EUIDOFNINETEENCHARS",
+    "title": "QA entity EUIDOFNINETEENCHARS"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:4af35b297c1a70f1d6ba5c9f58307d0b5af46883bf2def426c7c4b3640dc11b0"
+  },
+  "rules": [],
+  "notes": []
+}

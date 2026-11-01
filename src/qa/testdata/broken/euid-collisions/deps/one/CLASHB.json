@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "CLASHB",
+    "title": "QA entity CLASHB"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:db69c318109efda2e67bd0d0dc4632d3685e13ad68f0fd7c1d21facaf680f4df"
+  },
+  "rules": [
+    {
+      "id": "CLASHB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of clashb MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

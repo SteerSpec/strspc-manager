@@ -1,0 +1,56 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "CHILD",
+    "title": "QA entity CHILD",
+    "inherits": "BASE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:03883c351cc8a92c229a831aae6f645b494f86073802fb19bdcc709e234c5214"
+  },
+  "rules": [
+    {
+      "id": "CHILD-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of child MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-999"
+    },
+    {
+      "id": "CHILD-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of child MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-002"
+    },
+    {
+      "id": "CHILD-003",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of child MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-001"
+    },
+    {
+      "id": "CHILD-004",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of child MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-001"
+    }
+  ],
+  "notes": []
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NOTES",
+    "title": "QA entity NOTES"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:580ed83d482db840e6ae8a92f18a474e99c59cdbbe8d7c2b94ede855cfa8821d"
+  },
+  "rules": [
+    {
+      "id": "NOTES-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of notes MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of notes MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-003",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of notes MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-004",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of notes MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "NOTES-005",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of notes MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [
+    {
+      "id": "NOTES-001/01",
+      "rule_ref": "NOTES-001",
+      "type": "gossip",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-999/01",
+      "rule_ref": "NOTES-999",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-001-2",
+      "rule_ref": "NOTES-001",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-002/01",
+      "rule_ref": "NOTES-001",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-003/02",
+      "rule_ref": "NOTES-003",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-004/01",
+      "rule_ref": "NOTES-004",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-004/01",
+      "rule_ref": "NOTES-004",
+      "type": "example",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-005/00",
+      "rule_ref": "NOTES-005",
+      "type": "rationale",
+      "content": "Context for the rule.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}

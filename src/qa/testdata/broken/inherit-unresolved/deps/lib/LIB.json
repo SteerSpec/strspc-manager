@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIB",
+    "title": "QA entity LIB"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:90eca764f1aa209dcfef18b0614e2e50e169f62825d3c4dab985e2591449d1f5"
+  },
+  "rules": [
+    {
+      "id": "LIB-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of lib MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

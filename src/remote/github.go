@@ -526,10 +526,11 @@ func extractTarball(r io.Reader, sub, dest string) (int, error) {
 			if hdr.Size < 0 {
 				return files, fmt.Errorf("tar: negative size for %q", hdr.Name)
 			}
-			total += hdr.Size
-			if total > MaxExtractBytes {
+			// Compare before adding: a crafted size could wrap total negative.
+			if hdr.Size > MaxExtractBytes-total {
 				return files, fmt.Errorf("archive exceeds %d bytes extraction cap", MaxExtractBytes)
 			}
+			total += hdr.Size
 			target, err := safeJoin(destAbs, rel)
 			if err != nil {
 				return files, err

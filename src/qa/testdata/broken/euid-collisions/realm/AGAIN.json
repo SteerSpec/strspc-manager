@@ -1,0 +1,51 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "AGAIN",
+    "title": "QA entity AGAIN"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:6f3c7a3fffc23f387e197c3702a29d215c5fa11a13044cb9ff5a8e3011f1c461"
+  },
+  "rules": [
+    {
+      "id": "AGAIN-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of again MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "HOSTSUB",
+        "title": "QA entity HOSTSUB",
+        "parent": "AGAIN"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:5a448481eed7ab2b74f36de59db52d56a2b14b76eebd62567f584f06ab0542e8"
+      },
+      "rules": [
+        {
+          "id": "HOSTSUB-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of hostsub MUST hold.",
+          "added_by": "qa@steerspec.dev",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "notes": []
+}

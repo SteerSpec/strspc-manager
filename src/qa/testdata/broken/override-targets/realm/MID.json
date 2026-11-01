@@ -1,0 +1,26 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "MID",
+    "title": "QA entity MID",
+    "inherits": "BASE"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:6df8deefa63a6776e35b55c3143c9639e7992ffb16ee72ef466fdee10f0c7bf5"
+  },
+  "rules": [
+    {
+      "id": "MID-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of mid MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "BASE-003"
+    }
+  ],
+  "notes": []
+}

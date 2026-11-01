@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "DEEP",
+    "title": "QA entity DEEP"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:ca2f93265e8460462d7cf0731298dbbf83a67d81f3c5b3486aaa879c11e03edc"
+  },
+  "rules": [
+    {
+      "id": "DEEP-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of deep MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

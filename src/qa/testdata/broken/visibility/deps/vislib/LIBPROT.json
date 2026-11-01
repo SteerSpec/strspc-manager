@@ -1,0 +1,34 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LIBPROT",
+    "title": "QA entity LIBPROT",
+    "visibility": "protected"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:d7a6943e0b8e68a36aa7f769efa0630d1b2195ca5cf11b9f8433d580689a66fb"
+  },
+  "rules": [
+    {
+      "id": "LIBPROT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of libprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "LIBPROT-002",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of libprot MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

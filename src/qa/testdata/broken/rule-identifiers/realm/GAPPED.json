@@ -1,0 +1,33 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "GAPPED",
+    "title": "QA entity GAPPED"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:2743eabfc022558a8be104730045c22afee1f6b48b0035a62cf88749a0a49963"
+  },
+  "rules": [
+    {
+      "id": "GAPPED-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of gapped MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "GAPPED-003",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of gapped MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

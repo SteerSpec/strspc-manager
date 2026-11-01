@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "TEAM",
+    "title": "QA entity TEAM"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:239bf6e2ce9d3d8af332bc80ecba2a168f0368ee9178cfb6694a56f72a4e32c1"
+  },
+  "rules": [
+    {
+      "id": "TEAM-001",
+      "revision": 0,
+      "state": "A",
+      "body": "The subject of team MUST hold.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}
