@@ -1,6 +1,6 @@
 // Package rulelint provides stateless validation of SteerSpec entity files.
 // It checks a single entity file against the JSON schema and the business
-// rules defined in the Rule Manager Spec §7.1 (RL001–RL029).
+// rules defined in the Rule Manager Spec §7.1 (RL001–RL031).
 package rulelint
 
 import (
@@ -48,10 +48,20 @@ var (
 	// sentenceBreakRe finds the end of one sentence, with any closing quote or
 	// bracket, and the start of the next.
 	sentenceBreakRe = regexp.MustCompile(`[.!?]["')\]]*\s+\S`)
+	// inlineExampleRe finds the phrases that introduce an example in prose,
+	// which NTE-020 keeps out of rule bodies and of most notes.
+	// An abbreviation must end there, or `cf.foo` would count.
+	inlineExampleRe = regexp.MustCompile(`(?i)\bsuch\s+as\b|\bfor\s+example\b|\b(?:e\.g|cf)\.(?:\W|$)`)
 )
 
 // maxInheritHops is the longest inheritance chain allowed by ENT-008.
 const maxInheritHops = 3
+
+// exampleNoteTypes are the note types meant to hold an example (NTE-020).
+var exampleNoteTypes = map[string]bool{
+	"example":         true,
+	"counter_example": true,
+}
 
 // relationNoteTypes are the note types whose content is expected to
 // reference other rules (checked by RL014).
@@ -227,7 +237,7 @@ func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
 // and runs cross-entity reference checks (RL012, RL014) and, given a manifest,
-// the check of `standard` notes against declarations (RL029). ctx bounds the JSON
+// the check of `standard` notes against declarations (RL031). ctx bounds the JSON
 // Schema fetch (RL002).
 // When the realm declares sub_realms, each sub-realm directory is linted
 // separately, and cross-references are validated globally across the
@@ -1086,17 +1096,21 @@ func isLiveState(state string) bool {
 	return state == entity.StateDraft || state == entity.StatePublished || state == entity.StateImplemented
 }
 
-// checkDraftBodies implements RL021 and RL022, which enforce KWRD and RUL-004.
-// They cover Draft rules only: any other body is immutable (RUL-007), so a
-// finding there could only be fixed by superseding the rule.
+// checkDraftBodies implements RL021, RL022, RL026 and RL027, which enforce
+// KWRD, RUL-004 and NTE-020. They cover Draft rules only: any other body is
+// immutable (RUL-007), so a finding there could only be fixed by superseding
+// the rule.
 func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
+	drafts := make(map[string]bool, len(ef.Rules))
 	for _, r := range ef.Rules {
 		if r.State != entity.StateDraft {
 			continue
 		}
+		drafts[r.ID] = true
 		body := inlineCodeRe.ReplaceAllString(r.Body, " ")
 		// A rule ID's EUID can spell a key word, as in HAS-001.
-		if !keywordRe.MatchString(crossRefRe.ReplaceAllString(body, " ")) {
+		keywords := len(keywordRe.FindAllString(crossRefRe.ReplaceAllString(body, " "), 2))
+		if keywords == 0 {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL021",
@@ -1111,6 +1125,44 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 				Code:     "RL022",
 				Severity: result.Warning,
 				Message:  fmt.Sprintf("rule %s body has more than one sentence: a rule is a single phrase (RUL-004)", r.ID),
+				Path:     path,
+			})
+		}
+		if inlineExampleRe.MatchString(body) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL026",
+				Severity: result.Warning,
+				Message:  fmt.Sprintf("rule %s body holds an inline example: move it to a note of type `example` (NTE-020)", r.ID),
+				Path:     path,
+			})
+		}
+		if keywords > 1 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL027",
+				Severity: result.Info,
+				Message:  fmt.Sprintf("rule %s body has more than one key word: it may hold two statements (RUL-004)", r.ID),
+				Path:     path,
+			})
+		}
+	}
+	checkDraftNotes(ef, drafts, res, path)
+}
+
+// checkDraftNotes runs RL026 on the notes of the Draft rules in drafts. Only
+// the types meant to hold an example may hold one.
+func checkDraftNotes(ef *entity.File, drafts map[string]bool, res *result.Result, path string) {
+	for _, n := range ef.Notes {
+		if !drafts[n.RuleRef] || exampleNoteTypes[n.Type] {
+			continue
+		}
+		if inlineExampleRe.MatchString(inlineCodeRe.ReplaceAllString(n.Content, " ")) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL026",
+				Severity: result.Warning,
+				Message:  fmt.Sprintf("note %s (%s) holds an inline example: move it to a note of type `example` (NTE-020)", n.ID, n.Type),
 				Path:     path,
 			})
 		}

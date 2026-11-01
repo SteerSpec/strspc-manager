@@ -551,6 +551,24 @@
   {
     "code": "RL026",
     "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Inline example",
+    "summary": "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+    "fix": "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
+    "retired": false
+  },
+  {
+    "code": "RL027",
+    "module": "rule-lint",
+    "severity": "Info",
+    "title": "Rule body may hold two statements",
+    "summary": "A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored.",
+    "fix": "Split the rule if it makes two statements. A relative clause with its own key word is still one statement, and needs no change.",
+    "retired": false
+  },
+  {
+    "code": "RL028",
+    "module": "rule-lint",
     "severity": "Error",
     "title": "Invalid standards entry",
     "summary": "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
@@ -558,7 +576,7 @@
     "retired": false
   },
   {
-    "code": "RL027",
+    "code": "RL029",
     "module": "rule-lint",
     "severity": "Error",
     "title": "Malformed standard note",
@@ -567,7 +585,7 @@
     "retired": false
   },
   {
-    "code": "RL028",
+    "code": "RL030",
     "module": "rule-lint",
     "severity": "Error",
     "title": "Duplicate standard note",
@@ -576,7 +594,7 @@
     "retired": false
   },
   {
-    "code": "RL029",
+    "code": "RL031",
     "module": "rule-lint",
     "severity": "Error",
     "title": "Undeclared standard",

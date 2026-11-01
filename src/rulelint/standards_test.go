@@ -40,29 +40,29 @@ func mappedFile(id string, refs []entity.StandardRef, contents ...string) *entit
 
 var asvs = []entity.StandardRef{{ID: "owasp.asvs", Relation: entity.RelationImplements}}
 
-func TestRL026_EntityStandards(t *testing.T) {
+func TestRL028_EntityStandards(t *testing.T) {
 	bad := []entity.StandardRef{{ID: "owasp", Relation: entity.RelationImplements}}
-	if got := codes(New().LintFile(mappedFile("MAPPED", bad)))["RL026"]; got != 1 {
-		t.Errorf("RL026 = %d, want 1", got)
-	}
-	if got := codes(New().LintFile(mappedFile("MAPPED", asvs)))["RL026"]; got != 0 {
-		t.Errorf("RL026 = %d, want 0", got)
-	}
-}
-
-func TestRL027_NoteContent(t *testing.T) {
-	if got := codes(New().LintFile(mappedFile("MAPPED", asvs, "not a mapping")))["RL027"]; got != 1 {
-		t.Errorf("RL027 = %d, want 1", got)
-	}
-	if got := codes(New().LintFile(mappedFile("MAPPED", asvs, "owasp.asvs:2.1.1")))["RL027"]; got != 0 {
-		t.Errorf("RL027 = %d, want 0", got)
-	}
-}
-
-func TestRL028_DuplicateMapping(t *testing.T) {
-	f := mappedFile("MAPPED", asvs, "owasp.asvs:2.1.1", "owasp.asvs:2.1.1", "owasp.asvs:2.1.2")
-	if got := codes(New().LintFile(f))["RL028"]; got != 1 {
+	if got := codes(New().LintFile(mappedFile("MAPPED", bad)))["RL028"]; got != 1 {
 		t.Errorf("RL028 = %d, want 1", got)
+	}
+	if got := codes(New().LintFile(mappedFile("MAPPED", asvs)))["RL028"]; got != 0 {
+		t.Errorf("RL028 = %d, want 0", got)
+	}
+}
+
+func TestRL029_NoteContent(t *testing.T) {
+	if got := codes(New().LintFile(mappedFile("MAPPED", asvs, "not a mapping")))["RL029"]; got != 1 {
+		t.Errorf("RL029 = %d, want 1", got)
+	}
+	if got := codes(New().LintFile(mappedFile("MAPPED", asvs, "owasp.asvs:2.1.1")))["RL029"]; got != 0 {
+		t.Errorf("RL029 = %d, want 0", got)
+	}
+}
+
+func TestRL030_DuplicateMapping(t *testing.T) {
+	f := mappedFile("MAPPED", asvs, "owasp.asvs:2.1.1", "owasp.asvs:2.1.1", "owasp.asvs:2.1.2")
+	if got := codes(New().LintFile(f))["RL030"]; got != 1 {
+		t.Errorf("RL030 = %d, want 1", got)
 	}
 }
 
@@ -70,7 +70,7 @@ func TestRL028_DuplicateMapping(t *testing.T) {
 func TestStandardChecksIgnoreOtherNoteTypes(t *testing.T) {
 	f := mappedFile("MAPPED", asvs, "not a mapping")
 	f.Notes[0].Type = entity.NoteTypeReference
-	if got := codes(New().LintFile(f)); got["RL027"]+got["RL028"] != 0 {
+	if got := codes(New().LintFile(f)); got["RL029"]+got["RL030"] != 0 {
 		t.Errorf("got %v", got)
 	}
 }
@@ -99,28 +99,28 @@ func realmFile(id string, refs []entity.StandardRef, subs ...string) *entity.Rea
 
 func rl029(t *testing.T, dir string) int {
 	t.Helper()
-	return codes(New().LintRealm(t.Context(), dir))["RL029"]
+	return codes(New().LintRealm(t.Context(), dir))["RL031"]
 }
 
-func TestRL029_UndeclaredPrefix(t *testing.T) {
+func TestRL031_UndeclaredPrefix(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", nil))
 	writeJSON(t, filepath.Join(dir, "MAPPED.json"), mappedFile("MAPPED", nil, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 1 {
-		t.Errorf("RL029 = %d, want 1", got)
+		t.Errorf("RL031 = %d, want 1", got)
 	}
 }
 
-func TestRL029_DeclaredOnEntity(t *testing.T) {
+func TestRL031_DeclaredOnEntity(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", nil))
 	writeJSON(t, filepath.Join(dir, "MAPPED.json"), mappedFile("MAPPED", asvs, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 0 {
-		t.Errorf("RL029 = %d, want 0", got)
+		t.Errorf("RL031 = %d, want 0", got)
 	}
 }
 
-func TestRL029_DeclaredOnContainingEntity(t *testing.T) {
+func TestRL031_DeclaredOnContainingEntity(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", nil))
 	outer := mappedFile("OUTER", asvs)
@@ -129,45 +129,45 @@ func TestRL029_DeclaredOnContainingEntity(t *testing.T) {
 	outer.SubEntities = []entity.File{*sub}
 	writeJSON(t, filepath.Join(dir, "OUTER.json"), outer)
 	if got := rl029(t, dir); got != 0 {
-		t.Errorf("RL029 = %d, want 0", got)
+		t.Errorf("RL031 = %d, want 0", got)
 	}
 }
 
-func TestRL029_DeclaredOnRealm(t *testing.T) {
+func TestRL031_DeclaredOnRealm(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", asvs))
 	writeJSON(t, filepath.Join(dir, "MAPPED.json"), mappedFile("MAPPED", nil, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 0 {
-		t.Errorf("RL029 = %d, want 0", got)
+		t.Errorf("RL031 = %d, want 0", got)
 	}
 }
 
-func TestRL029_SubRealmUsesParent(t *testing.T) {
+func TestRL031_SubRealmUsesParent(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", asvs, "team"))
 	writeJSON(t, filepath.Join(dir, "team", "realm.json"), realmFile("dev.test.root.team", nil))
 	writeJSON(t, filepath.Join(dir, "team", "MAPPED.json"), mappedFile("MAPPED", nil, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 0 {
-		t.Errorf("from the parent: RL029 = %d, want 0", got)
+		t.Errorf("from the parent: RL031 = %d, want 0", got)
 	}
 	if got := rl029(t, filepath.Join(dir, "team")); got != 0 {
-		t.Errorf("from the sub-realm: RL029 = %d, want 0", got)
+		t.Errorf("from the sub-realm: RL031 = %d, want 0", got)
 	}
 }
 
 // A parent does not see its sub-realm's declaration.
-func TestRL029_ParentDoesNotUseSubRealm(t *testing.T) {
+func TestRL031_ParentDoesNotUseSubRealm(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", nil, "team"))
 	writeJSON(t, filepath.Join(dir, "team", "realm.json"), realmFile("dev.test.root.team", asvs))
 	writeJSON(t, filepath.Join(dir, "MAPPED.json"), mappedFile("MAPPED", nil, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 1 {
-		t.Errorf("RL029 = %d, want 1", got)
+		t.Errorf("RL031 = %d, want 1", got)
 	}
 }
 
 // An `inherits` declaration passes on no references (STDREF-009).
-func TestRL029_InheritsPassesNothing(t *testing.T) {
+func TestRL031_InheritsPassesNothing(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "realm.json"), realmFile("dev.test.root", nil))
 	writeJSON(t, filepath.Join(dir, "BASE.json"), mappedFile("BASE", asvs))
@@ -175,16 +175,16 @@ func TestRL029_InheritsPassesNothing(t *testing.T) {
 	child.Entity.Inherits = "BASE"
 	writeJSON(t, filepath.Join(dir, "CHILD.json"), child)
 	if got := rl029(t, dir); got != 1 {
-		t.Errorf("RL029 = %d, want 1", got)
+		t.Errorf("RL031 = %d, want 1", got)
 	}
 }
 
 // Without a manifest there is no Realm to resolve against, so nothing can be
 // called undeclared.
-func TestRL029_NoManifestSkipped(t *testing.T) {
+func TestRL031_NoManifestSkipped(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, filepath.Join(dir, "MAPPED.json"), mappedFile("MAPPED", nil, "owasp.asvs:2.1.1"))
 	if got := rl029(t, dir); got != 0 {
-		t.Errorf("RL029 = %d, want 0", got)
+		t.Errorf("RL031 = %d, want 0", got)
 	}
 }

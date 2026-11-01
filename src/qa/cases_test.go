@@ -85,7 +85,7 @@ type goCase struct {
 var goCases = []goCase{
 	{
 		name: "rule-lint reports a bad standards entry",
-		want: []string{"RL026 error"},
+		want: []string{"RL028 error"},
 		run: func(*testing.T) *result.Result {
 			f := standardsFile(entity.StandardRef{ID: "owasp", Relation: entity.RelationImplements})
 			return rulelint.New().LintFile(f)
@@ -93,21 +93,21 @@ var goCases = []goCase{
 	},
 	{
 		name: "rule-lint reports a malformed standard note",
-		want: []string{"RL027 error"},
+		want: []string{"RL029 error"},
 		run: func(*testing.T) *result.Result {
 			return rulelint.New().LintFile(standardsFile(asvsRef, "no mapping"))
 		},
 	},
 	{
 		name: "rule-lint reports a duplicate standard note",
-		want: []string{"RL028 error"},
+		want: []string{"RL030 error"},
 		run: func(*testing.T) *result.Result {
 			return rulelint.New().LintFile(standardsFile(asvsRef, "owasp.asvs:1", "owasp.asvs:1"))
 		},
 	},
 	{
 		name: "rule-lint reports an undeclared standard",
-		want: []string{"RL002 info", "RL029 error"},
+		want: []string{"RL002 info", "RL031 error"},
 		run: func(t *testing.T) *result.Result {
 			dir := t.TempDir()
 			f := standardsFile(entity.StandardRef{}, "owasp.asvs:1")

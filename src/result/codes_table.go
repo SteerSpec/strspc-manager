@@ -218,13 +218,29 @@ var codeTable = []CodeInfo{
 	{
 		Code:     "RL026",
 		Module:   "rule-lint",
+		Severity: "Warning",
+		Title:    "Inline example",
+		Summary:  "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+		Fix:      "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
+	},
+	{
+		Code:     "RL027",
+		Module:   "rule-lint",
+		Severity: "Info",
+		Title:    "Rule body may hold two statements",
+		Summary:  "A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored.",
+		Fix:      "Split the rule if it makes two statements. A relative clause with its own key word is still one statement, and needs no change.",
+	},
+	{
+		Code:     "RL028",
+		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Invalid standards entry",
 		Summary:  "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
 		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
 	},
 	{
-		Code:     "RL027",
+		Code:     "RL029",
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Malformed standard note",
@@ -232,7 +248,7 @@ var codeTable = []CodeInfo{
 		Fix:      "Write the standard's `id`, a colon and a clause that is not blank.",
 	},
 	{
-		Code:     "RL028",
+		Code:     "RL030",
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Duplicate standard note",
@@ -240,7 +256,7 @@ var codeTable = []CodeInfo{
 		Fix:      "Keep one note. To withdraw the other, retype it to `reference`.",
 	},
 	{
-		Code:     "RL029",
+		Code:     "RL031",
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Undeclared standard",

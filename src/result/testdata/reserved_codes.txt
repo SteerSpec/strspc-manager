@@ -41,10 +41,12 @@ RL022 active rule-body-multiple-sentences
 RL023 active visibility-value-unknown
 RL024 active visibility-wider-than-container
 RL025 active supersedes-other-entity
-RL026 active standards-entry-invalid
-RL027 active standard-note-malformed
-RL028 active standard-note-duplicate
-RL029 active standard-undeclared
+RL026 active inline-example
+RL027 active rule-body-multiple-key-words
+RL028 active standards-entry-invalid
+RL029 active standard-note-malformed
+RL030 active standard-note-duplicate
+RL031 active standard-undeclared
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited

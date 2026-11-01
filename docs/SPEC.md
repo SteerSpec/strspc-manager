@@ -479,10 +479,12 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
 | RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
-| RL026 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
-| RL027 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
-| RL028 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
-| RL029 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
+| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
+| RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
+| RL028 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
+| RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
+| RL030 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
+| RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
 
 #### `rule-diff` (RD)
 
@@ -680,12 +682,14 @@ github://<owner>/<repo>@<ref>[/<path>]
 19. Bodies of `D`, `P` and `I` rules: every unqualified `<EUID>-<NNN>` reference outside backticks points to an existing rule ID within the scanned realm. Qualified references are checked by `realm-resolve` (RR019 to RR021).
 20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
 21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
-22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21 and 22 do not apply to them.
+22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21, 22, 25 and 26 do not apply to them.
 23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-015).
 24. A rule's `supersedes` names a rule of the same entity (RUL-012).
-25. Each `entity.standards` entry is valid and its `id` unique (STDREF-002 to STDREF-004, STDREF-008).
-26. Each `standard` note holds `<id>:<clause>`, and no rule holds the same one twice (NTE-014, NTE-015).
-27. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs with the Realm-wide pass, `strspc realm validate --recursive`, and only for a Realm with a `realm.json`. A sub-realm linted alone reads its parent from `../realm.json`.
+25. Bodies of `D` rules, and notes on them other than `example` and `counter_example`, hold no inline example outside backticks (NTE-020). Notes on other rules are not checked.
+26. Bodies of `D` rules with more than one key word outside backticks and rule IDs are reported at Info, since a relative clause can carry its own key word (RUL-004).
+27. Each `entity.standards` entry is valid and its `id` unique (STDREF-002 to STDREF-004, STDREF-008).
+28. Each `standard` note holds `<id>:<clause>`, and no rule holds the same one twice (NTE-014, NTE-015).
+29. Each `standard` note's `<id>` resolves to a declared reference (NTE-016). This needs the manifests, so it runs with the Realm-wide pass, `strspc realm validate --recursive`, and only for a Realm with a `realm.json`. A sub-realm linted alone reads its parent from `../realm.json`.
 
 **Output:** GitHub Actions annotations inline on PR files, plus a summary check.
 

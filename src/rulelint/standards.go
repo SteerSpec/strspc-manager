@@ -10,15 +10,15 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
-// checkStandards runs RL026 on the entity's `standards` array, and RL027 and
-// RL028 on its `standard` notes (STDREF-002 to STDREF-004, STDREF-008, NTE-014,
+// checkStandards runs RL028 on the entity's `standards` array, and RL029 and
+// RL030 on its `standard` notes (STDREF-002 to STDREF-004, STDREF-008, NTE-014,
 // NTE-015). Whether a note's id is declared needs the manifests, so that is
-// RL029, in LintRealm.
+// RL031, in LintRealm.
 func checkStandards(ef *entity.File, res *result.Result, path string) {
 	for _, err := range entity.ValidateStandardRefs(ef.Entity.Standards) {
 		res.Add(result.Diagnostic{
 			Module:   module,
-			Code:     "RL026",
+			Code:     "RL028",
 			Severity: result.Error,
 			Message:  err.Error(),
 			Path:     path,
@@ -32,7 +32,7 @@ func checkStandards(ef *entity.File, res *result.Result, path string) {
 		if _, _, err := entity.ParseStandardNote(n.Content); err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RL027",
+				Code:     "RL029",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("note %s: %s", n.ID, err),
 				Path:     path,
@@ -42,7 +42,7 @@ func checkStandards(ef *entity.File, res *result.Result, path string) {
 		if seen[key] {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RL028",
+				Code:     "RL030",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("note %s: rule %s already maps %q (NTE-015)", n.ID, n.RuleRef, n.Content),
 				Path:     path,
@@ -52,7 +52,7 @@ func checkStandards(ef *entity.File, res *result.Result, path string) {
 	}
 }
 
-// checkRealmStandards runs RL029 over a Realm and its sub-realms: the id of a
+// checkRealmStandards runs RL031 over a Realm and its sub-realms: the id of a
 // `standard` note resolves in the tree of declarations around its rule
 // (NTE-016). A source with no manifest has no Realm to resolve against, so
 // LintRealm doesn't call this for it.
@@ -90,7 +90,7 @@ func parentStandards(dir string) []entity.StandardRef {
 	return parent.Realm.Standards
 }
 
-// checkDirStandards runs RL029 on the entity files of one Realm directory.
+// checkDirStandards runs RL031 on the entity files of one Realm directory.
 func checkDirStandards(dir string, realm, parent []entity.StandardRef, res *result.Result, opts ...entity.WalkOption) {
 	// A file that can't be read or parsed is reported by the first pass.
 	_ = entity.WalkEntityFiles(dir, func(fpath string, _ []byte, ef *entity.File, parseErr error) error {
@@ -112,12 +112,12 @@ func checkNoteStandards(ef *entity.File, containing [][]entity.StandardRef, real
 		}
 		id, _, err := entity.ParseStandardNote(n.Content)
 		if err != nil {
-			continue // RL027.
+			continue // RL029.
 		}
 		if entity.ResolveStandard(id, append(slices.Clone(scopes), realm, parent)...) == nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
-				Code:     "RL029",
+				Code:     "RL031",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("note %s: standard %q is not declared by the entity, an entity containing it, the Realm or its parent (NTE-016)", n.ID, id),
 				Path:     fpath,
