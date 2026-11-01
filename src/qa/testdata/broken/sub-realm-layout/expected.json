@@ -3,12 +3,6 @@
     "module": "realm-lint",
     "code": "RM002",
     "severity": "error",
-    "path": "realm/language/realm.json"
-  },
-  {
-    "module": "realm-lint",
-    "code": "RM002",
-    "severity": "error",
     "path": "realm/realm.json"
   },
   {
