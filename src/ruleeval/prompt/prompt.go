@@ -60,7 +60,7 @@ func PartialDiffBlock(chunk string, files []string, unlisted int) string {
 	var b strings.Builder
 	b.WriteString("<diff_scope>\nOnly part of the diff is shown below. Files changed by the whole diff:\n")
 	for _, f := range files {
-		fmt.Fprintf(&b, "- %s\n", escapePath(f))
+		b.WriteString(FileEntry(f))
 	}
 	if unlisted > 0 {
 		fmt.Fprintf(&b, "%d more files are not listed.\n", unlisted)
@@ -70,11 +70,11 @@ func PartialDiffBlock(chunk string, files []string, unlisted int) string {
 	return b.String()
 }
 
-// escapePath renders a path on one line with no tag delimiters; an ordinary
-// path comes back unchanged.
-func escapePath(path string) string {
+// FileEntry renders one line of the PartialDiffBlock file list: the path on
+// a single line with no tag delimiters. An ordinary path is listed unchanged.
+func FileEntry(path string) string {
 	q := strconv.Quote(path)
-	return strings.NewReplacer("<", `\x3c`, ">", `\x3e`).Replace(q[1 : len(q)-1])
+	return "- " + strings.NewReplacer("<", `\x3c`, ">", `\x3e`).Replace(q[1:len(q)-1]) + "\n"
 }
 
 // RulesBlock renders the rules to evaluate. Each rule carries its id,

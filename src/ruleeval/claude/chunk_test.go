@@ -169,6 +169,11 @@ func TestCapFiles(t *testing.T) {
 			t.Errorf("capFiles(%d) = %q, %d; want %q, %d", tc.budget, kept, unlisted, tc.kept, tc.unlisted)
 		}
 	}
+	// Escaping lengthens an entry, and the cap counts what is rendered: "<<"
+	// takes 11 bytes as `- \x3c\x3c` with its newline, not 5.
+	if kept, unlisted := capFiles([]string{"<<"}, 10); len(kept) != 0 || unlisted != 1 {
+		t.Errorf("capFiles must measure the escaped entry, got %q, %d", kept, unlisted)
+	}
 }
 
 func TestMergeVerdict_Precedence(t *testing.T) {

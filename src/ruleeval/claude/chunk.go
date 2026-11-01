@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
+	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
 
 // estimateTokens approximates the token count of s as bytes/3, a
@@ -170,11 +171,11 @@ func changedFiles(diff string) []string {
 	return files
 }
 
-// capFiles keeps the leading files whose list entries fit in budget bytes
-// and counts the rest.
+// capFiles keeps the leading files whose rendered list entries fit in budget
+// bytes and counts the rest.
 func capFiles(files []string, budget int) (kept []string, unlisted int) {
 	for i, f := range files {
-		budget -= len(f) + len("- \n")
+		budget -= len(prompt.FileEntry(f))
 		if budget < 0 {
 			return kept, len(files) - i
 		}
