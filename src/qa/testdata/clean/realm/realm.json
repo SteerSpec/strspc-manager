@@ -3,7 +3,14 @@
   "realm": {
     "id": "dev.steerspec.qa.clean",
     "title": "QA realm dev.steerspec.qa.clean",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "standards": [
+      {
+        "id": "owasp.asvs",
+        "relation": "implements",
+        "version": "4.0.3"
+      }
+    ]
   },
   "dependencies": [
     {
