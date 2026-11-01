@@ -1,8 +1,9 @@
 // Package prompt builds the system prompt, diff and rules blocks, and the
 // structured-output schema shared by all AI providers in ruleeval.
 //
-// Version changes whenever the wording of System, DiffBlock, RulesBlock or
-// the shape of VerdictSchema or DetailSchema changes in a way that could alter verdicts.
+// Version changes whenever the wording of System, DiffBlock, PartialDiffBlock,
+// RulesBlock or the shape of VerdictSchema or DetailSchema changes in a way
+// that could alter verdicts.
 // It is mixed into evaluation cache keys.
 package prompt
 
@@ -17,7 +18,7 @@ import (
 
 // Version identifies the prompt revision. Bump it whenever a change to this
 // package could change verdicts so that cached results are invalidated.
-const Version = "v6"
+const Version = "v7"
 
 // noteOrder lists the note types sent to the evaluator, in the order they
 // are rendered. Other note types (changelog, reference, supersedes, …) are
@@ -28,6 +29,7 @@ const system = `You are the SteerSpec rule evaluator. You receive a unified diff
 
 How to evaluate:
 - Judge the change itself: the lines beginning with "+" (added or rewritten) and the lines beginning with "-" (removed) inside each hunk. A removal that breaks a rule is a violation just as an addition is: deleting a required element from code that remains is a regression introduced by this diff. Unchanged context lines are provided so you can understand the change; a pre-existing problem that the diff does not touch is never a violation of this diff.
+- A diff too large for one request is split, and each part is judged on its own. A part opens with a <diff_scope> block listing every file the whole diff changes. A listed file changed even when no hunk of it is shown here, and a file that is shown may be shown only in part. Never answer "violated" because something is missing from what you can see when it could sit in a listed file: if a rule needs a change in a file the list names, this part cannot tell that the change is missing, so answer "compliant" or "not_applicable". A file the list does not name really is unchanged and its absence can be a violation, unless the list ends by saying that more files are not listed. Anything the hunks shown here break is judged as usual.
 - For each rule choose exactly one verdict. "violated": an added or changed line breaks the rule. "compliant": the diff touches the rule's subject and respects it. "not_applicable": the diff does not touch the rule's subject at all; this is the default, so choose it whenever the rule's subject is absent from the diff rather than guessing.
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when the diff falls outside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule with "extended rules" builds on the rules quoted there. Read it together with them to understand what it requires, and give a verdict for the rule itself only. An extended rule is not judged here: a change that breaks only the extended rule does not violate the rule that extends it.
@@ -47,6 +49,32 @@ func System() string { return system }
 func DiffBlock(diff string) string {
 	diff = strings.TrimRight(diff, "\n")
 	return "<diff>\n" + diff + "\n</diff>\n"
+}
+
+// PartialDiffBlock wraps a part of a diff too large for one request. A part
+// cannot show what changed elsewhere, so a <diff_scope> block ahead of it
+// lists files, the paths the whole diff changes; unlisted counts the paths
+// left off that list. Paths come from the diff under review, so they are
+// escaped: a crafted file name must not forge a list entry or end the block.
+func PartialDiffBlock(chunk string, files []string, unlisted int) string {
+	var b strings.Builder
+	b.WriteString("<diff_scope>\nOnly part of the diff is shown below. Files changed by the whole diff:\n")
+	for _, f := range files {
+		b.WriteString(FileEntry(f))
+	}
+	if unlisted > 0 {
+		fmt.Fprintf(&b, "%d more files are not listed.\n", unlisted)
+	}
+	b.WriteString("</diff_scope>\n")
+	b.WriteString(DiffBlock(chunk))
+	return b.String()
+}
+
+// FileEntry renders one line of the PartialDiffBlock file list: the path on
+// a single line with no tag delimiters. An ordinary path is listed unchanged.
+func FileEntry(path string) string {
+	q := strconv.Quote(path)
+	return "- " + strings.NewReplacer("<", `\x3c`, ">", `\x3e`).Replace(q[1:len(q)-1]) + "\n"
 }
 
 // RulesBlock renders the rules to evaluate. Each rule carries its id,
