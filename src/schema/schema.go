@@ -201,20 +201,12 @@ func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) 
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
-	// Verify the resolved cache path stays within CacheDir, resolving
-	// symlinks where possible so the check is not purely lexical.
-	base := filepath.Clean(f.cfg.CacheDir)
-	if phys, err := filepath.EvalSymlinks(base); err == nil {
-		base = phys
+	// Refuse a cache entry that symlinks would place outside CacheDir, for
+	// every entry this fetch can read or write.
+	if !f.staysInCache(clean) {
+		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
-	resolved := filepath.Clean(filepath.Join(base, filepath.FromSlash(clean)))
-	if parent := filepath.Dir(resolved); parent != base {
-		if phys, err := filepath.EvalSymlinks(parent); err == nil {
-			resolved = filepath.Join(phys, filepath.Base(resolved))
-		}
-	}
-	rel, err := filepath.Rel(base, resolved)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if f.cfg.CoreVersion != "" && !f.staysInCache(f.releaseKey(clean)) {
 		return nil, fmt.Errorf("invalid schema path: %q", schemaPath)
 	}
 
@@ -236,7 +228,7 @@ func (f *Fetcher) Fetch(ctx context.Context, schemaPath string) ([]byte, error) 
 // fetchRelease retrieves a schema of the pinned core release. Releases are
 // immutable, so a cached copy is always valid.
 func (f *Fetcher) fetchRelease(ctx context.Context, clean string) ([]byte, error) {
-	key := path.Join("versions", f.cfg.CoreVersion, clean)
+	key := f.releaseKey(clean)
 	if data, err := f.readCache(key); err == nil {
 		return data, nil
 	}
@@ -319,8 +311,33 @@ func releaseName(clean string) string {
 	return strings.TrimSuffix(dir, "/") + "." + stem + ".schema.json"
 }
 
+// releaseKey is the cache key of a schema of the pinned core release.
+func (f *Fetcher) releaseKey(clean string) string {
+	return path.Join("versions", f.cfg.CoreVersion, clean)
+}
+
 func (f *Fetcher) localPath(clean string) string {
 	return filepath.Join(f.cfg.CacheDir, filepath.FromSlash(clean))
+}
+
+// staysInCache reports whether the directory of the cache entry key resolves
+// inside CacheDir. A directory may not exist yet and MkdirAll would then follow
+// any link above it, so the deepest ancestor that resolves decides. The entry
+// itself is left out: readSchemaFile refuses a link and writeCache replaces it.
+func (f *Fetcher) staysInCache(key string) bool {
+	base := filepath.Clean(f.cfg.CacheDir)
+	if phys, err := filepath.EvalSymlinks(base); err == nil {
+		base = phys
+	}
+	for dir := filepath.Dir(filepath.Join(base, filepath.FromSlash(key))); dir != base; dir = filepath.Dir(dir) {
+		phys, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(base, phys)
+		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	}
+	return true
 }
 
 func (f *Fetcher) readCache(clean string) ([]byte, error) {
