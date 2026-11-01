@@ -43,7 +43,7 @@ var (
 	urlRe = regexp.MustCompile(`(?i)[a-z][a-z0-9+.-]*://\S+`)
 
 	// markupRe finds HTML comments and tags, which a rendered copy doesn't show.
-	markupRe = regexp.MustCompile(`<!--.*?-->|</?[A-Za-z][^<>]*>`)
+	markupRe = regexp.MustCompile(`(?s:<!--.*?-->)|</?[A-Za-z][^<>]*>`)
 
 	// reportableEUIDRe selects the unknown prefixes worth reporting. EUIDs in
 	// practice are uppercase, while a lowercase or numeric shape is usually a
@@ -164,7 +164,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		euids := make(map[string]bool)
 		var replaced []*entity.Rule
 		for _, ef := range s.Entities {
-			if err := c.collect(ef, own, euids, &replaced); err != nil {
+			if err := c.collect(ef, s.RealmID, own, euids, &replaced); err != nil {
 				return nil, fmt.Errorf("realm %q: %w", s.RealmID, err)
 			}
 		}
@@ -199,9 +199,10 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 }
 
 // collect adds the rules of ef and of its sub-entities to rules and euids, and
-// appends every rule that supersedes another to replaced. A rule in an unknown
-// state is an error: no citation of it could be judged.
-func (c *Checker) collect(ef *entity.File, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
+// appends every rule that supersedes another to replaced. realm is the source's
+// Realm. A rule in an unknown state is an error: no citation of it could be
+// judged.
+func (c *Checker) collect(ef *entity.File, realm string, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
 	if ef == nil {
 		return nil
 	}
@@ -212,9 +213,7 @@ func (c *Checker) collect(ef *entity.File, rules map[string]*citedRule, euids ma
 			return fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
 		}
 		rules[r.ID] = &citedRule{state: r.State}
-		// c.rules holds the earlier sources only, so a later rule that loses to
-		// one of them on its ID isn't indexed.
-		if _, dup := c.rules[r.ID]; !dup {
+		if c.citable(realm, r.ID) {
 			c.addBody(r)
 		}
 		if r.Supersedes != nil {
@@ -222,30 +221,47 @@ func (c *Checker) collect(ef *entity.File, rules map[string]*citedRule, euids ma
 		}
 	}
 	for i := range ef.SubEntities {
-		if err := c.collect(&ef.SubEntities[i], rules, euids, replaced); err != nil {
+		if err := c.collect(&ef.SubEntities[i], realm, rules, euids, replaced); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// citable reports whether a citation can resolve to rule id of the source being
+// collected, in realm: by its realm qualifier, unless an earlier source holds
+// that Realm, or by the bare ID, unless an earlier source holds that ID.
+func (c *Checker) citable(realm, id string) bool {
+	if _, held := c.realms[realm]; realm != "" && !held {
+		return true
+	}
+	_, held := c.rules[id]
+	return !held
+}
+
 // addBody indexes the body of r for the copy check.
 func (c *Checker) addBody(r *entity.Rule) {
-	words := normalize(r.Body)
-	if len(words) < minCopyWords {
+	body := words(blank(r.Body))
+	if len(body) < minCopyWords {
 		return
 	}
-	joined := strings.Join(words, " ")
+	joined := strings.Join(body, " ")
 	if !c.seen[joined] {
 		c.seen[joined] = true
 		c.bodies = append(c.bodies, ruleBody{r.ID, joined})
 	}
 }
 
-// normalize returns the lowercased words of s, without URLs, punctuation or
-// markup.
-func normalize(s string) []string {
-	s = markupRe.ReplaceAllString(urlRe.ReplaceAllString(s, " "), " ")
+// blank removes the URLs and the markup of s, keeping its line breaks so that
+// lines stay where they were.
+func blank(s string) string {
+	return markupRe.ReplaceAllStringFunc(urlRe.ReplaceAllString(s, " "), func(m string) string {
+		return " " + strings.Repeat("\n", strings.Count(m, "\n"))
+	})
+}
+
+// words returns the lowercased words of s, without punctuation.
+func words(s string) []string {
 	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
@@ -313,7 +329,7 @@ func (c *Checker) CheckText(path string, data []byte) *result.Result {
 		}
 		exempt = marked
 	}
-	c.checkCopies(lines, skipped, path, res)
+	c.checkCopies(string(data), skipped, path, res)
 	if c.cfg.Strict {
 		for i := range res.Diagnostics {
 			if res.Diagnostics[i].Severity == result.Warning {
@@ -324,16 +340,16 @@ func (c *Checker) CheckText(path string, data []byte) *result.Result {
 	return res
 }
 
-// checkCopies reports each copy of a rule's body in lines. It compares normalized
-// words, so a copy may differ in case and punctuation and may wrap across lines.
-// A copy is exempt when the line it starts on is. The state of the rule doesn't
-// matter: a copy goes stale in any state.
-func (c *Checker) checkCopies(lines []string, skipped []bool, path string, res *result.Result) {
+// checkCopies reports each copy of a rule's body in data, whose lines are those
+// of skipped. It compares normalized words, so a copy may differ in case and
+// punctuation and may wrap across lines. A copy is exempt when the line it starts
+// on is. The state of the rule doesn't matter: a copy goes stale in any state.
+func (c *Checker) checkCopies(data string, skipped []bool, path string, res *result.Result) {
 	var text strings.Builder
 	var starts, wordLines []int
 	text.WriteByte(' ')
-	for i, line := range lines {
-		for _, w := range normalize(line) {
+	for i, line := range strings.Split(blank(data), "\n") {
+		for _, w := range words(line) {
 			starts = append(starts, text.Len())
 			wordLines = append(wordLines, i)
 			text.WriteString(w)

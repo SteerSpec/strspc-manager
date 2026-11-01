@@ -391,6 +391,8 @@ func TestCopiedBody(t *testing.T) {
 		{name: "html tags", text: "<strong>The</strong> order total<br>MUST equal <em>the sum</em> of its lines.", want: []finding{rf007(1)}},
 		{name: "html comment inside", text: "The order total <!-- note --> MUST equal the sum of its lines.", want: []finding{rf007(1)}},
 		{name: "comment line inside a wrap", text: "The order total\n<!-- strspc-refs: ignore -->\nMUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "multi-line html comment inside", text: "The order total <!-- a\nnote\n--> MUST equal the sum of its lines.", want: []finding{rf007(1)}},
+		{name: "line after a multi-line comment", text: "<!--\nnote\n-->\n" + copied, want: []finding{rf007(4)}},
 		{name: "url slug", text: "https://example.com/the-order-total-must-equal-the-sum-of-its-lines"},
 		{name: "marker on the line", text: copied + " <!-- strspc-refs: ignore -->"},
 		{name: "marker above", text: "<!-- strspc-refs: ignore -->\n" + copied},
@@ -405,7 +407,8 @@ func TestCopiedBody(t *testing.T) {
 	}
 }
 
-func TestCopiedBodyFirstSourceWins(t *testing.T) {
+func TestCopiedBodyBySource(t *testing.T) {
+	const first, second = "The first source MUST win this rule.", "The second source MUST lose this rule."
 	source := func(realm, body string) rulerefs.Source {
 		return rulerefs.Source{
 			RealmID: realm,
@@ -415,21 +418,24 @@ func TestCopiedBodyFirstSourceWins(t *testing.T) {
 			}},
 		}
 	}
-	sources := []rulerefs.Source{
-		source("dev.steerspec.first", "The first source MUST win this rule."),
-		source("dev.steerspec.second", "The second source MUST lose this rule."),
-	}
+	rf007 := []finding{{"RF007", result.Error, 1}}
 	tests := []struct {
-		text string
-		want []finding
+		name       string
+		realm      string
+		wantSecond []finding
 	}{
-		{text: "The first source MUST win this rule.", want: []finding{{"RF007", result.Error, 1}}},
-		{text: "The second source MUST lose this rule."},
+		{name: "another Realm stays citable by its qualifier", realm: "dev.steerspec.second", wantSecond: rf007},
+		{name: "same Realm loses to the first source", realm: "dev.steerspec.first"},
+		{name: "no Realm loses to the first source", realm: ""},
 	}
 	for _, tt := range tests {
-		t.Run(tt.text, func(t *testing.T) {
-			if got := findings(check(t, tt.text, sources)); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got %v, want %v", got, tt.want)
+		t.Run(tt.name, func(t *testing.T) {
+			sources := []rulerefs.Source{source("dev.steerspec.first", first), source(tt.realm, second)}
+			if got := findings(check(t, first, sources)); !reflect.DeepEqual(got, rf007) {
+				t.Errorf("first body: got %v, want %v", got, rf007)
+			}
+			if got := findings(check(t, second, sources)); !reflect.DeepEqual(got, tt.wantSecond) {
+				t.Errorf("second body: got %v, want %v", got, tt.wantSecond)
 			}
 		})
 	}
