@@ -531,6 +531,24 @@
     "retired": false
   },
   {
+    "code": "RL026",
+    "module": "rule-lint",
+    "severity": "Warning",
+    "title": "Inline example",
+    "summary": "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+    "fix": "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
+    "retired": false
+  },
+  {
+    "code": "RL027",
+    "module": "rule-lint",
+    "severity": "Info",
+    "title": "Rule body may hold two statements",
+    "summary": "A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored.",
+    "fix": "Split the rule if it makes two statements. A relative clause with its own key word is still one statement, and needs no change.",
+    "retired": false
+  },
+  {
     "code": "RM001",
     "module": "realm-lint",
     "severity": "Error",

@@ -216,6 +216,22 @@ var codeTable = []CodeInfo{
 		Fix:      "Supersede within the same entity. To reuse another entity's rule, inherit it or cite it in a `related` note.",
 	},
 	{
+		Code:     "RL026",
+		Module:   "rule-lint",
+		Severity: "Warning",
+		Title:    "Inline example",
+		Summary:  "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+		Fix:      "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
+	},
+	{
+		Code:     "RL027",
+		Module:   "rule-lint",
+		Severity: "Info",
+		Title:    "Rule body may hold two statements",
+		Summary:  "A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored.",
+		Fix:      "Split the rule if it makes two statements. A relative clause with its own key word is still one statement, and needs no change.",
+	},
+	{
 		Code:     "RD000",
 		Module:   "rule-diff",
 		Severity: "Error",

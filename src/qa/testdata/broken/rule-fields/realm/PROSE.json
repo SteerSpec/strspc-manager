@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:30319b9a45446fb8ab81bcb67540a226a058789884d41306cfc795ebcc94e42d"
+    "hash": "blake3:b78fb71df2de5ade92d281e9b9079b41b141c98687100437946ff40df57fd4e7"
   },
   "rules": [
     {
@@ -36,7 +36,44 @@
       "added_by": "qa@steerspec.dev",
       "added_at": "2026-01-15",
       "supersedes": null
+    },
+    {
+      "id": "PROSE-004",
+      "revision": 0,
+      "state": "D",
+      "body": "An order MUST name a carrier such as a courier.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "PROSE-005",
+      "revision": 0,
+      "state": "D",
+      "body": "An order MUST be paid and MUST NOT be free.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "supersedes": null
     }
   ],
-  "notes": []
+  "notes": [
+    {
+      "id": "PROSE-005/01",
+      "rule_ref": "PROSE-005",
+      "type": "rationale",
+      "content": "Some orders are unpaid, e.g. a sample.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "PROSE-005/02",
+      "rule_ref": "PROSE-005",
+      "type": "example",
+      "content": "A sample such as a swatch is free.",
+      "added_by": "qa@steerspec.dev",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
 }
