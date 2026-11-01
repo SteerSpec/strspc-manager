@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.35.0](https://github.com/SteerSpec/strspc-manager/compare/v1.34.0...v1.35.0) (2026-11-01)
+
+
+### Features
+
+* **rulerefs:** report text that copies a rule's body (RF007) ([#208](https://github.com/SteerSpec/strspc-manager/issues/208)) ([042c5f5](https://github.com/SteerSpec/strspc-manager/commit/042c5f58842e9e3643bf43703d66a902e08bd1a7))
+
 ## [1.34.0](https://github.com/SteerSpec/strspc-manager/compare/v1.33.0...v1.34.0) (2026-10-31)
 
 
