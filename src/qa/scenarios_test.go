@@ -173,10 +173,20 @@ func TestCleanCoversTheModel(t *testing.T) {
 	if len(rf.SubRealms) == 0 || len(rf.Dependencies) == 0 {
 		t.Errorf("the realm needs a sub-realm and a dependency, got %d and %d", len(rf.SubRealms), len(rf.Dependencies))
 	}
-	for _, dir := range []string{"base", "head", "cited"} {
-		if !isDir(filepath.Join(cleanDir, dir)) {
-			t.Errorf("clean has no %s/, so a module has no input", dir)
+	for _, dir := range []string{"base", "head"} {
+		files, err := entityFiles(filepath.Join(cleanDir, dir), nil)
+		if err != nil {
+			t.Error(err)
+		} else if len(files) == 0 {
+			t.Errorf("clean/%s holds no entity file, so rule-diff has no input", dir)
 		}
+	}
+	cited, err := os.ReadDir(filepath.Join(cleanDir, "cited"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(cited, func(e os.DirEntry) bool { return !e.IsDir() }) {
+		t.Error("clean/cited holds no file, so rule-refs has no input")
 	}
 }
 
