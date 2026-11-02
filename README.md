@@ -196,7 +196,9 @@ Please run, and on each release pull request, it lists the commits `main`
 gained since the last release by ancestry, keeps the types the changelog
 shows, and checks that `CHANGELOG.md` names each one. Its verdict is the
 `release-changelog` status on the release pull request; with no release pull
-request open, the workflow run itself fails. To restore a dropped commit, add
+request open, the workflow run itself fails. The status is required on `main`,
+so every other pull request into `main`, such as a promotion, gets a passing
+`release-changelog` status from the same workflow. To restore a dropped commit, add
 it to the body of the latest promotion pull request and re-run Release Please:
 
 ```text
