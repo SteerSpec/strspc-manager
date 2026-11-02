@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.38.0](https://github.com/SteerSpec/strspc-manager/compare/v1.37.0...v1.38.0) (2026-11-02)
+
+
+### Features
+
+* **rulelint:** lint each pinned sub-realm against its own core pin ([#242](https://github.com/SteerSpec/strspc-manager/issues/242)) ([28a168d](https://github.com/SteerSpec/strspc-manager/commit/28a168ddd0bf61b723ff0177c7aae36543a86230))
+
 ## [1.37.0](https://github.com/SteerSpec/strspc-manager/compare/v1.36.1...v1.37.0) (2026-11-02)
 
 
