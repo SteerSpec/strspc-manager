@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -54,6 +53,10 @@ type Config struct {
 	// DependencyFetcher is optional: when set, RM014 also reads each
 	// dependency's manifest, and RM015 and RM016 run.
 	DependencyFetcher DependencyFetcher
+	// EntityLintingDelegated states that the caller lints the entity files
+	// itself, such as with rulelint.LintRealm, so a missing RuleLinter is not
+	// reported as skipped validation (info RM005).
+	EntityLintingDelegated bool
 	// SubRealmLinters is optional: when set, a sub-realm that pins its own core
 	// Realm is validated with the schemas it returns.
 	SubRealmLinters SubRealmLinters
@@ -83,6 +86,17 @@ func WithSchemaFetcher(f *schema.Fetcher) Option {
 // WithRuleLinter sets the rulelint.Linter used to validate entity files.
 func WithRuleLinter(l *rulelint.Linter) Option {
 	return func(c *Config) { c.RuleLinter = l }
+}
+
+// WithEntityLintingDelegated states that the caller lints the entity files
+// elsewhere, such as with rulelint.LintRealm, so realm-lint runs without a rule
+// linter and does not report info RM005 (entity file validation skipped). RM005
+// errors for paths it cannot read are still reported, and RL031 is left to the
+// caller as it is whenever no rule linter is set. Combined with
+// WithSubRealmLinters, a pinned sub-realm takes only its schema fetcher; the
+// rule linter returned for it is not used.
+func WithEntityLintingDelegated() Option {
+	return func(c *Config) { c.EntityLintingDelegated = true }
 }
 
 // WithDependencyFetcher sets the fetcher used to compare a Realm with the
@@ -428,9 +442,7 @@ func declaresLanguage(data []byte) bool {
 
 // declaresCore reports whether rf itself pins the core Realm.
 func declaresCore(rf *entity.RealmFile) bool {
-	return slices.ContainsFunc(rf.Dependencies, func(d entity.RealmDep) bool {
-		return d.RealmID == coreRealmID
-	})
+	return rf.DependsOn(coreRealmID)
 }
 
 // RM015: Files in _schema/ must match the core Realm's copies. Only files both
@@ -508,7 +520,7 @@ func readJSON(path string) (any, error) {
 // The _schema/ subtree, realm.json files, and sub-realm directories are skipped.
 // Returns the EUID map (euid → file path) collected from the scanned files.
 func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDirs []string, res *result.Result) map[string]string {
-	if l.cfg.RuleLinter == nil {
+	if l.cfg.RuleLinter == nil && !l.cfg.EntityLintingDelegated {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RM005",
@@ -801,7 +813,12 @@ func (l *RealmLinter) forSubRealm(dir string, rf *entity.RealmFile) *RealmLinter
 		return l
 	}
 	cfg := l.cfg
-	cfg.SchemaFetcher, cfg.RuleLinter = l.cfg.SubRealmLinters(dir)
+	fetcher, ruleLinter := l.cfg.SubRealmLinters(dir)
+	cfg.SchemaFetcher = fetcher
+	// A caller that lints entity files itself does so for the sub-realm too.
+	if !cfg.EntityLintingDelegated {
+		cfg.RuleLinter = ruleLinter
+	}
 	return &RealmLinter{cfg: cfg}
 }
 

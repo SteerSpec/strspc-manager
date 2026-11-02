@@ -484,8 +484,8 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Info / Error",
 		Title:    "Entity files not linted",
-		Summary:  "Info if no rule linter is configured; Error if a path cannot be accessed or the walk fails.",
-		Fix:      "Check that the reported path exists and is readable. The Info form means the caller set no rule linter, so entity files were skipped.",
+		Summary:  "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails.",
+		Fix:      "Check that the reported path exists and is readable. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
 	},
 	{
 		Code:     "RM006",

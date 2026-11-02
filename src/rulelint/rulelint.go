@@ -79,7 +79,15 @@ type Config struct {
 	Strict bool
 	// SchemaFetcher is the fetcher for JSON schemas (nil = skip schema check).
 	SchemaFetcher *schema.Fetcher
+	// SubRealmLinter is optional: when set, LintRealm lints the entity files of
+	// a sub-realm that pins its own core Realm with the linter it returns.
+	SubRealmLinter SubRealmLinter
 }
+
+// SubRealmLinter returns the linter for the entity files of the sub-realm in
+// dir, built from that sub-realm's own core pin. A nil return keeps the
+// parent's linter.
+type SubRealmLinter func(dir string) *Linter
 
 // Option configures the Linter.
 type Option func(*Config)
@@ -97,6 +105,17 @@ func WithSchemaVersion(v string) Option {
 // WithSchemaFetcher sets the schema fetcher for JSON Schema validation.
 func WithSchemaFetcher(f *schema.Fetcher) Option {
 	return func(c *Config) { c.SchemaFetcher = f }
+}
+
+// WithSubRealmLinters sets how LintRealm lints a sub-realm that pins its own
+// core Realm (a dependency on dev.steerspec.core): only with the linter f
+// returns for its directory, so its entities are checked against its pin and
+// not also against the parent's. A sub-realm without that dependency keeps the
+// parent's schemas (RLM-014), as it does without this option. Checks that span
+// files still run across the whole tree. It mirrors
+// realmlint.WithSubRealmLinters.
+func WithSubRealmLinters(f SubRealmLinter) Option {
+	return func(c *Config) { c.SubRealmLinter = f }
 }
 
 // Linter validates entity files against schema and business rules.
@@ -274,10 +293,11 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []
 	// Lint parent dir, excluding sub-realm directories.
 	l.lintDirCollect(ctx, dir, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
 
-	// Lint each sub-realm directory.
+	// Lint each sub-realm directory, with its own linter when it pins its own
+	// core Realm.
 	for _, sub := range subRealms {
 		subDir := filepath.Join(dir, sub)
-		l.lintDirCollect(ctx, subDir, res, allRuleIDs, &allParsed)
+		l.forSubRealm(subDir).lintDirCollect(ctx, subDir, res, allRuleIDs, &allParsed)
 	}
 
 	// Cross-file supersedes/relation/inheritance/body references (RL012,
@@ -290,6 +310,23 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []
 	}
 
 	return res
+}
+
+// forSubRealm returns the linter for the entity files of the sub-realm in dir:
+// the one SubRealmLinter returns when the sub-realm depends on core, otherwise
+// l. A manifest that can't be loaded keeps l; realm-lint reports it (RM009).
+func (l *Linter) forSubRealm(dir string) *Linter {
+	if l.cfg.SubRealmLinter == nil {
+		return l
+	}
+	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
+	if err != nil || !rf.DependsOn(schema.CoreRealmID) {
+		return l
+	}
+	if sub := l.cfg.SubRealmLinter(dir); sub != nil {
+		return sub
+	}
+	return l
 }
 
 // lintDirCollect lints entity files in dir and appends results to shared
