@@ -6,9 +6,9 @@
     "inherits": "dev.steerspec.qa.shared:PAY"
   },
   "rule_set": {
-    "version": "1.0.0",
-    "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:cdb913f6d830aa33e3be4dbb9651769c27aa9e4e55e43c24619c349181c12728"
+    "version": "1.0.1",
+    "timestamp": "2026-11-01T14:06:35Z",
+    "hash": "blake3:7a0bff27174637ae3fc6ad10842758f45ca70353740139a412ef22f9e388f360"
   },
   "rules": [
     {
@@ -30,6 +30,15 @@
       "content": "dev.steerspec.qa.shared:PAY-003",
       "added_by": "qa@steerspec.dev",
       "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "BILLING-001/02",
+      "rule_ref": "BILLING-001",
+      "type": "standard",
+      "content": "owasp.asvs:2.1.1",
+      "added_by": "@qa",
+      "added_at": "2026-11-01",
       "revision": 0
     }
   ]

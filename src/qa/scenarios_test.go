@@ -148,11 +148,6 @@ func TestCleanCoversTheModel(t *testing.T) {
 		}
 	}
 	for _, n := range entity.NoteTypes() {
-		// The pinned entity.v1 doesn't accept this type yet. Add a note to the
-		// clean realm with the core pin that does.
-		if n == entity.NoteTypeStandard {
-			continue
-		}
 		if !notes[n] {
 			t.Errorf("no note of type %s", n)
 		}

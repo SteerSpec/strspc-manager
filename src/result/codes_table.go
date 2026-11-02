@@ -93,7 +93,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Unknown note type",
 		Summary:  "A note type is outside the closed enum.",
-		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends` or `related`.",
+		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related` or `standard`.",
 	},
 	{
 		Code:     "RL011",
