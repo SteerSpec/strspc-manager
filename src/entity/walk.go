@@ -35,9 +35,9 @@ func WithRecursive(b bool) WalkOption {
 	return func(c *walkConfig) { c.recursive = b }
 }
 
-// WithExcludeDirs causes the walker to skip directories whose names
-// match any entry in dirs. The comparison uses the directory base name,
-// not the full path.
+// WithExcludeDirs causes the walker to skip the directories at the given paths,
+// relative to the walked directory, such as a Realm's sub_realms. A directory
+// of the same name deeper in the tree is still walked.
 func WithExcludeDirs(dirs []string) WalkOption {
 	return func(c *walkConfig) {
 		if len(dirs) == 0 {
@@ -45,7 +45,7 @@ func WithExcludeDirs(dirs []string) WalkOption {
 		}
 		c.excludeDirs = make(map[string]bool, len(dirs))
 		for _, d := range dirs {
-			c.excludeDirs[d] = true
+			c.excludeDirs[filepath.ToSlash(filepath.Clean(d))] = true
 		}
 	}
 }
@@ -84,8 +84,10 @@ func walkRecursive(dir string, fn WalkFunc, cfg *walkConfig) error {
 			if d.Name() == "_schema" {
 				return fs.SkipDir
 			}
-			if cfg.excludeDirs[d.Name()] {
-				return fs.SkipDir
+			if cfg.excludeDirs != nil {
+				if rel, err := filepath.Rel(dir, path); err == nil && cfg.excludeDirs[filepath.ToSlash(rel)] {
+					return fs.SkipDir
+				}
 			}
 			return nil
 		}
