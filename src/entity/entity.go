@@ -120,6 +120,18 @@ type RealmFile struct {
 	RuleIdentifierFormat *RuleIdentifierFormat `json:"rule_identifier_format,omitempty"`
 }
 
+// DependsOn reports whether the manifest declares a dependency on the Realm
+// with the given ID. A sub-realm that depends on dev.steerspec.core pins its
+// own schemas; one that doesn't uses its parent's (RLM-014).
+func (rf *RealmFile) DependsOn(realmID string) bool {
+	for _, d := range rf.Dependencies {
+		if d.RealmID == realmID {
+			return true
+		}
+	}
+	return false
+}
+
 // RuleIdentifierFormat is a Realm's rule_identifier_format setting. It only
 // changes how a rule identifier is rendered, never the stored "<EUID>-<NNN>"
 // form (RLIFRMT-008). An empty field falls back to its RLIFRMT default.
