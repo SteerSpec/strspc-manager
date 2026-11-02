@@ -50,6 +50,11 @@
 
 * **rulerefs:** report text that copies a rule's body (RF007) ([#208](https://github.com/SteerSpec/strspc-manager/issues/208)) ([042c5f5](https://github.com/SteerSpec/strspc-manager/commit/042c5f58842e9e3643bf43703d66a902e08bd1a7))
 
+
+### Bug Fixes
+
+* **remote:** stop a crafted tar size overflowing the extraction cap ([#202](https://github.com/SteerSpec/strspc-manager/issues/202)) ([cb1ba94](https://github.com/SteerSpec/strspc-manager/commit/cb1ba9475252279dfdff6f1036c4912f6a149e30))
+
 ## [1.34.0](https://github.com/SteerSpec/strspc-manager/compare/v1.33.0...v1.34.0) (2026-10-31)
 
 
