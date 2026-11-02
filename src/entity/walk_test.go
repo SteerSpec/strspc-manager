@@ -194,6 +194,61 @@ func TestWalkEntityFiles_ExcludeDirs(t *testing.T) {
 	})
 }
 
+// An excluded path is matched from the walked directory, so a directory of the
+// same name deeper in the tree is still walked.
+func TestWalkEntityFiles_ExcludeDirsMatchesFromRoot(t *testing.T) {
+	dir := t.TempDir()
+	for _, sub := range []string{"team", filepath.Join("archive", "team")} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entityJSON := func(id string) string {
+		return fmt.Sprintf(`{"entity":{"id":%q,"title":"T"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z"},"rules":[]}`, id)
+	}
+	writeWalkFile(t, dir, "ROOT.json", entityJSON("ROOT"))
+	writeWalkFile(t, filepath.Join(dir, "team"), "TEAM.json", entityJSON("TEAM"))
+	writeWalkFile(t, filepath.Join(dir, "archive", "team"), "OLD.json", entityJSON("OLD"))
+
+	var found []string
+	err := entity.WalkEntityFiles(dir, func(_ string, _ []byte, ef *entity.File, parseErr error) error {
+		if parseErr != nil {
+			t.Errorf("parse: %v", parseErr)
+			return nil
+		}
+		found = append(found, ef.Entity.ID)
+		return nil
+	}, entity.WithExcludeDirs([]string{"team"}))
+	if err != nil {
+		t.Fatalf("WalkEntityFiles: %v", err)
+	}
+	sort.Strings(found)
+	if want := []string{"OLD", "ROOT"}; !slices.Equal(found, want) {
+		t.Errorf("found %v, want %v", found, want)
+	}
+
+	// Entries that aren't clean paths below the root exclude nothing, so an
+	// invalid sub_realms entry can never hide the root itself.
+	for _, bad := range []string{"", ".", "..", "../team", "team/", "./team", "/team"} {
+		t.Run(fmt.Sprintf("%q", bad), func(t *testing.T) {
+			var ids []string
+			err := entity.WalkEntityFiles(dir, func(_ string, _ []byte, ef *entity.File, parseErr error) error {
+				if parseErr == nil {
+					ids = append(ids, ef.Entity.ID)
+				}
+				return nil
+			}, entity.WithExcludeDirs([]string{bad}))
+			if err != nil {
+				t.Fatalf("WalkEntityFiles: %v", err)
+			}
+			sort.Strings(ids)
+			if want := []string{"OLD", "ROOT", "TEAM"}; !slices.Equal(ids, want) {
+				t.Errorf("found %v, want %v", ids, want)
+			}
+		})
+	}
+}
+
 func TestWalkEntityFiles_NonexistentDir(t *testing.T) {
 	err := entity.WalkEntityFiles("testdata/nonexistent", func(_ string, _ []byte, _ *entity.File, _ error) error {
 		t.Error("should not be called")

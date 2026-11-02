@@ -37,14 +37,6 @@ var exceptions = []exception{
 			"makes no exception. head/ of diff-rule-set holds no new file with a bad hash.",
 	},
 	{
-		code: "RM006",
-		bug:  true,
-		reason: "entity.WithExcludeDirs matches a sub-realm by base name at any depth, so with sub_realms [\"team\"] the " +
-			"directory realm/archive/team/ is skipped by rule-lint, realm-lint and realm-resolve, while rule-resolve " +
-			"still returns its files for evaluation: a duplicate EUID there draws no RM006 and a broken entity no " +
-			"RL code. No fixture nests a directory named after a sub-realm.",
-	},
-	{
 		code: "RSV004",
 		bug:  true,
 		reason: "ruleresolve.LocalSource skips the check when rule_set.hash is the empty string, not only when it is " +

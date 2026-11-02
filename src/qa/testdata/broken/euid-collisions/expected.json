@@ -31,6 +31,12 @@
   },
   {
     "module": "realm-lint",
+    "code": "RM006",
+    "severity": "error",
+    "path": "realm/archive/alpha/SHARED3.json"
+  },
+  {
+    "module": "realm-lint",
     "code": "RM012",
     "severity": "error",
     "path": "realm/alpha/CLASHC.json"
