@@ -410,7 +410,7 @@
     "severity": "Error",
     "title": "Unknown note type",
     "summary": "A note type is outside the closed enum.",
-    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends` or `related`.",
+    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related` or `standard`.",
     "retired": false
   },
   {
