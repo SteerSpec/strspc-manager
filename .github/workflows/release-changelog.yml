@@ -12,11 +12,16 @@ name: Release changelog
 # because release-please may leave the release pull request untouched when a
 # promotion only brings skipped commits. It also runs on the release pull
 # request itself, so each new head gets a status.
+#
+# pull_request_target, not pull_request: the job holds `statuses: write`, so its
+# definition must come from main, not from a branch that could be named like
+# the release branch. Safe because it checks out main and only reads the pull
+# request head's CHANGELOG.md as data; never run code from the head here.
 on:
   workflow_run:
     workflows: [Release Please]
     types: [completed]
-  pull_request:
+  pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened]
 
@@ -34,7 +39,7 @@ jobs:
     if: >-
       (github.event_name == 'workflow_run'
         && github.event.workflow_run.conclusion == 'success')
-      || (github.event_name == 'pull_request'
+      || (github.event_name == 'pull_request_target'
         && github.head_ref == 'release-please--branches--main'
         && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
