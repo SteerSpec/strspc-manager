@@ -520,7 +520,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 
 RM002, RM003, RM004, RM007, RM014–RM016 and RM018 fire for the parent manifest and for each sub-realm manifest.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
-RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's; one that does is validated against its own pin only, not also against its parent's, by `realm-lint` and by `rule-lint` when it lints the Realm tree.
+RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's; one that does is validated against its own pin only, not also against its parent's, when the caller supplies the linters for sub-realms to `realm-lint` and, for the Realm tree, to `rule-lint`.
 A caller that lints the entity files itself, as `rule-lint` over the Realm tree, can tell `realm-lint` so; `realm-lint` then runs without a rule linter and does not emit the Info form of RM005.
 RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its strict-mode unit test.
 

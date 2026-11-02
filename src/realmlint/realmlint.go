@@ -92,7 +92,9 @@ func WithRuleLinter(l *rulelint.Linter) Option {
 // elsewhere, such as with rulelint.LintRealm, so realm-lint runs without a rule
 // linter and does not report info RM005 (entity file validation skipped). RM005
 // errors for paths it cannot read are still reported, and RL031 is left to the
-// caller as it is whenever no rule linter is set.
+// caller as it is whenever no rule linter is set. Combined with
+// WithSubRealmLinters, a pinned sub-realm takes only its schema fetcher; the
+// rule linter returned for it is not used.
 func WithEntityLintingDelegated() Option {
 	return func(c *Config) { c.EntityLintingDelegated = true }
 }
@@ -811,7 +813,12 @@ func (l *RealmLinter) forSubRealm(dir string, rf *entity.RealmFile) *RealmLinter
 		return l
 	}
 	cfg := l.cfg
-	cfg.SchemaFetcher, cfg.RuleLinter = l.cfg.SubRealmLinters(dir)
+	fetcher, ruleLinter := l.cfg.SubRealmLinters(dir)
+	cfg.SchemaFetcher = fetcher
+	// A caller that lints entity files itself does so for the sub-realm too.
+	if !cfg.EntityLintingDelegated {
+		cfg.RuleLinter = ruleLinter
+	}
 	return &RealmLinter{cfg: cfg}
 }
 
