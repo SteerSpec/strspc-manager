@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.37.0](https://github.com/SteerSpec/strspc-manager/compare/v1.36.1...v1.37.0) (2026-11-02)
+
+
+### Features
+
+* **rulelint:** expose unresolved standard notes as structured data ([#235](https://github.com/SteerSpec/strspc-manager/issues/235)) ([56174be](https://github.com/SteerSpec/strspc-manager/commit/56174bee007998e89751d9536f29e7748373c294))
+
+
+### Bug Fixes
+
+* **entity:** match excluded sub-realm dirs from the realm root ([#236](https://github.com/SteerSpec/strspc-manager/issues/236)) ([cb63dc0](https://github.com/SteerSpec/strspc-manager/commit/cb63dc09c717b91adc065ab3a3f21fefdf81d9b5))
+* **result:** list the standard note type in RL010's fix text ([#237](https://github.com/SteerSpec/strspc-manager/issues/237)) ([ccdf380](https://github.com/SteerSpec/strspc-manager/commit/ccdf380342be0cc102c6c3ca1acddc50b26838ad))
+
 ## [1.36.1](https://github.com/SteerSpec/strspc-manager/compare/v1.36.0...v1.36.1) (2026-11-01)
 
 
