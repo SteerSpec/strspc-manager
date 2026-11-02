@@ -38,6 +38,9 @@ jobs:
   # `release-changelog` is a required status on main, so every other pull
   # request into main, such as a promotion from develop, needs it too. Nothing
   # to check there: the release pull request that follows is checked.
+  # Statuses belong to a commit, not a pull request, so a head that is also the
+  # release branch head is left alone; the shared concurrency group keeps this
+  # from racing the check job.
   other:
     if: >-
       github.event_name == 'pull_request_target'
@@ -50,6 +53,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          # A missing release branch (404) means no release head to protect;
+          # any other failure stops before posting.
+          if ! release="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/release-please--branches--main" \
+            --jq .object.sha 2>&1)"; then
+            if [[ "$release" != *"HTTP 404"* ]]; then
+              echo "$release" >&2
+              exit 1
+            fi
+            release=
+          fi
+          if [[ "$release" == "$HEAD_SHA" ]]; then
+            echo "Head is the release branch head; its status comes from the check job."
+            exit 0
+          fi
           gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
             -f state=success -f context=release-changelog \
             -f description="Not the release pull request" > /dev/null
