@@ -36,9 +36,10 @@ concurrency:
 
 jobs:
   check:
+    # Any Release Please conclusion: after a failed run the release pull
+    # request may be stale, which this reports rather than skips.
     if: >-
-      (github.event_name == 'workflow_run'
-        && github.event.workflow_run.conclusion == 'success')
+      github.event_name == 'workflow_run'
       || (github.event_name == 'pull_request_target'
         && github.head_ref == 'release-please--branches--main'
         && github.event.pull_request.head.repo.full_name == github.repository)
