@@ -30,22 +30,24 @@ permissions:
   pull-requests: read
   statuses: write
 
-concurrency:
-  group: release-changelog
-  cancel-in-progress: false
-
+# Concurrency is per job: a group keeps one pending run and a newer one
+# replaces it, so a shared group could drop the run a head is waiting for.
 jobs:
   # `release-changelog` is a required status on main, so every other pull
   # request into main, such as a promotion from develop, needs it too. Nothing
   # to check there: the release pull request that follows is checked.
   # Statuses belong to a commit, not a pull request, so a head that is also the
-  # release branch head is left alone; the shared concurrency group keeps this
-  # from racing the check job.
+  # release branch head is left alone. A release head is a new commit that
+  # release-please makes, so no other pull request can have it first.
   other:
     if: >-
       github.event_name == 'pull_request_target'
       && !(github.head_ref == 'release-please--branches--main'
         && github.event.pull_request.head.repo.full_name == github.repository)
+    # Only the newest head of a pull request needs the status.
+    concurrency:
+      group: release-changelog-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - name: Mark as not the release pull request
@@ -79,6 +81,11 @@ jobs:
       || (github.event_name == 'pull_request_target'
         && github.head_ref == 'release-please--branches--main'
         && github.event.pull_request.head.repo.full_name == github.repository)
+    # Serial, and a replaced pending run is harmless: the run that replaces it
+    # reads the current release pull request head and posts on it.
+    concurrency:
+      group: release-changelog
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
