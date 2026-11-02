@@ -35,6 +35,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # `release-changelog` is a required status on main, so every other pull
+  # request into main, such as a promotion from develop, needs it too. Nothing
+  # to check there: the release pull request that follows is checked.
+  other:
+    if: >-
+      github.event_name == 'pull_request_target'
+      && github.head_ref != 'release-please--branches--main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark as not the release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state=success -f context=release-changelog \
+            -f description="Not the release pull request" > /dev/null
+
   check:
     # Any Release Please conclusion: after a failed run the release pull
     # request may be stale, which this reports rather than skips.
