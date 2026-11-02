@@ -226,6 +226,27 @@ func TestWalkEntityFiles_ExcludeDirsMatchesFromRoot(t *testing.T) {
 	if want := []string{"OLD", "ROOT"}; !slices.Equal(found, want) {
 		t.Errorf("found %v, want %v", found, want)
 	}
+
+	// Entries that aren't clean paths below the root exclude nothing, so an
+	// invalid sub_realms entry can never hide the root itself.
+	for _, bad := range []string{"", ".", "..", "../team", "team/", "./team", "/team"} {
+		t.Run(fmt.Sprintf("%q", bad), func(t *testing.T) {
+			var ids []string
+			err := entity.WalkEntityFiles(dir, func(_ string, _ []byte, ef *entity.File, parseErr error) error {
+				if parseErr == nil {
+					ids = append(ids, ef.Entity.ID)
+				}
+				return nil
+			}, entity.WithExcludeDirs([]string{bad}))
+			if err != nil {
+				t.Fatalf("WalkEntityFiles: %v", err)
+			}
+			sort.Strings(ids)
+			if want := []string{"OLD", "ROOT", "TEAM"}; !slices.Equal(ids, want) {
+				t.Errorf("found %v, want %v", ids, want)
+			}
+		})
+	}
 }
 
 func TestWalkEntityFiles_NonexistentDir(t *testing.T) {

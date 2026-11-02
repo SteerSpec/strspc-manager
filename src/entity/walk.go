@@ -37,7 +37,10 @@ func WithRecursive(b bool) WalkOption {
 
 // WithExcludeDirs causes the walker to skip the directories at the given paths,
 // relative to the walked directory, such as a Realm's sub_realms. A directory
-// of the same name deeper in the tree is still walked.
+// of the same name deeper in the tree is still walked. An entry that is not a
+// clean path below the walked directory, such as "", "." or "../x", excludes
+// nothing: it must never hide the walked directory itself, and realm-lint and
+// realm-resolve report it (RM008, RR007).
 func WithExcludeDirs(dirs []string) WalkOption {
 	return func(c *walkConfig) {
 		if len(dirs) == 0 {
@@ -45,9 +48,18 @@ func WithExcludeDirs(dirs []string) WalkOption {
 		}
 		c.excludeDirs = make(map[string]bool, len(dirs))
 		for _, d := range dirs {
-			c.excludeDirs[filepath.ToSlash(filepath.Clean(d))] = true
+			if !isCleanRelDir(d) {
+				continue
+			}
+			c.excludeDirs[filepath.ToSlash(d)] = true
 		}
 	}
+}
+
+// isCleanRelDir reports whether d is a clean relative path strictly below the
+// directory it is relative to.
+func isCleanRelDir(d string) bool {
+	return d != "" && filepath.Clean(d) == d && filepath.IsLocal(d) && d != "."
 }
 
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
