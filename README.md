@@ -191,6 +191,23 @@ everything else.
 > reading at the last release commit, by date, so a `feat:` or `fix:` left on
 > `develop` while a release merges is dropped from the next release.
 
+The `Release changelog` workflow catches a dropped commit. After every Release
+Please run, and on each release pull request, it lists the commits `main`
+gained since the last release by ancestry, keeps the types the changelog
+shows, and checks that `CHANGELOG.md` names each one. Its verdict is the
+`release-changelog` status on the release pull request; with no release pull
+request open, the workflow run itself fails. To restore a dropped commit, add
+it to the body of the latest promotion pull request and re-run Release Please:
+
+```text
+BEGIN_COMMIT_OVERRIDE
+fix(remote): stop a crafted tar size overflowing the extraction cap (#202)
+END_COMMIT_OVERRIDE
+```
+
+release-please reads that block in place of the promotion's merge commit, so
+list each skipped commit, one per paragraph, ending in its `(#<pr>)`.
+
 The `merge-method-develop` and `merge-method-main` rulesets enforce both merge
 methods. `develop` is not back-merged, so it stays behind `main` by the release
 commits.
