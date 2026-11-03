@@ -437,17 +437,18 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 	return coreDir
 }
 
-// declaresLanguage reports whether a manifest holds a realm.language key,
-// whatever its value. It reads the raw JSON because an empty or null value
-// decodes the same as an absent key, and schema validation may be unavailable.
-func declaresLanguage(data []byte) bool {
+// declaresRealmKey reports whether a manifest holds the given key in its
+// realm object, whatever its value. It reads the raw JSON because an empty or
+// null value decodes the same as an absent key, and schema validation may be
+// unavailable.
+func declaresRealmKey(data []byte, key string) bool {
 	var m struct {
 		Realm map[string]json.RawMessage `json:"realm"`
 	}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return false
 	}
-	_, ok := m.Realm["language"]
+	_, ok := m.Realm[key]
 	return ok
 }
 
@@ -797,7 +798,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		// RM017: A sub-realm inherits its parent's language (RLM-018), so its
 		// manifest leaves language out.
-		if declaresLanguage(srData) {
+		if declaresRealmKey(srData, "language") {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM017",
@@ -808,8 +809,8 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		}
 
 		// RM020: A sub-realm uses its parent's contributors (CTRB-006), so
-		// its manifest declares none.
-		if len(srRF.Realm.Contributors) > 0 {
+		// its manifest leaves the key out, even empty or null.
+		if declaresRealmKey(srData, "contributors") {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM020",

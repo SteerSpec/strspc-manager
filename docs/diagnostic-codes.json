@@ -796,7 +796,7 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Sub-realm declares contributors",
-    "summary": "A sub-realm `realm.json` declares `realm.contributors`; a sub-realm uses its parent's contributors (CTRB-006).",
+    "summary": "A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006).",
     "fix": "Remove `contributors` from the sub-realm's `realm.json`, and list the contributors on the parent.",
     "retired": false
   },

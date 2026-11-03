@@ -620,7 +620,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Sub-realm declares contributors",
-		Summary:  "A sub-realm `realm.json` declares `realm.contributors`; a sub-realm uses its parent's contributors (CTRB-006).",
+		Summary:  "A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006).",
 		Fix:      "Remove `contributors` from the sub-realm's `realm.json`, and list the contributors on the parent.",
 	},
 	{

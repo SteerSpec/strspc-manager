@@ -13,15 +13,15 @@ import (
 
 // contributorRealm copies the parent and `sync` sub-realm fixture, leaves out
 // the sub-realm's language (RM017), and sets the contributors of each
-// manifest; nil leaves the key out.
-func contributorRealm(t *testing.T, parent, sub []map[string]any) string {
+// manifest; nil leaves the key out, and json.RawMessage("null") writes null.
+func contributorRealm(t *testing.T, parent, sub any) string {
 	t.Helper()
 	dir := t.TempDir()
 	src := filepath.Join(testdataPath(t), "invalid", "sub_realm_language")
 	if err := os.CopyFS(dir, os.DirFS(src)); err != nil {
 		t.Fatal(err)
 	}
-	set := func(path string, contributors []map[string]any) {
+	set := func(path string, contributors any) {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -110,6 +110,14 @@ func TestRM020_SubRealmContributors(t *testing.T) {
 	}
 	if got := codeDiags(res, "RM020"); len(got) == 1 && !strings.Contains(got[0].Message, "CTRB-006") {
 		t.Errorf("RM020 message %q does not cite CTRB-006", got[0].Message)
+	}
+
+	// The key counts whatever its value, as for RM017.
+	for name, sub := range map[string]any{"empty": []map[string]any{}, "null": json.RawMessage("null")} {
+		res := New().Lint(context.Background(), contributorRealm(t, []map[string]any{{"id": "github:pleberre"}}, sub))
+		if got := codeDiags(res, "RM020"); len(got) != 1 {
+			t.Errorf("RM020 with %s contributors: %v", name, got)
+		}
 	}
 
 	res = New().Lint(context.Background(), contributorRealm(t, []map[string]any{{"id": "github:pleberre"}}, nil))

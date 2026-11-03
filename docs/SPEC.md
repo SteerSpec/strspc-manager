@@ -551,7 +551,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM017 | Error | A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018). |
 | RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
 | RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
-| RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`; a sub-realm uses its parent's contributors (CTRB-006). |
+| RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
 
 #### `realm-resolve` (RR)
 
