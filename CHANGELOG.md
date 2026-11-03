@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.39.0](https://github.com/SteerSpec/strspc-manager/compare/v1.38.0...v1.39.0) (2026-11-03)
+
+
+### Features
+
+* **rulediff:** accept github:&lt;login&gt; contributor identifiers in RD019 ([#253](https://github.com/SteerSpec/strspc-manager/issues/253)) ([b8c240c](https://github.com/SteerSpec/strspc-manager/commit/b8c240c20d0189a65837d1be294e88653168bbea))
+
 ## [1.38.0](https://github.com/SteerSpec/strspc-manager/compare/v1.37.0...v1.38.0) (2026-11-02)
 
 
