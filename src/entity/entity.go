@@ -160,8 +160,8 @@ type RealmMeta struct {
 	// Version is the semantic version of the Realm.
 	Version string `json:"version"`
 	// Language is the Realm's natural language as a BCP 47 tag (RLMMNFST-006).
-	// Empty means `en` for a top-level Realm (RLM-017), and the parent's
-	// language for a sub-realm, which leaves it out (RLM-018). It stays
+	// Empty means `en` for a top-level Realm (RLM-021), and the parent's
+	// language for a sub-realm (RLM-018), which leaves it out (RLM-022). It stays
 	// omitted when empty, because the schema rejects an empty value.
 	Language string `json:"language,omitempty"`
 	// Standards lists the external standards the Realm cites (RLMMNFST-007).

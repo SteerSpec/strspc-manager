@@ -544,7 +544,7 @@
     "module": "rule-lint",
     "severity": "Error",
     "title": "Sub-entity wider than its container",
-    "summary": "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015).",
+    "summary": "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-018).",
     "fix": "Narrow the sub-entity, or remove the field to take the container's visibility.",
     "retired": false
   },
@@ -769,7 +769,7 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Sub-realm sets a language",
-    "summary": "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018).",
+    "summary": "A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018).",
     "fix": "Remove `language` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
     "retired": false
   },
@@ -1012,7 +1012,7 @@
     "module": "realm-resolve",
     "severity": "Error",
     "title": "Override not permitted",
-    "summary": "A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-016).",
+    "summary": "A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-019).",
     "fix": "Supersede the rule without restating `overrides`, then retire it.",
     "retired": false
   },

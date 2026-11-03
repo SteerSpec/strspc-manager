@@ -110,15 +110,15 @@ func (n *node) visibility(e *entity.File) string {
 	return entity.VisibilityPublic
 }
 
-// outOfForce reports whether a rule in state no longer counts for ENT-016 and
+// outOfForce reports whether a rule in state no longer counts for ENT-019 and
 // NTE-012. It is narrower than !isLive: a superseded rule stays in force, and
 // so inherited and evaluated, until it is Retired.
 func outOfForce(state string) bool {
 	return state == entity.StateAbandoned || state == entity.StateRetired || state == entity.StateTerminated
 }
 
-// checkVisibility checks the chain of child, held by from, against ENT-015 and
-// ENT-016, ancestors given nearest first. Each entity of the tree answers for
+// checkVisibility checks the chain of child, held by from, against ENT-015,
+// ENT-016 and ENT-019, ancestors given nearest first. Each entity of the tree answers for
 // itself, but a dependency's entities aren't otherwise read here, and a wider
 // entity there would hand down what its parent holds back, so each dependency
 // hop is checked too, from the Realm holding it. Hops resolve at their own pins,
@@ -179,7 +179,7 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 // ancestor up to the owner of target that refuses the override declared by
 // ruleID. Entities above the owner have no say. A target that no ancestor
 // owns is left to RR015; one that isn't inherited, such as a Draft rule, is
-// still checked (ENT-016/01).
+// still checked (ENT-019/01).
 func (s *chainState) checkOverrideVisibility(from place, ruleID, target string, ancestors []inherit.Hop, path string) {
 	owner := -1
 	for i, h := range ancestors {

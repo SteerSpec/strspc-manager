@@ -63,7 +63,7 @@ An entity MAY declare `inherits`, the EUID of one other entity whose effective r
 
 **Coverage.** The `coverage` package measures each entity of a Realm tree over its coverage rule set (STDREF-010): `inherit.Effective` with its default states. A clause, identified by its text with the `id` and `version` its note resolves to (STDREF-011), is `covered`, `mapped` or `lapsed`, or `cited` when its reference is `derived_from`. Only an Implemented rule covers. A rule that overrides or supersedes another has only its own mappings (STDREF-016), and a clause it drops shows as `lapsed`, built from the old rule's note. SteerSpec holds no clause lists, so a clause nothing maps can't be reported.
 
-A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a sub-realm and its siblings are in the same tree but are different Realms (RLM-016). `inherits` needs the permission of the inherited entity. `overrides` needs that of every entity from the inherited entity up to the owner of the rule, measured from the declaring Realm, so a `protected` entity shields the rules it inherits from a `public` one (ENT-016). An entity MUST NOT be wider than the entity it inherits or the entity containing it (ENT-015): it would otherwise re-expose what those entities hold back. An `extends` note follows the inherit column, and its target's entity MUST NOT be narrower than the note's, since whoever inherits the note reads the target in evaluation (NTE-012). `related` notes and bodies are citations and aren't limited. Rules that are Abandoned, Retired or Terminated are exempt, because their `overrides` and `extends` notes can't change; a superseded rule isn't, because it stays in force until it is Retired.
+A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a sub-realm and its siblings are in the same tree but are different Realms (RLM-016, RLM-020). `inherits` needs the permission of the inherited entity (ENT-016). `overrides` needs that of every entity from the inherited entity up to the owner of the rule, measured from the declaring Realm, so a `protected` entity shields the rules it inherits from a `public` one (ENT-019). An entity MUST NOT be wider than the entity it inherits or the entity containing it (ENT-015, ENT-018): it would otherwise re-expose what those entities hold back. An `extends` note follows the inherit column, and its target's entity MUST NOT be narrower than the note's, since whoever inherits the note reads the target in evaluation (NTE-012). `related` notes and bodies are citations and aren't limited. Rules that are Abandoned, Retired or Terminated are exempt, because their `overrides` and `extends` notes can't change; a superseded rule isn't, because it stays in force until it is Retired.
 
 `realm-resolve` enforces these (RR022 to RR025), so they run in `strspc check` and `strspc render`, not `strspc realm validate`. Each chain is checked hop by hop, a dependency's hops included, so a dependency that breaks these rules fails its consumers too. `rule-lint` checks the value and the limit from the containing entity (RL023, RL024). Tree checks hold from a top-level Realm: a sub-realm's manifest doesn't list its siblings, so a sub-realm used as a source or a dependency on its own sees them as other Realms. Realm identity is the Realm ID at any version, and the ID in a manifest is trusted (RLM-008). Visibility is a reference contract, not secrecy.
 
@@ -182,10 +182,10 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.id` | string | Reverse domain notation identifier. |
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
-| `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017). A sub-realm leaves it out and inherits its parent's language (RLM-018, RM017). |
+| `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-021). A sub-realm leaves it out (RLM-022, RM017) and inherits its parent's language (RLM-018). |
 | `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
 | `realm.contributors` | array | Contributors of the Realm (CTRB-004), each `{ id, email, github_id }`: `id` is the contributor identifier `<idp>:<subject>` (CTRB-001); `email` (CTRB-007) and the numeric `github_id` of a `github` contributor (CTRB-008) are optional. A sub-realm uses its parent's list (CTRB-006). Omitted when empty. Core 1.16.0 or later. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.16.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.17.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
@@ -481,7 +481,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
 | RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
-| RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015). |
+| RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-018). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
 | RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
 | RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
@@ -548,7 +548,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM014 | Error | A dependency's `version` differs from the release tag in its `github://` `source`, or the dependency's own manifest declares another `realm.id` or `realm.version`. |
 | RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
-| RM017 | Error | A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018). |
+| RM017 | Error | A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018). |
 | RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
 | RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
 | RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
@@ -580,7 +580,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RR020 | Warning | The body of a live rule qualifies a reference with a Realm outside the tree that is neither a dependency of the rule's Realm nor a declared sub-realm of one. Text in backticks is ignored. |
 | RR021 | Warning | The body of a live rule qualifies a reference with a known Realm that holds no such rule at the pinned version. Text in backticks is ignored. |
 | RR022 | Error | An entity inherits an entity whose visibility does not permit inheritance from its Realm (ENT-014, ENT-016). |
-| RR023 | Error | A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-016). |
+| RR023 | Error | A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-019). |
 | RR024 | Error | An entity is wider than the entity it inherits (ENT-015). An absent `visibility` counts as `public`. |
 | RR025 | Error | An `extends` note on a rule that is not Abandoned, Retired or Terminated references a rule whose entity's visibility does not permit inheritance from the note's Realm or is narrower than that of the entity holding the note (NTE-012). Short references count. |
 
@@ -694,7 +694,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 20. Bodies of `D`, `P` and `I` rules, and their `extends` and `related` notes, do not reference a rule in state `A`.
 21. Bodies of `D` rules contain a key word from KWRD-002 to KWRD-006, or `DEFINES`, outside backticks and rule IDs.
 22. Bodies of `D` rules are a single sentence (RUL-004). Other bodies are immutable, so checks 21, 22, 25 and 26 do not apply to them.
-23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-015).
+23. A declared `visibility` is `private`, `protected` or `public`, and no wider than the effective visibility of the containing entity (ENT-018).
 24. A rule's `supersedes` names a rule of the same entity (RUL-012).
 25. Bodies of `D` rules, and notes on them other than `example` and `counter_example`, hold no inline example outside backticks (NTE-020). Notes on other rules are not checked.
 26. Bodies of `D` rules with more than one key word outside backticks and rule IDs are reported at Info, since a relative clause can carry its own key word (RUL-004).
