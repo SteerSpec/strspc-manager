@@ -21,8 +21,8 @@ var (
 	handleRe = regexp.MustCompile(`^@` + githubLogin + `$`)
 
 	// contributorRe matches a contributor identifier <idp>:<subject> (CTRB-001)
-	// whose <idp> is one core lists (CTRB-002): only github, with a GitHub
-	// login as the subject.
+	// whose <idp> is one of the identity providers listed by core (CTRB-002).
+	// Core lists only github, whose subject is a GitHub login.
 	contributorRe = regexp.MustCompile(`^github:` + githubLogin + `$`)
 
 	// domainRe matches a domain of at least two labels of up to 63 characters,
