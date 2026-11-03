@@ -33,7 +33,9 @@ func TestWithEntityLintingDelegated(t *testing.T) {
 		writeRealm(t, dir, "dev.example.test", "0.1.0", nil, []string{"sub"}, nil)
 		sub := filepath.Join(dir, "sub")
 		writeRealm(t, sub, "dev.example.test.sub", "0.1.0",
-			coreDep("1.15.0", "github://SteerSpec/strspc-rules@v1.15.0/rules/core"), nil, nil)
+			// Any pin works: this test never fetches it. Not the repo's own pin,
+			// which the steerspec-sync pin job refuses to find outside its files.
+			coreDep("1.0.0", "github://SteerSpec/strspc-rules@v1.0.0/rules/core"), nil, nil)
 		entityFile, err := os.ReadFile(filepath.Join("..", "rulelint", "testdata", "valid", "basic.json"))
 		if err != nil {
 			t.Fatal(err)
