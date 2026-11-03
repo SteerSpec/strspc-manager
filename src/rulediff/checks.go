@@ -18,12 +18,21 @@ var (
 
 	// handleRe matches a GitHub @handle, a bot's included: hyphens only between
 	// alphanumerics.
-	handleRe = regexp.MustCompile(`^@[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?$`)
+	handleRe = regexp.MustCompile(`^@` + githubLogin + `$`)
+
+	// contributorRe matches a contributor identifier <idp>:<subject> (CTRB-001)
+	// whose <idp> is one core lists (CTRB-002): only github, with a GitHub
+	// login as the subject.
+	contributorRe = regexp.MustCompile(`^github:` + githubLogin + `$`)
 
 	// domainRe matches a domain of at least two labels of up to 63 characters,
 	// each without a leading or trailing hyphen. net/mail does not check this.
 	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$`)
 )
+
+// githubLogin matches a GitHub login, a bot's included: hyphens only between
+// alphanumerics.
+const githubLogin = `[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?`
 
 // maxDomainLen is the longest domain name DNS allows.
 const maxDomainLen = 253
@@ -231,16 +240,18 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 			Module:   module,
 			Code:     "RD019",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("new %s has invalid added_by %q: must be an email address or @handle", kind, addedBy),
+			Message:  fmt.Sprintf("new %s has invalid added_by %q: must be a contributor identifier (github:<login>), an email address or @handle", kind, addedBy),
 			Path:     path,
 		})
 	}
 }
 
-// validAddedBy reports whether s is a GitHub @handle or a bare email address.
-// A display name or angle brackets are not bare.
+// validAddedBy reports whether s is a contributor identifier (github:<login>),
+// a GitHub @handle or a bare email address. A display name or angle brackets
+// are not bare. Email and @handle stay valid while CTRB is in its warning
+// release (#248).
 func validAddedBy(s string) bool {
-	if handleRe.MatchString(s) {
+	if contributorRe.MatchString(s) || handleRe.MatchString(s) {
 		return true
 	}
 	addr, err := mail.ParseAddress(s)

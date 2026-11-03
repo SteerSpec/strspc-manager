@@ -81,7 +81,7 @@ Each rule carries:
 | `revision` | integer | Monotonically incrementing edit counter. Starts at `0`. |
 | `state` | enum | One of `D`, `A`, `P`, `I`, `R`, `T` (see §3 Lifecycle). |
 | `body` | string | The rule statement — a single phrase. |
-| `added_by` | string | Email address or `@github_handle` of the author. |
+| `added_by` | string | Contributor identifier of the author (`github:<login>`, CTRB-001); an email address or `@github_handle` is still accepted. |
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
 | `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. Omitted when the rule overrides none. |
@@ -116,7 +116,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 | `rule_ref` | string | The rule identifier this note is attached to. |
 | `type` | enum | One of the closed note types (see §2.6). |
 | `content` | string | The note body. |
-| `added_by` | string | Email address or `@github_handle`. |
+| `added_by` | string | Contributor identifier (`github:<login>`); an email address or `@github_handle` is still accepted. |
 | `added_at` | string | ISO date. |
 | `revision` | integer | Starts at `0` when the note is added and increments by one on each change to its content or type. |
 
@@ -511,7 +511,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD016 | Error | The content of an append-only note changed. |
 | RD017 | Error | `inherits` changed on an entity whose base version has a rule beyond Draft, or was removed on one whose base version has a Published or Implemented rule. |
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
-| RD019 | Error | A new rule or new note has an `added_by` that is not an email address or `@handle`. |
+| RD019 | Error | A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`. |
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
@@ -716,7 +716,7 @@ For each changed entity file, the validator compares the before and after states
 8. **Rule Set hash:** Must be recomputed and updated to match the new file content.
 9. **Rule Set timestamp:** Must be updated.
 10. **No ID reuse:** New rule numbers must not reuse any previously existing rule number in the entity's history.
-11. **`added_by` present:** Required on new rules and new notes. Must be a valid email or `@handle`.
+11. **`added_by` present:** Required on new rules and new notes. Must be a contributor identifier (`github:<login>`), a valid email or an `@handle`.
 12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
