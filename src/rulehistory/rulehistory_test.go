@@ -71,6 +71,11 @@ func TestBuildKinds(t *testing.T) {
 		{"terminated", file("0.1.0", rule("TST-001", "R", "one", 0)), file("0.2.0", rule("TST-001", "T", "one", 0)), "TST-001:terminated"},
 		{"abandoned", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "A", "one", 0)), "TST-001:abandoned"},
 		{"backwards state", file("0.1.0", rule("TST-001", "I", "one", 0)), file("0.2.0", rule("TST-001", "D", "one", 0)), "TST-001:state_changed"},
+		{"skipped state", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "I", "one", 0)), "TST-001:state_changed"},
+		{"retired back to published", file("0.1.0", rule("TST-001", "R", "one", 0)), file("0.2.0", rule("TST-001", "P", "one", 0)), "TST-001:state_changed"},
+		{"draft retired", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "R", "one", 0)), "TST-001:state_changed"},
+		{"published terminated", file("0.1.0", rule("TST-001", "P", "one", 0)), file("0.2.0", rule("TST-001", "T", "one", 0)), "TST-001:state_changed"},
+		{"published abandoned", file("0.1.0", rule("TST-001", "P", "one", 0)), file("0.2.0", rule("TST-001", "A", "one", 0)), "TST-001:state_changed"},
 		{"metadata", file("0.1.0", rule("TST-001", "I", "one", 0)), file("0.1.1", meta), "TST-001:metadata_changed"},
 		{"unchanged rule", file("0.1.0", rule("TST-001", "I", "one", 0)), file("0.1.1", rule("TST-001", "I", "one", 0)), ""},
 		{"body and state", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "P", "uno", 1)), "TST-001:body_changed TST-001:promoted"},
@@ -125,16 +130,26 @@ func TestBuildCrossFileSupersedes(t *testing.T) {
 	}
 }
 
+// A sub-entity has its own rule set, so its events carry its version, not
+// the parent's.
 func TestBuildSubEntity(t *testing.T) {
-	before := file("0.1.0", rule("TST-001", "D", "one", 0))
-	before.SubEntities = []entity.File{*file("", rule("SUB-001", "D", "s", 0))}
-	before.SubEntities[0].Entity = entity.Entity{ID: "SUB", Parent: "TST"}
-	after := file("0.2.0", rule("TST-001", "D", "one", 0))
-	after.SubEntities = []entity.File{*file("", rule("SUB-001", "P", "s", 0))}
-	after.SubEntities[0].Entity = entity.Entity{ID: "SUB", Parent: "TST"}
+	sub := func(version string, rules ...entity.Rule) entity.File {
+		f := file(version, rules...)
+		f.Entity = entity.Entity{ID: "SUB", Parent: "TST"}
+		return *f
+	}
+	before := file("0.5.0", rule("TST-001", "D", "one", 0))
+	before.SubEntities = []entity.File{sub("0.3.0", rule("SUB-001", "D", "s", 0), rule("SUB-002", "D", "old", 0))}
+	after := file("0.5.0", rule("TST-001", "D", "one", 0))
+	after.SubEntities = []entity.File{sub("0.4.0", rule("SUB-001", "P", "s", 0))}
 	h := Build([]Commit{commit(t, "c1", "x", before, after)})
-	if len(h.Events) != 1 || h.Events[0].Entity != "TST > SUB" || h.Events[0].Kind != Promoted || h.Events[0].RuleSetVersion != "0.2.0" {
-		t.Fatalf("events = %+v", h.Events)
+	if got := kinds(h); got != "SUB-001:promoted SUB-002:removed" {
+		t.Fatalf("got %q", got)
+	}
+	for i, want := range []string{"0.4.0", "0.3.0"} {
+		if e := h.Events[i]; e.Entity != "TST > SUB" || e.RuleSetVersion != want {
+			t.Errorf("event %d = %+v, want entity TST > SUB at %s", i, e, want)
+		}
 	}
 }
 
@@ -179,7 +194,7 @@ func filterHistory(t *testing.T) *History {
 	t.Helper()
 	sup := rule("TST-002", "D", "new", 0)
 	sup.Supersedes = ptr("TST-001")
-	sub := file("", rule("SUB-001", "D", "s", 0))
+	sub := file("0.3.0", rule("SUB-001", "D", "s", 0))
 	sub.Entity = entity.Entity{ID: "SUB", Parent: "TST"}
 	v1 := file("0.1.0", rule("TST-001", "P", "one", 0))
 	v2 := file("0.2.0", rule("TST-001", "I", "one", 0))

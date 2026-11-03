@@ -26,16 +26,17 @@ const (
 	Added Kind = "added"
 	// BodyChanged marks a change to the normative text of a rule.
 	BodyChanged Kind = "body_changed"
-	// Promoted marks a move to Published or Implemented.
+	// Promoted marks a move from Draft to Published or from Published to
+	// Implemented.
 	Promoted Kind = "promoted"
-	// Retired marks a move to Retired.
+	// Retired marks a move from Implemented to Retired.
 	Retired Kind = "retired"
-	// Terminated marks a move to Terminated.
+	// Terminated marks a move from Retired to Terminated.
 	Terminated Kind = "terminated"
-	// Abandoned marks a move to Abandoned.
+	// Abandoned marks a move from Draft to Abandoned.
 	Abandoned Kind = "abandoned"
-	// StateChanged marks any other state change, such as one the lifecycle
-	// forbids but that an old commit still holds.
+	// StateChanged marks any other state change, such as D→I or a move back,
+	// which the lifecycle forbids but an old commit may still hold.
 	StateChanged Kind = "state_changed"
 	// MetadataChanged marks a change to a rule that touches neither its body
 	// nor its state, such as added_by or a revision bump alone.
@@ -84,8 +85,9 @@ type Event struct {
 	// Revision is the rule revision after the change (before it, for a
 	// removed rule).
 	Revision int `json:"revision"`
-	// RuleSetVersion is the rule_set.version of the file after the commit
-	// (before it, when the commit deleted the file).
+	// RuleSetVersion is the rule_set.version of the entity owning the rule
+	// (a sub-entity has its own) after the commit, or before it for a
+	// removed rule.
 	RuleSetVersion string `json:"rule_set_version"`
 	// Supersedes is the rule an added rule supersedes.
 	Supersedes string `json:"supersedes,omitempty"`
@@ -154,10 +156,12 @@ func Build(commits []Commit) *History {
 	return h
 }
 
-// ruleAt is a rule with the entity path holding it.
+// ruleAt is a rule with the entity path holding it and that entity's rule
+// set version.
 type ruleAt struct {
-	entity string
-	rule   entity.Rule
+	entity  string
+	version string
+	rule    entity.Rule
 }
 
 // flatten lists the rules of f and its sub-entities, depth first in file
@@ -170,7 +174,7 @@ func flatten(f *entity.File) []ruleAt {
 	var walk func(f *entity.File, path string)
 	walk = func(f *entity.File, path string) {
 		for _, r := range f.Rules {
-			out = append(out, ruleAt{entity: path, rule: r})
+			out = append(out, ruleAt{entity: path, version: f.RuleSet.Version, rule: r})
 		}
 		for i := range f.SubEntities {
 			sub := &f.SubEntities[i]
@@ -184,15 +188,6 @@ func flatten(f *entity.File) []ruleAt {
 // classify returns the events of one commit.
 func classify(c Commit, before, after *entity.File) []Event {
 	base := Event{Commit: c.SHA, Date: c.Date.UTC().Format(time.RFC3339), PR: PRNumber(c.Subject), Subject: c.Subject}
-	version := ""
-	switch {
-	case after != nil:
-		version = after.RuleSet.Version
-	case before != nil:
-		version = before.RuleSet.Version
-	}
-	base.RuleSetVersion = version
-
 	beforeRules := flatten(before)
 	afterRules := flatten(after)
 	old := make(map[string]entity.Rule, len(beforeRules))
@@ -213,7 +208,7 @@ func classify(c Commit, before, after *entity.File) []Event {
 	var events []Event
 	for _, r := range afterRules {
 		ev := base
-		ev.Entity, ev.RuleID, ev.Revision, ev.ToState = r.entity, r.rule.ID, r.rule.Revision, r.rule.State
+		ev.Entity, ev.RuleSetVersion, ev.RuleID, ev.Revision, ev.ToState = r.entity, r.version, r.rule.ID, r.rule.Revision, r.rule.State
 		prev, existed := old[r.rule.ID]
 		if !existed {
 			ev.Kind = Added
@@ -232,7 +227,7 @@ func classify(c Commit, before, after *entity.File) []Event {
 		}
 		if prev.State != r.rule.State {
 			e := ev
-			e.Kind = stateKind(r.rule.State)
+			e.Kind = stateKind(prev.State, r.rule.State)
 			e.FromState = prev.State
 			events = append(events, e)
 			changed = true
@@ -254,22 +249,23 @@ func classify(c Commit, before, after *entity.File) []Event {
 			continue
 		}
 		ev := base
-		ev.Entity, ev.RuleID, ev.Kind, ev.FromState, ev.Revision = r.entity, r.rule.ID, Removed, r.rule.State, r.rule.Revision
+		ev.Entity, ev.RuleSetVersion, ev.RuleID, ev.Kind, ev.FromState, ev.Revision = r.entity, r.version, r.rule.ID, Removed, r.rule.State, r.rule.Revision
 		events = append(events, ev)
 	}
 	return events
 }
 
-// stateKind names a move to state to.
-func stateKind(to string) Kind {
-	switch to {
-	case entity.StatePublished, entity.StateImplemented:
+// stateKind names a move from one state to another. Only the lifecycle's
+// own transitions get a name; any other move is StateChanged.
+func stateKind(from, to string) Kind {
+	switch from + to {
+	case entity.StateDraft + entity.StatePublished, entity.StatePublished + entity.StateImplemented:
 		return Promoted
-	case entity.StateRetired:
+	case entity.StateImplemented + entity.StateRetired:
 		return Retired
-	case entity.StateTerminated:
+	case entity.StateRetired + entity.StateTerminated:
 		return Terminated
-	case entity.StateAbandoned:
+	case entity.StateDraft + entity.StateAbandoned:
 		return Abandoned
 	default:
 		return StateChanged
