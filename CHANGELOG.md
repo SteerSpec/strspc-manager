@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.41.0](https://github.com/SteerSpec/strspc-manager/compare/v1.40.0...v1.41.0) (2026-11-03)
+
+
+### Features
+
+* **entityops:** check added_by against contributors and rewrite it ([#263](https://github.com/SteerSpec/strspc-manager/issues/263)) ([071272c](https://github.com/SteerSpec/strspc-manager/commit/071272c6c0bc8860342218e891eb193efc75ff12))
+* **rulehistory:** derive entity and rule change history from file versions ([#261](https://github.com/SteerSpec/strspc-manager/issues/261)) ([47bf457](https://github.com/SteerSpec/strspc-manager/commit/47bf4579ac8e3b8bea29dd72ae18443717b43c3e))
+* **rulelint:** report added_by values outside the contributor format and list ([#264](https://github.com/SteerSpec/strspc-manager/issues/264)) ([5217f62](https://github.com/SteerSpec/strspc-manager/commit/5217f629ff766959e862a4c616abedfafe7f396b))
+
 ## [1.40.0](https://github.com/SteerSpec/strspc-manager/compare/v1.39.0...v1.40.0) (2026-11-03)
 
 
