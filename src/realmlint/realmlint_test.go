@@ -454,7 +454,7 @@ func TestRM013_SubRealmIdentifierFormat(t *testing.T) {
 }
 
 func TestRM017_SubRealmLanguage(t *testing.T) {
-	// RLM-018 forbids declaring the key, so an empty or null value counts.
+	// RLM-022 forbids declaring the key, so an empty or null value counts.
 	for _, value := range []string{`"en"`, `""`, `null`} {
 		t.Run(value, func(t *testing.T) {
 			dir := t.TempDir()
