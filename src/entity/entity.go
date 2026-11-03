@@ -168,6 +168,10 @@ type RealmMeta struct {
 	// It stays omitted when empty, so a manifest declaring none keeps its
 	// bytes.
 	Standards []StandardRef `json:"standards,omitempty"`
+	// Contributors lists the Realm's contributors (CTRB-004). A sub-realm
+	// uses its parent's (CTRB-006). It stays omitted when empty, so a
+	// manifest declaring none keeps its bytes.
+	Contributors []Contributor `json:"contributors,omitempty"`
 }
 
 // RealmDep declares a dependency on another Realm.
