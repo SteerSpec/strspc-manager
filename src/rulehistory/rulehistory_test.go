@@ -163,6 +163,32 @@ func TestBuildDraftGainsSupersedes(t *testing.T) {
 	}
 }
 
+// RD021 forbids a rule that is not a Draft, before or after the commit, to
+// change its supersedes; old history holding such an edit shows only the
+// metadata change.
+func TestBuildNonDraftSupersedesEdit(t *testing.T) {
+	for _, states := range [][2]string{{"I", "I"}, {"D", "P"}, {"P", "P"}} {
+		before := rule("TST-002", states[0], "new", 0)
+		after := rule("TST-002", states[1], "new", 0)
+		after.Supersedes = ptr("TST-001")
+		h := Build([]Commit{commit(t, "c1", "x",
+			file("0.1.0", rule("TST-001", "I", "one", 0), before),
+			file("0.2.0", rule("TST-001", "I", "one", 0), after))})
+		want := "TST-002:metadata_changed"
+		if states[0] != states[1] {
+			want = "TST-002:promoted"
+		}
+		if got := kinds(h); got != want {
+			t.Errorf("%s->%s: got %q, want %q", states[0], states[1], got, want)
+		}
+		for _, e := range h.Events {
+			if e.Supersedes != "" {
+				t.Errorf("%s->%s: event names supersedes %q", states[0], states[1], e.Supersedes)
+			}
+		}
+	}
+}
+
 // A commit whose After is broken still records its Before as the last
 // known version, so the next commit compares with it.
 func TestBuildBrokenAfterKeepsBefore(t *testing.T) {

@@ -90,7 +90,8 @@ type Event struct {
 	// removed rule.
 	RuleSetVersion string `json:"rule_set_version"`
 	// Supersedes is the rule this rule supersedes, set when the commit sets
-	// that reference: on an added rule, or on a Draft that adds or changes it.
+	// that reference: on an added rule, or on a rule that stays a Draft and
+	// adds or changes it.
 	Supersedes string `json:"supersedes,omitempty"`
 	// SupersededBy is the rule that supersedes a superseded rule.
 	SupersededBy string `json:"superseded_by,omitempty"`
@@ -261,13 +262,18 @@ func classify(c Commit, before, after *entity.File) []Event {
 }
 
 // newSupersedes returns the rule that r supersedes when the commit sets that
-// reference: r is new, or a Draft that adds or changes its supersedes (RD021).
-// It returns "" otherwise.
+// reference: r is new, or r stays a Draft and adds or changes its supersedes
+// (RD021). It returns "" otherwise; an edit RD021 forbids, on a rule that is
+// not a Draft, is only a metadata change.
 func newSupersedes(old map[string]entity.Rule, r entity.Rule) string {
 	if r.Supersedes == nil {
 		return ""
 	}
-	if prev, existed := old[r.ID]; existed && sameRef(prev.Supersedes, r.Supersedes) {
+	prev, existed := old[r.ID]
+	if !existed {
+		return *r.Supersedes
+	}
+	if prev.State != entity.StateDraft || r.State != entity.StateDraft || sameRef(prev.Supersedes, r.Supersedes) {
 		return ""
 	}
 	return *r.Supersedes
