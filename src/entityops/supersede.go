@@ -16,8 +16,8 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 	if body == "" {
 		return "", fmt.Errorf("rule body must not be empty")
 	}
-	if addedBy == "" {
-		return "", fmt.Errorf("added_by must not be empty")
+	if err := CheckAddedBy(addedBy, nil); err != nil {
+		return "", err
 	}
 
 	switch old.State {
