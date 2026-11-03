@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.40.0](https://github.com/SteerSpec/strspc-manager/compare/v1.39.0...v1.40.0) (2026-11-03)
+
+
+### Features
+
+* **entity:** keep realm.contributors in RealmMeta ([#258](https://github.com/SteerSpec/strspc-manager/issues/258)) ([96b816f](https://github.com/SteerSpec/strspc-manager/commit/96b816f760b775afc2a02fdd794b74dabbebe9d0))
+
 ## [1.39.0](https://github.com/SteerSpec/strspc-manager/compare/v1.38.0...v1.39.0) (2026-11-03)
 
 
