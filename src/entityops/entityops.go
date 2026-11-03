@@ -54,8 +54,8 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 	if body == "" {
 		return "", fmt.Errorf("rule body must not be empty")
 	}
-	if addedBy == "" {
-		return "", fmt.Errorf("added_by must not be empty")
+	if err := CheckAddedBy(addedBy, nil); err != nil {
+		return "", err
 	}
 
 	if err := ValidateEUID(f.Entity.ID); err != nil {

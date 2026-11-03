@@ -2,6 +2,8 @@ package entity
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -57,5 +59,167 @@ func TestRealmContributorsOmittedWhenEmpty(t *testing.T) {
 	}
 	if string(data) != `{"id":"github:pleberre"}` {
 		t.Fatalf("got %s", data)
+	}
+}
+
+func TestParseContributorID(t *testing.T) {
+	tests := []struct {
+		in, idp, subject string
+		err              string
+	}{
+		{in: "github:pleberre", idp: "github", subject: "pleberre"},
+		{in: "github:steerspec-sync[bot]", idp: "github", subject: "steerspec-sync[bot]"},
+		{in: "github:a-b-1", idp: "github", subject: "a-b-1"},
+		{in: "pleberre", err: "CTRB-001"},
+		{in: ":pleberre", err: "CTRB-001"},
+		{in: "github:", err: "CTRB-001"},
+		{in: "gitlab:pleberre", err: "CTRB-002"},
+		{in: "GitHub:pleberre", err: "CTRB-002"},
+		{in: "github:a--b", err: "invalid github subject"},
+		{in: "github:@pleberre", err: "invalid github subject"},
+		{in: "github:pleberre ", err: "invalid github subject"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			idp, subject, err := ParseContributorID(tt.in)
+			if tt.err != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.err) {
+					t.Fatalf("err = %v, want one containing %q", err, tt.err)
+				}
+				if IsContributorID(tt.in) {
+					t.Error("IsContributorID = true")
+				}
+				return
+			}
+			if err != nil || idp != tt.idp || subject != tt.subject {
+				t.Fatalf("got %q, %q, %v", idp, subject, err)
+			}
+			if !IsContributorID(tt.in) {
+				t.Error("IsContributorID = false")
+			}
+		})
+	}
+}
+
+func TestIdentityProviders(t *testing.T) {
+	got := IdentityProviders()
+	if len(got) != 1 || got[0] != "github" {
+		t.Fatalf("got %v", got)
+	}
+	got[0] = "changed"
+	if IdentityProviders()[0] != "github" {
+		t.Error("the returned slice aliases the provider list")
+	}
+}
+
+// The transition forms stay valid; the rule-diff RD019 table covers the
+// email and handle edge cases.
+func TestValidAddedBy(t *testing.T) {
+	for s, want := range map[string]bool{
+		"github:pleberre":   true,
+		"@pleberre":         true,
+		"dev@example.com":   true,
+		"gitlab:pleberre":   false,
+		"pleberre":          false,
+		"PLB <a@b.example>": false,
+		"":                  false,
+	} {
+		if got := ValidAddedBy(s); got != want {
+			t.Errorf("ValidAddedBy(%q) = %v, want %v", s, got, want)
+		}
+	}
+}
+
+func TestFindContributor(t *testing.T) {
+	list := []Contributor{
+		{ID: "github:pleberre", Email: "Dev@Example.com"},
+		{ID: "github:steerspec-sync[bot]"},
+		{ID: "broken"},
+	}
+	tests := []struct {
+		addedBy string
+		want    string
+	}{
+		{"github:pleberre", "github:pleberre"},
+		{"github:PLeberre", "github:pleberre"},
+		{"@pleberre", "github:pleberre"},
+		{"@PLEBERRE", "github:pleberre"},
+		{"dev@example.com", "github:pleberre"},
+		{"github:steerspec-sync[bot]", "github:steerspec-sync[bot]"},
+		{"@steerspec-sync[bot]", "github:steerspec-sync[bot]"},
+		{"github:someone", ""},
+		{"@someone", ""},
+		{"other@example.com", ""},
+		{"broken", ""},
+		{"pleberre", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.addedBy, func(t *testing.T) {
+			got := FindContributor(list, tt.addedBy)
+			switch {
+			case tt.want == "" && got != nil:
+				t.Fatalf("got %+v, want none", *got)
+			case tt.want != "" && (got == nil || got.ID != tt.want):
+				t.Fatalf("got %+v, want %s", got, tt.want)
+			}
+		})
+	}
+	if FindContributor(nil, "github:pleberre") != nil {
+		t.Error("an empty list names someone")
+	}
+}
+
+func writeRealm(t *testing.T, dir, id, subRealms, contributors string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"realm":{"id":"` + id + `","title":"x","version":"1.0.0"` + contributors + `},` +
+		`"dependencies":[],"rule_identifier_format":null,"sub_realms":` + subRealms + `}`
+	if err := os.WriteFile(filepath.Join(dir, "realm.json"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRealmContributors(t *testing.T) {
+	root := t.TempDir()
+	writeRealm(t, root, "dev.test.root", `["team"]`, `,"contributors":[{"id":"github:parent"}]`)
+	writeRealm(t, filepath.Join(root, "team"), "dev.test.root.team", `[]`, `,"contributors":[{"id":"github:own"}]`)
+	lone := filepath.Join(t.TempDir(), "lone")
+	writeRealm(t, lone, "dev.test.lone", `[]`, `,"contributors":[{"id":"github:lone"}]`)
+	bare := t.TempDir()
+	writeRealm(t, bare, "dev.test.bare", `[]`, "")
+
+	for name, tt := range map[string]struct {
+		dir  string
+		want []string
+	}{
+		"top-level realm":                {root, []string{"github:parent"}},
+		"sub-realm uses parent CTRB-006": {filepath.Join(root, "team"), []string{"github:parent"}},
+		"realm with no parent on disk":   {lone, []string{"github:lone"}},
+		"realm declaring none":           {bare, nil},
+		"directory without manifest":     {t.TempDir(), nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := RealmContributors(tt.dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var ids []string
+			for _, c := range got {
+				ids = append(ids, c.ID)
+			}
+			if strings.Join(ids, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("got %v, want %v", ids, tt.want)
+			}
+		})
+	}
+
+	broken := t.TempDir()
+	if err := os.WriteFile(filepath.Join(broken, "realm.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RealmContributors(broken); err == nil {
+		t.Error("a broken manifest gave no error")
 	}
 }

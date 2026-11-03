@@ -25,8 +25,8 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 	if content == "" {
 		return "", fmt.Errorf("note content must not be empty")
 	}
-	if addedBy == "" {
-		return "", fmt.Errorf("added_by must not be empty")
+	if err := CheckAddedBy(addedBy, nil); err != nil {
+		return "", err
 	}
 	if noteType == entity.NoteTypeStandard {
 		if err := checkMapping(f, ruleID, "", content); err != nil {
