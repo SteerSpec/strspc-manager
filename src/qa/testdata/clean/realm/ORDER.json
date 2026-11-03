@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:4e6c2e1ff552600675dd8475ff39aab1ad1cf91e7621644eb5a811ab020c231d"
+    "hash": "blake3:15b433ac379b6d3c95efdc524090f61f41b369455be49474c857f06b94279f33"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "An order MUST name its customer.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "P",
       "body": "An order MUST follow ORDER-001 when it is created.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 1,
       "state": "D",
       "body": "An order SHOULD carry a delivery date.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "A",
       "body": "An order MUST be faxed.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "R",
       "body": "An order MUST be paid in euro.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -60,7 +60,7 @@
       "revision": 0,
       "state": "I",
       "body": "An order MUST be paid in the customer's currency.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "ORDER-005"
     },
@@ -69,7 +69,7 @@
       "revision": 0,
       "state": "T",
       "body": "An order MUST be printed.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -85,7 +85,7 @@
       "rule_set": {
         "version": "1.0.0",
         "timestamp": "2026-01-15T10:00:00Z",
-        "hash": "blake3:4126e86c4573dd0867c3605e3421a95b24e2adbc33de192278f54c0f636bb6c5"
+        "hash": "blake3:d065387e316cd3943fa19ead407336b57fc637ca47ffc86eb873b610f1c2f1bf"
       },
       "rules": [
         {
@@ -93,7 +93,7 @@
           "revision": 0,
           "state": "I",
           "body": "An order line MUST name its product.",
-          "added_by": "qa@steerspec.dev",
+          "added_by": "github:qa",
           "added_at": "2026-01-15",
           "supersedes": null
         }
@@ -107,7 +107,7 @@
       "rule_ref": "ORDER-001",
       "type": "rationale",
       "content": "Orders without a customer cannot be billed.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -116,7 +116,7 @@
       "rule_ref": "ORDER-001",
       "type": "example",
       "content": "customer: ACME",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -125,7 +125,7 @@
       "rule_ref": "ORDER-001",
       "type": "counter_example",
       "content": "customer: null",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -134,7 +134,7 @@
       "rule_ref": "ORDER-001",
       "type": "reference",
       "content": "https://example.com/orders",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -143,7 +143,7 @@
       "rule_ref": "ORDER-001",
       "type": "applies_to",
       "content": "the checkout service",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -152,7 +152,7 @@
       "rule_ref": "ORDER-001",
       "type": "changelog",
       "content": "Added with the first release.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -161,7 +161,7 @@
       "rule_ref": "ORDER-001",
       "type": "clarification",
       "content": "A guest checkout names the guest.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -170,7 +170,7 @@
       "rule_ref": "ORDER-002",
       "type": "extends",
       "content": "ORDER-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -179,7 +179,7 @@
       "rule_ref": "ORDER-002",
       "type": "related",
       "content": "dev.steerspec.qa.shared:PAY-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -188,7 +188,7 @@
       "rule_ref": "ORDER-005",
       "type": "deprecation_notice",
       "content": "Replaced by ORDER-006.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -197,7 +197,7 @@
       "rule_ref": "ORDER-006",
       "type": "supersedes",
       "content": "ORDER-005",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:03883c351cc8a92c229a831aae6f645b494f86073802fb19bdcc709e234c5214"
+    "hash": "blake3:2fdd489647cad7c2f3b8d88c28824ebfe43bda1419ac722ce2ae0b1ffd2c51e7"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of child MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-999"
@@ -26,7 +26,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of child MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-002"
@@ -36,7 +36,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of child MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-001"
@@ -46,7 +46,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of child MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-001"

@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:e8cc691ea70223d888d7faa0a3c990f01c5662d18d0b2d7f0fa4c650e8e54acc"
+    "hash": "blake3:41dcd4d5d3385b591c013d0bbcde2e56486fed28281d9b4961b2fbb45d6bcd7d"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of jump MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of jump MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

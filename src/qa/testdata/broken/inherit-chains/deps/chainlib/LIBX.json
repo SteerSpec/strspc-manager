@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:4680f9e554efa6d4ace8ecf59303e31e721820cb21c16fee08cbf48b0f9c37f1"
+    "hash": "blake3:8a0befbee1a73bff92bd08292d5b6fbcbcaac54bc43a7c595df7fa011720478f"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libx MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

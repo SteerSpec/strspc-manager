@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:93f41dcfc705a561555cc24bac8f9e2f7b7d3018db88650c145797a154d2e00a"
+    "hash": "blake3:e8b6fbd7d86e3c29cb466052e2aa98a31fab084d7cead08ab79761a0f8dff710"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of longa MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

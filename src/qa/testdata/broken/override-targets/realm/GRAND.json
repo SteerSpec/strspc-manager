@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:9471a93bc7db5d4a266ae4316cb4ac94be6ce680e5336ab8fcb99685b8d11d9f"
+    "hash": "blake3:c83d82757df16373a520f55decce5454c5fcb430579e490fb53172527c0cc096"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of grand MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-003"

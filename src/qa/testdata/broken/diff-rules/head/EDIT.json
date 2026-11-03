@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:d95e97d894e74be46311cead6c68d20f31e48b1b81f71fe60508a7385e2189f1"
+    "hash": "blake3:f05815cfe2e2654b571ec0e6a007405872b94fb2ba25ecc7cb830fd922e56571"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "D",
       "body": "The edit MUST bump the revision.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 1,
       "state": "P",
       "body": "The edit MUST leave the state alone.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

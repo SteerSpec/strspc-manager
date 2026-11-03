@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:0be0ff4c6f06bd0391c840439752b82c8c33c75f81e881f2d3eae75a625108e3"
+    "hash": "blake3:ac33e57cb4fb698904a1cadeabe077393d56e987b313f4f7314184e9043b0eb5"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of wide MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

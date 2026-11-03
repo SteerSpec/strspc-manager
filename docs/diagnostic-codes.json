@@ -216,6 +216,15 @@
     "retired": false
   },
   {
+    "code": "RD023",
+    "module": "rule-diff",
+    "severity": "Info",
+    "title": "added_by not a listed contributor",
+    "summary": "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted.",
+    "fix": "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
+    "retired": false
+  },
+  {
     "code": "RE001",
     "module": "rule-eval",
     "severity": "Warning / Error",
@@ -603,6 +612,15 @@
     "retired": false
   },
   {
+    "code": "RL032",
+    "module": "rule-lint",
+    "severity": "Info",
+    "title": "added_by not a contributor identifier",
+    "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted.",
+    "fix": "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
+    "retired": false
+  },
+  {
     "code": "RM001",
     "module": "realm-lint",
     "severity": "Error",
@@ -762,6 +780,24 @@
     "title": "Invalid realm standards entry",
     "summary": "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
     "fix": "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
+    "retired": false
+  },
+  {
+    "code": "RM019",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Invalid realm contributor",
+    "summary": "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002).",
+    "fix": "Write each `id` as `github:<login>`, and list each contributor once.",
+    "retired": false
+  },
+  {
+    "code": "RM020",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Sub-realm declares contributors",
+    "summary": "A sub-realm `realm.json` declares `realm.contributors`; a sub-realm uses its parent's contributors (CTRB-006).",
+    "fix": "Remove `contributors` from the sub-realm's `realm.json`, and list the contributors on the parent.",
     "retired": false
   },
   {

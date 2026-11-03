@@ -324,6 +324,17 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 			Path:     realmPath,
 		})
 	}
+
+	// RM019: The realm's `contributors` array (CTRB-001, CTRB-002).
+	for _, err := range entity.ValidateContributors(rf.Realm.Contributors) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM019",
+			Severity: result.Error,
+			Message:  err.Error(),
+			Path:     realmPath,
+		})
+	}
 }
 
 // RM003 + RM004: Validate _schema/ directory structure.
@@ -792,6 +803,18 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Code:     "RM017",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-018)", srName),
+				Path:     srRealmPath,
+			})
+		}
+
+		// RM020: A sub-realm uses its parent's contributors (CTRB-006), so
+		// its manifest declares none.
+		if len(srRF.Realm.Contributors) > 0 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM020",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: contributors must be left out; a sub-realm uses its parent's contributors (CTRB-006)", srName),
 				Path:     srRealmPath,
 			})
 		}

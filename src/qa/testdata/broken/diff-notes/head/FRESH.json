@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:b878a525c56a1adb03aa4b57925973283b23c83ea0f474b0d9f03acefcca2198"
+    "hash": "blake3:67175e9368cc3beae7d5b5aacd28e5f7bd4ff2104f1acd86055a741b399d33fd"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of fresh MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -26,7 +26,7 @@
       "rule_ref": "FRESH-001",
       "type": "rationale",
       "content": "Starts past revision 0.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 2
     },

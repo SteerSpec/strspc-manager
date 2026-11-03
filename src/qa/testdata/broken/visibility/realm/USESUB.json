@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:1a8a2cb0c66c0cdc9ce0a421365d5efa6a0e4d8acacbdfee2320485de2172871"
+    "hash": "blake3:2cd9a3df4ba9db6e8ab46b5f934ba95151f413d610afde073886e2fe938b860d"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of usesub MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

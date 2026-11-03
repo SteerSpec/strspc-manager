@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:580ed83d482db840e6ae8a92f18a474e99c59cdbbe8d7c2b94ede855cfa8821d"
+    "hash": "blake3:376b1fbe47992a76110b86446b2f055ff5c6971cdb2089bb7c61e0f1cd1d0567"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of notes MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of notes MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of notes MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of notes MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of notes MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -62,7 +62,7 @@
       "rule_ref": "NOTES-001",
       "type": "gossip",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -71,7 +71,7 @@
       "rule_ref": "NOTES-999",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -80,7 +80,7 @@
       "rule_ref": "NOTES-001",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -89,7 +89,7 @@
       "rule_ref": "NOTES-001",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -98,7 +98,7 @@
       "rule_ref": "NOTES-003",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -107,7 +107,7 @@
       "rule_ref": "NOTES-004",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -116,7 +116,7 @@
       "rule_ref": "NOTES-004",
       "type": "example",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -125,7 +125,7 @@
       "rule_ref": "NOTES-005",
       "type": "rationale",
       "content": "Context for the rule.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

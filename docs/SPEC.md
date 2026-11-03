@@ -489,6 +489,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
 | RL030 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
 | RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
+| RL032 | Info | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted. |
 
 #### `rule-diff` (RD)
 
@@ -517,10 +518,13 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
+| RD023 | Info | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted. |
+
+RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 
 #### `realm-lint` (RM)
 
-RM002, RM003, RM004, RM007, RM014–RM016 and RM018 fire for the parent manifest and for each sub-realm manifest.
+RM002, RM003, RM004, RM007, RM014–RM016, RM018 and RM019 fire for the parent manifest and for each sub-realm manifest.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
 RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's; one that does is validated against its own pin only, not also against its parent's, when the caller supplies the linters for sub-realms to `realm-lint` and, for the Realm tree, to `rule-lint`.
 A caller that lints the entity files itself, as `rule-lint` over the Realm tree, can tell `realm-lint` so; `realm-lint` then runs without a rule linter and does not emit the Info form of RM005.
@@ -546,6 +550,8 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
 | RM017 | Error | A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018). |
 | RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
+| RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
+| RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`; a sub-realm uses its parent's contributors (CTRB-006). |
 
 #### `realm-resolve` (RR)
 

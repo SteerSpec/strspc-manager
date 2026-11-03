@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:9b86850f14eb1086a1fe0153c6484c2a71eee2135b8eef7b36cd254ba0791fc3"
+    "hash": "blake3:3514800f4e2af68858298b94d721714eb4cb0733bf40d7250298c5851269b906"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of viswide MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

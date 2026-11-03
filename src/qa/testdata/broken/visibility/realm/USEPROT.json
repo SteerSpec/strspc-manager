@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:176596857bbaf2df93013becad04cc712be8abe41a599437895ddeaebfd18a0c"
+    "hash": "blake3:b926941971846da70ba709468091c455e07ca35cbf5b97dbfee1827a5fefd14c"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of useprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
@@ -27,7 +27,7 @@
       "revision": 0,
       "state": "T",
       "body": "The subject of useprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
@@ -37,7 +37,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of useprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBPROT-001"
@@ -47,7 +47,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of useprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "USEPROT-003"
     },
@@ -56,7 +56,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of useprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBPROT-002"

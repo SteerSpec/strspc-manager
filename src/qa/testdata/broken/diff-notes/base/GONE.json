@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:64912c0cabf5f75376030e26f21803001ad0c6042cf1cbab691937e1b92559d8"
+    "hash": "blake3:f57164b2fe8342c95bbc635e7fcd84504aeb5e93df63ef1e227b1de124c6362e"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of gone MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -26,7 +26,7 @@
       "rule_ref": "GONE-001",
       "type": "rationale",
       "content": "Removed in head.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

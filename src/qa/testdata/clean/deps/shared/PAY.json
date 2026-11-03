@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:0feb2db5929f51485eca929c78fb6034d89d08d300b7f34d87b3ce27927b855c"
+    "hash": "blake3:af7e84846a929c4e781d0994e73a7641ccbdc9224d3263cd6653bfc22f89c6e0"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "A payment MUST name its currency.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "P",
       "body": "A payment MUST carry a reference.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "I",
       "body": "A refund MUST reference its payment.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

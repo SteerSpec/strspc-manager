@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:fffb8f1e5536cb52fa8b24a640220ae4c2139a227f66b65cb0b6fe768e1edef6"
+    "hash": "blake3:e760e5e72e5fd086181b3956147669847d1d2ee215bfd402bb21f330be48df5b"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of viadep MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:a3867170b6e38324ca8132404a568e2e66d315e7900470ce8075758395bee790"
+    "hash": "blake3:44a19569abc1d17a2d60a793133ae386d4562419f0fc5fd88c428659ea80e20a"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of longb MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

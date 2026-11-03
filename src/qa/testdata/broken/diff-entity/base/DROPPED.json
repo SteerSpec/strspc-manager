@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:1b9f8fb00ff6d7682c01f44a130af2d2bef04d8be5c74bb1c4827af8571378be"
+    "hash": "blake3:5001a49db083912095acb3b34cea372321fee757ddeb1bbcc952c3a838a77a38"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of dropped MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

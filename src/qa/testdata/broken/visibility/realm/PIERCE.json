@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:2ce92e32aefbfe9e4ad92aa35a39b849bcb1f1c74e47e990fd64411feb3b3a4e"
+    "hash": "blake3:95f6bfb6fb45689462940dc8a9cdf46d6c04ab62a906d439b4ac0d916013ab26"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of pierce MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBOWN-001"

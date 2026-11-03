@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:23cb369e3d4b0c40847eef2d5ef51740c63e2648bd7d7035f16f81bf4a611d54"
+    "hash": "blake3:2076d13a1b85d958e8c6ac08292e8f8d4c3a4d2234fb8c6c5b2df5f6b4d9eb77"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libshield MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

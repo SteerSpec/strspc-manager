@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:303ebdf0d0b25573356aeca937c8eaef5dc70d31cfdbffc71f246ea1d088091e"
+    "hash": "blake3:b397382438908be6deb1929059df4214f2fcbabd3ec5d22091d8bc426c849601"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "An invoice MUST name its customer and its tax number.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "ORDER-002"
@@ -26,7 +26,7 @@
       "revision": 0,
       "state": "P",
       "body": "An invoice MUST be numbered.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

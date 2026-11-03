@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:2681c40c63d1b6a09ae09bab0978ab4863c04a654917786c7bcc9d3b124c452b"
+    "hash": "blake3:09e3a3a2d15864d5cac8ac9d432175887ebc5eacdaa72720065a61aa1cd482bf"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of badvis MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
