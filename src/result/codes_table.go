@@ -357,7 +357,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Missing added_by",
 		Summary:  "A new rule or new note has an empty `added_by`.",
-		Fix:      "Set `added_by` to the contributor's email address or `@handle`.",
+		Fix:      "Set `added_by` to the contributor's identifier, such as `github:<login>`.",
 	},
 	{
 		Code:     "RD012",

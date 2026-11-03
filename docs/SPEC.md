@@ -367,7 +367,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
       "revision": 0,
       "state": "D",
       "body": "<single-phrase rule statement>",
-      "added_by": "<email or @handle>",
+      "added_by": "github:<login>",
       "added_at": "<ISO date>",
       "supersedes": null
     }
@@ -391,7 +391,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
       "rule_ref": "<rule_id>",
       "type": "<note_type>",
       "content": "<note body>",
-      "added_by": "<email or @handle>",
+      "added_by": "github:<login>",
       "added_at": "<ISO date>",
       "revision": 0
     }

@@ -113,7 +113,7 @@
     "severity": "Error",
     "title": "Missing added_by",
     "summary": "A new rule or new note has an empty `added_by`.",
-    "fix": "Set `added_by` to the contributor's email address or `@handle`.",
+    "fix": "Set `added_by` to the contributor's identifier, such as `github:<login>`.",
     "retired": false
   },
   {
