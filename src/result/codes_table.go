@@ -357,7 +357,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Missing added_by",
 		Summary:  "A new rule or new note has an empty `added_by`.",
-		Fix:      "Set `added_by` to the contributor's email address or `@handle`.",
+		Fix:      "Set `added_by` to the contributor's identifier, such as `github:<login>`.",
 	},
 	{
 		Code:     "RD012",
@@ -420,8 +420,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Malformed added_by",
-		Summary:  "A new rule or new note has an `added_by` that is not an email address or `@handle`.",
-		Fix:      "Write `added_by` as an email address or an `@handle`.",
+		Summary:  "A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`.",
+		Fix:      "Write `added_by` as a contributor identifier such as `github:<login>`.",
 	},
 	{
 		Code:     "RD020",

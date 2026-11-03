@@ -113,7 +113,7 @@
     "severity": "Error",
     "title": "Missing added_by",
     "summary": "A new rule or new note has an empty `added_by`.",
-    "fix": "Set `added_by` to the contributor's email address or `@handle`.",
+    "fix": "Set `added_by` to the contributor's identifier, such as `github:<login>`.",
     "retired": false
   },
   {
@@ -184,8 +184,8 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Malformed added_by",
-    "summary": "A new rule or new note has an `added_by` that is not an email address or `@handle`.",
-    "fix": "Write `added_by` as an email address or an `@handle`.",
+    "summary": "A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`.",
+    "fix": "Write `added_by` as a contributor identifier such as `github:<login>`.",
     "retired": false
   },
   {
