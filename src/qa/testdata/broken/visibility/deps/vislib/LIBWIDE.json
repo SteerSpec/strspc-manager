@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:26557af8c36bb13a34d938468b7f9df59664004a43ee338fb1c58cae164b35ec"
+    "hash": "blake3:7f2dc33320667a0a91609c5cf76c4d5649fa4c807e44fc091e3422a6f84f4f73"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libwide MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

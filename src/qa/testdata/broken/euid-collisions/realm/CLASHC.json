@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:694020272b78a36e269403b8d521536e104b7e6ee1810d9503fddbf6e4b37d7d"
+    "hash": "blake3:b18f3d28dd49652c407e15aef2a782a5246433d67aff866b76e310074a5ed541"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of clashc MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

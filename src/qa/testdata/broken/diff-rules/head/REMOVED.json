@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:1c27bf63c4189a626d8abaa79bbbf7a9b595e3f246ef8ff837a8d7791626d7d7"
+    "hash": "blake3:2c6ff9c30680ac7b41b68a671ab82f7d45f91e7ed5682b5b043d62cc0372eddd"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of removed MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

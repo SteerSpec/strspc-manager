@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:239bf6e2ce9d3d8af332bc80ecba2a168f0368ee9178cfb6694a56f72a4e32c1"
+    "hash": "blake3:800c73209101d5d9733ff8a0b7d8ba3bf69cc12ed32dfa064838120bc4cbd5e2"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "A",
       "body": "The subject of team MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

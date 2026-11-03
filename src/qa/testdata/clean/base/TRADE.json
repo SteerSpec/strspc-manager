@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:eecccb4248439b545890a4eda5e28a22675e53116c5434476114b2e9f7affff0"
+    "hash": "blake3:414323a8679d1a76b4430f0d93d0e1b9b9ca601338474d79e77b71ab906dec81"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "D",
       "body": "A trade SHOULD be settled.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "P",
       "body": "A trade MUST name its desk.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "D",
       "body": "A trade MAY carry a tag.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "I",
       "body": "A trade MUST be booked.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "P",
       "body": "A trade MUST be booked twice.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "TRADE-004"
     }
@@ -67,7 +67,7 @@
       "rule_set": {
         "version": "1.0.0",
         "timestamp": "2026-01-15T10:00:00Z",
-        "hash": "blake3:b58668155b4461277be3a63e200630bb84a12c73af550ab7f4b7f96c96fbfbb4"
+        "hash": "blake3:57ffc7e91133af50272c2a033053e1a3776d976a35e41f0dc54fd7be3cb041f1"
       },
       "rules": [
         {
@@ -75,7 +75,7 @@
           "revision": 0,
           "state": "D",
           "body": "A leg MUST name its side.",
-          "added_by": "qa@steerspec.dev",
+          "added_by": "github:qa",
           "added_at": "2026-01-15",
           "supersedes": null
         }
@@ -89,7 +89,7 @@
       "rule_ref": "TRADE-001",
       "type": "clarification",
       "content": "Settled means paid.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -98,7 +98,7 @@
       "rule_ref": "TRADE-002",
       "type": "changelog",
       "content": "First release.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

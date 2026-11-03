@@ -324,6 +324,17 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 			Path:     realmPath,
 		})
 	}
+
+	// RM019: The realm's `contributors` array (CTRB-001, CTRB-002).
+	for _, err := range entity.ValidateContributors(rf.Realm.Contributors) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RM019",
+			Severity: result.Error,
+			Message:  err.Error(),
+			Path:     realmPath,
+		})
+	}
 }
 
 // RM003 + RM004: Validate _schema/ directory structure.
@@ -426,17 +437,18 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 	return coreDir
 }
 
-// declaresLanguage reports whether a manifest holds a realm.language key,
-// whatever its value. It reads the raw JSON because an empty or null value
-// decodes the same as an absent key, and schema validation may be unavailable.
-func declaresLanguage(data []byte) bool {
+// declaresRealmKey reports whether a manifest holds the given key in its
+// realm object, whatever its value. It reads the raw JSON because an empty or
+// null value decodes the same as an absent key, and schema validation may be
+// unavailable.
+func declaresRealmKey(data []byte, key string) bool {
 	var m struct {
 		Realm map[string]json.RawMessage `json:"realm"`
 	}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return false
 	}
-	_, ok := m.Realm["language"]
+	_, ok := m.Realm[key]
 	return ok
 }
 
@@ -786,12 +798,24 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		// RM017: A sub-realm inherits its parent's language (RLM-018), so its
 		// manifest leaves language out.
-		if declaresLanguage(srData) {
+		if declaresRealmKey(srData, "language") {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM017",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-018)", srName),
+				Path:     srRealmPath,
+			})
+		}
+
+		// RM020: A sub-realm uses its parent's contributors (CTRB-006), so
+		// its manifest leaves the key out, even empty or null.
+		if declaresRealmKey(srData, "contributors") {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM020",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("sub-realm %q: contributors must be left out; a sub-realm uses its parent's contributors (CTRB-006)", srName),
 				Path:     srRealmPath,
 			})
 		}

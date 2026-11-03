@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:49ae6fda8f27b65ccdcb23bfed57d055e4ad6c997690737dc37d6fe3051898be"
+    "hash": "blake3:fa1955247f497868abee8cff8bfc499f5361df818d41d65eb76ce0bd93ca002d"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of pinned MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

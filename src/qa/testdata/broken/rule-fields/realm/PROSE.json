@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:b78fb71df2de5ade92d281e9b9079b41b141c98687100437946ff40df57fd4e7"
+    "hash": "blake3:d3267c509f99deddadd8c798f4e59dde4cb25e392fecd2650c6d145cd1e5a7c6"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "D",
       "body": "Orders are nice to have.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "D",
       "body": "An order MUST be paid. A refund MUST follow.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "I",
       "body": "Orders are nice to have. Implemented bodies are immutable.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "D",
       "body": "An order MUST name a carrier such as a courier.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "D",
       "body": "An order MUST be paid and MUST NOT be free.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -62,7 +62,7 @@
       "rule_ref": "PROSE-005",
       "type": "rationale",
       "content": "Some orders are unpaid, e.g. a sample.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -71,7 +71,7 @@
       "rule_ref": "PROSE-005",
       "type": "example",
       "content": "A sample such as a swatch is free.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

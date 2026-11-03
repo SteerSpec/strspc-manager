@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:3459d8611d689dfd908070008ac925e9abf87e1f2dc33558708c4db5a4edc61e"
+    "hash": "blake3:876d57530aa671de5a6775d7df34afa04bf289be7179651b00903c31fab95401"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of fresh MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

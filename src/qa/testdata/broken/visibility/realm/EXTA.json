@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:b7c24fc16e30b896d2ee1ed3f348843bab750bbd49b170028a003142e5493573"
+    "hash": "blake3:71aa4df032cfee0c6b19a6dc43bf56c8fe8f268eaa72ec43e8fc355d20dcbf1f"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of exta MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -25,7 +25,7 @@
       "revision": 0,
       "state": "R",
       "body": "The subject of exta MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -36,7 +36,7 @@
       "rule_ref": "EXTA-001",
       "type": "extends",
       "content": "dev.steerspec.qa.vislib:LIBPRIV-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -45,7 +45,7 @@
       "rule_ref": "EXTA-002",
       "type": "extends",
       "content": "dev.steerspec.qa.vislib:LIBPRIV-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

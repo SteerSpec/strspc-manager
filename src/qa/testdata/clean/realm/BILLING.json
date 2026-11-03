@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.1",
     "timestamp": "2026-11-01T14:06:35Z",
-    "hash": "blake3:7a0bff27174637ae3fc6ad10842758f45ca70353740139a412ef22f9e388f360"
+    "hash": "blake3:7e1be882f4724f868d058d897d86aaa12af3f79f5de5cf4d3d9fa47308a9e41c"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "A billing run MUST use dev.steerspec.qa.shared:PAY-002 references.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.shared:PAY-001"
@@ -28,7 +28,7 @@
       "rule_ref": "BILLING-001",
       "type": "related",
       "content": "dev.steerspec.qa.shared:PAY-003",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -37,7 +37,7 @@
       "rule_ref": "BILLING-001",
       "type": "standard",
       "content": "owasp.asvs:2.1.1",
-      "added_by": "@qa",
+      "added_by": "github:qa",
       "added_at": "2026-11-01",
       "revision": 0
     }

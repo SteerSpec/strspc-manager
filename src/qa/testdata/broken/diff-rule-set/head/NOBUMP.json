@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:5042c08e5a861bcac866b1da53edb778b7813e9627ed8e4d84f4df8b9614b18e"
+    "hash": "blake3:1b5396b10a331b3370cf26ebfcb86e1ea158c162e9dc4cff674c4805d3bf9f13"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of nobump MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

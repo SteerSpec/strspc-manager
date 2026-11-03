@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:33e8b43f780428001a41e3889e05fb60774fe31a0711a7b366b9ee01bb724e60"
+    "hash": "blake3:42cf30dc92d7feb2ed53c068d8330e2d882bd6101a80b2a44b28b97fbc3ae4f0"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST treat dev.steerspec.qa.reflib:LIB-002 with care.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST treat dev.steerspec.qa.nowhere:ABC-001 with care.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST treat dev.steerspec.qa.reflib:LIB-999 with care.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST quote `dev.steerspec.qa.reflib:LIB-002` in backticks.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "A",
       "body": "A reference MUST be withdrawn.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -60,7 +60,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST treat GHOST-001 with care.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -69,7 +69,7 @@
       "revision": 0,
       "state": "I",
       "body": "A reference MUST treat REFS-005 with care.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -78,7 +78,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of refs MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "REFS-099"
     },
@@ -87,7 +87,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of refs MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -98,7 +98,7 @@
       "rule_ref": "REFS-005",
       "type": "related",
       "content": "dev.steerspec.qa.nowhere:ABC-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -107,7 +107,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "dev.steerspec.qa.nowhere:ABC-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -116,7 +116,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "dev.steerspec.qa.reflib:LIB-999",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -125,7 +125,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "dev.steerspec.qa.reflib:LIB-003",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -134,7 +134,7 @@
       "rule_ref": "REFS-009",
       "type": "extends",
       "content": "dev.steerspec.qa.reflib:LIB-004",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -143,7 +143,7 @@
       "rule_ref": "REFS-009",
       "type": "supersedes",
       "content": "GHOST-002",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -152,7 +152,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "REFS-005",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -161,7 +161,7 @@
       "rule_ref": "REFS-009",
       "type": "supersedes",
       "content": "dev.steerspec.qa.reflib:LIB-002",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -170,7 +170,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "dev.steerspec.qa.refs:REFS-098",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -179,7 +179,7 @@
       "rule_ref": "REFS-009",
       "type": "related",
       "content": "dev.steerspec.qa.teamlib:OWN-001",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

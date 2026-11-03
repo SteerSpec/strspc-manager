@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:73281bd869a9f978b1fdbf2e413cf0a639d50a086bd6e503079a236b388cc16e"
+    "hash": "blake3:99345b818fd58759724d2cb05004e1754cbbf562f5954b0ee2b2ceae5a9af4fd"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "A team MUST follow dev.steerspec.qa.teamlib:OWN-001.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

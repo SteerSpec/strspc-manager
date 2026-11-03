@@ -37,13 +37,13 @@ func standardsFile(ref entity.StandardRef, contents ...string) *entity.File {
 		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-01-01T00:00:00Z"},
 		Rules: []entity.Rule{{
 			ID: "STDNOTE-001", State: entity.StatePublished, Body: "The system MUST work.",
-			AddedBy: "@qa", AddedAt: "2026-01-01",
+			AddedBy: "github:qa", AddedAt: "2026-01-01",
 		}},
 	}
 	for i, c := range contents {
 		f.Notes = append(f.Notes, entity.Note{
 			ID: fmt.Sprintf("STDNOTE-001/%02d", i+1), RuleRef: "STDNOTE-001", Type: entity.NoteTypeStandard,
-			Content: c, AddedBy: "@qa", AddedAt: "2026-01-01",
+			Content: c, AddedBy: "github:qa", AddedAt: "2026-01-01",
 		})
 	}
 	return f
@@ -127,6 +127,53 @@ var goCases = []goCase{
 				Standards: []entity.StandardRef{{ID: "owasp", Relation: entity.RelationImplements}},
 			}})
 			return realmlint.New().Lint(t.Context(), dir)
+		},
+	},
+	{
+		name: "realm-lint reports a bad contributor and a sub-realm declaring contributors",
+		// RM002, RM003 and RM005 fire for the parent and the sub-realm, which
+		// have no _schema/.
+		want: []string{"RM002 info", "RM002 info", "RM003 error", "RM003 error", "RM005 info", "RM005 info", "RM019 error", "RM020 error"},
+		run: func(t *testing.T) *result.Result {
+			dir := t.TempDir()
+			if err := os.Mkdir(filepath.Join(dir, "team"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			writeQAJSON(t, filepath.Join(dir, "realm.json"), entity.RealmFile{
+				Realm: entity.RealmMeta{
+					ID: "dev.qa.ctrb", Title: "C", Version: "1.0.0",
+					Contributors: []entity.Contributor{{ID: "github:qa"}, {ID: "github:QA"}},
+				},
+				SubRealms: []string{"team"},
+			})
+			writeQAJSON(t, filepath.Join(dir, "team", "realm.json"), entity.RealmFile{Realm: entity.RealmMeta{
+				ID: "dev.qa.ctrb.team", Title: "T", Version: "1.0.0",
+				Contributors: []entity.Contributor{{ID: "github:qa"}},
+			}})
+			return realmlint.New().Lint(t.Context(), dir)
+		},
+	},
+	{
+		name: "rule-lint reports an added_by that is not a contributor identifier",
+		want: []string{"RL032 info"},
+		run: func(*testing.T) *result.Result {
+			f := standardsFile(asvsRef)
+			f.Rules[0].AddedBy = "@qa"
+			return rulelint.New(rulelint.WithStrict(true)).LintFile(f)
+		},
+	},
+	{
+		name: "rule-diff reports a new rule by a contributor the Realm does not list",
+		want: []string{"RD023 info"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef)
+			head := standardsFile(asvsRef)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			head.Rules = append(head.Rules, entity.Rule{
+				ID: "STDNOTE-002", State: entity.StateDraft, Body: "The system MUST also work.",
+				AddedBy: "github:someone", AddedAt: "2026-02-01",
+			})
+			return rulediff.New(rulediff.WithStrict(true), rulediff.WithContributors([]entity.Contributor{{ID: "github:qa"}})).Diff(base, head)
 		},
 	},
 	{

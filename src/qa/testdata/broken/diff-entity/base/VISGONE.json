@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:8323240b07efd88dd3c81141a1cf652bb3b27580fa720c50532c12562f9789fd"
+    "hash": "blake3:3f5bf26ac8e9aaaa644c5ce994e58e1f6975163e04bcb38e508614000350ad0e"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of visgone MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

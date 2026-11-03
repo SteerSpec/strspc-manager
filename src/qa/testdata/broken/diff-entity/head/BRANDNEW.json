@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:9bd20dbcd0b3fe2a9b1c865809d16d48e52eda1c0e160eba647f4c99bf9e2af1"
+    "hash": "blake3:a1dc556aae6a5054fbcc505042f88c96e467cbf8f1cc9fae00dba9c5ef100edb"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of brandnew MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of brandnew MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -40,7 +40,7 @@
       "rule_set": {
         "version": "1.0.0",
         "timestamp": "2026-01-15T10:00:00Z",
-        "hash": "blake3:d673b68f1782ee88a2c9451828dc321144be9a6de3d4df680c4f4f302b404621"
+        "hash": "blake3:9f219af2bdf1e5108bd78e724b83e5304bbb2e677bca4c6f0b661ee56f2f855d"
       },
       "rules": [
         {
@@ -48,7 +48,7 @@
           "revision": 2,
           "state": "D",
           "body": "The subject of brandsub MUST hold.",
-          "added_by": "qa@steerspec.dev",
+          "added_by": "github:qa",
           "added_at": "2026-01-15",
           "supersedes": null
         }

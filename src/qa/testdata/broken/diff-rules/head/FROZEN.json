@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:0dfbbda230c010bb784b2c14f65e4670853db3521d1282b3d3234be0eb3bab16"
+    "hash": "blake3:6f1a1152c9939955f7c9cf8c95e2ca5ba928054ac8e6377c0901d928b9a1a681"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The frozen body MUST NOT change, yet it did.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:a91676cf809ce848d0549f3c2b806e1eba38b2e18a7f5292d98075f3d966c18a"
+    "hash": "blake3:7d764c4b7b95e026a6bc01195e0274f921192b468e8211fd2964655d2c2bd8e0"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cyca MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

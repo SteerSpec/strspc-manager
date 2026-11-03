@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.9.9",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:0b52d68b51869e1825c55016f62dbdc7970ae584b7958fa31a01cf7fdcad8b1a"
+    "hash": "blake3:16678011653466bbd0b00437d1a0bba14804af020f4fb29d670e0ae201b87fe9"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of lower MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

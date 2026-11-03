@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:53252e26ea4993c123ac26a7c97adf4a15421378c38f9ee0c70bc6bb92a05378"
+    "hash": "blake3:3200b1792123d75415bc75327b727b605625ca8fa75cb12435a87ea4a5a6cb86"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of hope MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

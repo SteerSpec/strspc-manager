@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of stale MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:6518c427fff1cfe05bc5a9ec0721d7ae87c06a1799a1d6990b76d78d03b355c4"
+    "hash": "blake3:77df4f7cda08ce4b98be3df555625c8bc32290f1ef502acb74f53d43d4d77867"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libsub MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

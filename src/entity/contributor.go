@@ -77,6 +77,24 @@ func ParseContributorID(s string) (idp, subject string, err error) {
 	return idp, subject, nil
 }
 
+// ValidateContributors returns one error for each entry of a Realm's
+// contributor list whose id is not a contributor identifier (CTRB-001,
+// CTRB-002), and for each id repeated, in list order. Ids are compared as
+// FindContributor matches them, so `github:Alice` repeats `github:alice`.
+func ValidateContributors(list []Contributor) []error {
+	var errs []error
+	for i, c := range list {
+		if _, _, err := ParseContributorID(c.ID); err != nil {
+			errs = append(errs, fmt.Errorf("contributors[%d]: %w", i, err))
+			continue
+		}
+		if prev := FindContributor(list[:i], c.ID); prev != nil {
+			errs = append(errs, fmt.Errorf("contributors[%d]: id %q repeats %q", i, c.ID, prev.ID))
+		}
+	}
+	return errs
+}
+
 // IsContributorID reports whether s is a contributor identifier with a listed
 // identity provider (CTRB-001, CTRB-002).
 func IsContributorID(s string) bool {

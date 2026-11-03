@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:3d89cc71812425a5908a683818d11c412747605f4a445f68f36ac521a5a52487"
+    "hash": "blake3:11c310e5a282112b26b1fecdd7e047ba9fc31bd8da738f899ec9956e664f48ca"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "A",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "R",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "CIT-003"
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "T",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -60,7 +60,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -69,7 +69,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -78,7 +78,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "CIT-007"
     },
@@ -87,7 +87,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -96,7 +96,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "CIT-009"
     },
@@ -105,7 +105,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -114,7 +114,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of cit MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "CIT-011"
     }

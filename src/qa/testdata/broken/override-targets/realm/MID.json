@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:6df8deefa63a6776e35b55c3143c9639e7992ffb16ee72ef466fdee10f0c7bf5"
+    "hash": "blake3:83ce84bc1e2032ff04cbbcd85c39ee623ef2b85fab04b19f1a29d4c0425b1abd"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of mid MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-003"

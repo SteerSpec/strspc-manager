@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:107bc3a6b4a88bf8bd694f02ba7d440d522d9775650db80323fcdd0ec8910f31"
+    "hash": "blake3:9a845aa34debdf4c7fb26460312c8dc441c6941487bbf4eed9ac03c5d5b2b5cb"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "A vault MUST stay sealed.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
