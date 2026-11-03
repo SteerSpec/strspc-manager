@@ -104,6 +104,7 @@ Public packages live under `src/`, for example
 | ------- | ---- | ----------- |
 | `rulelint` | deterministic, stateless | Validates entity files against schema and business rules (§7.1) |
 | `rulediff` | deterministic, stateful | Validates rule lifecycle transitions across PR diffs (§7.2) |
+| `rulehistory` | deterministic, stateless | Derives an entity's or rule's change history from successive versions of its file, one before/after pair per commit, without reading git itself (§6.2) |
 | `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules (§8.3). Batches rules per entity, caches verdicts, and degrades to static-only mode when no provider is configured. See [Evaluation providers](#evaluation-providers). |
 | `evalcache` | deterministic | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
 | `ruleresolve` | deterministic | Fetches, caches, and resolves rules from configured sources (§8.2) |

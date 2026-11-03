@@ -419,6 +419,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `rule-schema` | No | The JSON Schema definition. Consumed by all other modules. |
 | `rule-lint` | No | Stateless validator. Takes a single entity file, validates against schema + business rules. Accepts Realm context for cross-entity EUID checks. |
 | `rule-diff` | Yes | Stateful validator. Compares before/after of an entity file. Enforces lifecycle, versioning, immutability. |
+| `rule-history` | No | Derives the change history of an entity file from its successive versions: for each commit the caller passes the file before and after it, and gets back each rule's changes (added, body changed, metadata changed, promoted, retired, terminated, abandoned, any other state change, superseded, removed) with the rule set version, revision, commit and pull request. Reads no version-control system itself and stores nothing in the entity file. |
 | `rule-render` | No | Generates markdown (or other formats) from entity JSON. The display layer. |
 | `realm-resolve` | Yes (cache) | Resolves Realm dependencies (local or `github://`) and cross-realm references. Validates EUID uniqueness across dependent Realms. |
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
