@@ -138,9 +138,11 @@ func FindContributor(list []Contributor, addedBy string) *Contributor {
 }
 
 // RealmContributors returns the contributors of the Realm whose manifest is
-// in dir. A sub-realm uses those of its parent Realm (CTRB-006), found on
-// disk as ParentRealm finds it. A directory without a manifest has none, and
-// no error; a manifest that can't be read or parsed is an error.
+// in dir. A sub-realm uses those of its parent Realm (CTRB-006): the manifest
+// in the directory above, when it lists dir as a sub-realm and its ID makes
+// dir's that sub-realm's (RLM-011). A directory without a manifest has none,
+// and no error. A manifest that can't be read or parsed is an error, the one
+// in the directory above included, since it may be the parent's.
 func RealmContributors(dir string) ([]Contributor, error) {
 	rf, err := LoadRealm(filepath.Join(dir, "realm.json"))
 	if err != nil {
@@ -149,12 +151,20 @@ func RealmContributors(dir string) ([]Contributor, error) {
 		}
 		return nil, err
 	}
-	if ParentRealm(dir, rf.Realm.ID) != nil {
-		abs, err := filepath.Abs(dir)
-		if err != nil {
-			return nil, err
-		}
-		return RealmContributors(filepath.Dir(abs))
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	parentDir, base := filepath.Dir(abs), filepath.Base(abs)
+	parent, err := LoadRealm(filepath.Join(parentDir, "realm.json"))
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return rf.Realm.Contributors, nil
+	case err != nil:
+		return nil, fmt.Errorf("loading the manifest above %s: %w", dir, err)
+	}
+	if slices.Contains(parent.SubRealms, base) && parent.Realm.ID+"."+base == rf.Realm.ID {
+		return RealmContributors(parentDir)
 	}
 	return rf.Realm.Contributors, nil
 }

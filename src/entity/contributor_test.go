@@ -222,4 +222,33 @@ func TestRealmContributors(t *testing.T) {
 	if _, err := RealmContributors(broken); err == nil {
 		t.Error("a broken manifest gave no error")
 	}
+
+	// A broken manifest above may be the parent's: an error, not the
+	// child's own list.
+	writeRealm(t, filepath.Join(broken, "team"), "dev.test.broken.team", `[]`, `,"contributors":[{"id":"github:own"}]`)
+	if _, err := RealmContributors(filepath.Join(broken, "team")); err == nil {
+		t.Error("a broken parent manifest gave no error")
+	}
+}
+
+// A Realm above that does not list dir as a sub-realm, or whose ID does not
+// make dir's, is not its parent.
+func TestRealmContributorsNotParent(t *testing.T) {
+	for name, tt := range map[string]struct{ subRealms, childID string }{
+		"not listed":   {`[]`, "dev.test.root.team"},
+		"ID unrelated": {`["team"]`, "dev.test.other"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			writeRealm(t, root, "dev.test.root", tt.subRealms, `,"contributors":[{"id":"github:parent"}]`)
+			writeRealm(t, filepath.Join(root, "team"), tt.childID, `[]`, `,"contributors":[{"id":"github:own"}]`)
+			got, err := RealmContributors(filepath.Join(root, "team"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != 1 || got[0].ID != "github:own" {
+				t.Fatalf("got %+v, want the Realm's own list", got)
+			}
+		})
+	}
 }
