@@ -411,6 +411,17 @@ func TestDiff_RD019_AddedByFormat(t *testing.T) {
 		want    bool
 	}{
 		{"@pleberre", false},
+		{"github:pleberre", false},
+		{"github:a-b-1", false},
+		{"github:steerspec-sync[bot]", false},
+		{"github:", true},
+		{"github:-x", true},
+		{"github:a--b", true},
+		{"github:@pleberre", true},
+		{"github:pleberre ", true},
+		{"GitHub:pleberre", true},
+		{"gitlab:pleberre", true},
+		{"pleberre:", true},
 		{"@a-b-1", false},
 		{"@steerspec-sync[bot]", false},
 		{"dev@example.com", false},
