@@ -12,8 +12,8 @@ type Filter struct {
 	// Entity keeps the events of one entity, given by its EUID: the top-level
 	// entity of the file or one of its sub-entities.
 	Entity string
-	// RuleID keeps the events of one rule, and the added event of a rule that
-	// supersedes it.
+	// RuleID keeps the events of one rule, and the events in which another
+	// rule takes it as the rule it supersedes.
 	RuleID string
 	// Since keeps the changes that produced a rule set version greater than
 	// it, like `git log v1..`.
@@ -42,7 +42,7 @@ func (h *History) Filter(f Filter) (*History, error) {
 		if f.Entity != "" && !inEntity(ev.Entity, f.Entity) {
 			continue
 		}
-		if f.RuleID != "" && ev.RuleID != f.RuleID && (ev.Kind != Added || ev.Supersedes != f.RuleID) {
+		if f.RuleID != "" && ev.RuleID != f.RuleID && ev.Supersedes != f.RuleID {
 			continue
 		}
 		if since != nil || until != nil {

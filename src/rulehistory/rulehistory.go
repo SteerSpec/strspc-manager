@@ -89,7 +89,8 @@ type Event struct {
 	// (a sub-entity has its own) after the commit, or before it for a
 	// removed rule.
 	RuleSetVersion string `json:"rule_set_version"`
-	// Supersedes is the rule an added rule supersedes.
+	// Supersedes is the rule this rule supersedes, set when the commit sets
+	// that reference: on an added rule, or on a Draft that adds or changes it.
 	Supersedes string `json:"supersedes,omitempty"`
 	// SupersededBy is the rule that supersedes a superseded rule.
 	SupersededBy string `json:"superseded_by,omitempty"`
@@ -124,29 +125,35 @@ type History struct {
 
 // Build classifies the changes of commits, given oldest first.
 //
-// A Before that does not parse is replaced by the last After that did, with
-// a warning. A commit whose After does not parse is skipped, with a warning.
+// A Before that does not parse is replaced by the last version that did,
+// with a warning. A commit whose After does not parse is skipped, with a
+// warning, and its Before, when it parses, becomes the last version known.
 func Build(commits []Commit) *History {
 	h := &History{Events: []Event{}}
 	var lastGood *entity.File
 	for _, c := range commits {
+		var before *entity.File
+		var beforeErr error
+		if c.Before != nil {
+			before, beforeErr = entity.Parse(c.Before)
+		}
 		var after *entity.File
 		if c.After != nil {
 			f, err := entity.Parse(c.After)
 			if err != nil {
 				h.Warnings = append(h.Warnings, Warning{Commit: c.SHA, Message: "skipped: the file does not parse after the commit: " + err.Error()})
+				if before != nil {
+					// The version before the commit is still the last
+					// one known; a later commit may need it.
+					lastGood = before
+				}
 				continue
 			}
 			after = f
 		}
-		var before *entity.File
-		if c.Before != nil {
-			f, err := entity.Parse(c.Before)
-			if err != nil {
-				h.Warnings = append(h.Warnings, Warning{Commit: c.SHA, Message: "the file does not parse before the commit; compared with the last version that did: " + err.Error()})
-				f = lastGood
-			}
-			before = f
+		if beforeErr != nil {
+			h.Warnings = append(h.Warnings, Warning{Commit: c.SHA, Message: "the file does not parse before the commit; compared with the last version that did: " + beforeErr.Error()})
+			before = lastGood
 		}
 		h.Events = append(h.Events, classify(c, before, after)...)
 		if after != nil {
@@ -198,9 +205,9 @@ func classify(c Commit, before, after *entity.File) []Event {
 	supersededBy := map[string]string{}
 	for _, r := range afterRules {
 		present[r.rule.ID] = true
-		if _, existed := old[r.rule.ID]; !existed && r.rule.Supersedes != nil {
-			if _, ok := old[*r.rule.Supersedes]; ok {
-				supersededBy[*r.rule.Supersedes] = r.rule.ID
+		if ref := newSupersedes(old, r.rule); ref != "" {
+			if _, ok := old[ref]; ok {
+				supersededBy[ref] = r.rule.ID
 			}
 		}
 	}
@@ -209,12 +216,10 @@ func classify(c Commit, before, after *entity.File) []Event {
 	for _, r := range afterRules {
 		ev := base
 		ev.Entity, ev.RuleSetVersion, ev.RuleID, ev.Revision, ev.ToState = r.entity, r.version, r.rule.ID, r.rule.Revision, r.rule.State
+		ev.Supersedes = newSupersedes(old, r.rule)
 		prev, existed := old[r.rule.ID]
 		if !existed {
 			ev.Kind = Added
-			if r.rule.Supersedes != nil {
-				ev.Supersedes = *r.rule.Supersedes
-			}
 			events = append(events, ev)
 			continue
 		}
@@ -253,6 +258,19 @@ func classify(c Commit, before, after *entity.File) []Event {
 		events = append(events, ev)
 	}
 	return events
+}
+
+// newSupersedes returns the rule that r supersedes when the commit sets that
+// reference: r is new, or a Draft that adds or changes its supersedes (RD021).
+// It returns "" otherwise.
+func newSupersedes(old map[string]entity.Rule, r entity.Rule) string {
+	if r.Supersedes == nil {
+		return ""
+	}
+	if prev, existed := old[r.ID]; existed && sameRef(prev.Supersedes, r.Supersedes) {
+		return ""
+	}
+	return *r.Supersedes
 }
 
 // stateKind names a move from one state to another. Only the lifecycle's

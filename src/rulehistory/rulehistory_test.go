@@ -132,6 +132,52 @@ func TestBuildCrossFileSupersedes(t *testing.T) {
 
 // A sub-entity has its own rule set, so its events carry its version, not
 // the parent's.
+// RD021 lets a Draft add or change its supersedes reference; the target
+// then gets a superseded event, and the Draft's event names the target.
+func TestBuildDraftGainsSupersedes(t *testing.T) {
+	draft := rule("TST-002", "D", "new", 0)
+	edited := draft
+	edited.Supersedes = ptr("TST-001")
+	h := Build([]Commit{commit(t, "c1", "x",
+		file("0.1.0", rule("TST-001", "I", "one", 0), draft),
+		file("0.1.1", rule("TST-001", "I", "one", 0), edited))})
+	if got := kinds(h); got != "TST-001:superseded TST-002:metadata_changed" {
+		t.Fatalf("got %q", got)
+	}
+	if h.Events[0].SupersededBy != "TST-002" || h.Events[1].Supersedes != "TST-001" {
+		t.Errorf("events = %+v", h.Events)
+	}
+	f, err := h.Filter(Filter{RuleID: "TST-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kinds(f) != "TST-001:superseded TST-002:metadata_changed" {
+		t.Errorf("filtered = %q", kinds(f))
+	}
+	// An unchanged reference sets nothing.
+	h = Build([]Commit{commit(t, "c2", "x",
+		file("0.1.1", rule("TST-001", "I", "one", 0), edited),
+		file("0.1.2", rule("TST-001", "I", "one", 0), func() entity.Rule { e := edited; e.Body = "newer"; return e }()))})
+	if kinds(h) != "TST-002:body_changed" || h.Events[0].Supersedes != "" {
+		t.Errorf("unchanged reference: events = %+v", h.Events)
+	}
+}
+
+// A commit whose After is broken still records its Before as the last
+// known version, so the next commit compares with it.
+func TestBuildBrokenAfterKeepsBefore(t *testing.T) {
+	v1 := file("0.1.0", rule("TST-001", "D", "one", 0))
+	v2 := file("0.2.0", rule("TST-001", "P", "one", 0))
+	broken := []byte("{not json")
+	h := Build([]Commit{
+		{SHA: "c1", Date: day, Subject: "break", Before: raw(t, v1), After: broken},
+		{SHA: "c2", Date: day, Subject: "fix", Before: broken, After: raw(t, v2)},
+	})
+	if got := kinds(h); got != "TST-001:promoted" {
+		t.Fatalf("got %q, warnings %v", got, h.Warnings)
+	}
+}
+
 func TestBuildSubEntity(t *testing.T) {
 	sub := func(version string, rules ...entity.Rule) entity.File {
 		f := file(version, rules...)
