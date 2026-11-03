@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:b641c6a79bda0ebf7d3c88bb8ff1595a55b603ea137d71164088f19aabc4c96b"
+    "hash": "blake3:66731cefc770a4e3e92d679a23e648bceae0226fe0e11cd46a842f4c4999bb3b"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of visfirst MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

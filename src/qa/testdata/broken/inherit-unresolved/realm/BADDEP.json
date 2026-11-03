@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:4cecd7949c77ff7f15f051a82d8c990a0073df0beb12def39eb8b222496218cd"
+    "hash": "blake3:90dcfbb85cfd135a058a29dc6d1d104c4d0ae9851dc58e5143767b4151f7beda"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of baddep MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

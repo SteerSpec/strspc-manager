@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:f491d8e84b67feba85c3049f6f3b17cdffe5f716f8ffcef943ed882b8f4e62a9"
+    "hash": "blake3:16e769037e8bd7b2cc43738030b7f0ba02cd1bc1cc68763f4ef4553d22025c15"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of newsub MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -32,7 +32,7 @@
       "rule_set": {
         "version": "1.0.0",
         "timestamp": "2026-01-15T10:00:00Z",
-        "hash": "blake3:7e94940e0ac46ad3b9a28d4e856d353a924ecacdcedaddad646db4451cd38f0c"
+        "hash": "blake3:c9263e9792aacfc9664384de8ee8263a300de51473d272f4611a32c0b4457dc4"
       },
       "rules": [
         {
@@ -40,7 +40,7 @@
           "revision": 0,
           "state": "I",
           "body": "The subject of newchild MUST hold.",
-          "added_by": "qa@steerspec.dev",
+          "added_by": "github:qa",
           "added_at": "2026-01-15",
           "supersedes": null
         }

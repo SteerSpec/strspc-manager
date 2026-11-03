@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:5c91e4bdd71af42a2187545f840db790029c60905dd3d323f1b5e945398c0d3f"
+    "hash": "blake3:5c93fe458c177d61a02726df46432ca3d96beb808009374f25e95797d7711e12"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of usepriv MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -26,7 +26,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of usepriv MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "dev.steerspec.qa.vislib:LIBPRIV-001"

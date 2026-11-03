@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:339e84051d8e1553096255cbdc9bf5a5c108677ab520e2c211e789a1b2173b6d"
+    "hash": "blake3:baa1a3b06ac37966070781c1f9ed0da3ec3b10e3d7d20d0281dbbce6b245c66d"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of norealm MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

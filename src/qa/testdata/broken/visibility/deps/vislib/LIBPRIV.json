@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:162cf710dc1cc16902bf653f34be71ec730ae9d171858c05660ddc18c83d5704"
+    "hash": "blake3:bd61227f0f24d74df7b1d49ca98dc09b8acbbef7248bba314e6a4078b43ec9b5"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libpriv MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

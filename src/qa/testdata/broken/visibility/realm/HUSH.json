@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:75a2c306fd8773b1922c846edae0ec4ee668d8c2f8fd66617e3c1bbd7238b3a5"
+    "hash": "blake3:afa62b3e238a5de4a8ed795ec1284d537a011f21f85207a196ae3df737052e4a"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of hush MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

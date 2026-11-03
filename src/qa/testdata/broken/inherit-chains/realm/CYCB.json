@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:f3a8ac32c83255b89c34049c2250e8736c58628f93935738686533d2077771cc"
+    "hash": "blake3:df72a050498133da4f559ddfddfef866eb5ceee2dd52b3911f4df0ef7982b16c"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of cycb MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

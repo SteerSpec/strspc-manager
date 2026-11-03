@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:c95945ed5c0ace6a09291ce1fd0cd773ddf692f5f076e25e5a5749a1c3f85d72"
+    "hash": "blake3:3d3d15cb0f82d05a0e6d56f11fce190c2b62ba6cd187fe0a455db54676ed1232"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of reused MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of other MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

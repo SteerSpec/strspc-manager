@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:d7a6943e0b8e68a36aa7f769efa0630d1b2195ca5cf11b9f8433d580689a66fb"
+    "hash": "blake3:565d9f87c270fac099318f001ea75a33ecd5ce3279e8d97127de8070538edaeb"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -25,7 +25,7 @@
       "revision": 0,
       "state": "D",
       "body": "The subject of libprot MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

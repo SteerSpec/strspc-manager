@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:44445a246347c4bdf9bf4ea57d8cbe6556ed5dfb5b7957c67c6a09fd8ac011fe"
+    "hash": "blake3:4d57650f6f3a8449a79c5b7f419ad6a54ca0009ee5b1729042fac26ae24052f7"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of libchain MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

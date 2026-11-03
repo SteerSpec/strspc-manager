@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:638f35b9a76852ba3208527e6e3a82f85252db8df1f6bebcf00d0a95e3ad19f2"
+    "hash": "blake3:4ede94bd9e195974bbb35336518a5c2cbb81b0377f922dddceeb88f546f31735"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of visnarrow MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

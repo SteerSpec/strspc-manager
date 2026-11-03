@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:0e9c5f21de40dccb0dd0ce66e1e8eaa18f66da4183dd921743457eea0e0192da"
+    "hash": "blake3:7a0ea87ed99b4b25190c9399ef30f6e39bdbf6cab90c6d3c14ac8b84b0596b62"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of semver MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

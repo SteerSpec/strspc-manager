@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:9da35e00cc6a9b8852845422a9b9a25898bd1bceb59ef32c41751b66366d9ce7"
+    "hash": "blake3:33e4b0e0e8f701320085b22bd8e7655ed323c633506023605fe952e4dfcc1f69"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "A ledger export MUST balance per currency.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "LEDGER-001"

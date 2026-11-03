@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:0b4d794da36fddbcf3f5776a2e8df74f3e5f3eaf08a949ee1a43b028776baeed"
+    "hash": "blake3:695cb63861e4a0580f21a6123af4873f5794caddd34d8e5e226b3ff58591b44e"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of stray MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

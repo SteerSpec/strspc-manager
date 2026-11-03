@@ -18,6 +18,9 @@ const module = "rule-diff"
 type Config struct {
 	// Strict treats warnings as errors.
 	Strict bool
+	// Contributors lists the Realm's contributors; RD023 runs when it is
+	// not empty.
+	Contributors []entity.Contributor
 }
 
 // Option configures the Differ.
@@ -72,6 +75,7 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 	checkVersion(baseEnt, headEnt, res, headEnt.Entity.ID)
 	checkTimestamp(baseEnt, headEnt, res, headEnt.Entity.ID)
 	d.diffEntityTree(baseEnt, headEnt, entity.VisibilityPublic, entity.VisibilityPublic, res, headEnt.Entity.ID)
+	checkContributors(baseEnt, headEnt, d.cfg.Contributors, res, headEnt.Entity.ID)
 	checkHashBytes(headEnt, headData, res, headEnt.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
@@ -95,6 +99,7 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	checkVersion(base, head, res, head.Entity.ID)
 	checkTimestamp(base, head, res, head.Entity.ID)
 	d.diffEntityTree(base, head, entity.VisibilityPublic, entity.VisibilityPublic, res, head.Entity.ID)
+	checkContributors(base, head, d.cfg.Contributors, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
 	}
@@ -115,6 +120,7 @@ func (d *Differ) DiffNew(head *entity.File) *result.Result {
 		return res
 	}
 	checkNewEntityTree(head, res, head.Entity.ID)
+	checkContributors(nil, head, d.cfg.Contributors, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
 	}

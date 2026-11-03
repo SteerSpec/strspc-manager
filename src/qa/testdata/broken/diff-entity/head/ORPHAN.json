@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:64971fe920916cac96da6685564ff4c59ae2728101eda55ea8e006c9804a0f0f"
+    "hash": "blake3:2aca4ea315b7ea50e0317106bdc1bdc4117340b5a77d349d24130e390853bf94"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "P",
       "body": "The subject of orphan MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

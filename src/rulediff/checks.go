@@ -2,7 +2,6 @@ package rulediff
 
 import (
 	"fmt"
-	"net/mail"
 	"regexp"
 	"sort"
 	"strconv"
@@ -12,30 +11,8 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
-var (
-	// ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
-	ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
-
-	// handleRe matches a GitHub @handle, a bot's included: hyphens only between
-	// alphanumerics.
-	handleRe = regexp.MustCompile(`^@` + githubLogin + `$`)
-
-	// contributorRe matches a contributor identifier <idp>:<subject> (CTRB-001)
-	// whose <idp> is one of the identity providers listed by core (CTRB-002).
-	// Core lists only github, whose subject is a GitHub login.
-	contributorRe = regexp.MustCompile(`^github:` + githubLogin + `$`)
-
-	// domainRe matches a domain of at least two labels of up to 63 characters,
-	// each without a leading or trailing hyphen. net/mail does not check this.
-	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$`)
-)
-
-// githubLogin matches a GitHub login, a bot's included: hyphens only between
-// alphanumerics.
-const githubLogin = `[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?`
-
-// maxDomainLen is the longest domain name DNS allows.
-const maxDomainLen = 253
+// ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
+var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
 // checkRules runs RD001–RD006, RD010–RD016, RD018, RD019, RD021 and RD022 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
@@ -235,7 +212,7 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 		})
 		return
 	}
-	if !validAddedBy(addedBy) {
+	if !entity.ValidAddedBy(addedBy) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD019",
@@ -244,22 +221,6 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 			Path:     path,
 		})
 	}
-}
-
-// validAddedBy reports whether s is a contributor identifier (github:<login>),
-// a GitHub @handle or a bare email address. A display name or angle brackets
-// are not bare. Email and @handle stay valid while CTRB is in its warning
-// release (#248).
-func validAddedBy(s string) bool {
-	if contributorRe.MatchString(s) || handleRe.MatchString(s) {
-		return true
-	}
-	addr, err := mail.ParseAddress(s)
-	if err != nil || addr.Address != s {
-		return false
-	}
-	domain := s[strings.LastIndex(s, "@")+1:]
-	return len(domain) <= maxDomainLen && domainRe.MatchString(domain)
 }
 
 // checkNotes runs RD011–RD016 for the notes of one entity: notes are never

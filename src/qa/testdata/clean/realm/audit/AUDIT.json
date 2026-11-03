@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:2d3eaae2ad87f5fffbac830e204f5e184fce930c761fb65b83324167cd20ec0d"
+    "hash": "blake3:49e88b56c798bc15ad5d2153375d65b1d2734b6382aa35991bd2d8a7853d6834"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "An audit MUST record its ledger.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "LEDGER-001"
@@ -29,7 +29,7 @@
       "rule_ref": "AUDIT-001",
       "type": "related",
       "content": "dev.steerspec.qa.shared:PAY-003",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

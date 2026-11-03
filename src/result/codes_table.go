@@ -264,6 +264,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Declare the standard in a `standards` array, or fix the `id`. An `inherits` declaration passes on no references.",
 	},
 	{
+		Code:     "RL032",
+		Module:   "rule-lint",
+		Severity: "Info",
+		Title:    "added_by not a contributor identifier",
+		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted.",
+		Fix:      "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
+	},
+	{
 		Code:     "RD000",
 		Module:   "rule-diff",
 		Severity: "Error",
@@ -448,6 +456,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Retype a `standard` note only to `reference`, with its content unchanged, and only `reference` back to `standard`.",
 	},
 	{
+		Code:     "RD023",
+		Module:   "rule-diff",
+		Severity: "Info",
+		Title:    "added_by not a listed contributor",
+		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted.",
+		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
+	},
+	{
 		Code:     "RM001",
 		Module:   "realm-lint",
 		Severity: "Error",
@@ -590,6 +606,22 @@ var codeTable = []CodeInfo{
 		Title:    "Invalid realm standards entry",
 		Summary:  "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
 		Fix:      "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
+	},
+	{
+		Code:     "RM019",
+		Module:   "realm-lint",
+		Severity: "Error",
+		Title:    "Invalid realm contributor",
+		Summary:  "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002).",
+		Fix:      "Write each `id` as `github:<login>`, and list each contributor once.",
+	},
+	{
+		Code:     "RM020",
+		Module:   "realm-lint",
+		Severity: "Error",
+		Title:    "Sub-realm declares contributors",
+		Summary:  "A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006).",
+		Fix:      "Remove `contributors` from the sub-realm's `realm.json`, and list the contributors on the parent.",
 	},
 	{
 		Code:     "RR000",

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:e6c085d5c9809b1176e28679777f8d3cb0a8a22bc4c01e8c9ea42dbe1533605c"
+    "hash": "blake3:42786c639f308984013843db1276708ea6ab1f43ed56bb6ed24c837415211419"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of hopb MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

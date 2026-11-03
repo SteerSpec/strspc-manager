@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.1.0",
     "timestamp": "2026-02-20T10:00:00Z",
-    "hash": "blake3:58388e0c73f05bcf2e17e73e1cc54ce1a4dcce83577c2d74f0950a8502a184be"
+    "hash": "blake3:18e2c653fdb1322bf546f23517a128511dec57f980bf94dd4c89579fb503e800"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of over MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-009"
@@ -25,7 +25,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of over MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -34,7 +34,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of over MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null,
       "overrides": "BASE-003"

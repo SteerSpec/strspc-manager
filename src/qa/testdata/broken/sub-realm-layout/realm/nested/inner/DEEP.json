@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:ca2f93265e8460462d7cf0731298dbbf83a67d81f3c5b3486aaa879c11e03edc"
+    "hash": "blake3:f8abc6f7ed47109040073cae2d1d6e699fb76a167b090b2722c72716827265ad"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of deep MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

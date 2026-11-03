@@ -9,7 +9,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:58bacf3330fc6eda2e6647cf69801a9b8fd9488ba0e9e8910123ce1a772557ca"
+    "hash": "blake3:8b05b72e2f5dad0a958c0f777b048ee12a7d1e953840f4333a562565dc90acbb"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of thru MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:378d8519b49a4fba0f0dcaefdd11b5b51d0c035ddef002cf358fefbec9e562be"
+    "hash": "blake3:25f8f826ea3b94369fc1b63d60fd8a980239d8403faab919def3bae4c4eca8a0"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of brokenbase MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:4ad1163fec69f31380f1f6641f89c6bd2f0f09f098c21684bcdda8ceaf78e09f"
+    "hash": "blake3:320cb07fbc30a0d5713f0e39cf9834fb85f0c0a1e93645eeadd00d9ee70a24f7"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of hopa MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

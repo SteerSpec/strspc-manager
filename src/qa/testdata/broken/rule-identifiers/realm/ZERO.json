@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:f7fc817a76d6371a30767cc31b5d32dce748c09300b2f12f662d843ee65dbd9c"
+    "hash": "blake3:16799a0850d4a0d13d2ebc65d5c038fb0010c456fd6ee5491d3f961531ee4ef7"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of zero MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

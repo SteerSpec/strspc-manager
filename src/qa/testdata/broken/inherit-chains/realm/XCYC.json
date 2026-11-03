@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:2378170c778b1ac629fb6ffed6ec3b2d0b5e9a9abdef1c2d5d69bba9dd556f59"
+    "hash": "blake3:7125b88b5cdce6f0beae1463944b78603c4869770af29c0a59249e1d62a3bc76"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of xcyc MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }

@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:39948c89d9bbb9513033dddeec3b1d2b14f85e72a514bc69ab3ac7c421fcb9c5"
+    "hash": "blake3:84d5d35e05310437667ba8d28b4f62278fd3e3a41424e05f9c49e778d18c20fc"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of revise MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     }
@@ -26,7 +26,7 @@
       "rule_ref": "REVISE-001",
       "type": "clarification",
       "content": "Reworded without a revision.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     },
@@ -35,7 +35,7 @@
       "rule_ref": "REVISE-001",
       "type": "rationale",
       "content": "Revision moved without a change.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
     }

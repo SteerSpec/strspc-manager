@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:65c940de13f5d0a1c2d992a89af910e6727416acebfb8462296318d772b3fc77"
+    "hash": "blake3:40085393299ee46d8312c341e8ba458adb4e8cd3b69d764372f9c0ff608dbd6d"
   },
   "rules": [
     {
@@ -15,7 +15,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of lib MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -24,7 +24,7 @@
       "revision": 0,
       "state": "A",
       "body": "The subject of lib MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -33,7 +33,7 @@
       "revision": 0,
       "state": "T",
       "body": "The subject of lib MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -42,7 +42,7 @@
       "revision": 0,
       "state": "R",
       "body": "The subject of lib MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": null
     },
@@ -51,7 +51,7 @@
       "revision": 0,
       "state": "I",
       "body": "The subject of lib MUST hold.",
-      "added_by": "qa@steerspec.dev",
+      "added_by": "github:qa",
       "added_at": "2026-01-15",
       "supersedes": "LIB-004"
     }
