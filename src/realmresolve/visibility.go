@@ -12,7 +12,7 @@ import (
 )
 
 // relation is how the Realm making a reference stands to the Realm holding its
-// target. Tree checks hold from a top-level Realm (RLM-020): a sub-realm
+// target. Tree checks hold from a top-level Realm (RLM-016/01, RLM-020): a sub-realm
 // resolved on its own sees neither its parent nor its siblings as such.
 type relation int
 
@@ -22,7 +22,7 @@ const (
 	// sameTree is another Realm of the Realm tree (RLM-016): the parent, a
 	// sub-realm or a sibling.
 	sameTree
-	// sameRealm is the Realm itself, at any version (RLM-020).
+	// sameRealm is the Realm itself, at any version (RLM-016/01).
 	sameRealm
 )
 

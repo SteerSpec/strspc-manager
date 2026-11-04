@@ -797,7 +797,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		}
 
 		// RM017: A sub-realm inherits its parent's language (RLM-018), so its
-		// manifest leaves language out.
+		// manifest leaves language out (RLM-022).
 		if declaresRealmKey(srData, "language") {
 			res.Add(result.Diagnostic{
 				Module:   module,
