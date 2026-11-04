@@ -32,7 +32,7 @@ var (
 
 	// crossRefRe finds rule references inside note content, optionally
 	// qualified with a realm ID (`dev.steerspec.core:ENT-001`, or a
-	// single-component ID such as `core:ENT-001`, per RLM-008). Group 1 is
+	// single-component ID such as `core:ENT-001`, per RLM-023). Group 1 is
 	// the EUID, group 2 the three-digit sequence number.
 	crossRefRe = regexp.MustCompile(`\b(?:[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*:)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
 
@@ -429,7 +429,7 @@ func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Resul
 
 // checkVisibility runs RL023 and RL024: a declared visibility is a known value
 // and no wider than the effective visibility of the entity containing it
-// (ENT-015). The limit from the inherited entity needs the chain, so it stays
+// (ENT-018). The limit from the inherited entity needs the chain, so it stays
 // with realm-resolve.
 func checkVisibility(ef *entity.File, container string, res *result.Result, path string) {
 	v := ef.Entity.Visibility

@@ -204,7 +204,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Sub-entity wider than its container",
-		Summary:  "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-015).",
+		Summary:  "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-018).",
 		Fix:      "Narrow the sub-entity, or remove the field to take the container's visibility.",
 	},
 	{
@@ -596,7 +596,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Sub-realm sets a language",
-		Summary:  "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-018).",
+		Summary:  "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-022).",
 		Fix:      "Remove `language` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
 	},
 	{
@@ -812,7 +812,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-resolve",
 		Severity: "Error",
 		Title:    "Override not permitted",
-		Summary:  "A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-016).",
+		Summary:  "A rule that is not Abandoned, Retired or Terminated overrides a rule, and the visibility of an entity from the inherited entity up to the rule's owner does not permit it from the declaring Realm, whatever the state of the target (ENT-013, ENT-014, ENT-019).",
 		Fix:      "Supersede the rule without restating `overrides`, then retire it.",
 	},
 	{
