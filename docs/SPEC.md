@@ -71,7 +71,7 @@ A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a su
 
 ### 2.3 Rule
 
-A Rule is the unit of the model (RUL-001). Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
+A Rule is the unit of the model (RUL-013). Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
 
 Each rule carries:
 
@@ -171,7 +171,7 @@ A **Realm** is the namespace of Entity Unique Identifiers (RLM-001). It is the o
 
 **Dependencies:** A Realm can import the rules of other Realms read-only (RLM-005), and its EUIDs stay clear of theirs (RLM-006).
 
-**Cross-Realm References:** Entity references across Realm boundaries MUST use the qualified form `<realm-id>:<EUID>` (e.g., `dev.steerspec.core:ENT`). Within the same Realm, the short form (EUID only) is sufficient (RLM-009).
+**Cross-Realm References:** Entity references across Realm boundaries MUST use the qualified form `<realm-id>:<EUID>` (e.g., `dev.steerspec.core:ENT`; RLM-024). Within the same Realm, the short form (EUID only) is sufficient (RLM-025).
 
 #### Realm Manifest
 
@@ -847,13 +847,13 @@ The JSON Schema (`_schema/entity.v1.schema.json`) is the machine-readable expres
 
 | Term | Definition |
 |------|------------|
-| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-008). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-009), Realm dependencies (RLM-005). |
+| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-008). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-024, RLM-025), Realm dependencies (RLM-005). |
 | **Realm Manifest** | The `realm.json` file at a Realm's root declaring its identity, version, and dependencies (RLMMNFST). |
 | **Configuration** | The `.strspc/` directory and its `config.yaml` manifest that declare which rules a project subscribes to and how they are enforced (SPCFG). |
 | **Rule Source** | An entry in `config.yaml` specifying where rules are fetched from and their applicability scope (SPCFGSRC). |
 | **Evaluator** | The AI provider configuration used for rule enforcement (SPCFGEVAL). |
 | **Fail Condition** | A rule lifecycle state code that, when violated, causes enforcement failure (SPCFGFAIL). |
-| **Cross-Realm Reference** | A qualified reference using `<realm-id>:<EUID>` format to identify an entity in another Realm (RLM-009). |
+| **Cross-Realm Reference** | A qualified reference using `<realm-id>:<EUID>` format to identify an entity in another Realm (RLM-024). |
 | **EUID** | Entity Unique Identifier. 3–18 alphanumeric characters. |
 | **Supersession** | The process of replacing an immutable rule with a new rule that declares `supersedes`. |
 | **Canonical JSON** | JSON serialized with sorted keys and no extraneous whitespace, used as input for Blake3 hashing. |
