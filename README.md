@@ -78,7 +78,7 @@ library. Releases also ship a `strspc-manager` binary with `version` and `realm-
 
 ## Governance
 
-Apache 2.0, see [LICENSE](LICENSE). Pull requests target `develop` and use
+Open source software by Consulare. Apache 2.0, see [LICENSE](LICENSE). Pull requests target `develop` and use
 [Conventional Commits](https://www.conventionalcommits.org/). The workflow is in
 [Branching and releases](docs/DEVELOPMENT.md#branching-and-releases) and the
 [SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/CONTRIBUTING.md).
