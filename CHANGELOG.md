@@ -1,5 +1,181 @@
 # Changelog
 
+## [1.41.0](https://github.com/SteerSpec/strspc-manager/compare/v1.40.0...v1.41.0) (2026-11-03)
+
+
+### Features
+
+* **entityops:** check added_by against contributors and rewrite it ([#263](https://github.com/SteerSpec/strspc-manager/issues/263)) ([071272c](https://github.com/SteerSpec/strspc-manager/commit/071272c6c0bc8860342218e891eb193efc75ff12))
+* **rulehistory:** derive entity and rule change history from file versions ([#261](https://github.com/SteerSpec/strspc-manager/issues/261)) ([47bf457](https://github.com/SteerSpec/strspc-manager/commit/47bf4579ac8e3b8bea29dd72ae18443717b43c3e))
+* **rulelint:** report added_by values outside the contributor format and list ([#264](https://github.com/SteerSpec/strspc-manager/issues/264)) ([5217f62](https://github.com/SteerSpec/strspc-manager/commit/5217f629ff766959e862a4c616abedfafe7f396b))
+
+## [1.40.0](https://github.com/SteerSpec/strspc-manager/compare/v1.39.0...v1.40.0) (2026-11-03)
+
+
+### Features
+
+* **entity:** keep realm.contributors in RealmMeta ([#258](https://github.com/SteerSpec/strspc-manager/issues/258)) ([96b816f](https://github.com/SteerSpec/strspc-manager/commit/96b816f760b775afc2a02fdd794b74dabbebe9d0))
+
+## [1.39.0](https://github.com/SteerSpec/strspc-manager/compare/v1.38.0...v1.39.0) (2026-11-03)
+
+
+### Features
+
+* **rulediff:** accept github:&lt;login&gt; contributor identifiers in RD019 ([#253](https://github.com/SteerSpec/strspc-manager/issues/253)) ([b8c240c](https://github.com/SteerSpec/strspc-manager/commit/b8c240c20d0189a65837d1be294e88653168bbea))
+
+## [1.38.0](https://github.com/SteerSpec/strspc-manager/compare/v1.37.0...v1.38.0) (2026-11-02)
+
+
+### Features
+
+* **rulelint:** lint each pinned sub-realm against its own core pin ([#242](https://github.com/SteerSpec/strspc-manager/issues/242)) ([28a168d](https://github.com/SteerSpec/strspc-manager/commit/28a168ddd0bf61b723ff0177c7aae36543a86230))
+
+## [1.37.0](https://github.com/SteerSpec/strspc-manager/compare/v1.36.1...v1.37.0) (2026-11-02)
+
+
+### Features
+
+* **rulelint:** expose unresolved standard notes as structured data ([#235](https://github.com/SteerSpec/strspc-manager/issues/235)) ([56174be](https://github.com/SteerSpec/strspc-manager/commit/56174bee007998e89751d9536f29e7748373c294))
+
+
+### Bug Fixes
+
+* **entity:** match excluded sub-realm dirs from the realm root ([#236](https://github.com/SteerSpec/strspc-manager/issues/236)) ([cb63dc0](https://github.com/SteerSpec/strspc-manager/commit/cb63dc09c717b91adc065ab3a3f21fefdf81d9b5))
+* **result:** list the standard note type in RL010's fix text ([#237](https://github.com/SteerSpec/strspc-manager/issues/237)) ([ccdf380](https://github.com/SteerSpec/strspc-manager/commit/ccdf380342be0cc102c6c3ca1acddc50b26838ad))
+
+## [1.36.1](https://github.com/SteerSpec/strspc-manager/compare/v1.36.0...v1.36.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **schema:** keep cache paths inside the cache ([#227](https://github.com/SteerSpec/strspc-manager/issues/227)) ([bcf169d](https://github.com/SteerSpec/strspc-manager/commit/bcf169d4fd3130377116f89d6a6b41244486f97f))
+
+## [1.36.0](https://github.com/SteerSpec/strspc-manager/compare/v1.35.1...v1.36.0) (2026-11-01)
+
+
+### Features
+
+* **coverage:** report how rules map to external standards ([#224](https://github.com/SteerSpec/strspc-manager/issues/224)) ([71ef4a4](https://github.com/SteerSpec/strspc-manager/commit/71ef4a4e6a0d7e1181b2feb495079e9a2f7636de))
+* **entity:** add standards references and standard notes ([#221](https://github.com/SteerSpec/strspc-manager/issues/221)) ([375246b](https://github.com/SteerSpec/strspc-manager/commit/375246badd502b6035446f4aed0179f30fad3843))
+* **rulelint:** report inline examples and likely two statements on Draft rules ([#223](https://github.com/SteerSpec/strspc-manager/issues/223)) ([d0ff0e7](https://github.com/SteerSpec/strspc-manager/commit/d0ff0e706c666ce749357358372fefa2a9955312))
+
+## [1.35.1](https://github.com/SteerSpec/strspc-manager/compare/v1.35.0...v1.35.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **ruleeval:** tell the model when it sees only part of a diff ([#217](https://github.com/SteerSpec/strspc-manager/issues/217)) ([1b29312](https://github.com/SteerSpec/strspc-manager/commit/1b293128fc60f3e6610111627a19514653fe8e08))
+
+## [1.35.0](https://github.com/SteerSpec/strspc-manager/compare/v1.34.0...v1.35.0) (2026-11-01)
+
+
+### Features
+
+* **rulerefs:** report text that copies a rule's body (RF007) ([#208](https://github.com/SteerSpec/strspc-manager/issues/208)) ([042c5f5](https://github.com/SteerSpec/strspc-manager/commit/042c5f58842e9e3643bf43703d66a902e08bd1a7))
+
+
+### Bug Fixes
+
+* **remote:** stop a crafted tar size overflowing the extraction cap ([#202](https://github.com/SteerSpec/strspc-manager/issues/202)) ([cb1ba94](https://github.com/SteerSpec/strspc-manager/commit/cb1ba9475252279dfdff6f1036c4912f6a149e30))
+
+## [1.34.0](https://github.com/SteerSpec/strspc-manager/compare/v1.33.0...v1.34.0) (2026-10-31)
+
+
+### Features
+
+* **realm:** carry the realm language and reject it on sub-realms ([#199](https://github.com/SteerSpec/strspc-manager/issues/199)) ([e324949](https://github.com/SteerSpec/strspc-manager/commit/e3249490c759a9e85c6c4dcd6a53a1309ee092d8))
+* **remote:** report what the cache holds without the network ([#197](https://github.com/SteerSpec/strspc-manager/issues/197)) ([7896096](https://github.com/SteerSpec/strspc-manager/commit/789609669a2a0cb4fc0d572c4154aa1a2ba318d7))
+
+## [1.33.0](https://github.com/SteerSpec/strspc-manager/compare/v1.32.0...v1.33.0) (2026-10-31)
+
+
+### Features
+
+* **entity:** enforce entity visibility ([#191](https://github.com/SteerSpec/strspc-manager/issues/191)) ([cefb1f2](https://github.com/SteerSpec/strspc-manager/commit/cefb1f28d1c76000d33ba6c121e75d49375811d2))
+
+## [1.32.0](https://github.com/SteerSpec/strspc-manager/compare/v1.31.0...v1.32.0) (2026-10-31)
+
+
+### Features
+
+* **result:** export a diagnostic code registry ([#186](https://github.com/SteerSpec/strspc-manager/issues/186)) ([54c92be](https://github.com/SteerSpec/strspc-manager/commit/54c92bed732b00ad9c991cac29d5d60f9cafe29f))
+* **rulerefs:** validate rule-id citations in text files ([#184](https://github.com/SteerSpec/strspc-manager/issues/184)) ([0183467](https://github.com/SteerSpec/strspc-manager/commit/0183467199220f95a451bbe3d9077059508329ca))
+
+## [1.31.0](https://github.com/SteerSpec/strspc-manager/compare/v1.30.0...v1.31.0) (2026-10-31)
+
+
+### Features
+
+* **realmresolve:** warn on dead targets and check qualified refs in bodies ([#180](https://github.com/SteerSpec/strspc-manager/issues/180)) ([7abd309](https://github.com/SteerSpec/strspc-manager/commit/7abd309c9c4f9b2c83509b5b59719a6af1e1205c))
+* **ruleeval:** read the rules an extends note names with the rule ([#181](https://github.com/SteerSpec/strspc-manager/issues/181)) ([21cf1d8](https://github.com/SteerSpec/strspc-manager/commit/21cf1d8ae59729aa4c69862a5baa5f4ec1b9a116))
+
+## [1.30.0](https://github.com/SteerSpec/strspc-manager/compare/v1.29.0...v1.30.0) (2026-10-31)
+
+
+### Features
+
+* **realmresolve:** validate qualified references in relation notes ([#175](https://github.com/SteerSpec/strspc-manager/issues/175)) ([e68579d](https://github.com/SteerSpec/strspc-manager/commit/e68579d8cab716e8859c4c13c05cb2973fcba151))
+
+
+### Documentation
+
+* polish the README and bring it up to date ([#174](https://github.com/SteerSpec/strspc-manager/issues/174)) ([fb2fdd0](https://github.com/SteerSpec/strspc-manager/commit/fb2fdd06502f836ec0eb7f9a6161e5916d4f803a))
+
+## [1.29.0](https://github.com/SteerSpec/strspc-manager/compare/v1.28.1...v1.29.0) (2026-10-31)
+
+
+### Features
+
+* **remote:** limit the token to allowed owners ([#170](https://github.com/SteerSpec/strspc-manager/issues/170)) ([10ee7f6](https://github.com/SteerSpec/strspc-manager/commit/10ee7f6a6377d7d222dcebc6bc10373a6342498e))
+
+## [1.28.1](https://github.com/SteerSpec/strspc-manager/compare/v1.28.0...v1.28.1) (2026-10-30)
+
+
+### Documentation
+
+* correct the 1.28.0 changelog ([e0b3967](https://github.com/SteerSpec/strspc-manager/commit/e0b39677e27dcb4d864d67f3f5b117655f024c81))
+* correct the 1.28.0 changelog ([44c6d3b](https://github.com/SteerSpec/strspc-manager/commit/44c6d3bd60cfb1fcacdd06758c8f52038ed3b000))
+
+## [1.28.0](https://github.com/SteerSpec/strspc-manager/compare/v1.27.0...v1.28.0) (2026-10-30)
+
+
+### Features
+
+* **schema:** resolve schemas from the realm's pinned core version ([db426b9](https://github.com/SteerSpec/strspc-manager/commit/db426b9b995d53d1620c9a2860a17561d2e2cc7b))
+
+
+### Bug Fixes
+
+* **schema:** stop a schema reading files through $ref ([ed6ccbb](https://github.com/SteerSpec/strspc-manager/commit/ed6ccbb5af699bb7e53d17f8ae43c72cf6fe0749))
+
+## [1.27.0](https://github.com/SteerSpec/strspc-manager/compare/v1.26.0...v1.27.0) (2026-10-30)
+
+
+### Features
+
+* **realmlint:** check dependency pins and schema drift (RM014-RM016) ([336c8eb](https://github.com/SteerSpec/strspc-manager/commit/336c8ebf71b637f7056d80b758650f6942111c2d))
+* **realmlint:** check dependency pins and schema drift (RM014-RM016) ([197735e](https://github.com/SteerSpec/strspc-manager/commit/197735ece76ac8975885e59b3f20625f577f269a))
+* **rulediff:** reject a malformed added_by (RD019) ([55b6872](https://github.com/SteerSpec/strspc-manager/commit/55b6872c08dd966ec2fe7618019e42ac4e66a79c))
+* **rulediff:** reject a malformed added_by (RD019) ([c0bf37f](https://github.com/SteerSpec/strspc-manager/commit/c0bf37ffddb53886f7bc2a0bab6dccf76689ffdc))
+* **rulelint:** check rule bodies (RL019-RL022) ([571ecfa](https://github.com/SteerSpec/strspc-manager/commit/571ecfac412243b4f8223af318028b4029c4b6f7))
+* **rulelint:** check rule bodies (RL019-RL022) ([a742dbd](https://github.com/SteerSpec/strspc-manager/commit/a742dbd89354b9e1d5c67880223baa2151cca60f))
+
+
+### Bug Fixes
+
+* **realmlint:** compare _schema only with the core that was pinned ([1df1aff](https://github.com/SteerSpec/strspc-manager/commit/1df1affa294f6d95f7c04ca5d6e692f5d673f647))
+* **rulediff:** enforce DNS length limits on an added_by domain ([d48fec5](https://github.com/SteerSpec/strspc-manager/commit/d48fec514018bb5c7f01691aa3c12c829375550b))
+* **rulediff:** validate added_by with stricter grammars ([b55b2cb](https://github.com/SteerSpec/strspc-manager/commit/b55b2cb94891946b32622ee74966cb0602cd1211))
+* **rulediff:** validate the domain labels of an added_by address ([25c3306](https://github.com/SteerSpec/strspc-manager/commit/25c33064513b7e61a8fc196c41a90466270efb38))
+* **rulelint:** see a sentence ending in a closing quote or bracket ([acdd9d4](https://github.com/SteerSpec/strspc-manager/commit/acdd9d473dc7c150fbd5ef4c85b406b834f95e63))
+* **rulelint:** tighten the RL021 and RL022 detectors ([78dfb25](https://github.com/SteerSpec/strspc-manager/commit/78dfb25597b2917edf82b3cd3e15bed70728038f))
+* **rulelint:** treat initialisms as abbreviations in RL022 ([546f2fe](https://github.com/SteerSpec/strspc-manager/commit/546f2fe5ca68d65a21484be225612f1beb502fc6))
+
+
+### Documentation
+
+* **spec:** list the body checks in the format linter workflow ([eb47057](https://github.com/SteerSpec/strspc-manager/commit/eb4705722ecd3b55b838b899ecc690cbe67fd71e))
+
 ## [1.26.0](https://github.com/SteerSpec/strspc-manager/compare/v1.25.0...v1.26.0) (2026-10-29)
 
 

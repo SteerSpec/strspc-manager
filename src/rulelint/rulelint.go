@@ -32,7 +32,7 @@ var (
 
 	// crossRefRe finds rule references inside note content, optionally
 	// qualified with a realm ID (`dev.steerspec.core:ENT-001`, or a
-	// single-component ID such as `core:ENT-001`, per RLM-008). Group 1 is
+	// single-component ID such as `core:ENT-001`, per RLM-023). Group 1 is
 	// the EUID, group 2 the three-digit sequence number.
 	crossRefRe = regexp.MustCompile(`\b(?:[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*:)?([A-Za-z0-9]{3,18})-(\d{3})\b`)
 

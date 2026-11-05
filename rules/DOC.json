@@ -6,18 +6,27 @@
     "description": "How text outside the rules refers to them."
   },
   "rule_set": {
-    "version": "0.1.2",
-    "timestamp": "2026-11-05T07:49:23Z",
-    "hash": "blake3:52d611b6f839fc03110bc1178b026ac424e92f66a1443e7dee06c4f44b24a99e"
+    "version": "0.1.4",
+    "timestamp": "2026-11-05T18:35:57Z",
+    "hash": "blake3:cf88e8141665839d254a975a1c0eb9f02687b5f5f3369c7c53552a6bfdd54491"
   },
   "rules": [
     {
       "id": "DOC-001",
-      "revision": 0,
+      "revision": 1,
       "state": "D",
-      "body": "MUST cite a rule by its identifier and MUST NOT restate its body.",
+      "body": "MUST cite a rule by its identifier.",
       "added_by": "github:pleberre",
       "added_at": "2026-11-01",
+      "supersedes": null
+    },
+    {
+      "id": "DOC-002",
+      "revision": 0,
+      "state": "D",
+      "body": "MUST NOT restate the body of a rule it cites.",
+      "added_by": "github:pleberre",
+      "added_at": "2026-11-04",
       "supersedes": null
     }
   ],
