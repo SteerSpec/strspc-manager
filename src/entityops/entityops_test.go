@@ -98,7 +98,7 @@ func TestAddRule(t *testing.T) {
 			t.Fatalf("NewFile: %v", err)
 		}
 
-		id1, err := AddRule(f, "First rule body", "@user")
+		id1, err := AddRule(f, "First rule body", "github:user")
 		if err != nil {
 			t.Fatalf("AddRule 1: %v", err)
 		}
@@ -106,7 +106,7 @@ func TestAddRule(t *testing.T) {
 			t.Errorf("first rule ID = %q, want %q", id1, "TST-001")
 		}
 
-		id2, err := AddRule(f, "Second rule body", "@user")
+		id2, err := AddRule(f, "Second rule body", "github:user")
 		if err != nil {
 			t.Fatalf("AddRule 2: %v", err)
 		}
@@ -121,7 +121,7 @@ func TestAddRule(t *testing.T) {
 			t.Fatalf("NewFile: %v", err)
 		}
 
-		_, err = AddRule(f, "A rule", "@author")
+		_, err = AddRule(f, "A rule", "github:author")
 		if err != nil {
 			t.Fatalf("AddRule: %v", err)
 		}
@@ -133,8 +133,8 @@ func TestAddRule(t *testing.T) {
 		if r.Revision != 0 {
 			t.Errorf("Revision = %d, want 0", r.Revision)
 		}
-		if r.AddedBy != "@author" {
-			t.Errorf("AddedBy = %q, want %q", r.AddedBy, "@author")
+		if r.AddedBy != "github:author" {
+			t.Errorf("AddedBy = %q, want %q", r.AddedBy, "github:author")
 		}
 		if r.AddedAt != "2026-03-23" {
 			t.Errorf("AddedAt = %q, want %q", r.AddedAt, "2026-03-23")
@@ -148,7 +148,7 @@ func TestAddRule(t *testing.T) {
 		}
 		v0 := f.RuleSet.Version
 
-		_, err = AddRule(f, "A rule", "@user")
+		_, err = AddRule(f, "A rule", "github:user")
 		if err != nil {
 			t.Fatalf("AddRule: %v", err)
 		}
@@ -164,7 +164,7 @@ func TestAddRule(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFile: %v", err)
 		}
-		_, err = AddRule(f, "", "@user")
+		_, err = AddRule(f, "", "github:user")
 		if err == nil {
 			t.Fatal("expected error for empty body")
 		}
@@ -188,7 +188,7 @@ func TestUpdateRuleBody(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFile: %v", err)
 		}
-		id, err := AddRule(f, "original", "@user")
+		id, err := AddRule(f, "original", "github:user")
 		if err != nil {
 			t.Fatalf("AddRule: %v", err)
 		}
@@ -232,7 +232,7 @@ func TestUpdateRuleBody(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewFile: %v", err)
 		}
-		id, err := AddRule(f, "original", "@user")
+		id, err := AddRule(f, "original", "github:user")
 		if err != nil {
 			t.Fatalf("AddRule: %v", err)
 		}
@@ -355,7 +355,7 @@ func TestSupersedeRule(t *testing.T) {
 	t.Run("supersede published", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StatePublished)
 
-		newID, err := SupersedeRule(f, "TST-001", "replacement body", "@user")
+		newID, err := SupersedeRule(f, "TST-001", "replacement body", "github:user")
 		if err != nil {
 			t.Fatalf("SupersedeRule: %v", err)
 		}
@@ -381,7 +381,7 @@ func TestSupersedeRule(t *testing.T) {
 	t.Run("draft rejected", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateDraft)
 
-		_, err := SupersedeRule(f, "TST-001", "body", "@user")
+		_, err := SupersedeRule(f, "TST-001", "body", "github:user")
 		if err == nil {
 			t.Fatal("expected error for Draft rule")
 		}
@@ -390,7 +390,7 @@ func TestSupersedeRule(t *testing.T) {
 	t.Run("abandoned rejected", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateAbandoned)
 
-		_, err := SupersedeRule(f, "TST-001", "body", "@user")
+		_, err := SupersedeRule(f, "TST-001", "body", "github:user")
 		if err == nil {
 			t.Fatal("expected error for Abandoned rule")
 		}
@@ -399,7 +399,7 @@ func TestSupersedeRule(t *testing.T) {
 	t.Run("terminated rejected", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateTerminated)
 
-		_, err := SupersedeRule(f, "TST-001", "body", "@user")
+		_, err := SupersedeRule(f, "TST-001", "body", "github:user")
 		if err == nil {
 			t.Fatal("expected error for Terminated rule")
 		}
@@ -622,21 +622,21 @@ func TestAddRule_Rejected(t *testing.T) {
 		addedBy string
 		wantErr string
 	}{
-		{name: "nil file", body: "body", addedBy: "@user", wantErr: "entity file is nil"},
-		{name: "empty body", f: fileWithRuleIDs(), addedBy: "@user", wantErr: "rule body must not be empty"},
+		{name: "nil file", body: "body", addedBy: "github:user", wantErr: "entity file is nil"},
+		{name: "empty body", f: fileWithRuleIDs(), addedBy: "github:user", wantErr: "rule body must not be empty"},
 		{name: "empty addedBy", f: fileWithRuleIDs(), body: "body", wantErr: "added_by must not be empty"},
 		{
 			name:    "invalid entity ID",
 			f:       &entity.File{Entity: entity.Entity{ID: "AB"}},
 			body:    "body",
-			addedBy: "@user",
+			addedBy: "github:user",
 			wantErr: `invalid entity ID: invalid EUID "AB": must be 3-18 alphanumeric characters`,
 		},
 		{
 			name:    "no rule number left",
 			f:       fileWithRuleIDs("TST-999"),
 			body:    "body",
-			addedBy: "@user",
+			addedBy: "github:user",
 			wantErr: `cannot add rule: maximum number of rules (999) exceeded for entity "TST"`,
 		},
 	}
@@ -656,7 +656,7 @@ func TestAddRule_Rejected(t *testing.T) {
 func TestAddRule_LastRuleNumber(t *testing.T) {
 	f := fileWithRuleIDs("TST-998")
 
-	id, err := AddRule(f, "body", "@user")
+	id, err := AddRule(f, "body", "github:user")
 	if err != nil {
 		t.Fatalf("AddRule: %v", err)
 	}
@@ -672,7 +672,7 @@ func TestSupersedeRule_AllowedStates(t *testing.T) {
 			f := makeFileWithRule(t, state)
 			oldVersion := f.RuleSet.Version
 
-			id, err := SupersedeRule(f, "TST-001", "replacement body", "@author")
+			id, err := SupersedeRule(f, "TST-001", "replacement body", "github:author")
 			if err != nil {
 				t.Fatalf("SupersedeRule: %v", err)
 			}
@@ -684,7 +684,7 @@ func TestSupersedeRule_AllowedStates(t *testing.T) {
 			}
 			r := f.Rules[1]
 			if r.ID != "TST-002" || r.State != entity.StateDraft || r.Revision != 0 ||
-				r.Body != "replacement body" || r.AddedBy != "@author" || r.AddedAt != "2026-03-23" {
+				r.Body != "replacement body" || r.AddedBy != "github:author" || r.AddedAt != "2026-03-23" {
 				t.Errorf("unexpected new rule: %+v", r)
 			}
 			if r.Supersedes == nil || *r.Supersedes != "TST-001" {
@@ -713,20 +713,20 @@ func TestSupersedeRule_InvalidInput(t *testing.T) {
 		addedBy string
 		wantErr string
 	}{
-		{name: "empty body", addedBy: "@user", wantErr: "rule body must not be empty"},
+		{name: "empty body", addedBy: "github:user", wantErr: "rule body must not be empty"},
 		{name: "empty addedBy", body: "body", wantErr: "added_by must not be empty"},
 		{
 			name:    "invalid entity ID",
 			mutate:  func(f *entity.File) { f.Entity.ID = "AB" },
 			body:    "body",
-			addedBy: "@user",
+			addedBy: "github:user",
 			wantErr: `invalid entity ID: invalid EUID "AB": must be 3-18 alphanumeric characters`,
 		},
 		{
 			name:    "no rule number left",
 			mutate:  func(f *entity.File) { f.Rules = append(f.Rules, entity.Rule{ID: "TST-999"}) },
 			body:    "body",
-			addedBy: "@user",
+			addedBy: "github:user",
 			wantErr: `cannot add rule: maximum number of rules (999) exceeded for entity "TST"`,
 		},
 	}
@@ -826,7 +826,7 @@ func TestOps_InvalidVersion(t *testing.T) {
 		run   func(*entity.File) error
 	}{
 		{"AddRule", entity.StateDraft, func(f *entity.File) error {
-			_, err := AddRule(f, "body", "@user")
+			_, err := AddRule(f, "body", "github:user")
 			return err
 		}},
 		{"UpdateRuleBody", entity.StateDraft, func(f *entity.File) error {
@@ -842,11 +842,11 @@ func TestOps_InvalidVersion(t *testing.T) {
 			return AbandonRule(f, "TST-001")
 		}},
 		{"SupersedeRule", entity.StatePublished, func(f *entity.File) error {
-			_, err := SupersedeRule(f, "TST-001", "body", "@user")
+			_, err := SupersedeRule(f, "TST-001", "body", "github:user")
 			return err
 		}},
 		{"AddNote", entity.StatePublished, func(f *entity.File) error {
-			_, err := AddNote(f, "TST-001", "rationale", "Because.", "@user")
+			_, err := AddNote(f, "TST-001", "rationale", "Because.", "github:user")
 			return err
 		}},
 		{"UpdateNote", entity.StatePublished, func(f *entity.File) error {
@@ -876,7 +876,7 @@ var ruleOps = map[string]func(*entity.File, string) error{
 	"RetireRule":  RetireRule,
 	"AbandonRule": AbandonRule,
 	"SupersedeRule": func(f *entity.File, ruleID string) error {
-		_, err := SupersedeRule(f, ruleID, "body", "@user")
+		_, err := SupersedeRule(f, ruleID, "body", "github:user")
 		return err
 	},
 }
@@ -918,7 +918,7 @@ func makeFileWithRule(t *testing.T, state string) *entity.File {
 	if err != nil {
 		t.Fatalf("NewFile: %v", err)
 	}
-	_, err = AddRule(f, "test rule body", "@user")
+	_, err = AddRule(f, "test rule body", "github:user")
 	if err != nil {
 		t.Fatalf("AddRule: %v", err)
 	}

@@ -9,9 +9,8 @@ import (
 
 // CheckAddedBy returns an error unless addedBy may be written as the
 // `added_by` of a new Rule or Note. It must be a contributor identifier such
-// as `github:<login>` (CTRB-003); while the format is in transition (#248), a
-// GitHub @handle or an email address is accepted too, as rule-diff RD019
-// accepts it. When contributors is not empty, addedBy must name one of them
+// as `github:<login>` (CTRB-003); a GitHub @handle or an email address is
+// rejected. When contributors is not empty, addedBy must name one of them
 // (CTRB-005), as entity.FindContributor matches it. Pass the list
 // entity.RealmContributors returns; AddRule, AddNote and SupersedeRule pass
 // none and so check the format only.
@@ -19,8 +18,7 @@ func CheckAddedBy(addedBy string, contributors []entity.Contributor) error {
 	if addedBy == "" {
 		return fmt.Errorf("added_by must not be empty")
 	}
-	if !entity.ValidAddedBy(addedBy) {
-		_, _, err := entity.ParseContributorID(addedBy)
+	if _, _, err := entity.ParseContributorID(addedBy); err != nil {
 		return fmt.Errorf("invalid added_by: %w", err)
 	}
 	if len(contributors) > 0 && entity.FindContributor(contributors, addedBy) == nil {

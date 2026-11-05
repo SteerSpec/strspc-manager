@@ -14,7 +14,7 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018, RD019, RD021 and RD022 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021 and RD022 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -176,7 +176,7 @@ func checkNewRule(h entity.Rule, baseNums map[int]bool, res *result.Result, path
 	}
 }
 
-// checkNewRuleConstraints runs RD004, RD011 and RD019 for any new rule (used by both
+// checkNewRuleConstraints runs RD004 and RD011 for any new rule (used by both
 // checkNewRule and checkNewEntityTree).
 func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 	if r.Revision != 0 {
@@ -200,7 +200,8 @@ func checkNewRuleConstraints(r entity.Rule, res *result.Result, path string) {
 	checkAddedBy("rule", r.AddedBy, res, path)
 }
 
-// checkAddedBy runs RD011 and RD019 for the added_by of a new rule or note.
+// checkAddedBy runs RD011 for the added_by of a new rule or note. Its format is
+// rule-lint's RL032 (RD019 is retired).
 func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 	if strings.TrimSpace(addedBy) == "" {
 		res.Add(result.Diagnostic{
@@ -208,16 +209,6 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 			Code:     "RD011",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("new %s missing added_by", kind),
-			Path:     path,
-		})
-		return
-	}
-	if !entity.ValidAddedBy(addedBy) {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RD019",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("new %s has invalid added_by %q: must be a contributor identifier (github:<login>), an email address or @handle", kind, addedBy),
 			Path:     path,
 		})
 	}
@@ -333,7 +324,7 @@ func checkNoteRevision(b, h entity.Note, res *result.Result, path string) {
 	})
 }
 
-// checkNewNote runs RD011, RD015 and RD019 for a note that appears only in head.
+// checkNewNote runs RD011 and RD015 for a note that appears only in head.
 func checkNewNote(n entity.Note, res *result.Result, path string) {
 	checkAddedBy("note", n.AddedBy, res, path)
 	if n.Revision != 0 {

@@ -19,17 +19,17 @@ func TestCheckAddedBy(t *testing.T) {
 		err     string
 	}{
 		{addedBy: "github:pleberre"},
-		{addedBy: "@pleberre"},
-		{addedBy: "dev@example.com"},
+		{addedBy: "@pleberre", err: "CTRB-001"},
+		{addedBy: "dev@example.com", err: "CTRB-001"},
 		{addedBy: "github:someone"},
 		{addedBy: "", err: "must not be empty"},
 		{addedBy: "pleberre", err: "CTRB-001"},
 		{addedBy: "gitlab:pleberre", err: "CTRB-002"},
 		{addedBy: "github:pleberre", list: list},
-		{addedBy: "@pleberre", list: list},
-		{addedBy: "dev@example.com", list: list},
+		{addedBy: "@pleberre", list: list, err: "CTRB-001"},
+		{addedBy: "dev@example.com", list: list, err: "CTRB-001"},
 		{addedBy: "github:someone", list: list, err: "CTRB-005"},
-		{addedBy: "@someone", list: list, err: "CTRB-005"},
+		{addedBy: "@someone", list: list, err: "CTRB-001"},
 		{addedBy: "pleberre", list: list, err: "CTRB-001"},
 	}
 	for _, tt := range tests {
@@ -69,7 +69,9 @@ func TestWriteOpsRejectInvalidAddedBy(t *testing.T) {
 
 // migrationFile returns TST with a rule and a note by @pleberre and a rule by
 // someone else, and a sub-entity TSTSUB with a rule by @pleberre and a
-// sub-entity TSTLEAF untouched by the migration.
+// sub-entity TSTLEAF untouched by the migration. The write operations refuse
+// an @handle, so the legacy values are set on the structs directly, as an
+// entity file written before #248 holds them.
 func migrationFile(t *testing.T) *entity.File {
 	t.Helper()
 	f, err := NewFile("TST", "Test", "", "")
@@ -83,11 +85,13 @@ func migrationFile(t *testing.T) *entity.File {
 		}
 		return id
 	}
-	id := mustAdd(f, "@pleberre")
-	if _, err := AddNote(f, id, "rationale", "Because.", "@pleberre"); err != nil {
+	id := mustAdd(f, "github:legacy")
+	if _, err := AddNote(f, id, "rationale", "Because.", "github:legacy"); err != nil {
 		t.Fatal(err)
 	}
 	mustAdd(f, "github:other")
+	f.Rules[0].AddedBy = "@pleberre"
+	f.Notes[0].AddedBy = "@pleberre"
 	f.Rules[0].State = entity.StateImplemented
 	f.Rules[0].Revision = 2
 
@@ -95,7 +99,8 @@ func migrationFile(t *testing.T) *entity.File {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mustAdd(sub, "@pleberre")
+	mustAdd(sub, "github:legacy")
+	sub.Rules[0].AddedBy = "@pleberre"
 	leaf, err := NewFile("TSTLEAF", "Leaf", "", "")
 	if err != nil {
 		t.Fatal(err)

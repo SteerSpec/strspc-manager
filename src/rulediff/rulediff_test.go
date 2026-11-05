@@ -403,87 +403,28 @@ func TestDiff_RD011_NewNoteMissingAddedBy(t *testing.T) {
 	assertNoCode(t, res, "RD019")
 }
 
-// --- RD019 ---
+// --- RD019 (retired) ---
 
-func TestDiff_RD019_AddedByFormat(t *testing.T) {
-	tests := []struct {
-		addedBy string
-		want    bool
-	}{
-		{"@pleberre", false},
-		{"github:pleberre", false},
-		{"github:a-b-1", false},
-		{"github:steerspec-sync[bot]", false},
-		{"github:", true},
-		{"github:-x", true},
-		{"github:a--b", true},
-		{"github:@pleberre", true},
-		{"github:pleberre ", true},
-		{"GitHub:pleberre", true},
-		{"gitlab:pleberre", true},
-		{"pleberre:", true},
-		{"@a-b-1", false},
-		{"@steerspec-sync[bot]", false},
-		{"dev@example.com", false},
-		{"first.last+tag@mail.example.com", false},
-		{"pleberre", true},
-		{"@", true},
-		{"@-x", true},
-		{"@x-", true},
-		{"@a--b", true},
-		{"@a b", true},
-		{"a..b@example.com", true},
-		{"a@b..c", true},
-		{"dev@-example.com", true},
-		{"dev@example-.com", true},
-		{"dev@example.-com", true},
-		{"dev@my-example.com", false},
-		{"dev@" + strings.Repeat("a", 63) + ".com", false},
-		{"dev@" + strings.Repeat("a", 64) + ".com", true},
-		{"dev@" + strings.Repeat(strings.Repeat("a", 61)+".", 4) + "com", false}, // 251 characters
-		{"dev@" + strings.Repeat(strings.Repeat("a", 63)+".", 4) + "com", true},  // 259 characters
-		{"<dev@example.com>", true},
-		{" @pleberre", true},
-		{"dev@example", true},
-		{"a@b@c.d", true},
-		{"PLB <dev@example.com>", true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.addedBy, func(t *testing.T) {
+// RD019 is retired (#248): rule-diff reports a missing added_by (RD011) and
+// leaves its format to rule-lint's RL032, whatever the value.
+func TestDiff_RD019_Retired(t *testing.T) {
+	for _, addedBy := range []string{"github:pleberre", "@pleberre", "dev@example.com", "pleberre", "gitlab:pleberre", "@a--b"} {
+		t.Run(addedBy, func(t *testing.T) {
 			base := makeBase()
 			head := makeHead(base)
 			head.Rules = append(head.Rules, entity.Rule{
 				ID: "TSTENT-004", Revision: 0, State: "D",
-				Body: "New rule", AddedBy: tt.addedBy, AddedAt: "2026-02-01",
+				Body: "New rule", AddedBy: addedBy, AddedAt: "2026-02-01",
 			})
 			head.Notes = append(head.Notes, entity.Note{
 				ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "rationale",
-				Content: "Because", AddedBy: tt.addedBy, AddedAt: "2026-02-01",
+				Content: "Because", AddedBy: addedBy, AddedAt: "2026-02-01",
 			})
-			res := New().Diff(base, head)
-			got := 0
-			for _, d := range res.Diagnostics {
-				if d.Code == "RD019" {
-					got++
-				}
-			}
-			want := 0
-			if tt.want {
-				want = 2 // the rule and the note
-			}
-			if got != want {
-				t.Errorf("RD019 count = %d, want %d: %v", got, want, res.Diagnostics)
-			}
+			res := New(WithStrict(true)).Diff(base, head)
+			assertNoCode(t, res, "RD019")
+			assertNoCode(t, res, "RD011")
 		})
 	}
-}
-
-func TestDiff_RD019_ExistingEntriesNotChecked(t *testing.T) {
-	base := makeBase()
-	base.Rules[0].AddedBy = "pleberre"
-	head := makeHead(base)
-	res := New().Diff(base, head)
-	assertNoCode(t, res, "RD019")
 }
 
 // --- RD012 ---

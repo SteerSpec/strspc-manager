@@ -100,11 +100,5 @@
     "code": "RD018",
     "severity": "error",
     "path": "OVER/OVER-003"
-  },
-  {
-    "module": "rule-diff",
-    "code": "RD019",
-    "severity": "error",
-    "path": "AUTHOR/AUTHOR-003"
   }
 ]

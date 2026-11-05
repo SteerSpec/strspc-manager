@@ -266,9 +266,9 @@ var codeTable = []CodeInfo{
 	{
 		Code:     "RL032",
 		Module:   "rule-lint",
-		Severity: "Info",
+		Severity: "Error",
 		Title:    "added_by not a contributor identifier",
-		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted.",
+		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
 		Fix:      "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
 	},
 	{
@@ -428,8 +428,9 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Malformed added_by",
-		Summary:  "A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`.",
+		Summary:  "Retired. A new rule or new note had an `added_by` that was not a contributor identifier (`github:<login>`), an email address or an `@handle`. RL032 reports the format now; RD011 still reports a missing `added_by`.",
 		Fix:      "Write `added_by` as a contributor identifier such as `github:<login>`.",
+		Retired:  true,
 	},
 	{
 		Code:     "RD020",
@@ -458,9 +459,9 @@ var codeTable = []CodeInfo{
 	{
 		Code:     "RD023",
 		Module:   "rule-diff",
-		Severity: "Info",
+		Severity: "Error",
 		Title:    "added_by not a listed contributor",
-		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted.",
+		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
 	},
 	{

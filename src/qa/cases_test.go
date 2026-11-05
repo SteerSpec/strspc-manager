@@ -155,7 +155,7 @@ var goCases = []goCase{
 	},
 	{
 		name: "rule-lint reports an added_by that is not a contributor identifier",
-		want: []string{"RL032 info"},
+		want: []string{"RL032 error"},
 		run: func(*testing.T) *result.Result {
 			f := standardsFile(asvsRef)
 			f.Rules[0].AddedBy = "@qa"
@@ -164,7 +164,7 @@ var goCases = []goCase{
 	},
 	{
 		name: "rule-diff reports a new rule by a contributor the Realm does not list",
-		want: []string{"RD023 info"},
+		want: []string{"RD023 error"},
 		run: func(*testing.T) *result.Result {
 			base := standardsFile(asvsRef)
 			head := standardsFile(asvsRef)

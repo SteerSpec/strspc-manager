@@ -67,7 +67,7 @@ RD015 active new-note-revision-nonzero
 RD016 active append-only-note-content-changed
 RD017 active inherits-changed
 RD018 active overrides-changed
-RD019 active added-by-invalid
+RD019 retired added-by-invalid
 RD020 active visibility-changed
 RD021 active revision-without-body-change
 RD022 active standard-note-retyped
