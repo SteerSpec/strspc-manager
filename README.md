@@ -16,10 +16,10 @@
 
 </div>
 
-Licensed under Apache 2.0. Every package under `src/` keeps at least 85% statement
+Licensed under Apache 2.0. Every package under `src/` that has statements keeps at least 85% statement
 coverage, which CI enforces with
 [`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/scripts/coverage-gate.sh)
-as of v1.41.0. The lint, diff, history, refs and resolve modules are deterministic. The verdicts of
+as of v1.41.0. The lint, diff, history and refs modules are deterministic. The verdicts of
 an AI provider in `ruleeval` depend on the model, and with no provider configured `ruleeval` runs
 static checks only.
 
@@ -58,7 +58,7 @@ func main() {
 ```
 
 Most users want [`strspc`](https://github.com/SteerSpec/strspc-CLI), the command line built on this
-library. Releases also ship a small `strspc-manager` binary with `version` and `realm-lint`.
+library. Releases also ship a `strspc-manager` binary with `version` and `realm-lint`.
 
 ## Where to go
 
@@ -81,17 +81,17 @@ library. Releases also ship a small `strspc-manager` binary with `version` and `
 Apache 2.0, see [LICENSE](LICENSE). Pull requests target `develop` and use
 [Conventional Commits](https://www.conventionalcommits.org/). The workflow is in
 [Branching and releases](docs/DEVELOPMENT.md#branching-and-releases) and the
-[SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/main/CONTRIBUTING.md).
+[SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/CONTRIBUTING.md).
 
 ## Security
 
 Do not open a public issue for a vulnerability. Report it privately through GitHub: on this
 repository, choose **Security**, then **Report a vulnerability**. The
-[organisation security policy](https://github.com/SteerSpec/.github/blob/main/SECURITY.md)
+[organisation security policy](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/SECURITY.md)
 applies.
 
 ## Community
 
 Questions and bug reports go to the
 [issue tracker](https://github.com/SteerSpec/strspc-manager/issues). Everyone taking part follows the
-[code of conduct](https://github.com/SteerSpec/.github/blob/main/CODE_OF_CONDUCT.md).
+[code of conduct](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/CODE_OF_CONDUCT.md).
