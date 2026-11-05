@@ -39,8 +39,9 @@ var (
 	// inlineCodeRe finds backtick spans in a rule body. Their text is code or
 	// a literal, not prose or a citation, so body checks ignore it.
 	inlineCodeRe = regexp.MustCompile("`[^`]*`")
-	// keywordRe finds the key words of KWRD-002 to KWRD-006. RUL-001 writes
-	// DEFINE as DEFINES, so both forms count.
+	// keywordRe finds the key words of KWRD-002 to KWRD-006, in upper case only
+	// (KWRD-007). Realms written to RUL-001 spell DEFINE as DEFINES, so both
+	// forms count.
 	keywordRe = regexp.MustCompile(`\b(?:MUST|REQUIRED|SHALL|HAS|IS|DEFINES?|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b`)
 	// abbreviationRe finds abbreviations whose full stop ends no sentence:
 	// initialisms such as e.g. or U.S., plus etc. and vs.
