@@ -37,7 +37,7 @@ var (
 	// versionTagRe matches a release tag, naming the version it pins in group 1.
 	versionTagRe = regexp.MustCompile(`^v?(\d+\.\d+\.\d+.*)$`)
 
-	// realmIDRe enforces RLM-008: reverse domain notation.
+	// realmIDRe enforces RLM-023: reverse domain notation.
 	realmIDRe = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$`)
 	semverRe  = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 )
@@ -276,7 +276,7 @@ func (l *RealmLinter) checkRealmSchema(ctx context.Context, data []byte, realmPa
 	}
 }
 
-// RM007: Validate realm ID format (RLM-008) and semver version.
+// RM007: Validate realm ID format (RLM-023) and semver version.
 func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result) {
 	if rf.Realm.ID == "" {
 		res.Add(result.Diagnostic{
@@ -797,13 +797,13 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		}
 
 		// RM017: A sub-realm inherits its parent's language (RLM-018), so its
-		// manifest leaves language out.
+		// manifest leaves language out (RLM-022).
 		if declaresRealmKey(srData, "language") {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM017",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-018)", srName),
+				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-022)", srName),
 				Path:     srRealmPath,
 			})
 		}

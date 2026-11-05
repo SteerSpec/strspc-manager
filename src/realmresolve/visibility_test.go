@@ -89,12 +89,12 @@ func TestVisibility(t *testing.T) {
 		{"RR022", "entity UPRIV: inherits dev.lib:LPRIV, whose visibility `private` does not permit it from realm dev.root"},
 		// ENT-015: not wider than the inherited Entity.
 		{"RR024", "entity UWIDE: visibility `public` is wider than `protected` of inherited entity dev.lib:LPROT"},
-		// ENT-016: an override needs the owner's permission, Draft target and
+		// ENT-019: an override needs the owner's permission, Draft target and
 		// superseded declaring rule included.
 		{"RR023", "rule UPROT-001 overrides dev.lib:LPROT-001: visibility `protected` of dev.lib:LPROT does not permit it from realm dev.root"},
 		{"RR023", "rule UPROT-002 overrides dev.lib:LPROT-002"},
 		{"RR023", "rule UPROT-003 overrides dev.lib:LPROT-001"},
-		// ENT-016: an intermediate Entity binds a Rule it does not own.
+		// ENT-019: an intermediate Entity binds a Rule it does not own.
 		{"RR023", "rule UCHAIN-001 overrides dev.lib:LPUB-001: visibility `protected` of dev.lib:LMID does not permit it from realm dev.root"},
 		// ENT-014: a sub-realm is outside the Realm for a `private` override.
 		{"RR023", "rule AUP-001 overrides dev.root:RPRIV-001: visibility `private` of dev.root:RPRIV does not permit it from realm dev.root.a"},
