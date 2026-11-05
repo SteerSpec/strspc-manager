@@ -6,9 +6,9 @@
     "description": "Structure and contracts of the engine packages under src/."
   },
   "rule_set": {
-    "version": "0.15.1",
-    "timestamp": "2026-10-31T23:45:13Z",
-    "hash": "blake3:6ac280e2cd30989014a73dd2d4df758be6e47d9c75e86f74764fcc5ae409020f"
+    "version": "0.15.2",
+    "timestamp": "2026-11-05T07:49:23Z",
+    "hash": "blake3:317c9b4b88d37d28d6a1bb85045765f60b816eebf0e0faa3fb60237e37a1f7f3"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST report findings as result.Diagnostic values in a result.Result and MUST NOT log, print or exit from inside a module.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -25,7 +25,7 @@
       "revision": 0,
       "state": "R",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval).",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -34,7 +34,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST NOT reuse or renumber a diagnostic code once it has shipped in a release; a retired check keeps its code reserved.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -43,7 +43,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST fetch JSON schemas from steerspec.dev through the schema package and MUST NOT embed schema copies in the binary.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -52,7 +52,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST NOT import packages from strspc-CLI or strspc-cloud; dependencies point from consumers to the manager only.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -61,7 +61,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST describe every diagnostic code a module emits in docs/SPEC.md.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -70,7 +70,7 @@
       "revision": 0,
       "state": "R",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval, EC evalcache).",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-28",
       "supersedes": "MOD-002"
     },
@@ -79,7 +79,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST emit diagnostic codes only from the prefix the module owns (RL rulelint, RD rulediff, RM realmlint, RR realmresolve, RSV ruleresolve, RE ruleeval, EC evalcache, RF rulerefs).",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-31",
       "supersedes": "MOD-007"
     },
@@ -88,7 +88,7 @@
       "revision": 0,
       "state": "D",
       "body": "MUST register every diagnostic code a module emits in result.Codes() with a non-empty Title and Fix.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-31",
       "supersedes": null
     },
@@ -97,7 +97,7 @@
       "revision": 0,
       "state": "D",
       "body": "MUST prove every diagnostic code fires through a public API, with a scenario or case in src/qa.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-31",
       "supersedes": null
     }
