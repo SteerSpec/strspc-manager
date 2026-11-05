@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/mail"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -35,18 +34,6 @@ var identityProviders = map[string]*regexp.Regexp{
 // githubLogin matches a GitHub login, a bot's included: hyphens only between
 // alphanumerics.
 const githubLogin = `[A-Za-z0-9]+(-[A-Za-z0-9]+)*(\[bot\])?`
-
-var (
-	// handleRe matches a GitHub @handle, a bot's included.
-	handleRe = regexp.MustCompile(`^@` + githubLogin + `$`)
-
-	// domainRe matches a domain of at least two labels of up to 63 characters,
-	// each without a leading or trailing hyphen. net/mail does not check this.
-	domainRe = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$`)
-)
-
-// maxDomainLen is the longest domain name DNS allows.
-const maxDomainLen = 253
 
 // IdentityProviders returns the identity providers core lists (CTRB-002),
 // sorted.
@@ -102,45 +89,12 @@ func IsContributorID(s string) bool {
 	return err == nil
 }
 
-// ValidAddedBy reports whether s is an `added_by` accepted while the
-// contributor format is in transition (#248): a contributor identifier, a
-// GitHub @handle or a bare email address. A display name or angle brackets
-// are not bare.
-func ValidAddedBy(s string) bool {
-	if IsContributorID(s) || handleRe.MatchString(s) {
-		return true
-	}
-	return isBareEmail(s)
-}
-
-func isBareEmail(s string) bool {
-	addr, err := mail.ParseAddress(s)
-	if err != nil || addr.Address != s {
-		return false
-	}
-	domain := s[strings.LastIndex(s, "@")+1:]
-	return len(domain) <= maxDomainLen && domainRe.MatchString(domain)
-}
-
 // FindContributor returns the entry of list that addedBy names (CTRB-005), or
-// nil. A contributor identifier names the entry with that id. While the
-// format is in transition, `@x` names `github:x`, and an email address names
-// the entry holding it. GitHub logins and email addresses match without
-// regard to case.
+// nil. addedBy must be a contributor identifier, and it names the entry with
+// that id. GitHub logins match without regard to case.
 func FindContributor(list []Contributor, addedBy string) *Contributor {
 	idp, subject, err := ParseContributorID(addedBy)
-	switch {
-	case err == nil:
-	case handleRe.MatchString(addedBy):
-		idp, subject = IdentityProviderGitHub, addedBy[1:]
-	case isBareEmail(addedBy):
-		for i := range list {
-			if list[i].Email != "" && strings.EqualFold(list[i].Email, addedBy) {
-				return &list[i]
-			}
-		}
-		return nil
-	default:
+	if err != nil {
 		return nil
 	}
 	for i := range list {

@@ -41,18 +41,18 @@ func TestRD023_NewEntries(t *testing.T) {
 	}{
 		{"github:pleberre", false},
 		{"github:PLeberre", false},
-		{"@pleberre", false},
-		{"dev@example.com", false},
+		{"@pleberre", false},       // not a contributor identifier: RL032 reports it.
+		{"dev@example.com", false}, // likewise.
 		{"github:someone", true},
-		{"@someone", true},
-		{"other@example.com", true},
-		{"pleberre", false}, // RD019 reports it.
+		{"@someone", false},
+		{"other@example.com", false},
+		{"pleberre", false}, // RL032 reports it.
 		{"", false},         // RD011 reports it.
 	}
 	for _, tt := range tests {
 		t.Run(tt.addedBy, func(t *testing.T) {
 			base, head := headWithNew(tt.addedBy)
-			// Strict mode promotes warnings only: RD023 stays Info.
+			// RD023 is an Error whether or not the run is strict.
 			got := rd023(New(WithStrict(true), WithContributors(testContributors)).Diff(base, head))
 			if !tt.want {
 				if len(got) != 0 {
@@ -65,7 +65,7 @@ func TestRD023_NewEntries(t *testing.T) {
 			}
 			for i, w := range []struct{ path, kind string }{{"TSTENT/TSTENT-004", "new rule"}, {"TSTENT/notes/TSTENT-001/02", "new note"}} {
 				d := got[i]
-				if d.Severity != result.Info || d.Path != w.path || !strings.Contains(d.Message, w.kind) || !strings.Contains(d.Message, "CTRB-005") {
+				if d.Severity != result.Error || d.Path != w.path || !strings.Contains(d.Message, w.kind) || !strings.Contains(d.Message, "CTRB-005") {
 					t.Errorf("RD023[%d] = %+v", i, d)
 				}
 			}
@@ -125,10 +125,11 @@ func TestRD023_SubEntitiesAndNewFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// In a new file every entry is new: the six rules and the note, none by
-	// a listed contributor.
-	if got := rd023(CompareNew(data, WithContributors(testContributors))); len(got) != 7 {
-		t.Errorf("CompareNew: RD023 = %v, want 7", got)
+	// In a new file every entry is new: the three sub-entity rules are by a
+	// contributor identifier the Realm does not list. The entries of makeBase
+	// are not contributor identifiers, which RL032 reports instead.
+	if got := rd023(CompareNew(data, WithContributors(testContributors))); len(got) != 3 {
+		t.Errorf("CompareNew: RD023 = %v, want 3", got)
 	}
 	baseData, err := json.Marshal(base)
 	if err != nil {
