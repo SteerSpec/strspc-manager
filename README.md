@@ -17,8 +17,8 @@
 </div>
 
 Every package under `src/` that has statements keeps at least 85% statement coverage, which CI
-enforces with [`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/scripts/coverage-gate.sh). The lint, history
-and refs modules are [stateless](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/docs/SPEC.md#62-module-breakdown)
+enforces with [`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.42.0/scripts/coverage-gate.sh). The lint, history
+and refs modules are [stateless](https://github.com/SteerSpec/strspc-manager/blob/v1.42.0/docs/SPEC.md#62-module-breakdown)
 and the diff module compares two versions of a file. The verdicts of an AI
 provider in `ruleeval` depend on the model, and with no provider configured `ruleeval` runs static
 checks only.
