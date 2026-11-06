@@ -13,7 +13,7 @@ func TestAddNote(t *testing.T) {
 		f.Rules[0].Revision = 2
 		oldVersion := f.RuleSet.Version
 
-		id, err := AddNote(f, "TST-001", "rationale", "Because.", "@alice")
+		id, err := AddNote(f, "TST-001", "rationale", "Because.", "github:alice")
 		if err != nil {
 			t.Fatalf("AddNote: %v", err)
 		}
@@ -25,7 +25,7 @@ func TestAddNote(t *testing.T) {
 		}
 		n := f.Notes[0]
 		if n.RuleRef != "TST-001" || n.Type != "rationale" || n.Content != "Because." ||
-			n.AddedBy != "@alice" || n.AddedAt != "2026-03-23" || n.Revision != 0 {
+			n.AddedBy != "github:alice" || n.AddedAt != "2026-03-23" || n.Revision != 0 {
 			t.Errorf("unexpected note: %+v", n)
 		}
 		if f.RuleSet.Version == oldVersion {
@@ -38,7 +38,7 @@ func TestAddNote(t *testing.T) {
 
 	t.Run("numbers sequentially per rule", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateDraft)
-		if _, err := AddRule(f, "second", "@user"); err != nil {
+		if _, err := AddRule(f, "second", "github:user"); err != nil {
 			t.Fatalf("AddRule: %v", err)
 		}
 		for _, step := range []struct{ rule, want string }{
@@ -46,7 +46,7 @@ func TestAddNote(t *testing.T) {
 			{"TST-002", "TST-002/01"},
 			{"TST-001", "TST-001/02"},
 		} {
-			id, err := AddNote(f, step.rule, "example", "x", "@user")
+			id, err := AddNote(f, step.rule, "example", "x", "github:user")
 			if err != nil {
 				t.Fatalf("AddNote(%s): %v", step.rule, err)
 			}
@@ -60,9 +60,9 @@ func TestAddNote(t *testing.T) {
 		tests := []struct {
 			name, rule, typ, content, by, wantErr string
 		}{
-			{"missing rule", "TST-999", "rationale", "x", "@u", "not found"},
-			{"invalid type", "TST-001", "general", "x", "@u", "invalid note type"},
-			{"empty content", "TST-001", "rationale", "", "@u", "content"},
+			{"missing rule", "TST-999", "rationale", "x", "github:u", "not found"},
+			{"invalid type", "TST-001", "general", "x", "github:u", "invalid note type"},
+			{"empty content", "TST-001", "rationale", "", "github:u", "content"},
 			{"empty added_by", "TST-001", "rationale", "x", "", "added_by"},
 		}
 		for _, tt := range tests {
@@ -82,13 +82,13 @@ func TestAddNote(t *testing.T) {
 	t.Run("rejects more than 99 notes", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateDraft)
 		f.Notes = append(f.Notes, entity.Note{ID: "TST-001/99", RuleRef: "TST-001", Type: "example"})
-		if _, err := AddNote(f, "TST-001", "example", "x", "@u"); err == nil {
+		if _, err := AddNote(f, "TST-001", "example", "x", "github:u"); err == nil {
 			t.Fatal("expected error past note 99")
 		}
 	})
 
 	t.Run("nil file", func(t *testing.T) {
-		if _, err := AddNote(nil, "TST-001", "rationale", "x", "@u"); err == nil {
+		if _, err := AddNote(nil, "TST-001", "rationale", "x", "github:u"); err == nil {
 			t.Fatal("expected error for nil file")
 		}
 	})
@@ -98,7 +98,7 @@ func TestUpdateNoteContent(t *testing.T) {
 	newFile := func(t *testing.T, noteType string) *entity.File {
 		t.Helper()
 		f := makeFileWithRule(t, entity.StateImplemented)
-		if _, err := AddNote(f, "TST-001", noteType, "original", "@u"); err != nil {
+		if _, err := AddNote(f, "TST-001", noteType, "original", "github:u"); err != nil {
 			t.Fatalf("AddNote: %v", err)
 		}
 		return f
@@ -199,7 +199,7 @@ func TestUpdateNote(t *testing.T) {
 	newFile := func(t *testing.T, noteType string) *entity.File {
 		t.Helper()
 		f := makeFileWithRule(t, entity.StateImplemented)
-		if _, err := AddNote(f, "TST-001", noteType, "original", "@u"); err != nil {
+		if _, err := AddNote(f, "TST-001", noteType, "original", "github:u"); err != nil {
 			t.Fatalf("AddNote: %v", err)
 		}
 		return f
@@ -279,10 +279,10 @@ func TestUpdateNote(t *testing.T) {
 
 func TestAddNote_StandardContent(t *testing.T) {
 	f := makeFileWithRule(t, entity.StatePublished)
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err != nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "github:alice"); err != nil {
 		t.Fatalf("AddNote: %v", err)
 	}
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "not a mapping", "@alice"); err == nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "not a mapping", "github:alice"); err == nil {
 		t.Fatal("malformed content must be refused (NTE-014)")
 	}
 }
@@ -290,7 +290,7 @@ func TestAddNote_StandardContent(t *testing.T) {
 func TestUpdateNote_StandardRetype(t *testing.T) {
 	add := func(t *testing.T, typ, content string) *entity.File {
 		f := makeFileWithRule(t, entity.StateImplemented)
-		if _, err := AddNote(f, "TST-001", typ, content, "@alice"); err != nil {
+		if _, err := AddNote(f, "TST-001", typ, content, "github:alice"); err != nil {
 			t.Fatalf("AddNote: %v", err)
 		}
 		return f
@@ -346,19 +346,19 @@ func TestUpdateNote_StandardRetype(t *testing.T) {
 
 func TestStandardMappingsStayUnique(t *testing.T) {
 	f := makeFileWithRule(t, entity.StateImplemented)
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err != nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "github:alice"); err != nil {
 		t.Fatalf("AddNote: %v", err)
 	}
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "@alice"); err == nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.1", "github:alice"); err == nil {
 		t.Fatal("a duplicate mapping must be refused (NTE-015)")
 	}
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeReference, "owasp.asvs:2.1.1", "@alice"); err != nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeReference, "owasp.asvs:2.1.1", "github:alice"); err != nil {
 		t.Fatalf("AddNote: %v", err)
 	}
 	if err := UpdateNote(f, "TST-001/02", "", entity.NoteTypeStandard); err == nil {
 		t.Fatal("a retype that duplicates a mapping must be refused (NTE-015)")
 	}
-	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.2", "@alice"); err != nil {
+	if _, err := AddNote(f, "TST-001", entity.NoteTypeStandard, "owasp.asvs:2.1.2", "github:alice"); err != nil {
 		t.Fatalf("AddNote: %v", err)
 	}
 	if err := UpdateNoteContent(f, "TST-001/03", "owasp.asvs:2.1.1"); err == nil {

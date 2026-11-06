@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.10.0",
-    "timestamp": "2026-10-22T10:05:50Z",
-    "hash": "blake3:1a93080c9adddd4327dedd30a5990704d0df535252fbdd72e064534b57b7e58d"
+    "version": "0.10.1",
+    "timestamp": "2026-11-05T07:49:23Z",
+    "hash": "blake3:42a4793cb437ac2a135378c28b7b843a12a76ab721c71ce1415f38ea0054c91d"
   },
   "rules": [
     {
@@ -16,7 +16,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST use the Conventional Commits format type(scope): description for every commit.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -25,7 +25,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST format Go sources with gofmt and goimports before committing.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -34,7 +34,7 @@
       "revision": 0,
       "state": "T",
       "body": "MUST pass golangci-lint v2 with the linters configured in .golangci.yml (errcheck, govet, staticcheck, ineffassign, unused, misspell, revive).",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -43,7 +43,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST wrap the underlying error with %w when returning an error that carries a cause.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -52,7 +52,7 @@
       "revision": 0,
       "state": "I",
       "body": "Functions that perform network or long-running work MUST accept a context.Context as their first parameter.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -61,7 +61,7 @@
       "revision": 0,
       "state": "P",
       "body": "Tests that exercise several inputs of one code path SHOULD be table-driven.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -70,7 +70,7 @@
       "revision": 0,
       "state": "I",
       "body": "Exported identifiers MUST carry a doc comment starting with their name.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-19",
       "supersedes": null
     },
@@ -79,7 +79,7 @@
       "revision": 0,
       "state": "I",
       "body": "MUST pass golangci-lint v2 with every linter enabled in .golangci.yml.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-21",
       "supersedes": "GOCONV-003"
     }

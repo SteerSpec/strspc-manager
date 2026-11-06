@@ -112,20 +112,20 @@ func TestIdentityProviders(t *testing.T) {
 	}
 }
 
-// The transition forms stay valid; the rule-diff RD019 table covers the
-// email and handle edge cases.
-func TestValidAddedBy(t *testing.T) {
+// An @handle or a bare email address is not a contributor identifier since the
+// error release of #248.
+func TestIsContributorIDRejectsLegacyForms(t *testing.T) {
 	for s, want := range map[string]bool{
 		"github:pleberre":   true,
-		"@pleberre":         true,
-		"dev@example.com":   true,
+		"@pleberre":         false,
+		"dev@example.com":   false,
 		"gitlab:pleberre":   false,
 		"pleberre":          false,
 		"PLB <a@b.example>": false,
 		"":                  false,
 	} {
-		if got := ValidAddedBy(s); got != want {
-			t.Errorf("ValidAddedBy(%q) = %v, want %v", s, got, want)
+		if got := IsContributorID(s); got != want {
+			t.Errorf("IsContributorID(%q) = %v, want %v", s, got, want)
 		}
 	}
 }
@@ -142,11 +142,11 @@ func TestFindContributor(t *testing.T) {
 	}{
 		{"github:pleberre", "github:pleberre"},
 		{"github:PLeberre", "github:pleberre"},
-		{"@pleberre", "github:pleberre"},
-		{"@PLEBERRE", "github:pleberre"},
-		{"dev@example.com", "github:pleberre"},
+		{"@pleberre", ""},
+		{"@PLEBERRE", ""},
+		{"dev@example.com", ""},
 		{"github:steerspec-sync[bot]", "github:steerspec-sync[bot]"},
-		{"@steerspec-sync[bot]", "github:steerspec-sync[bot]"},
+		{"@steerspec-sync[bot]", ""},
 		{"github:someone", ""},
 		{"@someone", ""},
 		{"other@example.com", ""},

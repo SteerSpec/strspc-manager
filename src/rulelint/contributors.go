@@ -9,9 +9,8 @@ import (
 )
 
 // checkAddedBy runs RL032: the added_by of every rule and note of the entity
-// must be a contributor identifier (CTRB-003). RL032 is Info while the
-// contributor format is in transition (#248), so strict mode keeps it and an
-// @handle or email still passes. An empty added_by is left to the schema.
+// must be a contributor identifier (CTRB-003). An @handle or email is an
+// Error (#248). An empty added_by is left to the schema.
 func checkAddedBy(ef *entity.File, res *result.Result, path string) {
 	for _, r := range ef.Rules {
 		checkAddedByValue("rule "+r.ID, r.AddedBy, res, path)
@@ -38,7 +37,7 @@ func checkAddedByValue(what, addedBy string, res *result.Result, path string) {
 	res.Add(result.Diagnostic{
 		Module:   module,
 		Code:     "RL032",
-		Severity: result.Info,
+		Severity: result.Error,
 		Message:  msg,
 		Path:     path,
 	})

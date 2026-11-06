@@ -184,9 +184,9 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Malformed added_by",
-    "summary": "A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`.",
+    "summary": "Retired. A new rule or new note had an `added_by` that was not a contributor identifier (`github:<login>`), an email address or an `@handle`. RL032 reports the format now; RD011 still reports a missing `added_by`.",
     "fix": "Write `added_by` as a contributor identifier such as `github:<login>`.",
-    "retired": false
+    "retired": true
   },
   {
     "code": "RD020",
@@ -218,9 +218,9 @@
   {
     "code": "RD023",
     "module": "rule-diff",
-    "severity": "Info",
+    "severity": "Error",
     "title": "added_by not a listed contributor",
-    "summary": "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted.",
+    "summary": "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
     "fix": "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
     "retired": false
   },
@@ -614,9 +614,9 @@
   {
     "code": "RL032",
     "module": "rule-lint",
-    "severity": "Info",
+    "severity": "Error",
     "title": "added_by not a contributor identifier",
-    "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted.",
+    "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
     "fix": "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
     "retired": false
   },
@@ -769,7 +769,7 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Sub-realm sets a language",
-    "summary": "A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-022).",
+    "summary": "A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018).",
     "fix": "Remove `language` from the sub-realm's `realm.json`, and set it on the parent if you need it.",
     "retired": false
   },

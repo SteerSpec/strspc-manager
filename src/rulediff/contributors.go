@@ -17,8 +17,8 @@ func WithContributors(list []entity.Contributor) Option {
 // checkContributors runs RD023 for the rules and notes of head, and of its
 // sub-entities, that base does not hold: the added_by of each must name one
 // of the Realm's contributors (CTRB-005). base is nil for a new entity. An
-// added_by that RD011 or RD019 reports is left to them. RD023 is Info while
-// the contributor format is in transition (#248), so strict mode keeps it.
+// added_by that RD011 reports, or that is not a contributor identifier and so
+// is left to rule-lint's RL032, is not checked again.
 func checkContributors(base, head *entity.File, list []entity.Contributor, res *result.Result, path string) {
 	if len(list) == 0 {
 		return
@@ -54,13 +54,13 @@ func checkContributors(base, head *entity.File, list []entity.Contributor, res *
 }
 
 func checkContributor(kind, addedBy string, list []entity.Contributor, res *result.Result, path string) {
-	if !entity.ValidAddedBy(addedBy) || entity.FindContributor(list, addedBy) != nil {
+	if !entity.IsContributorID(addedBy) || entity.FindContributor(list, addedBy) != nil {
 		return
 	}
 	res.Add(result.Diagnostic{
 		Module:   module,
 		Code:     "RD023",
-		Severity: result.Info,
+		Severity: result.Error,
 		Message:  fmt.Sprintf("new %s has added_by %q, which names none of the Realm's contributors (CTRB-005)", kind, addedBy),
 		Path:     path,
 	})

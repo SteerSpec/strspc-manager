@@ -803,7 +803,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Module:   module,
 				Code:     "RM017",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub-realm %q: language must be left out; a sub-realm inherits its parent's language (RLM-022)", srName),
+				Message:  fmt.Sprintf("sub-realm %q: language must be left out (RLM-022); a sub-realm inherits its parent's language (RLM-018)", srName),
 				Path:     srRealmPath,
 			})
 		}

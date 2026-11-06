@@ -71,7 +71,7 @@ A Realm tree is a top-level Realm and its declared sub-realms, so a parent, a su
 
 ### 2.3 Rule
 
-A Rule is the unit of the model (RUL-001). Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
+A Rule is the unit of the model (RUL-013). Rules are expressed as single phrases and are uniquely identified using the Rule Identifier Format.
 
 Each rule carries:
 
@@ -81,7 +81,7 @@ Each rule carries:
 | `revision` | integer | Monotonically incrementing edit counter. Starts at `0`. |
 | `state` | enum | One of `D`, `A`, `P`, `I`, `R`, `T` (see §3 Lifecycle). |
 | `body` | string | The rule statement — a single phrase. |
-| `added_by` | string | Contributor identifier of the author (`github:<login>`, CTRB-001); an email address or `@github_handle` is still accepted. |
+| `added_by` | string | Contributor identifier of the author (`github:<login>`, CTRB-001). |
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
 | `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. Omitted when the rule overrides none. |
@@ -100,7 +100,7 @@ A Rule Set groups all rules applicable to a specific entity. Every entity has ex
 | `timestamp` | string | UTC ISO timestamp of the last change. |
 | `hash` | string or null | `blake3:<hex>` hash of the canonical JSON content. |
 
-**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003), or, while the format is in transition, an `@handle` or an email address.
+**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003).
 
 **Visibility and `realm.version`:** narrowing an entity's `visibility` can break Realms that inherit it, so it needs a MAJOR bump of `realm.version`; widening needs a MINOR one. `strspc diff` says which (RD020); it can't enforce it, because it doesn't read `realm.json`.
 
@@ -116,7 +116,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 | `rule_ref` | string | The rule identifier this note is attached to. |
 | `type` | enum | One of the closed note types (see §2.6). |
 | `content` | string | The note body. |
-| `added_by` | string | Contributor identifier (`github:<login>`); an email address or `@github_handle` is still accepted. |
+| `added_by` | string | Contributor identifier (`github:<login>`). |
 | `added_at` | string | ISO date. |
 | `revision` | integer | Starts at `0` when the note is added and increments by one on each change to its content or type. |
 
@@ -171,7 +171,7 @@ A **Realm** is the namespace of Entity Unique Identifiers (RLM-001). It is the o
 
 **Dependencies:** A Realm can import the rules of other Realms read-only (RLM-005), and its EUIDs stay clear of theirs (RLM-006).
 
-**Cross-Realm References:** Entity references across Realm boundaries MUST use the qualified form `<realm-id>:<EUID>` (e.g., `dev.steerspec.core:ENT`). Within the same Realm, the short form (EUID only) is sufficient (RLM-009).
+**Cross-Realm References:** Entity references across Realm boundaries MUST use the qualified form `<realm-id>:<EUID>` (e.g., `dev.steerspec.core:ENT`; RLM-024). Within the same Realm, the short form (EUID only) is sufficient (RLM-025).
 
 #### Realm Manifest
 
@@ -185,7 +185,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017, RLM-021). A sub-realm leaves it out and inherits its parent's language (RLM-018, RLM-022, RM017). |
 | `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
 | `realm.contributors` | array | Contributors of the Realm (CTRB-004), each `{ id, email, github_id }`: `id` is the contributor identifier `<idp>:<subject>` (CTRB-001); `email` (CTRB-007) and the numeric `github_id` of a `github` contributor (CTRB-008) are optional. A sub-realm uses its parent's list (CTRB-006). Omitted when empty. Core 1.16.0 or later. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.16.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.17.1/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
@@ -489,7 +489,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
 | RL030 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
 | RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
-| RL032 | Info | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). Info while `@handle` and email values are still accepted. |
+| RL032 | Error | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error. |
 
 #### `rule-diff` (RD)
 
@@ -514,11 +514,11 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD016 | Error | The content of an append-only note changed. |
 | RD017 | Error | `inherits` changed on an entity whose base version has a rule beyond Draft, or was removed on one whose base version has a Published or Implemented rule. |
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
-| RD019 | Error | A new rule or new note has an `added_by` that is not a contributor identifier (`github:<login>`), an email address or an `@handle`. |
+| RD019 | Error | Retired. A new rule or new note had an `added_by` that was not a contributor identifier (`github:<login>`), an email address or an `@handle`. RL032 reports the format now; RD011 still reports a missing `added_by`. |
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
-| RD023 | Info | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006); `@x` names `github:x`, and an email names the entry holding it. Info while `@handle` and email values are still accepted. |
+| RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 
@@ -548,7 +548,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM014 | Error | A dependency's `version` differs from the release tag in its `github://` `source`, or the dependency's own manifest declares another `realm.id` or `realm.version`. |
 | RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
-| RM017 | Error | A sub-realm `realm.json` sets `realm.language`; a sub-realm inherits its parent's language (RLM-022). |
+| RM017 | Error | A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018). |
 | RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
 | RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
 | RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
@@ -724,7 +724,7 @@ For each changed entity file, the validator compares the before and after states
 8. **Rule Set hash:** Must be recomputed and updated to match the new file content.
 9. **Rule Set timestamp:** Must be updated.
 10. **No ID reuse:** New rule numbers must not reuse any previously existing rule number in the entity's history.
-11. **`added_by` present:** Required on new rules and new notes. Must be a contributor identifier (`github:<login>`), a valid email or an `@handle`.
+11. **`added_by` present:** Required on new rules and new notes. Must be present; its format is checked by `rule-lint` (RL032).
 12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
@@ -853,7 +853,7 @@ The JSON Schema (`_schema/entity.v1.schema.json`) is the machine-readable expres
 | **Rule Source** | An entry in `config.yaml` specifying where rules are fetched from and their applicability scope (SPCFGSRC). |
 | **Evaluator** | The AI provider configuration used for rule enforcement (SPCFGEVAL). |
 | **Fail Condition** | A rule lifecycle state code that, when violated, causes enforcement failure (SPCFGFAIL). |
-| **Cross-Realm Reference** | A qualified reference using `<realm-id>:<EUID>` format to identify an entity in another Realm (RLM-009). |
+| **Cross-Realm Reference** | A qualified reference using `<realm-id>:<EUID>` format to identify an entity in another Realm (RLM-024). |
 | **EUID** | Entity Unique Identifier. 3–18 alphanumeric characters. |
 | **Supersession** | The process of replacing an immutable rule with a new rule that declares `supersedes`. |
 | **Canonical JSON** | JSON serialized with sorted keys and no extraneous whitespace, used as input for Blake3 hashing. |

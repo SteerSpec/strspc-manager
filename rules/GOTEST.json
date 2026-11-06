@@ -7,9 +7,9 @@
     "inherits": "GOCONV"
   },
   "rule_set": {
-    "version": "0.3.0",
-    "timestamp": "2026-11-01T07:42:45Z",
-    "hash": "blake3:603e10aeb85ff6cf9ccacc9af0f102efefbdb92b7619b210e3564f011b6420fc"
+    "version": "0.3.1",
+    "timestamp": "2026-11-05T07:49:23Z",
+    "hash": "blake3:64c76865e4418bbd443e612de24a9eb8e400752b4c52ec5d037104dd22734414"
   },
   "rules": [
     {
@@ -17,7 +17,7 @@
       "revision": 0,
       "state": "I",
       "body": "Every package under src/ MUST keep at least 85% statement coverage in its own tests.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-31",
       "supersedes": null
     },
@@ -26,7 +26,7 @@
       "revision": 0,
       "state": "D",
       "body": "Tests that exercise several inputs of one code path MUST be table-driven.",
-      "added_by": "@pleberre",
+      "added_by": "github:pleberre",
       "added_at": "2026-10-31",
       "supersedes": null,
       "overrides": "GOCONV-006"

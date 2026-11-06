@@ -28,7 +28,7 @@ func TestRL032_AddedBy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.addedBy, func(t *testing.T) {
-			// Strict mode promotes warnings only: RL032 stays Info.
+			// RL032 is an Error whether or not the run is strict.
 			res := lintRulesDir(t, true, []entity.Rule{
 				{ID: "TST-001", State: "P", Body: "The system MUST work.", AddedBy: tt.addedBy, AddedAt: "2026-01-01"},
 			}, []entity.Note{
@@ -46,8 +46,8 @@ func TestRL032_AddedBy(t *testing.T) {
 			}
 			for i, what := range []string{"rule TST-001", "note TST-001/01"} {
 				d := got[i]
-				if d.Severity != result.Info {
-					t.Errorf("severity = %v, want Info", d.Severity)
+				if d.Severity != result.Error {
+					t.Errorf("severity = %v, want Error", d.Severity)
 				}
 				for _, w := range []string{what, "CTRB-003", tt.want} {
 					if !strings.Contains(d.Message, w) {

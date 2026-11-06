@@ -46,11 +46,5 @@
     "code": "RD016",
     "severity": "error",
     "path": "APPEND/notes/APPEND-001/03"
-  },
-  {
-    "module": "rule-diff",
-    "code": "RD019",
-    "severity": "error",
-    "path": "FRESH/notes/FRESH-001/03"
   }
 ]

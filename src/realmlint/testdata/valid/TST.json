@@ -16,7 +16,7 @@
       "revision": 1,
       "state": "A",
       "body": "IS a test rule.",
-      "added_by": "test",
+      "added_by": "github:test",
       "added_at": "2026-03-22"
     }
   ],
