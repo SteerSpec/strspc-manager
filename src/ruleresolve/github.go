@@ -2,6 +2,7 @@ package ruleresolve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/SteerSpec/strspc-manager/src/remote"
@@ -20,7 +21,8 @@ type GitHubSource struct {
 
 // Fetch downloads (or reuses the cached copy of) the referenced directory
 // and returns the entity files it contains. Download failures are reported
-// as RSV007.
+// as RSV007, except a cancelled or timed-out context, which is RSV000 as for a
+// local directory (SPEC §6.3).
 func (s *GitHubSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *result.Result) {
 	res := &result.Result{}
 
@@ -49,9 +51,13 @@ func (s *GitHubSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *re
 
 	dir, err := s.Fetcher.EnsureDir(ctx, parsed)
 	if err != nil {
+		code := "RSV007"
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			code = "RSV000"
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
-			Code:     "RSV007",
+			Code:     code,
 			Severity: result.Error,
 			Message:  fmt.Sprintf("fetching %s: %s", parsed.String(), err),
 			Path:     parsed.String(),
