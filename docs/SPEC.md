@@ -112,7 +112,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-001/01`). |
+| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-013/01`). |
 | `rule_ref` | string | The rule identifier this note is attached to. |
 | `type` | enum | One of the closed note types (see §2.6). |
 | `content` | string | The note body. |
@@ -519,6 +519,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 | RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
+| RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 
@@ -729,7 +730,7 @@ For each changed entity file, the validator compares the before and after states
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
-16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
+16. **Overrides and supersedes are immutable:** Once a rule has left Draft, its `overrides` and its `supersedes` may not be added, removed or retargeted (RD018, RD024); to change either, add a new rule instead.
 17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides` or `supersedes` of a Draft rule, by one. A `standard` note never moves it.
 18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
@@ -847,7 +848,7 @@ The JSON Schema (`_schema/entity.v1.schema.json`) is the machine-readable expres
 
 | Term | Definition |
 |------|------------|
-| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-009), Realm dependencies (RLM-005). |
+| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-024, RLM-025), Realm dependencies (RLM-005). |
 | **Realm Manifest** | The `realm.json` file at a Realm's root declaring its identity, version, and dependencies (RLMMNFST). |
 | **Configuration** | The `.strspc/` directory and its `config.yaml` manifest that declare which rules a project subscribes to and how they are enforced (SPCFG). |
 | **Rule Source** | An entry in `config.yaml` specifying where rules are fetched from and their applicability scope (SPCFGSRC). |
