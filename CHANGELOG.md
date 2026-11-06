@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.43.0](https://github.com/SteerSpec/strspc-manager/compare/v1.42.0...v1.43.0) (2026-11-06)
+
+
+### Features
+
+* **rulediff:** add RD024, supersedes is immutable after Draft ([#284](https://github.com/SteerSpec/strspc-manager/issues/284)) ([07df7da](https://github.com/SteerSpec/strspc-manager/commit/07df7dad8794d1ca70017dc7cfd92bb610c1222d))
+* **rules:** implement DOC-001 ([#282](https://github.com/SteerSpec/strspc-manager/issues/282)) ([56b41a3](https://github.com/SteerSpec/strspc-manager/commit/56b41a38a6838523ae1250cc4c64c575c8448866))
+* **rules:** publish DOC-001 ([#281](https://github.com/SteerSpec/strspc-manager/issues/281)) ([0768520](https://github.com/SteerSpec/strspc-manager/commit/0768520fc7f0c4ea9dbb37076ba210f9540882eb))
+
+
+### Bug Fixes
+
+* **entity:** end the recursive walk on a wrapped fs.SkipAll ([#296](https://github.com/SteerSpec/strspc-manager/issues/296)) ([62b4cc9](https://github.com/SteerSpec/strspc-manager/commit/62b4cc9ef59bb1c935e054f81ed38ee2c56087c3))
+* **entity:** hash numbers like Python's json.dumps ([#297](https://github.com/SteerSpec/strspc-manager/issues/297)) ([091cda8](https://github.com/SteerSpec/strspc-manager/commit/091cda81859ba61e6c3534e7299de0a2c0ec429b))
+* **entityops:** compute the new version before editing the file ([#294](https://github.com/SteerSpec/strspc-manager/issues/294)) ([a68c7f5](https://github.com/SteerSpec/strspc-manager/commit/a68c7f586e893929ff69c8e374483d9c2aac9a73))
+* **entityops:** reject a signed semver component ([#292](https://github.com/SteerSpec/strspc-manager/issues/292)) ([9a0f138](https://github.com/SteerSpec/strspc-manager/commit/9a0f13877285dd26c87b2d097dd34d620b6fc3b8))
+* **rulediff:** validate only changed files in CompareDir, hash new files ([#289](https://github.com/SteerSpec/strspc-manager/issues/289)) ([91ccaf8](https://github.com/SteerSpec/strspc-manager/commit/91ccaf8b8cac12375a6dca8352b2f0792c33ccd3))
+* **rulerefs:** do not judge the clauses of declared standards ([#287](https://github.com/SteerSpec/strspc-manager/issues/287)) ([193c7d8](https://github.com/SteerSpec/strspc-manager/commit/193c7d850b6a76056e99e4d97e9f883f4d613d9d))
+* **ruleresolve:** reject an empty rule_set.hash in LocalSource ([#283](https://github.com/SteerSpec/strspc-manager/issues/283)) ([a749c28](https://github.com/SteerSpec/strspc-manager/commit/a749c28d0da04f9cc80b8c6204d7724349c06250))
+* **ruleresolve:** report a cancelled GitHub fetch as RSV000 ([#290](https://github.com/SteerSpec/strspc-manager/issues/290)) ([1d4fa7c](https://github.com/SteerSpec/strspc-manager/commit/1d4fa7c2fdd552bd84be59986e13c0ea92ee1e39))
+
+
+### Documentation
+
+* **readme:** make the README a hub and align it with the brand rules ([#288](https://github.com/SteerSpec/strspc-manager/issues/288)) ([029886b](https://github.com/SteerSpec/strspc-manager/commit/029886ba9ad13a11cdadd9c90be3235c87aa43ec))
+* **readme:** show the transparent logo ([#298](https://github.com/SteerSpec/strspc-manager/issues/298)) ([3070466](https://github.com/SteerSpec/strspc-manager/commit/3070466ae60111b84f3b98fe335cc0733a99973c))
+* **spec:** add $schema to the sub-entity template of §5.2 ([#291](https://github.com/SteerSpec/strspc-manager/issues/291)) ([651c2ea](https://github.com/SteerSpec/strspc-manager/commit/651c2ea0e250aed1b207a27d12d7190c79fe2ce1))
+* **spec:** cite the rules that replace RLM-009 and RUL-001 ([#286](https://github.com/SteerSpec/strspc-manager/issues/286)) ([0f73dad](https://github.com/SteerSpec/strspc-manager/commit/0f73dad0b1f73ec8db555e9cb307cd364246a6a8))
+
 ## [1.42.0](https://github.com/SteerSpec/strspc-manager/compare/v1.41.0...v1.42.0) (2026-11-06)
 
 
