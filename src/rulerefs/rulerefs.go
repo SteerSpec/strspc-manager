@@ -28,8 +28,11 @@ const ignoreMarker = "strspc-refs: ignore"
 // as "MAY possess one or more properties", reads as ordinary prose.
 const minCopyWords = 5
 
-// realmQualifier matches an optional realm prefix, as group 1 of a pattern.
-const realmQualifier = `(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)?`
+// realmQualifier matches an optional realm prefix, as group 1 of a pattern. A
+// component may hold hyphens, as in the standard id nist.sp-800-53
+// (STDREF-002); the first one starts with a letter, so that 1.5:ABC-123 stays
+// prose.
+const realmQualifier = `(?:([a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*):)?`
 
 var (
 	// citationRe finds the stored form of a rule identifier, which is a
@@ -72,6 +75,10 @@ type Config struct {
 	AllowedStates []string
 	// Ignore lists exact identifiers that are not citations, such as SHA-256.
 	Ignore []string
+	// Standards lists the ids of declared external standards, such as
+	// mitre.cwe, whose clauses may be shaped like a rule ID. The standards that
+	// the entities of the sources declare are already known.
+	Standards []string
 }
 
 // Option configures the Checker.
@@ -90,6 +97,14 @@ func WithAllowedStates(states ...string) Option {
 // WithIgnore names identifiers that are not citations, such as SHA-256.
 func WithIgnore(ids ...string) Option {
 	return func(c *Config) { c.Ignore = append(c.Ignore, ids...) }
+}
+
+// WithStandards names declared external standards beyond those the entities of
+// the sources declare, such as the ones a Realm manifest lists (RLMMNFST-007).
+// A clause qualified with one of them, as in mitre.cwe:CWE-787, is not a rule
+// citation, even though its shape is that of one.
+func WithStandards(ids ...string) Option {
+	return func(c *Config) { c.Standards = append(c.Standards, ids...) }
 }
 
 // citedRule is what a citation is judged against.
@@ -114,12 +129,14 @@ type Checker struct {
 	cfg     Config
 	allowed map[string]bool
 	ignored map[string]bool
-	rules   map[string]*citedRule            // by rule ID; the first source wins
-	realms  map[string]map[string]*citedRule // by realm ID, then rule ID
-	euids   map[string]bool
-	forms   []form
-	bodies  []ruleBody
-	seen    map[string]bool // normalized bodies already in bodies
+	// standards holds the ids of the declared external standards.
+	standards map[string]bool
+	rules     map[string]*citedRule            // by rule ID; the first source wins
+	realms    map[string]map[string]*citedRule // by realm ID, then rule ID
+	euids     map[string]bool
+	forms     []form
+	bodies    []ruleBody
+	seen      map[string]bool // normalized bodies already in bodies
 }
 
 // ruleBody is a rule's normalized body. Rules that share a body are one entry,
@@ -134,12 +151,13 @@ type ruleBody struct {
 // rule, and for an invalid rule_identifier_format.
 func New(sources []Source, opts ...Option) (*Checker, error) {
 	c := &Checker{
-		allowed: make(map[string]bool),
-		ignored: make(map[string]bool),
-		rules:   make(map[string]*citedRule),
-		realms:  make(map[string]map[string]*citedRule),
-		euids:   make(map[string]bool),
-		seen:    make(map[string]bool),
+		allowed:   make(map[string]bool),
+		ignored:   make(map[string]bool),
+		standards: make(map[string]bool),
+		rules:     make(map[string]*citedRule),
+		realms:    make(map[string]map[string]*citedRule),
+		euids:     make(map[string]bool),
+		seen:      make(map[string]bool),
 	}
 	for _, opt := range opts {
 		opt(&c.cfg)
@@ -152,6 +170,9 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 	}
 	for _, id := range c.cfg.Ignore {
 		c.ignored[id] = true
+	}
+	for _, id := range c.cfg.Standards {
+		c.standards[id] = true
 	}
 
 	var unmatched []*entity.Rule // superseders whose target is in another source
@@ -207,6 +228,9 @@ func (c *Checker) collect(ef *entity.File, realm string, rules map[string]*cited
 		return nil
 	}
 	euids[ef.Entity.ID] = true
+	for _, ref := range ef.Entity.Standards {
+		c.standards[ref.ID] = true
+	}
 	for i := range ef.Rules {
 		r := &ef.Rules[i]
 		if !entity.IsValidState(r.State) {
@@ -436,6 +460,10 @@ func (c *Checker) judge(realm, euid, num string, at site, res *result.Result) {
 	switch {
 	case inScope:
 		rule = rules[id]
+	case c.standards[realm]:
+		// The clause of a declared standard, such as mitre.cwe:CWE-787: its
+		// qualifier is not a Realm and the clause is not a rule.
+		return
 	case strings.Contains(realm, "."):
 		// Named a Realm that is not in scope: nothing can resolve.
 	default:

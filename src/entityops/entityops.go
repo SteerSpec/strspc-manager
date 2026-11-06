@@ -68,6 +68,13 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 	}
 	ruleID := fmt.Sprintf("%s-%03d", f.Entity.ID, num)
 
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
+	v, err := BumpPatch(f.RuleSet.Version)
+	if err != nil {
+		return "", fmt.Errorf("bumping version: %w", err)
+	}
+
 	f.Rules = append(f.Rules, entity.Rule{
 		ID:       ruleID,
 		Revision: 0,
@@ -77,10 +84,6 @@ func AddRule(f *entity.File, body, addedBy string) (string, error) {
 		AddedAt:  nowFunc().Format(dateFormat),
 	})
 
-	v, err := BumpPatch(f.RuleSet.Version)
-	if err != nil {
-		return "", fmt.Errorf("bumping version: %w", err)
-	}
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return "", fmt.Errorf("updating metadata: %w", err)
@@ -101,13 +104,16 @@ func UpdateRuleBody(f *entity.File, ruleID, body string) error {
 		return fmt.Errorf("rule %q is in state %q: only Draft rules can be edited", ruleID, r.State)
 	}
 
-	r.Body = body
-	r.Revision++
-
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
 	v, err := BumpPatch(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)
 	}
+
+	r.Body = body
+	r.Revision++
+
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)

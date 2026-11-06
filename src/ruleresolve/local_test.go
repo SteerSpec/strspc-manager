@@ -71,6 +71,12 @@ func TestLocalSource_ReportsABadFileAndKeepsTheRest(t *testing.T) {
 			wantMsg:  []string{"entity.id is empty"},
 		},
 		{
+			name:     "empty hash",
+			content:  `{"entity": {"id": "EMP"}, "rule_set": {"hash": ""}}`,
+			wantCode: "RSV004",
+			wantMsg:  []string{"hash mismatch: expected , got blake3:"},
+		},
+		{
 			// encoding/json skips the unknown field while parsing but cannot
 			// hold the number in the generic form the hash is computed from.
 			name:     "hash cannot be computed",

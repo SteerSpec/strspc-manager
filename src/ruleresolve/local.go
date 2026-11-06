@@ -87,8 +87,9 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 			return nil
 		}
 
-		// Verify hash if present.
-		if ef.RuleSet.Hash != nil && *ef.RuleSet.Hash != "" {
+		// Verify the hash unless it is null (an unhashed file). An empty string
+		// is a hash that cannot match, as RL011 and RD008 judge it.
+		if ef.RuleSet.Hash != nil {
 			computed, hashErr := entity.ComputeHash(data)
 			if hashErr != nil {
 				res.Add(result.Diagnostic{

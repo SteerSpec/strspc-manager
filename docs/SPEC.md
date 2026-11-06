@@ -112,7 +112,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-001/01`). |
+| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-013/01`). |
 | `rule_ref` | string | The rule identifier this note is attached to. |
 | `type` | enum | One of the closed note types (see §2.6). |
 | `content` | string | The note body. |
@@ -185,7 +185,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017, RLM-021). A sub-realm leaves it out and inherits its parent's language (RLM-018, RLM-022, RM017). |
 | `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
 | `realm.contributors` | array | Contributors of the Realm (CTRB-004), each `{ id, email, github_id }`: `id` is the contributor identifier `<idp>:<subject>` (CTRB-001); `email` (CTRB-007) and the numeric `github_id` of a `github` contributor (CTRB-008) are optional. A sub-realm uses its parent's list (CTRB-006). Omitted when empty. Core 1.16.0 or later. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.17.1/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.20.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 
@@ -375,6 +375,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
   ],
   "sub_entities": [
     {
+      "$schema": "https://steerspec.dev/schemas/entity/v1.json",
       "entity": {
         "id": "<SUB_EUID>",
         "title": "<name>",
@@ -519,6 +520,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 | RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
+| RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 
@@ -610,6 +612,8 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 #### `rule-refs` (RF)
 
 The stored `<EUID>-<NNN>` form always matches, which also covers a rendered identifier under the default format. A Realm's other rendered shapes match only that Realm's EUIDs. An unknown prefix is reported only when it is uppercase and starts with a letter, so `feat-123` and `100-200` are not citations. URLs, identifiers inside a longer hyphenated token, identifiers passed to `WithIgnore` and states passed to `WithAllowedStates` are skipped, as is a line holding `strspc-refs: ignore` and the line after it. A superseder in `D` or `A` replaces nothing.
+
+A clause qualified with the id of a declared external standard, as in `mitre.cwe` clause 787, is not a citation even when its shape is that of a rule ID. The standards that the entities of the sources declare count, and so do the ones passed with `WithStandards`, such as those of a Realm Manifest (RLMMNFST-007). A Realm that has the same id still resolves its own rules.
 
 RF007 compares whole bodies in every rule state, after dropping URLs and HTML tags and comments, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found, and a rule no citation can reach, because earlier sources hold its ID and its Realm, isn't compared. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-002 leaves that to the evaluator.
 
@@ -729,7 +733,7 @@ For each changed entity file, the validator compares the before and after states
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
-16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
+16. **Overrides and supersedes are immutable:** Once a rule has left Draft, its `overrides` and its `supersedes` may not be added, removed or retargeted (RD018, RD024); to change either, add a new rule instead.
 17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides` or `supersedes` of a Draft rule, by one. A `standard` note never moves it.
 18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
@@ -847,7 +851,7 @@ The JSON Schema (`_schema/entity.v1.schema.json`) is the machine-readable expres
 
 | Term | Definition |
 |------|------------|
-| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-009), Realm dependencies (RLM-005). |
+| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-024, RLM-025), Realm dependencies (RLM-005). |
 | **Realm Manifest** | The `realm.json` file at a Realm's root declaring its identity, version, and dependencies (RLMMNFST). |
 | **Configuration** | The `.strspc/` directory and its `config.yaml` manifest that declare which rules a project subscribes to and how they are enforced (SPCFG). |
 | **Rule Source** | An entry in `config.yaml` specifying where rules are fetched from and their applicability scope (SPCFGSRC). |

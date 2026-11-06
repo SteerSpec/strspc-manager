@@ -422,29 +422,44 @@ func TestWalkEntityFiles_TraversalError(t *testing.T) {
 	}
 }
 
-func TestWalkEntityFiles_ShallowWrappedSkipAll(t *testing.T) {
-	// A callback may wrap fs.SkipAll (fmt.Errorf("...: %w", fs.SkipAll)); the
-	// shallow walk must still stop cleanly and not visit later entries.
-	dir := t.TempDir()
+func TestWalkEntityFiles_WrappedSkipAll(t *testing.T) {
+	// A callback may wrap fs.SkipAll (fmt.Errorf("...: %w", fs.SkipAll)); either
+	// walk must still stop cleanly and not visit later entries. filepath.WalkDir
+	// compares the error with == and would return the wrapped one.
 	src, err := os.ReadFile(filepath.Join(walkTestDir, "ENT.json"))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
-	for _, name := range []string{"A.json", "B.json", "C.json"} {
-		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
-			t.Fatalf("write %s: %v", name, err)
-		}
+	for _, mode := range walkModes {
+		t.Run(mode.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, name := range []string{"A.json", "B.json", "C.json"} {
+				writeWalkFile(t, dir, name, string(src))
+			}
+
+			calls := 0
+			err := entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
+				calls++
+				return fmt.Errorf("stop after %s: %w", filepath.Base(path), fs.SkipAll)
+			}, entity.WithRecursive(mode.recursive))
+			if err != nil {
+				t.Fatalf("wrapped fs.SkipAll must end the walk cleanly, got %v", err)
+			}
+			if calls != 1 {
+				t.Errorf("expected the walk to stop after the first entry, callback ran %d times", calls)
+			}
+		})
 	}
 
-	calls := 0
-	err = entity.WalkEntityFiles(dir, func(path string, data []byte, ef *entity.File, parseErr error) error {
-		calls++
-		return fmt.Errorf("stop after %s: %w", filepath.Base(path), fs.SkipAll)
-	}, entity.WithRecursive(false))
-	if err != nil {
-		t.Fatalf("wrapped fs.SkipAll must end the walk cleanly, got %v", err)
-	}
-	if calls != 1 {
-		t.Errorf("expected the walk to stop after the first entry, callback ran %d times", calls)
-	}
+	t.Run("other wrapped errors still abort", func(t *testing.T) {
+		dir := t.TempDir()
+		writeWalkFile(t, dir, "A.json", string(src))
+		boom := errors.New("boom")
+		err := entity.WalkEntityFiles(dir, func(string, []byte, *entity.File, error) error {
+			return fmt.Errorf("wrapped: %w", boom)
+		})
+		if !errors.Is(err, boom) {
+			t.Errorf("err = %v, want it to wrap boom", err)
+		}
+	})
 }

@@ -406,6 +406,59 @@ func TestSupersedeRule(t *testing.T) {
 	})
 }
 
+// An operation that fails must leave the file as it was. A version that does
+// not parse used to fail only after the edit had been made.
+func TestOperationsLeaveTheFileUntouchedOnABadVersion(t *testing.T) {
+	newFile := func() *entity.File {
+		return &entity.File{
+			Entity:  entity.Entity{ID: "TST", Title: "t"},
+			RuleSet: entity.RuleSet{Version: "not-a-version", Timestamp: "2026-01-01T00:00:00Z"},
+			Rules: []entity.Rule{
+				{ID: "TST-001", State: entity.StateDraft, Body: "Draft", AddedBy: "github:qa", AddedAt: "2026-01-01"},
+				{ID: "TST-002", State: entity.StatePublished, Body: "Published", AddedBy: "github:qa", AddedAt: "2026-01-01"},
+				{ID: "TST-003", State: entity.StateImplemented, Body: "Implemented", AddedBy: "github:qa", AddedAt: "2026-01-01"},
+				{ID: "TST-004", State: entity.StateRetired, Body: "Retired", AddedBy: "github:qa", AddedAt: "2026-01-01"},
+			},
+			Notes: []entity.Note{
+				{ID: "TST-001/01", RuleRef: "TST-001", Type: "rationale", Content: "why", AddedBy: "github:qa", AddedAt: "2026-01-01"},
+			},
+		}
+	}
+	ops := map[string]func(*entity.File) error{
+		"AddRule":        func(f *entity.File) error { _, err := AddRule(f, "New", "github:qa"); return err },
+		"UpdateRuleBody": func(f *entity.File) error { return UpdateRuleBody(f, "TST-001", "Edited") },
+		"AddNote": func(f *entity.File) error {
+			_, err := AddNote(f, "TST-001", "rationale", "more", "github:qa")
+			return err
+		},
+		"UpdateNote":        func(f *entity.File) error { return UpdateNote(f, "TST-001/01", "changed", "rationale") },
+		"UpdateNoteContent": func(f *entity.File) error { return UpdateNoteContent(f, "TST-001/01", "changed") },
+		"PromoteRule":       func(f *entity.File) error { return PromoteRule(f, "TST-001") },
+		"RetireRule":        func(f *entity.File) error { return RetireRule(f, "TST-003") },
+		"AbandonRule":       func(f *entity.File) error { return AbandonRule(f, "TST-001") },
+		"SupersedeRule":     func(f *entity.File) error { _, err := SupersedeRule(f, "TST-002", "Better", "github:qa"); return err },
+	}
+	for name, op := range ops {
+		t.Run(name, func(t *testing.T) {
+			f := newFile()
+			before, err := json.Marshal(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := op(f); err == nil {
+				t.Fatal("expected an error for a version that does not parse")
+			}
+			after, err := json.Marshal(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != string(after) {
+				t.Errorf("the failed operation changed the file:\nbefore %s\nafter  %s", before, after)
+			}
+		})
+	}
+}
+
 func TestNextRuleNumber(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		f := &entity.File{Entity: entity.Entity{ID: "TST"}}
@@ -451,6 +504,28 @@ func TestBumpPatch(t *testing.T) {
 			t.Fatal("expected error for invalid semver")
 		}
 	})
+}
+
+// A semver component is ASCII digits only: strconv.Atoi would also take a sign,
+// and "-0" is not negative.
+func TestBump_RejectsSignedComponents(t *testing.T) {
+	for _, in := range []string{"+1.2.3", "-0.1.0", "-1.2.3", "1.+2.3", "1.-0.3", "1.-2.3", "+0.+0.+0"} {
+		t.Run(in, func(t *testing.T) {
+			if got, err := BumpPatch(in); err == nil {
+				t.Errorf("BumpPatch(%q) = %q, want an error", in, got)
+			}
+			if got, err := BumpMinor(in); err == nil {
+				t.Errorf("BumpMinor(%q) = %q, want an error", in, got)
+			}
+		})
+	}
+
+	// Pre-release and build metadata after the patch are still dropped.
+	for in, want := range map[string]string{"1.2.3-rc.1": "1.2.4", "1.2.3+build.5": "1.2.4"} {
+		if got, err := BumpPatch(in); err != nil || got != want {
+			t.Errorf("BumpPatch(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
 }
 
 func TestBumpMinor(t *testing.T) {

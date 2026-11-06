@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/remote"
 )
@@ -146,6 +147,65 @@ func TestGitHubSource_FetchFailureIsRSV007(t *testing.T) {
 			t.Errorf("RSV007 message should carry the remote hint, got %q", d.Message)
 		}
 	}
+}
+
+// SPEC §6.3: a context cancelled or timed out during resolution is RSV000, not a
+// download failure (RSV007).
+func TestGitHubSource_CancelledContextIsRSV000(t *testing.T) {
+	const ref = "github://o/r@v1/rules"
+
+	t.Run("cancelled before the fetch", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		files, res := (&GitHubSource{Fetcher: fakeGitHubServer(t, nil)}).Fetch(ctx, ref)
+		if files != nil {
+			t.Errorf("expected no files, got %d", len(files))
+		}
+		assertHasCode(t, res, "RSV000")
+		if hasCode(res, "RSV007") {
+			t.Errorf("RSV007 must not be reported: %v", res.Diagnostics)
+		}
+	})
+
+	t.Run("deadline passed", func(t *testing.T) {
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+		defer cancel()
+		_, res := (&GitHubSource{Fetcher: fakeGitHubServer(t, nil)}).Fetch(ctx, ref)
+		assertHasCode(t, res, "RSV000")
+		if hasCode(res, "RSV007") {
+			t.Errorf("RSV007 must not be reported: %v", res.Diagnostics)
+		}
+	})
+
+	t.Run("cancelled while the request is in flight", func(t *testing.T) {
+		started := make(chan struct{})
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			close(started)
+			<-r.Context().Done()
+		}))
+		t.Cleanup(srv.Close)
+		fetcher := &remote.Fetcher{Client: srv.Client(), BaseURL: srv.URL, CacheDir: t.TempDir()}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go func() {
+			<-started
+			cancel()
+		}()
+		_, res := (&GitHubSource{Fetcher: fetcher}).Fetch(ctx, ref)
+		assertHasCode(t, res, "RSV000")
+		if hasCode(res, "RSV007") {
+			t.Errorf("RSV007 must not be reported: %v", res.Diagnostics)
+		}
+	})
+
+	t.Run("a real failure stays RSV007", func(t *testing.T) {
+		_, res := (&GitHubSource{Fetcher: fakeGitHubServer(t, nil)}).Fetch(context.Background(), ref)
+		assertHasCode(t, res, "RSV007")
+		if hasCode(res, "RSV000") {
+			t.Errorf("RSV000 must not be reported: %v", res.Diagnostics)
+		}
+	})
 }
 
 func TestGitHubSource_FailsBeforeDownloading(t *testing.T) {

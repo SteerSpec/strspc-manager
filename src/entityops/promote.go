@@ -27,11 +27,14 @@ func PromoteRule(f *entity.File, ruleID string) error {
 		return err
 	}
 
-	r.State = target
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
 	v, err := BumpMinor(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)
 	}
+
+	r.State = target
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
@@ -60,11 +63,14 @@ func RetireRule(f *entity.File, ruleID string) error {
 		return err
 	}
 
-	r.State = target
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
 	v, err := BumpMinor(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)
 	}
+
+	r.State = target
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
@@ -87,11 +93,14 @@ func AbandonRule(f *entity.File, ruleID string) error {
 		return err
 	}
 
-	r.State = entity.StateAbandoned
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
 	v, err := BumpPatch(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)
 	}
+
+	r.State = entity.StateAbandoned
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)

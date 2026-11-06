@@ -188,6 +188,18 @@ var goCases = []goCase{
 		},
 	},
 	{
+		name: "rule-diff reports supersedes changed on a Published rule",
+		want: []string{"RD024 error"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef)
+			head := standardsFile(asvsRef)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			target := "STDNOTE-099"
+			head.Rules[0].Supersedes = &target
+			return rulediff.New().Diff(base, head)
+		},
+	},
+	{
 		name: "rule-diff reports a standard note retyped past reference",
 		want: []string{"RD013 error", "RD022 error"},
 		run: func(*testing.T) *result.Result {
@@ -419,9 +431,10 @@ var goCases = []goCase{
 		},
 	},
 	{
-		// RD005 is realm.json, which the unreadable Realm holds and head lacks.
+		// realm.json is a manifest, not an entity file, so its absence from head
+		// draws no RD005.
 		name: "rule-diff reports an unreadable base file",
-		want: []string{"RD000 error", "RD005 error"},
+		want: []string{"RD000 error"},
 		run: func(t *testing.T) *result.Result {
 			head := t.TempDir()
 			if err := os.WriteFile(filepath.Join(head, "SOURCED.json"), readFixture(t, sound), 0o644); err != nil {

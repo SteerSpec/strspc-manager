@@ -6,15 +6,15 @@
     "description": "How text outside the rules refers to them."
   },
   "rule_set": {
-    "version": "0.1.4",
-    "timestamp": "2026-11-05T18:35:57Z",
-    "hash": "blake3:cf88e8141665839d254a975a1c0eb9f02687b5f5f3369c7c53552a6bfdd54491"
+    "version": "0.3.0",
+    "timestamp": "2026-11-06T15:40:02Z",
+    "hash": "blake3:3344eaea5193d0fa61184f3f71fd56d149e1dbcd5bdd98500790d00841aefed9"
   },
   "rules": [
     {
       "id": "DOC-001",
       "revision": 1,
-      "state": "D",
+      "state": "I",
       "body": "MUST cite a rule by its identifier.",
       "added_by": "github:pleberre",
       "added_at": "2026-11-01",

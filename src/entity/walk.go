@@ -81,7 +81,17 @@ func WalkEntityFiles(dir string, fn WalkFunc, opts ...WalkOption) error {
 }
 
 // walkRecursive walks the full directory tree.
-func walkRecursive(dir string, fn WalkFunc, cfg *walkConfig) error {
+func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
+	// filepath.WalkDir compares the error with fs.SkipAll using ==, so a
+	// callback's wrapped fs.SkipAll would abort the walk with an error. Return
+	// the bare value, as walkShallow's errors.Is does.
+	fn := func(path string, data []byte, ef *File, parseErr error) error {
+		err := userFn(path, data, ef, parseErr)
+		if errors.Is(err, fs.SkipAll) {
+			return fs.SkipAll
+		}
+		return err
+	}
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if path == dir {

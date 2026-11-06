@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -229,6 +230,19 @@ func TestMarshalFloat(t *testing.T) {
 		{"first value past the integer form", 1e16, "1e+16"},
 		{"large exponent", 1e20, "1e+20"},
 		{"largest float", 1.7976931348623157e308, "1.7976931348623157e+308"},
+		// Python switches to an exponent below 1e-4 and from 1e16, not at 1e6
+		// as Go's 'g' does.
+		{"fraction past 1e6", 1234567.5, "1234567.5"},
+		{"negative fraction past 1e6", -1234567.5, "-1234567.5"},
+		{"fraction past 1e7", 12345678.125, "12345678.125"},
+		{"fraction just below 1e16", 1234567890123456.5, "1234567890123456.5"},
+		{"fraction just above 1e15", 1000000000000000.5, "1000000000000000.5"},
+		{"integer between 1e15 and 1e16", 9007199254740992, "9007199254740992"},
+		{"first exponent below 1e-4", 1.234e-5, "1.234e-05"},
+		{"negative small exponent", -1e-5, "-1e-05"},
+		{"fraction with 15 digits", 123456789012345.6, "123456789012345.6"},
+		{"1.5e16", 1.5e16, "1.5e+16"},
+		{"negative zero", math.Copysign(0, -1), "0"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -237,6 +251,53 @@ func TestMarshalFloat(t *testing.T) {
 			}
 		})
 	}
+}
+
+// canonicalJSON must write every number as Python's json.dumps(json.loads(...))
+// does: an integer literal exactly, whatever its size, and any other number as
+// the repr of a float. The expected values are Python's output.
+func TestCanonicalJSON_Numbers(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"10000000000000000", "10000000000000000"},
+		{"9007199254740993", "9007199254740993"},
+		{"123456789012345678901234567890", "123456789012345678901234567890"},
+		{"100", "100"},
+		{"-5", "-5"},
+		{"-0", "0"},
+		{"1.0", "1.0"},
+		{"1.50", "1.5"},
+		{"0.1", "0.1"},
+		{"1e2", "100.0"},
+		{"1E+16", "1e+16"},
+		{"-0.0", "-0.0"},
+		{"1234567.5", "1234567.5"},
+		{"0.00001", "1e-05"},
+		{"2.5e-8", "2.5e-08"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got, err := canonicalJSON([]byte(`{"a":[` + tt.in + `],"b":` + tt.in + `}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := `{"a":[` + tt.want + `],"b":` + tt.want + `}`
+			if string(got) != want {
+				t.Errorf("canonicalJSON = %s, want %s", got, want)
+			}
+		})
+	}
+
+	t.Run("out of range", func(t *testing.T) {
+		_, err := canonicalJSON([]byte(`{"a":1e999}`))
+		if err == nil || !strings.Contains(err.Error(), "1e999") {
+			t.Errorf("err = %v, want one naming 1e999", err)
+		}
+	})
+	t.Run("trailing data", func(t *testing.T) {
+		if _, err := canonicalJSON([]byte(`{"a":1} {"b":2}`)); err == nil {
+			t.Error("expected an error for trailing data")
+		}
+	})
 }
 
 func TestMarshalCanonical(t *testing.T) {
