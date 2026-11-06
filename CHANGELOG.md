@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.42.0](https://github.com/SteerSpec/strspc-manager/compare/v1.41.0...v1.42.0) (2026-11-06)
+
+
+### Features
+
+* **contributors:** make the added_by checks errors and retire RD019 ([#275](https://github.com/SteerSpec/strspc-manager/issues/275)) ([477425d](https://github.com/SteerSpec/strspc-manager/commit/477425da7f263f32e075d74221ba280ef9a3053a))
+
+
+### Documentation
+
+* **rules:** cite the rules that supersede RLM-009 and RUL-001 ([#273](https://github.com/SteerSpec/strspc-manager/issues/273)) ([a160803](https://github.com/SteerSpec/strspc-manager/commit/a1608038c547472365ea780e634fb7907b7e188b))
+
 ## [1.41.0](https://github.com/SteerSpec/strspc-manager/compare/v1.40.0...v1.41.0) (2026-11-03)
 
 
