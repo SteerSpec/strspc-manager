@@ -4,6 +4,7 @@
 package rulediff
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -106,8 +107,29 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	return res
 }
 
+// DiffNewBytes parses a brand-new entity file and validates it like DiffNew,
+// plus RD008 (hash verification), as DiffBytes does for a changed file.
+func (d *Differ) DiffNewBytes(headData []byte) *result.Result {
+	headEnt, err := entity.Parse(headData)
+	if err != nil {
+		res := &result.Result{}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD000",
+			Severity: result.Error,
+			Message:  "failed to parse head entity file: " + err.Error(),
+		})
+		return res
+	}
+	res := d.DiffNew(headEnt)
+	// DiffNew has promoted warnings already; RD008 is an Error either way.
+	checkHashBytes(headEnt, headData, res, headEnt.Entity.ID)
+	return res
+}
+
 // DiffNew validates a brand-new entity file (no previous version).
 // Checks RD004 (revision=0, state=D) and RD011 (added_by present) for all rules and notes.
+// It has no bytes to hash, so RD008 is left to DiffNewBytes.
 func (d *Differ) DiffNew(head *entity.File) *result.Result {
 	res := &result.Result{}
 	if head == nil {
@@ -183,26 +205,17 @@ func Compare(base, head []byte, opts ...Option) *result.Result {
 }
 
 // CompareNew validates a brand-new entity JSON file (no previous version).
-// It parses head and delegates to New(opts...).DiffNew.
+// It is a package-level convenience wrapper over New(opts...).DiffNewBytes(head).
 func CompareNew(head []byte, opts ...Option) *result.Result {
-	res := &result.Result{}
-	headEnt, err := entity.Parse(head)
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RD000",
-			Severity: result.Error,
-			Message:  "failed to parse head entity file: " + err.Error(),
-		})
-		return res
-	}
-	return New(opts...).DiffNew(headEnt)
+	return New(opts...).DiffNewBytes(head)
 }
 
 // CompareDir validates lifecycle transitions across all entity JSON files in
 // two directories (baseDir = old version, headDir = new version).
-// Files present in both are compared with Compare; files only in headDir are
+// Files present in both are compared with Compare, unless their bytes are the
+// same: SPEC §7.2 validates each changed entity file. Files only in headDir are
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
+// realm.json is a manifest, not an entity file, and is left out.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
@@ -233,6 +246,9 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 				})
 				continue
 			}
+			if bytes.Equal(baseData, headData) {
+				continue
+			}
 			for _, d := range Compare(baseData, headData, opts...).Diagnostics {
 				res.Add(d)
 			}
@@ -258,7 +274,8 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 }
 
 // scanJSONFiles returns a map of filename → full path for all *.json files
-// directly inside dir. Non-JSON files and I/O errors are silently skipped.
+// directly inside dir, except the realm.json manifest. Non-JSON files and I/O
+// errors are silently skipped.
 func scanJSONFiles(dir string) map[string]string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -266,7 +283,7 @@ func scanJSONFiles(dir string) map[string]string {
 	}
 	files := make(map[string]string, len(entries))
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && e.Name() != "realm.json" {
 			files[e.Name()] = filepath.Join(dir, e.Name())
 		}
 	}

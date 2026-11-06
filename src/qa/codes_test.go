@@ -21,22 +21,7 @@ type exception struct {
 
 // exceptions lists what no scenario and no Go case asserts. Every code of the
 // registry has a scenario or a Go case, so today it holds only engine bugs.
-var exceptions = []exception{
-	{
-		code: "RD007",
-		bug:  true,
-		reason: "rulediff.CompareDir also compares files that did not change, so an identical file in base and head " +
-			"draws RD007 and RD009, and so does a realm.json present on both sides, where SPEC §7.2 validates " +
-			"\"each changed entity file\". The scenarios keep every file of base/ and head/ changed.",
-	},
-	{
-		code: "RD008",
-		bug:  true,
-		reason: "rulediff.CompareNew skips the hash check, so a new file with a wrong rule_set.hash draws no RD008, " +
-			"though §6.3 says the code fires when the hash differs from that of the head file and §7.2 item 8 " +
-			"makes no exception. head/ of diff-rule-set holds no new file with a bad hash.",
-	},
-}
+var exceptions = []exception{}
 
 // goCaseCodes returns the codes the Go cases assert.
 func goCaseCodes() map[string]bool {
