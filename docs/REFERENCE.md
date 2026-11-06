@@ -24,7 +24,7 @@ flowchart LR
 	class M here
 	class R,C shipped
 	class K planned
-tlinkStyle default stroke:#A0A8B1
+	linkStyle default stroke:#A0A8B1
 ```
 
 Validation and evaluation logic lives here. [strspc-CLI](https://github.com/SteerSpec/strspc-CLI)
