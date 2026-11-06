@@ -13,7 +13,7 @@ make lint    # run golangci-lint
 make fmt     # format the code
 ```
 
-CI runs `make cover`, which fails any package under 85% statement coverage (GOTEST-001). See
+CI runs `make cover`, which fails any package under 85% statement coverage (GOTEST-001, [`coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/scripts/coverage-gate.sh)). See
 [`AGENTS.md`](../AGENTS.md) for the agent workflow and the
 [SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/CONTRIBUTING.md) for
 everything else.

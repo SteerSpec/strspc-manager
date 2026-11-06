@@ -16,12 +16,11 @@
 
 </div>
 
-Licensed under Apache 2.0. Every package under `src/` that has statements keeps at least 85% statement
-coverage, which CI enforces with
-[`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/scripts/coverage-gate.sh)
-as of v1.41.0. The lint, diff, history and refs modules are deterministic. The verdicts of
-an AI provider in `ruleeval` depend on the model, and with no provider configured `ruleeval` runs
-static checks only.
+Every package under `src/` that has statements keeps at least 85% statement coverage, which CI
+enforces with [`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/scripts/coverage-gate.sh). The lint, diff, history
+and refs modules are [deterministic](https://github.com/SteerSpec/strspc-manager/blob/v1.41.0/docs/SPEC.md#62-module-breakdown). The verdicts of an AI
+provider in `ruleeval` depend on the model, and with no provider configured `ruleeval` runs static
+checks only.
 
 ## Install
 
@@ -78,7 +77,9 @@ library. Releases also ship a `strspc-manager` binary with `version` and `realm-
 
 ## Governance
 
-Open source software by Consulare. Apache 2.0, see [LICENSE](LICENSE). Pull requests target `develop` and use
+Open source software by Consulare.
+
+Apache 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE). Pull requests target `develop` and use
 [Conventional Commits](https://www.conventionalcommits.org/). The workflow is in
 [Branching and releases](docs/DEVELOPMENT.md#branching-and-releases) and the
 [SteerSpec contributing guide](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/CONTRIBUTING.md).
