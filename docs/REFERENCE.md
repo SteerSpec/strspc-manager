@@ -52,15 +52,15 @@ Public packages live under `src/`, for example
 
 | Package | Type | Description |
 | ------- | ---- | ----------- |
-| `rulelint` | deterministic, stateless | Validates entity files against schema and business rules (§7.1) |
-| `rulediff` | deterministic, stateful | Validates rule lifecycle transitions across PR diffs (§7.2) |
-| `rulehistory` | deterministic, stateless | Derives an entity's or rule's change history from successive versions of its file, one before/after pair per commit, without reading git itself (§6.2) |
+| `rulelint` | stateless | Validates entity files against schema and business rules (§7.1) |
+| `rulediff` | stateful | Validates rule lifecycle transitions across PR diffs (§7.2) |
+| `rulehistory` | stateless | Derives an entity's or rule's change history from successive versions of its file, one before/after pair per commit, without reading git itself (§6.2) |
 | `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules (§8.3). Batches rules per entity, caches verdicts, and degrades to static-only mode when no provider is configured. See [Evaluation providers](#evaluation-providers). |
-| `evalcache` | deterministic | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
-| `ruleresolve` | deterministic | Fetches, caches, and resolves rules from configured sources (§8.2) |
-| `rulerefs` | deterministic, stateless | Validates the rule identifiers that text files cite against a set of known rules, and reports copied rule bodies (§6.2) |
-| `realmlint` | deterministic, stateless | Validates Realm structure, `realm.json` manifests including sub-realms, EUID uniqueness, and, with `WithDependencyFetcher`, the Realm against its pinned dependencies |
-| `realmresolve` | deterministic | Resolves Realm dependencies declared in `realm.json`, fetches remote Realms, and resolves inheritance chains across Realms |
+| `evalcache` | stateful (cache) | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
+| `ruleresolve` | stateful (cache) | Fetches, caches, and resolves rules from configured sources (§8.2) |
+| `rulerefs` | stateless | Validates the rule identifiers that text files cite against a set of known rules, and reports copied rule bodies (§6.2) |
+| `realmlint` | stateless | Validates Realm structure, `realm.json` manifests including sub-realms, EUID uniqueness, and, with `WithDependencyFetcher`, the Realm against its pinned dependencies |
+| `realmresolve` | stateful (cache) | Resolves Realm dependencies declared in `realm.json`, fetches remote Realms, and resolves inheritance chains across Realms |
 
 ## Evaluation providers
 
