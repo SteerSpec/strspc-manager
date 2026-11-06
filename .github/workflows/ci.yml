@@ -64,6 +64,13 @@ jobs:
       pull-requests: read
     with:
       path: rules/
+      # Validate the rule ids that docs/SPEC.md and other Markdown cite against
+      # the core pin in .strspc/config.yaml. src/render/testdata holds fixtures.
+      refs: true
+      # The lint is strict, so a citation of a rule in a state not listed here
+      # fails the job. Draft, Published and Implemented are all fine to cite.
+      refs-allow-state: D,P,I
+      refs-exclude: src/render/testdata/**
       diff: >-
         ${{ !(
           (
