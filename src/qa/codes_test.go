@@ -36,13 +36,6 @@ var exceptions = []exception{
 			"though §6.3 says the code fires when the hash differs from that of the head file and §7.2 item 8 " +
 			"makes no exception. head/ of diff-rule-set holds no new file with a bad hash.",
 	},
-	{
-		code: "RSV004",
-		bug:  true,
-		reason: "ruleresolve.LocalSource skips the check when rule_set.hash is the empty string, not only when it is " +
-			"null, so such a file resolves although its hash differs from the file's; RL011 and RD008 report it. " +
-			"hash-integrity holds no empty hash.",
-	},
 }
 
 // goCaseCodes returns the codes the Go cases assert.
