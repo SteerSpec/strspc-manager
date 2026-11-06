@@ -38,6 +38,13 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 	newID := fmt.Sprintf("%s-%03d", f.Entity.ID, num)
 	supersededID := ruleID
 
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
+	v, err := BumpPatch(f.RuleSet.Version)
+	if err != nil {
+		return "", fmt.Errorf("bumping version: %w", err)
+	}
+
 	f.Rules = append(f.Rules, entity.Rule{
 		ID:         newID,
 		Revision:   0,
@@ -48,10 +55,6 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 		Supersedes: &supersededID,
 	})
 
-	v, err := BumpPatch(f.RuleSet.Version)
-	if err != nil {
-		return "", fmt.Errorf("bumping version: %w", err)
-	}
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return "", fmt.Errorf("updating metadata: %w", err)
