@@ -40,6 +40,13 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 	}
 	noteID := fmt.Sprintf("%s/%02d", ruleID, num)
 
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
+	v, err := BumpPatch(f.RuleSet.Version)
+	if err != nil {
+		return "", fmt.Errorf("bumping version: %w", err)
+	}
+
 	f.Notes = append(f.Notes, entity.Note{
 		ID:       noteID,
 		RuleRef:  ruleID,
@@ -50,10 +57,6 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 		Revision: 0,
 	})
 
-	v, err := BumpPatch(f.RuleSet.Version)
-	if err != nil {
-		return "", fmt.Errorf("bumping version: %w", err)
-	}
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return "", fmt.Errorf("updating metadata: %w", err)
@@ -112,14 +115,17 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 		return err
 	}
 
-	n.Content = content
-	n.Type = noteType
-	n.Revision++
-
+	// Compute the new version first, so that a version that does not parse
+	// fails before anything is edited.
 	v, err := BumpPatch(f.RuleSet.Version)
 	if err != nil {
 		return fmt.Errorf("bumping version: %w", err)
 	}
+
+	n.Content = content
+	n.Type = noteType
+	n.Revision++
+
 	f.RuleSet.Version = v
 	if err := UpdateMeta(f); err != nil {
 		return fmt.Errorf("updating metadata: %w", err)
