@@ -112,7 +112,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-001/01`). |
+| `id` | string | Format: `<rule_id>/<incremental>` (e.g., `RUL-013/01`). |
 | `rule_ref` | string | The rule identifier this note is attached to. |
 | `type` | enum | One of the closed note types (see §2.6). |
 | `content` | string | The note body. |
@@ -848,7 +848,7 @@ The JSON Schema (`_schema/entity.v1.schema.json`) is the machine-readable expres
 
 | Term | Definition |
 |------|------------|
-| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-009), Realm dependencies (RLM-005). |
+| **Realm** | A namespace in which Entity Unique Identifiers are unique and Rule Identifier Format is consistent (RLM-001, RLM-002). Identified by reverse domain notation (RLM-023). Contains a `realm.json` manifest (RLM-004) and a `_schema/` directory (RLM-003). An Entity resides in exactly one Realm (RLM-007). See also: cross-realm references (RLM-024, RLM-025), Realm dependencies (RLM-005). |
 | **Realm Manifest** | The `realm.json` file at a Realm's root declaring its identity, version, and dependencies (RLMMNFST). |
 | **Configuration** | The `.strspc/` directory and its `config.yaml` manifest that declare which rules a project subscribes to and how they are enforced (SPCFG). |
 | **Rule Source** | An entry in `config.yaml` specifying where rules are fetched from and their applicability scope (SPCFGSRC). |
