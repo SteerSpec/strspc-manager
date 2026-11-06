@@ -453,6 +453,28 @@ func TestBumpPatch(t *testing.T) {
 	})
 }
 
+// A semver component is ASCII digits only: strconv.Atoi would also take a sign,
+// and "-0" is not negative.
+func TestBump_RejectsSignedComponents(t *testing.T) {
+	for _, in := range []string{"+1.2.3", "-0.1.0", "-1.2.3", "1.+2.3", "1.-0.3", "1.-2.3", "+0.+0.+0"} {
+		t.Run(in, func(t *testing.T) {
+			if got, err := BumpPatch(in); err == nil {
+				t.Errorf("BumpPatch(%q) = %q, want an error", in, got)
+			}
+			if got, err := BumpMinor(in); err == nil {
+				t.Errorf("BumpMinor(%q) = %q, want an error", in, got)
+			}
+		})
+	}
+
+	// Pre-release and build metadata after the patch are still dropped.
+	for in, want := range map[string]string{"1.2.3-rc.1": "1.2.4", "1.2.3+build.5": "1.2.4"} {
+		if got, err := BumpPatch(in); err != nil || got != want {
+			t.Errorf("BumpPatch(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+}
+
 func TestBumpMinor(t *testing.T) {
 	tests := []struct{ in, want string }{
 		{"0.1.0", "0.2.0"},
