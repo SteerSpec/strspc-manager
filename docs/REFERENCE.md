@@ -74,9 +74,9 @@ value in `.strspc/config.yaml`:
 | `openai` | planned | Returns `ErrProviderNotImplemented` ([#67](https://github.com/SteerSpec/strspc-manager/issues/67)). |
 | `ollama` | planned | Returns `ErrProviderNotImplemented` ([#67](https://github.com/SteerSpec/strspc-manager/issues/67)). |
 
-Provider tests replay recorded HTTP cassettes from [`src/ruleeval/claude/testdata/cassettes/`](https://github.com/SteerSpec/strspc-manager/tree/v1.41.0/src/ruleeval/claude/testdata/cassettes)
-and never call the network in CI. Set `STRSPC_RECORD=1` with an API key to re-record,
-or run the live smoke test with `go test -tags live ./src/ruleeval/claude/`.
+Provider tests replay synthetic HTTP cassettes (scripted responses, not recordings of the live API) from [`src/ruleeval/claude/testdata/cassettes/`](https://github.com/SteerSpec/strspc-manager/tree/v1.41.0/src/ruleeval/claude/testdata/cassettes)
+and never call the network in CI. Set `STRSPC_RECORD=1` with an API key to re-record the
+scenarios marked recordable, or run the live smoke test with `go test -tags live ./src/ruleeval/claude/`.
 
 A GitHub Models provider is proposed in [#79](https://github.com/SteerSpec/strspc-manager/issues/79).
 
