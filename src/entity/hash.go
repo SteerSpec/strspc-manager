@@ -1,9 +1,12 @@
 package entity
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,20 +19,89 @@ import (
 // It nulls out rule_set.hash recursively, serializes to sorted-key minified
 // JSON, and returns "blake3:<64 hex chars>".
 func ComputeHash(data []byte) (string, error) {
+	canonical, err := canonicalJSON(data)
+	if err != nil {
+		return "", err
+	}
+	h := blake3.Sum256(canonical)
+	return "blake3:" + hex.EncodeToString(h[:]), nil
+}
+
+// canonicalJSON returns the canonical form of an entity file that ComputeHash
+// hashes, with every rule_set.hash nulled.
+//
+// Numbers are read as written, not as float64, so that an integer keeps all its
+// digits as it does in Python's json.loads: one past 2^53, or from 1e16, would
+// otherwise be rounded or written with an exponent.
+func canonicalJSON(data []byte) ([]byte, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
 	var obj map[string]any
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return "", fmt.Errorf("unmarshaling for hash: %w", err)
+	if err := dec.Decode(&obj); err != nil {
+		return nil, fmt.Errorf("unmarshaling for hash: %w", err)
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("unmarshaling for hash: unexpected data after the top-level value")
+	}
+	if err := normalizeNumbers(obj); err != nil {
+		return nil, fmt.Errorf("unmarshaling for hash: %w", err)
 	}
 
 	nullHashes(obj)
 
 	canonical, err := marshalCanonical(obj)
 	if err != nil {
-		return "", fmt.Errorf("canonical marshal: %w", err)
+		return nil, fmt.Errorf("canonical marshal: %w", err)
 	}
+	return canonical, nil
+}
 
-	h := blake3.Sum256(canonical)
-	return "blake3:" + hex.EncodeToString(h[:]), nil
+// normalizeNumbers rewrites, in place, every json.Number below v as Python's
+// json.dumps writes the value json.loads reads from it: an integer literal is
+// kept as it is, "-0" aside, and any other number becomes the repr of a float.
+func normalizeNumbers(v any) error {
+	switch val := v.(type) {
+	case map[string]any:
+		for k, item := range val {
+			if n, ok := item.(json.Number); ok {
+				norm, err := normalizeNumber(n)
+				if err != nil {
+					return err
+				}
+				val[k] = norm
+			} else if err := normalizeNumbers(item); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for i, item := range val {
+			if n, ok := item.(json.Number); ok {
+				norm, err := normalizeNumber(n)
+				if err != nil {
+					return err
+				}
+				val[i] = norm
+			} else if err := normalizeNumbers(item); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func normalizeNumber(n json.Number) (json.Number, error) {
+	s := n.String()
+	if !strings.ContainsAny(s, ".eE") {
+		if s == "-0" {
+			return "0", nil
+		}
+		return n, nil
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return "", fmt.Errorf("number %s: %w", s, err)
+	}
+	return json.Number(floatRepr(f)), nil
 }
 
 // nullHashes recursively sets rule_set.hash to null in the object and all
@@ -166,21 +238,30 @@ func marshalString(s string) []byte {
 	return []byte(b.String())
 }
 
-// marshalFloat formats a float64 matching Python's json.dumps output.
-//
-// The digits are the shortest that round-trip, as in Python's repr. Python
-// writes an exponent below 1e-4 and from 1e16, and plain decimal in between;
-// Go's 'g' format would switch at 1e6. A number that is whole and below 1e16 is
-// written without a decimal point, as Python writes an int: json.Unmarshal
-// keeps no difference between 1 and 1.0, and schema numbers are integers.
+// marshalFloat formats a float64 matching Python's json.dumps output, except
+// that a whole number below 1e16 is written without a decimal point, as Python
+// writes an int. canonicalJSON does not come here: it keeps the literal of an
+// integer and gives a float the repr of floatRepr.
 func marshalFloat(f float64) []byte {
 	if f == 0 {
 		return []byte("0") // also -0
 	}
+	r := floatRepr(f)
+	return []byte(strings.TrimSuffix(r, ".0"))
+}
+
+// floatRepr formats f as Python's repr(float) does, which json.dumps writes:
+// the shortest digits that round-trip, a plain decimal from 1e-4 up to 1e16 and
+// an exponent outside that range, and ".0" after a whole number in plain form.
+func floatRepr(f float64) string {
 	exp := strconv.FormatFloat(f, 'e', -1, 64) // d.ddde±XX
 	e, err := strconv.Atoi(exp[strings.IndexByte(exp, 'e')+1:])
 	if err != nil || e < -4 || e >= 16 {
-		return []byte(exp)
+		return exp
 	}
-	return []byte(strconv.FormatFloat(f, 'f', -1, 64))
+	plain := strconv.FormatFloat(f, 'f', -1, 64)
+	if !strings.Contains(plain, ".") {
+		plain += ".0"
+	}
+	return plain
 }

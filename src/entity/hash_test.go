@@ -253,6 +253,53 @@ func TestMarshalFloat(t *testing.T) {
 	}
 }
 
+// canonicalJSON must write every number as Python's json.dumps(json.loads(...))
+// does: an integer literal exactly, whatever its size, and any other number as
+// the repr of a float. The expected values are Python's output.
+func TestCanonicalJSON_Numbers(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"10000000000000000", "10000000000000000"},
+		{"9007199254740993", "9007199254740993"},
+		{"123456789012345678901234567890", "123456789012345678901234567890"},
+		{"100", "100"},
+		{"-5", "-5"},
+		{"-0", "0"},
+		{"1.0", "1.0"},
+		{"1.50", "1.5"},
+		{"0.1", "0.1"},
+		{"1e2", "100.0"},
+		{"1E+16", "1e+16"},
+		{"-0.0", "-0.0"},
+		{"1234567.5", "1234567.5"},
+		{"0.00001", "1e-05"},
+		{"2.5e-8", "2.5e-08"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got, err := canonicalJSON([]byte(`{"a":[` + tt.in + `],"b":` + tt.in + `}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := `{"a":[` + tt.want + `],"b":` + tt.want + `}`
+			if string(got) != want {
+				t.Errorf("canonicalJSON = %s, want %s", got, want)
+			}
+		})
+	}
+
+	t.Run("out of range", func(t *testing.T) {
+		_, err := canonicalJSON([]byte(`{"a":1e999}`))
+		if err == nil || !strings.Contains(err.Error(), "1e999") {
+			t.Errorf("err = %v, want one naming 1e999", err)
+		}
+	})
+	t.Run("trailing data", func(t *testing.T) {
+		if _, err := canonicalJSON([]byte(`{"a":1} {"b":2}`)); err == nil {
+			t.Error("expected an error for trailing data")
+		}
+	})
+}
+
 func TestMarshalCanonical(t *testing.T) {
 	tests := []struct {
 		name string
