@@ -72,6 +72,7 @@ RD020 active visibility-changed
 RD021 active revision-without-body-change
 RD022 active standard-note-retyped
 RD023 active added-by-not-listed-contributor
+RD024 active supersedes-changed
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing

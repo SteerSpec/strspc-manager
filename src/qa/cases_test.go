@@ -188,6 +188,18 @@ var goCases = []goCase{
 		},
 	},
 	{
+		name: "rule-diff reports supersedes changed on a Published rule",
+		want: []string{"RD024 error"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef)
+			head := standardsFile(asvsRef)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			target := "STDNOTE-099"
+			head.Rules[0].Supersedes = &target
+			return rulediff.New().Diff(base, head)
+		},
+	},
+	{
 		name: "rule-diff reports a standard note retyped past reference",
 		want: []string{"RD013 error", "RD022 error"},
 		run: func(*testing.T) *result.Result {

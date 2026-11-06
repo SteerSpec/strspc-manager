@@ -465,6 +465,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
 	},
 	{
+		Code:     "RD024",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Supersedes changed after Draft",
+		Summary:  "`supersedes` was added, removed or retargeted on a rule that has left Draft.",
+		Fix:      "Restore `supersedes`. To replace a different rule, add a new rule with `strspc rule supersede`.",
+	},
+	{
 		Code:     "RM001",
 		Module:   "realm-lint",
 		Severity: "Error",

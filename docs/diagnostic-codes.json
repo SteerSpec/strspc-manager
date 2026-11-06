@@ -225,6 +225,15 @@
     "retired": false
   },
   {
+    "code": "RD024",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Supersedes changed after Draft",
+    "summary": "`supersedes` was added, removed or retargeted on a rule that has left Draft.",
+    "fix": "Restore `supersedes`. To replace a different rule, add a new rule with `strspc rule supersede`.",
+    "retired": false
+  },
+  {
     "code": "RE001",
     "module": "rule-eval",
     "severity": "Warning / Error",

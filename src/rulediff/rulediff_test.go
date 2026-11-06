@@ -1015,6 +1015,35 @@ func TestDiff_RD018_OverridesImmutable(t *testing.T) {
 	}
 }
 
+func TestDiff_RD024_SupersedesImmutable(t *testing.T) {
+	tests := []struct {
+		name       string
+		idx        int // 0 = TSTENT-001 (D), 2 = TSTENT-003 (I)
+		base, head *string
+		want       bool
+	}{
+		{"added on implemented rule", 2, nil, ptr("TSTENT-004"), true},
+		{"removed from implemented rule", 2, ptr("TSTENT-004"), nil, true},
+		{"retargeted on implemented rule", 2, ptr("TSTENT-004"), ptr("TSTENT-005"), true},
+		{"unchanged on implemented rule", 2, ptr("TSTENT-004"), ptr("TSTENT-004"), false},
+		{"added on draft rule", 0, nil, ptr("TSTENT-004"), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBase()
+			base.Rules[tt.idx].Supersedes = tt.base
+			head := makeHead(base)
+			head.Rules[tt.idx].Supersedes = tt.head
+			res := New().Diff(base, head)
+			if tt.want {
+				assertCodeSeverity(t, res, "RD024", result.Error)
+			} else {
+				assertNoCode(t, res, "RD024")
+			}
+		})
+	}
+}
+
 func TestDiff_RD020_Visibility(t *testing.T) {
 	tests := []struct {
 		name       string
