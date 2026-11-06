@@ -916,6 +916,99 @@ func TestCompareDir_NewFile(t *testing.T) {
 	}
 }
 
+// writeDirFile writes data as name in dir.
+func writeDirFile(t *testing.T, dir, name string, data []byte) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// SPEC §7.2 validates each changed entity file, so a file that is the same on
+// both sides, or a realm.json, draws no RD007 or RD009.
+func TestCompareDir_UnchangedFilesAreNotCompared(t *testing.T) {
+	baseDir, headDir := t.TempDir(), t.TempDir()
+	same, _ := json.Marshal(makeBase())
+	writeDirFile(t, baseDir, "TSTENT.json", same)
+	writeDirFile(t, headDir, "TSTENT.json", same)
+	manifest := []byte(`{"realm": {"id": "dev.example.r", "title": "R", "version": "1.0.0"}}`)
+	writeDirFile(t, baseDir, "realm.json", manifest)
+	writeDirFile(t, headDir, "realm.json", manifest)
+
+	res := CompareDir(baseDir, headDir)
+	if len(res.Diagnostics) != 0 {
+		t.Errorf("unchanged files must draw nothing, got: %v", res.Diagnostics)
+	}
+
+	// A changed manifest is not an entity file either; neither is a removed one.
+	writeDirFile(t, headDir, "realm.json", []byte(`{"realm": {"id": "dev.example.r", "title": "R", "version": "1.1.0"}}`))
+	if res := CompareDir(baseDir, headDir); len(res.Diagnostics) != 0 {
+		t.Errorf("a changed realm.json must draw nothing, got: %v", res.Diagnostics)
+	}
+	if err := os.Remove(filepath.Join(headDir, "realm.json")); err != nil {
+		t.Fatal(err)
+	}
+	if res := CompareDir(baseDir, headDir); len(res.Diagnostics) != 0 {
+		t.Errorf("a removed realm.json must draw nothing, got: %v", res.Diagnostics)
+	}
+}
+
+func TestCompareDir_ChangedFileIsStillCompared(t *testing.T) {
+	baseDir, headDir := t.TempDir(), t.TempDir()
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[1].Body = "Edited published body" // RD002
+	baseData, _ := json.Marshal(base)
+	headData, _ := json.Marshal(head)
+	writeDirFile(t, baseDir, "TSTENT.json", baseData)
+	writeDirFile(t, headDir, "TSTENT.json", headData)
+
+	assertHasCode(t, CompareDir(baseDir, headDir), "RD002")
+}
+
+// SPEC §7.2 item 8: the hash is recomputed for every changed file, a new one
+// included.
+func TestCompareNew_WrongHashIsRD008(t *testing.T) {
+	head := &entity.File{
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-03-24T00:00:00Z", Hash: ptr("blake3:00")},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 0, State: "D", Body: "Rule", AddedBy: "github:test", AddedAt: "2026-03-24"},
+		},
+	}
+	data, _ := json.Marshal(head)
+	assertHasCode(t, CompareNew(data), "RD008")
+
+	t.Run("through CompareDir", func(t *testing.T) {
+		baseDir, headDir := t.TempDir(), t.TempDir()
+		writeDirFile(t, headDir, "NEWENT.json", data)
+		assertHasCode(t, CompareDir(baseDir, headDir), "RD008")
+	})
+}
+
+func TestCompareNew_MatchingOrNullHashIsAccepted(t *testing.T) {
+	head := &entity.File{
+		Entity:  entity.Entity{ID: "NEWENT", Title: "New"},
+		RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-03-24T00:00:00Z"},
+		Rules: []entity.Rule{
+			{ID: "NEWENT-001", Revision: 0, State: "D", Body: "Rule", AddedBy: "github:test", AddedAt: "2026-03-24"},
+		},
+	}
+	unhashed, _ := json.Marshal(head)
+	if res := CompareNew(unhashed); !res.OK() {
+		t.Errorf("null hash: %v", res.Diagnostics)
+	}
+	hash, err := entity.ComputeHash(unhashed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head.RuleSet.Hash = &hash
+	hashed, _ := json.Marshal(head)
+	if res := CompareNew(hashed); !res.OK() {
+		t.Errorf("matching hash: %v", res.Diagnostics)
+	}
+}
+
 // --- strict mode ---
 
 func TestDiff_StrictMode_PromotesWarnings(t *testing.T) {
