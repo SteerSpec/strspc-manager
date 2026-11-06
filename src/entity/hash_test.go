@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -229,6 +230,19 @@ func TestMarshalFloat(t *testing.T) {
 		{"first value past the integer form", 1e16, "1e+16"},
 		{"large exponent", 1e20, "1e+20"},
 		{"largest float", 1.7976931348623157e308, "1.7976931348623157e+308"},
+		// Python switches to an exponent below 1e-4 and from 1e16, not at 1e6
+		// as Go's 'g' does.
+		{"fraction past 1e6", 1234567.5, "1234567.5"},
+		{"negative fraction past 1e6", -1234567.5, "-1234567.5"},
+		{"fraction past 1e7", 12345678.125, "12345678.125"},
+		{"fraction just below 1e16", 1234567890123456.5, "1234567890123456.5"},
+		{"fraction just above 1e15", 1000000000000000.5, "1000000000000000.5"},
+		{"integer between 1e15 and 1e16", 9007199254740992, "9007199254740992"},
+		{"first exponent below 1e-4", 1.234e-5, "1.234e-05"},
+		{"negative small exponent", -1e-5, "-1e-05"},
+		{"fraction with 15 digits", 123456789012345.6, "123456789012345.6"},
+		{"1.5e16", 1.5e16, "1.5e+16"},
+		{"negative zero", math.Copysign(0, -1), "0"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

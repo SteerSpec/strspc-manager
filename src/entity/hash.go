@@ -51,6 +51,11 @@ func nullHashes(obj map[string]any) {
 // The output matches Python's json.dumps(sort_keys=True, separators=(",",":"))
 // with ensure_ascii=True (the default), so that Blake3 hashes are identical
 // across Go and Python implementations.
+//
+// One difference remains: json.Unmarshal turns a lone surrogate escape such as
+// "\ud800" into U+FFFD, which Python's json.dumps would keep, so a file that
+// holds one hashes differently in the two. Entity files are valid UTF-8 text,
+// so none of the org's does; matching it would take a decoder of our own.
 func marshalCanonical(v any) ([]byte, error) {
 	switch val := v.(type) {
 	case map[string]any:
@@ -162,10 +167,20 @@ func marshalString(s string) []byte {
 }
 
 // marshalFloat formats a float64 matching Python's json.dumps output.
-// Integers are written without decimal point, others use compact representation.
+//
+// The digits are the shortest that round-trip, as in Python's repr. Python
+// writes an exponent below 1e-4 and from 1e16, and plain decimal in between;
+// Go's 'g' format would switch at 1e6. A number that is whole and below 1e16 is
+// written without a decimal point, as Python writes an int: json.Unmarshal
+// keeps no difference between 1 and 1.0, and schema numbers are integers.
 func marshalFloat(f float64) []byte {
-	if f == float64(int64(f)) && f >= -1e15 && f <= 1e15 {
-		return []byte(strconv.FormatInt(int64(f), 10))
+	if f == 0 {
+		return []byte("0") // also -0
 	}
-	return []byte(strconv.FormatFloat(f, 'g', -1, 64))
+	exp := strconv.FormatFloat(f, 'e', -1, 64) // d.ddde±XX
+	e, err := strconv.Atoi(exp[strings.IndexByte(exp, 'e')+1:])
+	if err != nil || e < -4 || e >= 16 {
+		return []byte(exp)
+	}
+	return []byte(strconv.FormatFloat(f, 'f', -1, 64))
 }
