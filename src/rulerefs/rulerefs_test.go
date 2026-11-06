@@ -225,6 +225,17 @@ func TestDeclaredStandardClauses(t *testing.T) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
+	t.Run("hyphens and digits in the standard id", func(t *testing.T) {
+		const hyphenated = "nist.sp-800-53:ABC-002 and open-banking.uk:XYZ-003 and iso.27001:QQQ-004"
+		got := findings(check(t, hyphenated, []rulerefs.Source{core()},
+			rulerefs.WithStandards("nist.sp-800-53", "open-banking.uk", "iso.27001")))
+		if got != nil {
+			t.Errorf("got %v, want none", got)
+		}
+		if got := findings(check(t, hyphenated, []rulerefs.Source{core()})); len(got) != 3 {
+			t.Errorf("undeclared: got %v, want 3 RF001", got)
+		}
+	})
 	t.Run("bare clause is still judged", func(t *testing.T) {
 		got := findings(check(t, "CWE-787", []rulerefs.Source{core()}, rulerefs.WithStandards("mitre.cwe")))
 		want := []finding{{"RF001", result.Error, 1}}

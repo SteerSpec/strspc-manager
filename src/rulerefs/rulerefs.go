@@ -28,8 +28,11 @@ const ignoreMarker = "strspc-refs: ignore"
 // as "MAY possess one or more properties", reads as ordinary prose.
 const minCopyWords = 5
 
-// realmQualifier matches an optional realm prefix, as group 1 of a pattern.
-const realmQualifier = `(?:([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)*):)?`
+// realmQualifier matches an optional realm prefix, as group 1 of a pattern. A
+// component may hold hyphens, as in the standard id nist.sp-800-53
+// (STDREF-002); the first one starts with a letter, so that 1.5:ABC-123 stays
+// prose.
+const realmQualifier = `(?:([a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*):)?`
 
 var (
 	// citationRe finds the stored form of a rule identifier, which is a
