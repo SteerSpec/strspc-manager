@@ -87,7 +87,7 @@ Open source software by Consulare. Apache 2.0, see [LICENSE](LICENSE). Pull requ
 
 Do not open a public issue for a vulnerability. Report it privately through GitHub: on this
 repository, choose **Security**, then **Report a vulnerability**. The
-[organisation security policy](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/SECURITY.md)
+[organization security policy](https://github.com/SteerSpec/.github/blob/8aaccf4f890389006b2222b7f99b0bbe62c6ae58/SECURITY.md)
 applies.
 
 ## Community
