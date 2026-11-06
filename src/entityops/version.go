@@ -109,7 +109,8 @@ func parseSemver(version string) (int, int, int, error) {
 }
 
 // parseSemverComponent validates and parses a single numeric semver component.
-// It rejects leading zeros (except "0" itself) and negative/signed values.
+// It rejects leading zeros (except "0" itself) and signed values, "+1" and "-0"
+// included, which strconv.Atoi would take.
 func parseSemverComponent(version, label, s string) (int, error) {
 	if s == "" {
 		return 0, fmt.Errorf("invalid semver %q: empty %s", version, label)
@@ -123,6 +124,9 @@ func parseSemverComponent(version, label, s string) (int, error) {
 	}
 	if n < 0 {
 		return 0, fmt.Errorf("invalid semver %q: %s must be non-negative", version, label)
+	}
+	if s[0] == '+' || s[0] == '-' {
+		return 0, fmt.Errorf("invalid semver %q: %s %q must not carry a sign", version, label, s)
 	}
 	return n, nil
 }
