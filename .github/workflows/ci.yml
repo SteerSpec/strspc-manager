@@ -64,6 +64,10 @@ jobs:
       pull-requests: read
     with:
       path: rules/
+      # Validate the rule ids that docs/SPEC.md and other Markdown cite against
+      # the core pin in .strspc/config.yaml. src/render/testdata holds fixtures.
+      refs: true
+      refs-exclude: src/render/testdata/**
       diff: >-
         ${{ !(
           (
