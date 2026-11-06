@@ -519,6 +519,7 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 | RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
+| RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 

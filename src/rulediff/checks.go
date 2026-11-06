@@ -14,7 +14,7 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021 and RD022 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022 and RD024 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -97,6 +97,19 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 			Code:     "RD018",
 			Severity: result.Error,
 			Message:  fmt.Sprintf("rule overrides is immutable in state %q: changed from %s to %s; supersede the rule to change it", b.State, refString(b.Overrides), refString(h.Overrides)),
+			Path:     path,
+		})
+	}
+
+	// RD024: supersedes is immutable once a rule has left Draft (RUL-007);
+	// adding, removing or retargeting it would rewrite which rule this one
+	// replaces without a new rule.
+	if b.State != entity.StateDraft && !sameRef(b.Supersedes, h.Supersedes) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD024",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("rule supersedes is immutable in state %q: changed from %s to %s; add a new rule to supersede a different one", b.State, refString(b.Supersedes), refString(h.Supersedes)),
 			Path:     path,
 		})
 	}

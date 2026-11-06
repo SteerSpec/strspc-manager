@@ -463,7 +463,15 @@ var codeTable = []CodeInfo{
 		Title:    "added_by not a listed contributor",
 		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
+	}, {
+		Code:     "RD024",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Supersedes changed after Draft",
+		Summary:  "`supersedes` was added, removed or retargeted on a rule that has left Draft.",
+		Fix:      "Restore `supersedes`. To replace a different rule, add a new rule with `strspc rule supersede`.",
 	},
+
 	{
 		Code:     "RM001",
 		Module:   "realm-lint",
