@@ -730,7 +730,7 @@ For each changed entity file, the validator compares the before and after states
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
-16. **Overrides are immutable:** Once a rule has left Draft, its `overrides` may not be added, removed or retargeted; supersede the rule instead.
+16. **Overrides and supersedes are immutable:** Once a rule has left Draft, its `overrides` and its `supersedes` may not be added, removed or retargeted (RD018, RD024); to change either, add a new rule instead.
 17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides` or `supersedes` of a Draft rule, by one. A `standard` note never moves it.
 18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
