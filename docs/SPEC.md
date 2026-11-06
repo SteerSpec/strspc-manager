@@ -612,6 +612,8 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 
 The stored `<EUID>-<NNN>` form always matches, which also covers a rendered identifier under the default format. A Realm's other rendered shapes match only that Realm's EUIDs. An unknown prefix is reported only when it is uppercase and starts with a letter, so `feat-123` and `100-200` are not citations. URLs, identifiers inside a longer hyphenated token, identifiers passed to `WithIgnore` and states passed to `WithAllowedStates` are skipped, as is a line holding `strspc-refs: ignore` and the line after it. A superseder in `D` or `A` replaces nothing.
 
+A clause qualified with the id of a declared external standard, as in `mitre.cwe` clause 787, is not a citation even when its shape is that of a rule ID. The standards that the entities of the sources declare count, and so do the ones passed with `WithStandards`, such as those of a Realm Manifest (RLMMNFST-007). A Realm that has the same id still resolves its own rules.
+
 RF007 compares whole bodies in every rule state, after dropping URLs and HTML tags and comments, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found, and a rule no citation can reach, because earlier sources hold its ID and its Realm, isn't compared. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-002 leaves that to the evaluator.
 
 | Code | Severity | When it fires |

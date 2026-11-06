@@ -190,6 +190,61 @@ func TestIgnore(t *testing.T) {
 	}
 }
 
+func TestDeclaredStandardClauses(t *testing.T) {
+	const text = "See mitre.cwe:CWE-787, owasp.asvs:ASV-001 and other.std:ZZZ-123 here."
+	t.Run("undeclared is a realm that is not a dependency", func(t *testing.T) {
+		res := check(t, text, []rulerefs.Source{core()})
+		if got := len(findings(res)); got != 3 {
+			t.Fatalf("got %d findings, want 3 RF001: %v", got, findings(res))
+		}
+	})
+	t.Run("declared by an entity of a source", func(t *testing.T) {
+		src := core()
+		src.Entities[0].Entity.Standards = []entity.StandardRef{
+			{ID: "mitre.cwe", Relation: entity.RelationImplements},
+			{ID: "owasp.asvs", Relation: entity.RelationDerivedFrom},
+		}
+		got := findings(check(t, text, []rulerefs.Source{src}))
+		want := []finding{{"RF001", result.Error, 1}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want only other.std reported: %v", got, want)
+		}
+	})
+	t.Run("declared by an option", func(t *testing.T) {
+		got := findings(check(t, text, []rulerefs.Source{core()}, rulerefs.WithStandards("mitre.cwe", "owasp.asvs", "other.std")))
+		if got != nil {
+			t.Errorf("got %v, want none", got)
+		}
+	})
+	t.Run("a realm of that id still resolves its rules", func(t *testing.T) {
+		src := core()
+		src.RealmID = "mitre.cwe"
+		got := findings(check(t, "mitre.cwe:RUL-999", []rulerefs.Source{src}, rulerefs.WithStandards("mitre.cwe")))
+		want := []finding{{"RF001", result.Error, 1}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+	t.Run("hyphens and digits in the standard id", func(t *testing.T) {
+		const hyphenated = "nist.sp-800-53:ABC-002 and open-banking.uk:XYZ-003 and iso.27001:QQQ-004"
+		got := findings(check(t, hyphenated, []rulerefs.Source{core()},
+			rulerefs.WithStandards("nist.sp-800-53", "open-banking.uk", "iso.27001")))
+		if got != nil {
+			t.Errorf("got %v, want none", got)
+		}
+		if got := findings(check(t, hyphenated, []rulerefs.Source{core()})); len(got) != 3 {
+			t.Errorf("undeclared: got %v, want 3 RF001", got)
+		}
+	})
+	t.Run("bare clause is still judged", func(t *testing.T) {
+		got := findings(check(t, "CWE-787", []rulerefs.Source{core()}, rulerefs.WithStandards("mitre.cwe")))
+		want := []finding{{"RF001", result.Error, 1}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
+}
+
 func TestRealmFormats(t *testing.T) {
 	realm := func(id string, rif *entity.RuleIdentifierFormat) rulerefs.Source {
 		return rulerefs.Source{
