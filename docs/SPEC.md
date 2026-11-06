@@ -375,6 +375,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
   ],
   "sub_entities": [
     {
+      "$schema": "https://steerspec.dev/schemas/entity/v1.json",
       "entity": {
         "id": "<SUB_EUID>",
         "title": "<name>",
