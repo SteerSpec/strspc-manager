@@ -232,6 +232,35 @@ func TestStandardRealm_SubRealmKind(t *testing.T) {
 	})
 }
 
+// A sub_realms entry that is not a directory directly inside the Realm is
+// never read, so files outside the Realm are not linted (RM008 reports it).
+func TestStandardRealm_SubRealmOutsideIgnored(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "realm")
+	writeJSON(t, filepath.Join(dir, "realm.json"), &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: entity.RealmMeta{ID: "dev.test.code", Title: "C", Version: "1.0.0"}, SubRealms: []string{"../outside", "a/b", ".", ""}})
+	writeJSON(t, filepath.Join(root, "outside", "realm.json"), &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: entity.RealmMeta{ID: "dev.test.outside", Title: "O", Version: "1.0.0"}})
+	writeJSON(t, filepath.Join(root, "outside", "OUT.json"), entityWith("OUT", []entity.Rule{stdRule("OUT-001", entity.StatePublished, "V1.1.1", nil, nil)}))
+	res := &result.Result{}
+	CheckStandardRealm(dir, &entity.RealmFile{Realm: entity.RealmMeta{ID: "dev.test.code"}, SubRealms: []string{"../outside", "a/b", ".", ""}}, res)
+	if got := standardCodes(res); len(got) != 0 {
+		t.Errorf("got %v, want none: the entries name no sub-realm directory", got)
+	}
+}
+
+// Two profile sets are told apart whatever characters their names hold, and
+// the same set matches in any order.
+func TestProfileKey(t *testing.T) {
+	if profileKey([]string{"a\x00b"}) == profileKey([]string{"a", "b"}) {
+		t.Error(`["a\x00b"] and ["a", "b"] share a key`)
+	}
+	if profileKey([]string{"a,b"}) == profileKey([]string{"a", "b"}) {
+		t.Error(`["a,b"] and ["a", "b"] share a key`)
+	}
+	if profileKey([]string{"L2", "L1"}) != profileKey([]string{"L1", "L2"}) {
+		t.Error("the order of the names changed the key")
+	}
+}
+
 // Without a manifest there is no Realm, so neither kind can be judged.
 func TestStandardRealm_NoManifest(t *testing.T) {
 	dir := t.TempDir()

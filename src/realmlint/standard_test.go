@@ -131,6 +131,12 @@ func TestManifest_EachCode(t *testing.T) {
 		{"ref on a rationale", func(rf *entity.RealmFile) {
 			rf.Notes[2].Ref = "owasp.asvs:V1.1.1"
 		}, map[string]int{"RM024": 1}},
+		{"ref on a clarification", func(rf *entity.RealmFile) {
+			rf.Notes[2].Type, rf.Notes[2].Ref = "clarification", "owasp.asvs:V1.1.1"
+		}, map[string]int{"RM024": 1}},
+		{"ref on an unknown type is the schema's", func(rf *entity.RealmFile) {
+			rf.Notes[2].Type, rf.Notes[2].Ref = "other", "owasp.asvs:V1.1.1"
+		}, map[string]int{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

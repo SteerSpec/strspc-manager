@@ -10,6 +10,12 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
+// The Realm Note types other than exclusion and reference (NTE-031).
+const (
+	noteTypeRationale     = "rationale"
+	noteTypeClarification = "clarification"
+)
+
 // realmNoteIDRe matches a Realm Note identifier, capturing its number
 // (NTE-030).
 var realmNoteIDRe = regexp.MustCompile(`^REALM/(\d{3})$`)
@@ -105,9 +111,10 @@ func checkRealmNoteIDs(notes []entity.RealmNote, realmPath string, res *result.R
 // checkRealmNoteRefs runs RM023 and RM024 on the ref of each Realm Note. An
 // exclusion has a ref whose <id> names a Standard Reference with a realm in
 // this manifest (NTE-034): RM023. Only an exclusion, or the reference an
-// exclusion becomes when withdrawn (NTE-035), has a ref: RM024. Whether a
-// reference with a ref was an exclusion before needs the history, so that is
-// left to rule-diff.
+// exclusion becomes when withdrawn (NTE-035), has a ref, so a rationale or
+// clarification with one is RM024. Whether a reference with a ref was an
+// exclusion before needs the history, so that is left to rule-diff. A type
+// outside NTE-031 is left to the schema (RM002).
 func checkRealmNoteRefs(rf *entity.RealmFile, realmPath string, res *result.Result) {
 	for _, n := range rf.Notes {
 		switch n.Type {
@@ -121,9 +128,7 @@ func checkRealmNoteRefs(rf *entity.RealmFile, realmPath string, res *result.Resu
 					Path:     realmPath,
 				})
 			}
-		case entity.NoteTypeReference:
-			// A withdrawn exclusion keeps its ref (NTE-035).
-		default:
+		case noteTypeRationale, noteTypeClarification:
 			if n.Ref != "" {
 				res.Add(result.Diagnostic{
 					Module:   module,

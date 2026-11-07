@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -26,6 +27,9 @@ func CheckStandardRealm(dir string, rf *entity.RealmFile, res *result.Result) {
 	}
 	checkStandardRealmDir(dir, &rf.Realm, res, opts...)
 	for _, name := range rf.SubRealms {
+		if !isSubRealmName(name) {
+			continue // realm-lint reports it (RM008).
+		}
 		subDir := filepath.Join(dir, name)
 		sub, err := entity.LoadRealm(filepath.Join(subDir, "realm.json"))
 		if err != nil {
@@ -33,6 +37,13 @@ func CheckStandardRealm(dir string, rf *entity.RealmFile, res *result.Result) {
 		}
 		checkStandardRealmDir(subDir, &sub.Realm, res)
 	}
+}
+
+// isSubRealmName reports whether a sub_realms entry names a directory directly
+// inside the Realm, as RM008 requires. Any other entry, such as "../outside",
+// is never read.
+func isSubRealmName(name string) bool {
+	return name != "" && name != "." && filepath.IsLocal(name) && !strings.ContainsAny(name, `/\`)
 }
 
 // standardRule is a rule of one Realm with where it was found, for the checks
@@ -254,8 +265,14 @@ func checkClauseProfiles(live []standardRule, res *result.Result) {
 }
 
 // profileKey returns the profile names as one string, the same for any order.
+// Each name is quoted, so no two different sets share a key, whatever
+// characters the names hold.
 func profileKey(profiles []string) string {
 	sorted := slices.Clone(profiles)
 	slices.Sort(sorted)
-	return strings.Join(sorted, "\x00")
+	quoted := make([]string, len(sorted))
+	for i, p := range sorted {
+		quoted[i] = strconv.Quote(p)
+	}
+	return strings.Join(quoted, ",")
 }
