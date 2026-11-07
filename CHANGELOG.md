@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.44.0](https://github.com/SteerSpec/strspc-manager/compare/v1.43.0...v1.44.0) (2026-11-07)
+
+
+### Features
+
+* **entity:** preserve the core 1.21.0 fields ([#306](https://github.com/SteerSpec/strspc-manager/issues/306)) ([a6a04ae](https://github.com/SteerSpec/strspc-manager/commit/a6a04ae2c08b79d7c6af80d3a90ee4cc5b2d8e73))
+
 ## [1.43.0](https://github.com/SteerSpec/strspc-manager/compare/v1.42.0...v1.43.0) (2026-11-06)
 
 
