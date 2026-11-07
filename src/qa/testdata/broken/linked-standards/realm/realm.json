@@ -1,0 +1,40 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.linked",
+    "title": "QA realm dev.steerspec.qa.linked",
+    "version": "1.0.0",
+    "standards": [
+      {
+        "id": "owasp.asvs",
+        "relation": "implements",
+        "version": "4.0.3",
+        "realm": "dev.steerspec.qa.asvs",
+        "profile": "L1"
+      },
+      {
+        "id": "nist.ssdf",
+        "relation": "implements",
+        "version": "1.1",
+        "realm": "dev.steerspec.qa.notstd"
+      },
+      {
+        "id": "iso.27001",
+        "relation": "implements",
+        "realm": "dev.steerspec.qa.missing"
+      }
+    ]
+  },
+  "dependencies": [
+    {
+      "realm_id": "dev.steerspec.qa.asvs",
+      "version": "1.0.0",
+      "source": "../deps/asvs/"
+    },
+    {
+      "realm_id": "dev.steerspec.qa.notstd",
+      "version": "1.0.0",
+      "source": "../deps/notstd/"
+    }
+  ]
+}

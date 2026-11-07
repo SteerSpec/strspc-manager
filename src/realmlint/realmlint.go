@@ -14,7 +14,6 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -172,17 +171,21 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	checkSchemaDir(dir, res)
 
 	// RM014–RM016: Dependency pins and schema drift.
-	coreDir := l.checkDependencies(ctx, dir, rf, realmPath, res)
+	fetched := make(fetchedDeps)
+	coreDir := l.checkDependencies(ctx, dir, rf, realmPath, fetched, res)
 	checkSchemaDrift(dir, coreDir, res)
 
 	// RM008–RM011, RM013, RM017: Sub-realm validation.
-	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, coreDir, res)
+	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, coreDir, fetched, res)
 
 	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
 	parentEUIDs := l.scanEntityFiles(ctx, dir, rf.SubRealms, res)
 
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
+
+	// RM026–RM029: Standard References that link a Standard Realm.
+	checkLinkedStandards(dir, rf, realmPath, fetched, res)
 
 	// RL031, RL033–RL041: Without a rule linter here the caller runs
 	// LintRealm, which holds these checks.
@@ -388,14 +391,19 @@ func checkSchemaDir(dir string, res *result.Result) {
 
 // checkDependencies validates the dependencies rf declares (RM014, RM016) and
 // returns the directory of the core Realm it pins, "" if it pins none or the
-// core could not be fetched or is not what was pinned.
-func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *entity.RealmFile, realmPath string, res *result.Result) string {
+// core could not be fetched or is not what was pinned. Each dependency that
+// passes both halves of RM014 is recorded in fetched under dir, for the checks
+// on the Standard Realms the tree links (RM026–RM029), which fetch nothing
+// themselves.
+func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *entity.RealmFile, realmPath string, fetched fetchedDeps, res *result.Result) string {
 	coreDir := ""
 	for _, dep := range rf.Dependencies {
 		// RM014: a github:// source pinned to a release tag names the version.
 		// A commit SHA or @latest names none, so only the manifest check applies.
+		tagMatches := true
 		if ref, err := remote.ParseGitHub(dep.Source); err == nil {
 			if m := versionTagRe.FindStringSubmatch(ref.Ref); m != nil && m[1] != dep.Version {
+				tagMatches = false
 				res.Add(result.Diagnostic{
 					Module:   module,
 					Code:     "RM014",
@@ -434,7 +442,15 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 				Message:  fmt.Sprintf("dependency %q version %q: the manifest at %q declares %q version %q", dep.RealmID, dep.Version, dep.Source, depRF.Realm.ID, depRF.Realm.Version),
 				Path:     realmPath,
 			})
-		} else if dep.RealmID == coreRealmID {
+			continue
+		}
+		// A dependency that fails either half of RM014 is not the one pinned,
+		// so neither RM015 nor RM026–RM029 compare anything with it.
+		if !tagMatches {
+			continue
+		}
+		fetched.add(dir, dep.RealmID, fetchedDep{dir: depDir, rf: depRF, declaredAt: realmPath})
+		if dep.RealmID == coreRealmID {
 			coreDir = depDir
 		}
 	}
@@ -672,7 +688,7 @@ func copyDiagnostics(from *result.Result, fpath string, to *result.Result) {
 // coreDir is the core Realm the parent pins, which a sub-realm inherits unless
 // it pins its own (RLM-014). Returns a map of sub-realm name → EUID map for
 // cross-realm collision checks.
-func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity.RealmFile, realmPath, coreDir string, res *result.Result) map[string]map[string]string {
+func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity.RealmFile, realmPath, coreDir string, fetched fetchedDeps, res *result.Result) map[string]map[string]string {
 	if len(rf.SubRealms) == 0 {
 		return nil
 	}
@@ -681,7 +697,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 	for _, srName := range rf.SubRealms {
 		// Validate sub-realm name is a clean directory name (no path traversal).
-		if srName == "" || srName == "." || srName == ".." || strings.ContainsAny(srName, "/\\") {
+		if !isSubRealmName(srName) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM008",
@@ -761,7 +777,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		checkRealmFields(srRF, srRealmPath, res)
 		checkManifestNotesAndHash(srRF, srData, srRealmPath, res)
 		checkSchemaDir(srDir, res)
-		srCoreDir := l.checkDependencies(ctx, srDir, srRF, srRealmPath, res)
+		srCoreDir := l.checkDependencies(ctx, srDir, srRF, srRealmPath, fetched, res)
 		if !declaresCore(srRF) {
 			srCoreDir = coreDir
 		}

@@ -133,14 +133,16 @@ func TestRM015_SchemaDrift(t *testing.T) {
 }
 
 func TestRM015_SkipsMismatchedCore(t *testing.T) {
-	for _, tt := range []struct{ name, id, version string }{
-		{"other version", coreRealmID, "1.10.0"},
-		{"other realm", "dev.example.other", "9.9.9"},
+	for _, tt := range []struct{ name, id, version, source string }{
+		{"other version", coreRealmID, "1.10.0", coreSource},
+		{"other realm", "dev.example.other", "9.9.9", coreSource},
+		// The manifest matches the pin, but the source names another tag.
+		{"other source tag", coreRealmID, "9.9.9", "github://SteerSpec/strspc-rules@v1.0.0/rules/core"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			dir, core := t.TempDir(), t.TempDir()
 			writeRealm(t, core, tt.id, tt.version, nil, nil, map[string]string{"entity.v1.schema.json": `{"a": 1}`})
-			writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("9.9.9", coreSource), nil,
+			writeRealm(t, dir, "dev.example.test", "0.1.0", coreDep("9.9.9", tt.source), nil,
 				map[string]string{"entity.v1.schema.json": `{"a": 2}`})
 			res := New(WithDependencyFetcher(fetchFrom(core))).Lint(context.Background(), dir)
 			assertHasCode(t, res, "RM014")

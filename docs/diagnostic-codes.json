@@ -850,7 +850,7 @@
     "module": "realm-lint",
     "severity": "Warning",
     "title": "Dependency unavailable",
-    "summary": "A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run.",
+    "summary": "A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run; or an entity file of a linked Standard Realm cannot be read, so RM029 does not check notes against its clause list.",
     "fix": "Check the dependency's `source`, your network connection and your GitHub token, then run the check again.",
     "retired": false
   },
@@ -933,6 +933,42 @@
     "title": "Manifest hash mismatch",
     "summary": "`realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported.",
     "fix": "Recompute the `hash` after every change to the manifest (RLMMNFST-014), as `entity.ComputeRealmHash` does, or leave it out: it stays optional until the CLI recomputes it on every write.",
+    "retired": false
+  },
+  {
+    "code": "RM026",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Linked realm is not a Standard Realm dependency",
+    "summary": "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
+    "fix": "Add the Standard Realm to `dependencies`, pinned to the transcription release, or correct the `realm` to the `realm_id` of one.",
+    "retired": false
+  },
+  {
+    "code": "RM027",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Standard version is not the linked edition",
+    "summary": "A Standard Reference with a `realm` has no `version`, or, with a dependency fetcher, a `version` other than the `edition` of that Realm (STDREF-018).",
+    "fix": "Set `version` to the `edition` the linked Standard Realm declares. The dependency's own `version` pins the transcription release, not the edition.",
+    "retired": false
+  },
+  {
+    "code": "RM028",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Profile not declared by the linked realm",
+    "summary": "With a dependency fetcher: the `profile` of a Standard Reference names none of the `profiles` of the Standard Realm its `realm` names (STDREF-027).",
+    "fix": "Use one of the `profiles` the linked Standard Realm declares, or remove `profile` to claim the whole clause list.",
+    "retired": false
+  },
+  {
+    "code": "RM029",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Clause not in the linked realm",
+    "summary": "With a dependency fetcher: a `standard` note whose Standard Reference has a `realm` maps a clause that is not in that Realm's clause list, the distinct `clause` values of its live rules, matched exactly (STDREF-021).",
+    "fix": "Correct the clause to one the linked Standard Realm transcribes. A clause whose rules are all Terminated or Retired has left the list: map the clause of the rule that superseded it.",
     "retired": false
   },
   {

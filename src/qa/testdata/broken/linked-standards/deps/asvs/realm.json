@@ -1,0 +1,19 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.asvs",
+    "title": "QA Standard Realm dev.steerspec.qa.asvs",
+    "version": "1.0.0",
+    "kind": "standard",
+    "edition": "5.0.0",
+    "license": "CC-BY-SA-4.0",
+    "attribution": {
+      "text": "QA transcription",
+      "url": "https://example.com/asvs"
+    },
+    "profiles": [
+      "L1",
+      "L2"
+    ]
+  }
+}

@@ -107,6 +107,10 @@ RM022 active realm-note-ids-not-sequential
 RM023 active exclusion-ref-invalid
 RM024 active realm-note-ref-not-allowed
 RM025 active realm-manifest-hash-mismatch
+RM026 active standard-realm-not-a-dependency
+RM027 active standard-version-not-edition
+RM028 active standard-profile-undeclared
+RM029 active standard-clause-unknown
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable

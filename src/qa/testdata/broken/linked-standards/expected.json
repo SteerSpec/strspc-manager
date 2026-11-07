@@ -1,0 +1,50 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM026",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM026",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM027",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM027",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM028",
+    "severity": "error",
+    "path": "realm/APP.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM029",
+    "severity": "error",
+    "path": "realm/APP.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM029",
+    "severity": "error",
+    "path": "realm/APP.json"
+  }
+]
