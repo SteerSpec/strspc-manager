@@ -29,3 +29,6 @@ vendor/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Claude Code agent worktrees
+.claude/worktrees/

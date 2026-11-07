@@ -59,7 +59,7 @@ An entity MAY declare `inherits`, the EUID of one other entity whose effective r
 | `protected` | inherit, override | inherit, override | inherit |
 | `private` | inherit, override | inherit | nothing |
 
-**Standards.** An entity MAY declare a `standards` array of Standard References (ENT-017), and so MAY a Realm (RLMMNFST-007). Each holds `id`, `relation` (`implements` or `derived_from`) and optional `version` and `url`. A rule maps to a clause through a `standard` note (§2.6), whose `id` resolves in the entity owning the rule, its containing entities nearest first, its Realm, then that Realm's parent (NTE-016). `inherits` passes on no references (STDREF-009).
+**Standards.** An entity MAY declare a `standards` array of Standard References (ENT-017), and so MAY a Realm (RLMMNFST-007). Each holds `id`, `relation` (`implements` or `derived_from`) and optional `version` and `url`, and from Core 1.21.0 an optional `realm`, the Standard Realm the reference links to (STDREF-017), with an optional `profile` of that Realm, allowed only with `realm` (STDREF-019). A rule maps to a clause through a `standard` note (§2.6), whose `id` resolves in the entity owning the rule, its containing entities nearest first, its Realm, then that Realm's parent (NTE-016). `inherits` passes on no references (STDREF-009).
 
 **Coverage.** The `coverage` package measures each entity of a Realm tree over its coverage rule set (STDREF-010): `inherit.Effective` with its default states. A clause, identified by its text with the `id` and `version` its note resolves to (STDREF-011), is `covered`, `mapped` or `lapsed`, or `cited` when its reference is `derived_from`. Only an Implemented rule covers. A rule that overrides or supersedes another has only its own mappings (STDREF-016), and a clause it drops shows as `lapsed`, built from the old rule's note. SteerSpec holds no clause lists, so a clause nothing maps can't be reported.
 
@@ -85,6 +85,10 @@ Each rule carries:
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
 | `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. Omitted when the rule overrides none. |
+| `clause` | string (optional) | The clause of an external standard the rule transcribes (RUL-015). Only a Standard Realm's rules have one (RUL-017). Omitted when empty. Core 1.21.0 or later. |
+| `profiles` | array of strings (optional) | Unique names of the profiles of its Standard Realm the rule belongs to (RUL-016). Omitted when empty. Core 1.21.0 or later. |
+
+Both fields are part of the file the Rule Set Hash covers.
 
 **Immutability constraint:** Once a rule is in any state other than Draft (`D`), it is immutable. Modifications must be introduced by superseding it with a new rule.
 
@@ -146,6 +150,9 @@ The evaluator receives the note types listed in `ruleeval.PromptNoteTypes`, ever
 | `extends` | Declares that this rule builds on another rule. The AI evaluator reads the body of each live rule it names alongside this rule, one hop only. | Rules |
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
 | `standard` | Maps the rule to one clause of an external standard, as `<id>:<clause>` split at the first colon (NTE-013, NTE-014). Can be added, revised or withdrawn in any rule state, and never moves the rule's revision (NTE-017, NTE-018). | Rules |
+| `exclusion` | Declares one clause not applicable to its Realm, with `ref` `<id>:<clause>` and the justification as content (NTE-032 to NTE-034). Withdrawn only by retyping it to `reference` (NTE-035). Core 1.21.0 or later. | Realms (Realm Notes) |
+
+Realm Notes, stored in the `notes` array of `realm.json` (§2.8, Realm Manifest), take only `exclusion`, `rationale`, `clarification` and `reference` (NTE-029, NTE-031).
 
 ### 2.7 Sub-Entities
 
@@ -183,11 +190,20 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.title` | string | Human-readable name. |
 | `realm.version` | string | Semantic version of the Realm. |
 | `realm.language` | string | Natural language of the Realm as a BCP 47 tag; `en` is the only accepted value (RLMMNFST-006). Absent means `en` for a top-level Realm (RLM-017, RLM-021). A sub-realm leaves it out and inherits its parent's language (RLM-018, RLM-022, RM017). |
-| `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url }` (RLMMNFST-007, STDREF-001 to STDREF-008). Omitted when empty. |
+| `realm.standards` | array | Standard References the Realm cites, as `{ id, relation, version, url, realm, profile }` (RLMMNFST-007, STDREF-001 to STDREF-008). The optional `realm` names the Standard Realm the reference links to (STDREF-017), and `profile`, allowed only with `realm`, claims one of its profiles (STDREF-019); both Core 1.21.0 or later. Omitted when empty. |
+| `realm.kind` | string | `standard` for a Standard Realm (RLMMNFST-008); absent for a code Realm (RLMMNFST-009). Core 1.21.0 or later. |
+| `realm.license` | string | SPDX license identifier of the Realm's content (RLMMNFST-010). Core 1.21.0 or later. |
+| `realm.attribution` | object | `{ text, url }` crediting the source of the Realm's content (RLMMNFST-011). Core 1.21.0 or later. |
+| `realm.edition` | string | The edition of the standard a Standard Realm transcribes (STDRLM-002). Core 1.21.0 or later. |
+| `realm.profiles` | array of strings | Profile names a Standard Realm's rules may declare, in order (STDRLM-004). Core 1.21.0 or later. |
 | `realm.contributors` | array | Contributors of the Realm (CTRB-004), each `{ id, email, github_id }`: `id` is the contributor identifier `<idp>:<subject>` (CTRB-001); `email` (CTRB-007) and the numeric `github_id` of a `github` contributor (CTRB-008) are optional. A sub-realm uses its parent's list (CTRB-006). Omitted when empty. Core 1.16.0 or later. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.20.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.21.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
+| `notes` | array | Realm Notes (RLMMNFST-012, NTE-029), each `{ id, type, ref, content, added_by, added_at, revision }`: `id` is `REALM/NNN` (NTE-030), `type` is `exclusion`, `rationale`, `clarification` or `reference` (NTE-031), and `ref`, the `<id>:<clause>` an exclusion excludes, appears only on an exclusion or on the `reference` it becomes when withdrawn (NTE-034, NTE-035). Omitted when empty. Core 1.21.0 or later. |
+| `hash` | string | Blake3 hash of the manifest without its `hash` field (RLMMNFST-013), recomputed on every change (RLMMNFST-014). Core 1.21.0 or later. |
+
+The core 1.21.0 fields are modeled and kept on every rewrite; the lint checks their Draft rules describe (Standard Realms, Realm Notes, the manifest hash) are not implemented yet.
 
 RLMMNFST-002 sets the required fields. Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
