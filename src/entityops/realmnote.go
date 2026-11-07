@@ -42,7 +42,7 @@ func AddRealmNote(rf *entity.RealmFile, noteType, content, ref, addedBy string, 
 			return "", fmt.Errorf("exclusion %w (NTE-034)", err)
 		}
 	} else if ref != "" {
-		return "", fmt.Errorf("a Realm Note of type %q has no ref: only an exclusion does (NTE-034, NTE-035)", noteType)
+		return "", fmt.Errorf("a ref is not allowed on a Realm Note of type %q: only an exclusion takes one (NTE-034, NTE-035)", noteType)
 	}
 	if err := CheckAddedBy(addedBy, contributors); err != nil {
 		return "", err
