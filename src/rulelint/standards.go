@@ -87,20 +87,62 @@ func CheckRealmStandards(dir string, rf *entity.RealmFile, res *result.Result) {
 // be loaded is skipped: realm-lint reports it (RM009). A note whose content
 // doesn't parse is left to RL029.
 func UnresolvedStandardNotes(dir string, rf *entity.RealmFile) []UnresolvedNote {
+	var out []UnresolvedNote
+	WalkRealmStandards(dir, rf, func(path string, ef *entity.File, scopes [][]entity.StandardRef) {
+		out = append(out, unresolvedNotes(ef, scopes, path)...)
+	})
+	return out
+}
+
+// WalkRealmStandards calls fn on each entity of the Realm at dir and of its
+// sub-realms, sub-entities included, depth first in walk order, with the
+// Standard References its `standard` notes resolve against (NTE-016): its
+// own, those of the entities containing it, then those of its Realm and of
+// that Realm's parent, nearest first, as entity.ResolveStandard takes them.
+// path is the entity file holding the entity. rf is used as given and
+// dir/realm.json is not read again. A sub_realms entry that isn't a directory
+// directly inside dir, or whose manifest can't be loaded, is skipped:
+// realm-lint reports it (RM008, RM009). A file that can't be read or parsed
+// is skipped too, as the first pass of either linter reports it.
+func WalkRealmStandards(dir string, rf *entity.RealmFile, fn func(path string, ef *entity.File, scopes [][]entity.StandardRef)) {
 	var opts []entity.WalkOption
 	if len(rf.SubRealms) > 0 {
 		opts = append(opts, entity.WithExcludeDirs(rf.SubRealms))
 	}
-	out := dirUnresolvedNotes(dir, rootScopes(dir, rf), opts...)
+	walkDirStandards(dir, rootScopes(dir, rf), fn, opts...)
 	for _, name := range rf.SubRealms {
+		if !isSubRealmName(name) {
+			continue // RM008.
+		}
 		subDir := filepath.Join(dir, name)
 		sub, err := entity.LoadRealm(filepath.Join(subDir, "realm.json"))
 		if err != nil {
-			continue // realm-lint reports it (RM009).
+			continue // RM009.
 		}
-		out = append(out, dirUnresolvedNotes(subDir, subRealmScopes(sub, rf))...)
+		walkDirStandards(subDir, subRealmScopes(sub, rf), fn)
 	}
-	return out
+}
+
+// walkDirStandards calls fn on each entity of the entity files of one Realm
+// directory. outer holds the Realm scopes.
+func walkDirStandards(dir string, outer [][]entity.StandardRef, fn func(string, *entity.File, [][]entity.StandardRef), opts ...entity.WalkOption) {
+	_ = entity.WalkEntityFiles(dir, func(fpath string, _ []byte, ef *entity.File, parseErr error) error {
+		if parseErr == nil {
+			walkEntityStandards(ef, outer, fpath, fn)
+		}
+		return nil
+	}, opts...)
+}
+
+// walkEntityStandards calls fn on ef and its sub-entities, each with its own
+// Standard References in front of outer. The entity an `inherits` names is
+// not among them, so it passes on nothing (STDREF-009).
+func walkEntityStandards(ef *entity.File, outer [][]entity.StandardRef, path string, fn func(string, *entity.File, [][]entity.StandardRef)) {
+	scopes := append([][]entity.StandardRef{ef.Entity.Standards}, outer...)
+	fn(path, ef, scopes)
+	for i := range ef.SubEntities {
+		walkEntityStandards(&ef.SubEntities[i], scopes, path, fn)
+	}
 }
 
 // RealmStandardScopes returns the Realm declarations a `standard` note in the
@@ -144,20 +186,6 @@ func subRealmScopes(sub, rf *entity.RealmFile) [][]entity.StandardRef {
 	return [][]entity.StandardRef{sub.Realm.Standards, rf.Realm.Standards}
 }
 
-// dirUnresolvedNotes returns the unresolved notes of the entity files of one
-// Realm directory. outer holds the Realm scopes.
-func dirUnresolvedNotes(dir string, outer [][]entity.StandardRef, opts ...entity.WalkOption) []UnresolvedNote {
-	var out []UnresolvedNote
-	// A file that can't be read or parsed is reported by the first pass.
-	_ = entity.WalkEntityFiles(dir, func(fpath string, _ []byte, ef *entity.File, parseErr error) error {
-		if parseErr == nil {
-			out = append(out, UnresolvedEntityNotes(ef, outer, fpath)...)
-		}
-		return nil
-	}, opts...)
-	return out
-}
-
 // UnresolvedEntityNotes returns the `standard` notes of ef and its sub-entities
 // whose id resolves to no declaration (NTE-016); path is copied into each
 // result. outer holds the declarations around ef, nearest first: those of the
@@ -165,7 +193,16 @@ func dirUnresolvedNotes(dir string, outer [][]entity.StandardRef, opts ...entity
 // The entity an `inherits` names is not among them, so it passes on nothing
 // (STDREF-009). A note whose content doesn't parse is left to RL029.
 func UnresolvedEntityNotes(ef *entity.File, outer [][]entity.StandardRef, path string) []UnresolvedNote {
-	scopes := append([][]entity.StandardRef{ef.Entity.Standards}, outer...)
+	var out []UnresolvedNote
+	walkEntityStandards(ef, outer, path, func(path string, e *entity.File, scopes [][]entity.StandardRef) {
+		out = append(out, unresolvedNotes(e, scopes, path)...)
+	})
+	return out
+}
+
+// unresolvedNotes returns the `standard` notes of ef alone whose id resolves
+// in none of scopes.
+func unresolvedNotes(ef *entity.File, scopes [][]entity.StandardRef, path string) []UnresolvedNote {
 	var out []UnresolvedNote
 	for _, n := range ef.Notes {
 		if n.Type != entity.NoteTypeStandard {
@@ -178,9 +215,6 @@ func UnresolvedEntityNotes(ef *entity.File, outer [][]entity.StandardRef, path s
 		if entity.ResolveStandard(id, scopes...) == nil {
 			out = append(out, UnresolvedNote{Path: path, NoteID: n.ID, StandardID: id})
 		}
-	}
-	for i := range ef.SubEntities {
-		out = append(out, UnresolvedEntityNotes(&ef.SubEntities[i], scopes, path)...)
 	}
 	return out
 }

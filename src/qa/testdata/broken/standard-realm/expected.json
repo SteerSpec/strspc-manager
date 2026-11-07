@@ -48,6 +48,12 @@
     "path": "realm/realm.json"
   },
   {
+    "module": "realm-lint",
+    "code": "RM026",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
     "module": "rule-lint",
     "code": "RL033",
     "severity": "error",
