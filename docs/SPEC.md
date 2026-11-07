@@ -521,7 +521,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
 | RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-018). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
-| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
+| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example`, `counter_example` and `structured`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
 | RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
 | RL028 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019). |
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |

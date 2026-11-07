@@ -580,7 +580,7 @@
     "module": "rule-lint",
     "severity": "Warning",
     "title": "Inline example",
-    "summary": "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+    "summary": "A `D` rule's body, or a note on one of a type other than `example`, `counter_example` and `structured`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
     "fix": "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
     "retired": false
   },

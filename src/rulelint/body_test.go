@@ -255,6 +255,7 @@ func TestRL026_Notes(t *testing.T) {
 		{"changelog", "D", "changelog", "Added a tool, for example Claude.", true},
 		{"example", "D", "example", "A tool such as Claude.", false},
 		{"counter_example", "D", "counter_example", "A tool such as Claude.", false},
+		{"structured payload", "D", "structured", "fmt:{\"note\":\"a tool such as Claude, e.g. one\"}", false},
 		{"in code", "D", "rationale", "The text `such as` is rejected.", false},
 		{"no marker", "D", "rationale", "Tools differ.", false},
 		{"on a published rule", "P", "rationale", "Tools differ, such as Claude.", false},

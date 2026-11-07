@@ -220,7 +220,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Warning",
 		Title:    "Inline example",
-		Summary:  "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+		Summary:  "A `D` rule's body, or a note on one of a type other than `example`, `counter_example` and `structured`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
 		Fix:      "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
 	},
 	{

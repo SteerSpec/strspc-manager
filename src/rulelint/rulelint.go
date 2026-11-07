@@ -1193,10 +1193,11 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 }
 
 // checkDraftNotes runs RL026 on the notes of the Draft rules in drafts. Only
-// the types meant to hold an example may hold one.
+// the types meant to hold an example may hold one. The payload of a
+// `structured` note is opaque (NTE-039), so its words are not prose to scan.
 func checkDraftNotes(ef *entity.File, drafts map[string]bool, res *result.Result, path string) {
 	for _, n := range ef.Notes {
-		if !drafts[n.RuleRef] || exampleNoteTypes[n.Type] {
+		if !drafts[n.RuleRef] || exampleNoteTypes[n.Type] || n.Type == entity.NoteTypeStructured {
 			continue
 		}
 		if inlineExampleRe.MatchString(inlineCodeRe.ReplaceAllString(n.Content, " ")) {
