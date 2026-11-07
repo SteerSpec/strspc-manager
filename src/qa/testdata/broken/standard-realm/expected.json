@@ -1,0 +1,104 @@
+[
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM005",
+    "severity": "info",
+    "path": "realm/app"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM021",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM022",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM023",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM023",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM024",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "realm-lint",
+    "code": "RM025",
+    "severity": "error",
+    "path": "realm/realm.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL033",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL034",
+    "severity": "error",
+    "path": "realm/app/APP.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL035",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL036",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL037",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL038",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL039",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL040",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL041",
+    "severity": "error",
+    "path": "realm/STD.json"
+  }
+]

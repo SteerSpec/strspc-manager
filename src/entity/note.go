@@ -6,8 +6,11 @@ const (
 	// standard (NTE-013).
 	NoteTypeStandard = "standard"
 	// NoteTypeReference marks a free-text reference, and a withdrawn mapping
-	// (NTE-019).
+	// (NTE-019) or exclusion (NTE-035).
 	NoteTypeReference = "reference"
+	// NoteTypeExclusion marks a Realm Note declaring one clause not applicable
+	// to its Realm (NTE-033). Only a Realm Note has this type (NTE-032).
+	NoteTypeExclusion = "exclusion"
 )
 
 // noteTypes is the closed enum of note types (SPEC §2.6), in schema order.

@@ -257,8 +257,9 @@ func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
 // and runs cross-entity reference checks (RL012, RL014) and, given a manifest,
-// the check of `standard` notes against declarations (RL031). ctx bounds the JSON
-// Schema fetch (RL002).
+// the check of `standard` notes against declarations (RL031) and the checks
+// that depend on the Realm's kind (RL033 to RL041). ctx bounds the JSON Schema
+// fetch (RL002).
 // When the realm declares sub_realms, each sub-realm directory is linted
 // separately, and cross-references are validated globally across the
 // parent realm and all sub-realms.
@@ -279,6 +280,7 @@ func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 		res = l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
 	}
 	CheckRealmStandards(dir, rf, res)
+	CheckStandardRealm(dir, rf, res)
 	return res
 }
 
