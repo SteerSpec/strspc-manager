@@ -80,8 +80,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v7" {
-		t.Fatalf("Version = %q, want v7", prompt.Version)
+	if prompt.Version != "v8" {
+		t.Fatalf("Version = %q, want v8", prompt.Version)
 	}
 }
 
@@ -92,7 +92,9 @@ func TestSystem_Golden(t *testing.T) {
 		// and a removed line is cited at the nearest surviving new-file line.
 		`beginning with "-"`, "removal", "pre-existing", "nearest surviving line",
 		// v7: a part of a split diff cannot prove that a listed file lacks a change.
-		"<diff_scope>", "listed file", "more files are not listed"} {
+		"<diff_scope>", "listed file", "more files are not listed",
+		// v8: a compliant verdict can be detailed, citing what satisfies the rule.
+		`detail a rule judged "compliant"`, "lines that satisfy it"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("system prompt should mention %q", want)
 		}
@@ -213,6 +215,18 @@ func TestDetailInstruction(t *testing.T) {
 	got := prompt.DetailInstruction("CMD-001")
 	if !strings.Contains(got, "CMD-001") || !strings.Contains(got, "violated") {
 		t.Errorf("instruction should name the rule and the verdict: %q", got)
+	}
+	if got != prompt.DetailInstructionFor("CMD-001", ruleeval.Violated) {
+		t.Error("DetailInstruction must be DetailInstructionFor a violated verdict")
+	}
+}
+
+// TestDetailInstructionFor checks that the instruction names the verdict
+// being detailed.
+func TestDetailInstructionFor(t *testing.T) {
+	got := prompt.DetailInstructionFor("CMD-001", ruleeval.Compliant)
+	if !strings.Contains(got, `judged "compliant"`) || strings.Contains(got, "violated") {
+		t.Errorf("instruction should name the compliant verdict only: %q", got)
 	}
 }
 

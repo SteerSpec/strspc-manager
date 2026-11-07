@@ -10,7 +10,7 @@
         "additionalProperties": false,
         "properties": {
           "excerpt": {
-            "description": "Short excerpt of the offending line.",
+            "description": "Short excerpt of the line cited.",
             "type": "string"
           },
           "file": {
@@ -36,7 +36,7 @@
       "type": "string"
     },
     "verdict": {
-      "description": "The verdict after re-reading the diff: \"violated\" confirms it, any other value withdraws it.",
+      "description": "The verdict after re-reading the diff: the verdict being detailed confirms it, any other value withdraws it.",
       "enum": [
         "violated",
         "compliant",

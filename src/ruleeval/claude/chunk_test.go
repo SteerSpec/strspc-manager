@@ -208,6 +208,24 @@ func TestMergeVerdict_Precedence(t *testing.T) {
 	}
 }
 
+// TestMergeVerdict_CompliantEvidence checks that compliant parts accumulate
+// their evidence and the highest confidence, and that a part left
+// undetailed takes the explanation of a later one.
+func TestMergeVerdict_CompliantEvidence(t *testing.T) {
+	dst := map[string]*ruleeval.EvalResponse{}
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant})
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant, Explanation: "a sets it", Confidence: 0.7, Evidence: []ruleeval.Location{{File: "a.go", Line: 3}}})
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant, Explanation: "b sets it", Confidence: 0.9, Evidence: []ruleeval.Location{{File: "b.go", Line: 4}}})
+	got := dst["R"]
+	if got.Verdict != ruleeval.Compliant || got.Explanation != "a sets it" || got.Confidence != 0.9 || len(got.Evidence) != 2 {
+		t.Fatalf("compliant parts should merge their evidence, got %+v", got)
+	}
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.NotApplicable, Explanation: "na"})
+	if dst["R"].Verdict != ruleeval.Compliant || len(dst["R"].Evidence) != 2 {
+		t.Errorf("not_applicable must leave the compliant merge alone, got %+v", dst["R"])
+	}
+}
+
 func TestEstimateTokens(t *testing.T) {
 	if estimateTokens("") != 0 || estimateTokens("abc") != 1 || estimateTokens("abcd") != 2 {
 		t.Errorf("estimateTokens: %d %d %d", estimateTokens(""), estimateTokens("abc"), estimateTokens("abcd"))

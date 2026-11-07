@@ -201,6 +201,8 @@ type EvalRequest struct {
 	OverriddenBy []string
 	// Extended lists the rules Rule extends (see RuleInput).
 	Extended []inherit.Extended
+	// Detail says which verdicts the provider details.
+	Detail Detail
 }
 
 // Input returns the RuleInput equivalent of the request.
@@ -219,7 +221,9 @@ type EvalResponse struct {
 	Explanation string `json:"explanation"`
 	// Confidence is the provider's certainty from 0 to 1, when reported.
 	Confidence float64 `json:"confidence,omitempty"`
-	// Evidence lists the diff locations that support the verdict, when any.
+	// Evidence lists the diff locations that support the verdict, when any:
+	// the lines that break the rule, or with DetailCompliant those that
+	// satisfy it.
 	Evidence []Location `json:"evidence,omitempty"`
 }
 
@@ -243,6 +247,9 @@ type Config struct {
 	Concurrency int
 	// Observer is the optional progress observer.
 	Observer Observer
+	// Detail says which verdicts the provider details (default
+	// DetailViolated).
+	Detail Detail
 }
 
 // Option configures the Evaluator.
@@ -293,6 +300,17 @@ func WithObserver(o Observer) Option {
 	return func(c *Config) { c.Observer = o }
 }
 
+// WithDetail sets which verdicts the provider details. DetailCompliant
+// gives every compliant verdict an explanation, a confidence and the code
+// that satisfies the rule, at one more request per compliant rule; a
+// promotion gate wants that evidence, a PR check does not. Evaluate reports
+// no diagnostic for a compliant verdict, so the details reach a caller
+// through its provider's responses. A detailed verdict is cached apart from
+// an undetailed one.
+func WithDetail(d Detail) Option {
+	return func(c *Config) { c.Detail = d }
+}
+
 // Evaluator evaluates code changes against rules.
 type Evaluator struct {
 	provider Provider
@@ -323,6 +341,9 @@ func New(provider Provider, opts ...Option) (*Evaluator, error) {
 		if !entity.IsValidState(s) {
 			return nil, fmt.Errorf("ruleeval: invalid evaluate state code: %q", s)
 		}
+	}
+	if cfg.Detail != DetailViolated && cfg.Detail != DetailCompliant {
+		return nil, fmt.Errorf("ruleeval: invalid detail level %v", cfg.Detail)
 	}
 	if cfg.Concurrency < 1 {
 		cfg.Concurrency = 1
@@ -468,6 +489,11 @@ func (e *Evaluator) plan(inputs []RuleInput, diff string, outcomes []outcome, ke
 	if e.cfg.Cache != nil {
 		d := e.provider.(Describer) // enforced by New
 		model, promptVersion = d.Model(), d.PromptVersion()
+		if e.cfg.Detail != DetailViolated {
+			// A detailed verdict and an undetailed one are different results.
+			// The default adds nothing, so its keys don't depend on the option.
+			promptVersion += "/detail=" + e.cfg.Detail.String()
+		}
 		diffHash = DiffHash(diff)
 	}
 
@@ -558,6 +584,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 				Rule: in.Rule, Notes: in.Notes, Diff: diff,
 				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
 				Owner: in.Owner, InheritedBy: in.InheritedBy, Overrides: in.Overrides, OverriddenBy: in.OverriddenBy, Extended: in.Extended,
+				Detail: e.cfg.Detail,
 			})
 			e.observe(Event{Kind: EventProviderCall, EntityID: g.entityID, RuleIDs: []string{in.Rule.ID}, Err: err})
 			outcomes[i] = outcome{resp: resp, err: err, fresh: err == nil, done: true}
@@ -568,7 +595,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 	if ctx.Err() != nil {
 		return nil
 	}
-	req := BatchRequest{EntityID: g.entityID, Diff: diff, Inputs: make([]RuleInput, 0, len(g.idx))}
+	req := BatchRequest{EntityID: g.entityID, Diff: diff, Detail: e.cfg.Detail, Inputs: make([]RuleInput, 0, len(g.idx))}
 	for _, i := range g.idx {
 		req.Inputs = append(req.Inputs, inputs[i])
 	}
