@@ -49,6 +49,20 @@ func standardsFile(ref entity.StandardRef, contents ...string) *entity.File {
 	return f
 }
 
+// structuredFile is standardsFile's counterpart for `structured` notes: one
+// Published rule holding a note per content.
+func structuredFile(contents ...string) *entity.File {
+	f := standardsFile(entity.StandardRef{ID: "x", Relation: entity.RelationImplements})
+	f.Entity.Standards = nil
+	for i, c := range contents {
+		f.Notes = append(f.Notes, entity.Note{
+			ID: fmt.Sprintf("STDNOTE-001/%02d", i+1), RuleRef: "STDNOTE-001", Type: entity.NoteTypeStructured,
+			Content: c, AddedBy: "github:qa", AddedAt: "2026-01-01",
+		})
+	}
+	return f
+}
+
 // writeQAJSON writes v to path.
 func writeQAJSON(t *testing.T, path string, v any) {
 	t.Helper()
@@ -103,6 +117,20 @@ var goCases = []goCase{
 		want: []string{"RL030 error"},
 		run: func(*testing.T) *result.Result {
 			return rulelint.New().LintFile(standardsFile(asvsRef, "owasp.asvs:1", "owasp.asvs:1"))
+		},
+	},
+	{
+		name: "rule-lint reports a malformed structured note",
+		want: []string{"RL042 error"},
+		run: func(*testing.T) *result.Result {
+			return rulelint.New().LintFile(structuredFile("no format"))
+		},
+	},
+	{
+		name: "rule-lint reports a second structured note",
+		want: []string{"RL043 error"},
+		run: func(*testing.T) *result.Result {
+			return rulelint.New().LintFile(structuredFile(`qa/1:{"a":1}`, `qa/1:{"a":2}`))
 		},
 	},
 	{
@@ -207,6 +235,16 @@ var goCases = []goCase{
 			head := standardsFile(asvsRef, "owasp.asvs:1")
 			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
 			head.Notes[0].Type = "rationale"
+			return rulediff.New().Diff(base, head)
+		},
+	},
+	{
+		name: "rule-diff reports a structured note added to a Published rule",
+		want: []string{"RD025 error"},
+		run: func(*testing.T) *result.Result {
+			base := structuredFile()
+			head := structuredFile(`qa/1:{"a":1}`)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
 			return rulediff.New().Diff(base, head)
 		},
 	},

@@ -234,6 +234,15 @@
     "retired": false
   },
   {
+    "code": "RD025",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Structured note changed after Draft",
+    "summary": "A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041).",
+    "fix": "Restore the note. To change the structured form, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
     "code": "RE001",
     "module": "rule-eval",
     "severity": "Warning / Error",
@@ -428,7 +437,7 @@
     "severity": "Error",
     "title": "Unknown note type",
     "summary": "A note type is outside the closed enum.",
-    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related` or `standard`.",
+    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard` or `structured`.",
     "retired": false
   },
   {
@@ -708,6 +717,24 @@
     "title": "Superseded standard rule not Terminated",
     "summary": "A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013).",
     "fix": "Move the superseded rule to Terminated in the change that publishes the fix.",
+    "retired": false
+  },
+  {
+    "code": "RL042",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Malformed structured note",
+    "summary": "The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037).",
+    "fix": "Write the format, a colon and a payload that is not blank.",
+    "retired": false
+  },
+  {
+    "code": "RL043",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Second structured note",
+    "summary": "A rule holds more than one `structured` note (NTE-040).",
+    "fix": "Keep one note. To withdraw the other, retype it to `reference`.",
     "retired": false
   },
   {
