@@ -27,13 +27,46 @@ func ComputeHash(data []byte) (string, error) {
 	return "blake3:" + hex.EncodeToString(h[:]), nil
 }
 
+// ComputeRealmHash computes the hash of a Realm manifest (RLMMNFST-013): the
+// Blake3 hash of its canonical JSON, as for a Rule Set Hash, with the top-level
+// hash key removed rather than nulled. It returns "blake3:<64 hex chars>".
+func ComputeRealmHash(data []byte) (string, error) {
+	obj, err := decodeForHash(data)
+	if err != nil {
+		return "", err
+	}
+	delete(obj, "hash")
+	canonical, err := marshalCanonical(obj)
+	if err != nil {
+		return "", fmt.Errorf("canonical marshal: %w", err)
+	}
+	h := blake3.Sum256(canonical)
+	return "blake3:" + hex.EncodeToString(h[:]), nil
+}
+
 // canonicalJSON returns the canonical form of an entity file that ComputeHash
 // hashes, with every rule_set.hash nulled.
+func canonicalJSON(data []byte) ([]byte, error) {
+	obj, err := decodeForHash(data)
+	if err != nil {
+		return nil, err
+	}
+
+	nullHashes(obj)
+
+	canonical, err := marshalCanonical(obj)
+	if err != nil {
+		return nil, fmt.Errorf("canonical marshal: %w", err)
+	}
+	return canonical, nil
+}
+
+// decodeForHash decodes the single top-level JSON object of data for hashing.
 //
 // Numbers are read as written, not as float64, so that an integer keeps all its
 // digits as it does in Python's json.loads: one past 2^53, or from 1e16, would
 // otherwise be rounded or written with an exponent.
-func canonicalJSON(data []byte) ([]byte, error) {
+func decodeForHash(data []byte) (map[string]any, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	var obj map[string]any
@@ -46,14 +79,7 @@ func canonicalJSON(data []byte) ([]byte, error) {
 	if err := normalizeNumbers(obj); err != nil {
 		return nil, fmt.Errorf("unmarshaling for hash: %w", err)
 	}
-
-	nullHashes(obj)
-
-	canonical, err := marshalCanonical(obj)
-	if err != nil {
-		return nil, fmt.Errorf("canonical marshal: %w", err)
-	}
-	return canonical, nil
+	return obj, nil
 }
 
 // normalizeNumbers rewrites, in place, every json.Number below v as Python's

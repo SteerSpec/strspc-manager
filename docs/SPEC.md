@@ -203,7 +203,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `notes` | array | Realm Notes (RLMMNFST-012, NTE-029), each `{ id, type, ref, content, added_by, added_at, revision }`: `id` is `REALM/NNN` (NTE-030), `type` is `exclusion`, `rationale`, `clarification` or `reference` (NTE-031), and `ref`, the `<id>:<clause>` an exclusion excludes, appears only on an exclusion or on the `reference` it becomes when withdrawn (NTE-034, NTE-035). Omitted when empty. Core 1.21.0 or later. |
 | `hash` | string | Blake3 hash of the manifest without its `hash` field (RLMMNFST-013), recomputed on every change (RLMMNFST-014). Core 1.21.0 or later. |
 
-The core 1.21.0 fields are modeled and kept on every rewrite; the lint checks their Draft rules describe (Standard Realms, Realm Notes, the manifest hash) are not implemented yet.
+The core 1.21.0 fields are modeled and kept on every rewrite. The checks their Draft rules describe that need only the Realm itself are in `rule-lint` (RL033 to RL041) and `realm-lint` (RM021 to RM025): Standard Realm fields and rules, Realm Note identifiers and refs, and the manifest hash. Three kinds of check are not implemented yet: those that resolve a Standard Reference's `realm` in another Realm (STDREF-017, STDREF-018, STDREF-021, STDREF-027, and the clause an exclusion names, NTE-034); those that compare a change with the history (`rule-diff` on clauses, profiles and Realm Notes); and supersede and promote in a Standard Realm (`entityops`). The CLI does not yet recompute the hash on every write (RLMMNFST-014), so a missing `hash` is not reported.
 
 RLMMNFST-002 sets the required fields. Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
@@ -472,6 +472,8 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 
 #### `rule-lint` (RL)
 
+RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, or in `realm-lint` when it is given a rule linter, and not on a file or directory linted without one. RL033–RL041 judge each Realm of the tree by the `kind` its own manifest declares: a sub-realm without one is a code Realm (RLMMNFST-009). A live rule of a Standard Realm is one that is not Abandoned, Retired or Terminated, and is not a Draft rule that supersedes another (STDRLM-014).
+
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RL000 | Error | The entity file is nil, or a file or directory cannot be read while scanning. |
@@ -502,11 +504,20 @@ exception with a stated reason, so a new code needs a scenario in the change tha
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
 | RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
 | RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
-| RL028 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
+| RL028 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019). |
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
 | RL030 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
 | RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
 | RL032 | Error | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error. |
+| RL033 | Error | A live rule of a Standard Realm has no `clause` (STDRLM-005). |
+| RL034 | Error | A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017). |
+| RL035 | Error | An entry of a rule's `profiles` is not in the `profiles` of its Standard Realm's manifest (STDRLM-008). |
+| RL036 | Error | Live rules of a Standard Realm that carry the same `clause` declare different `profiles`, compared as sets (STDRLM-009). The set most of the clause's rules declare is the clause's, the first one found on a tie, and each rule that declares another is reported. |
+| RL037 | Error | A rule of a Standard Realm is Implemented (STDRLM-010). |
+| RL038 | Error | A rule of a Standard Realm that supersedes another and is not Abandoned has a `clause` other than that rule's (STDRLM-012). |
+| RL039 | Error | More than one rule that is not Abandoned supersedes the same rule of a Standard Realm (STDRLM-016). |
+| RL040 | Error | A rule of a Standard Realm that is not Abandoned supersedes an Abandoned rule, or is Draft and supersedes a rule that is not live (STDRLM-017). Whether the target was live when a fix that is now past Draft was drafted is not checked here. |
+| RL041 | Error | A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013). |
 
 #### `rule-diff` (RD)
 
@@ -542,7 +553,7 @@ RD023 runs only when the caller passes the Realm's contributors with `WithContri
 
 #### `realm-lint` (RM)
 
-RM002, RM003, RM004, RM007, RM014–RM016, RM018 and RM019 fire for the parent manifest and for each sub-realm manifest.
+RM002, RM003, RM004, RM007, RM014–RM016, RM018, RM019 and RM021–RM025 fire for the parent manifest and for each sub-realm manifest. RM021–RM025 check only what the schema can't: RM002 already checks `kind`, the shape of `attribution` and `profiles`, the form of a Realm Note `id`, `type` and `ref`, and the form of `hash`.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
 RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's; one that does is validated against its own pin only, not also against its parent's, when the caller supplies the linters for sub-realms to `realm-lint` and, for the Realm tree, to `rule-lint`.
 A caller that lints the entity files itself, as `rule-lint` over the Realm tree, can tell `realm-lint` so; `realm-lint` then runs without a rule linter and does not emit the Info form of RM005.
@@ -567,9 +578,14 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM015 | Warning | A file in `_schema/` holds different JSON from the file of the same name in the pinned `dev.steerspec.core`, or cannot be compared with it. Files the core lacks are ignored, as are core files the Realm lacks. Skipped when the fetched core is not the one pinned, which RM014 reports. |
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run. |
 | RM017 | Error | A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018). |
-| RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008). |
+| RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019). |
 | RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
 | RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
+| RM021 | Error | A `realm.json` that declares `kind` `standard` has no `edition`, `license` or `attribution` (STDRLM-002, STDRLM-003, STDRLM-015). |
+| RM022 | Error | The Realm Notes of `realm.json` repeat or skip a number, or use `REALM/000`: they are numbered from `REALM/001` with no gap, in any order (NTE-030). |
+| RM023 | Error | A Realm Note of type `exclusion` has no `ref`, or the `<id>` of its `ref` names no entry of `realm.standards` with a `realm` (NTE-034). |
+| RM024 | Error | A Realm Note of type `rationale` or `clarification` has a `ref`; only an `exclusion`, or a `reference` withdrawn from one, has a `ref` (NTE-035). |
+| RM025 | Error | `realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported. |
 
 #### `realm-resolve` (RR)
 

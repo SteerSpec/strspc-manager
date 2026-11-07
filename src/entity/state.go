@@ -62,6 +62,20 @@ func IsTerminalState(s string) bool {
 	return terminalStates[s]
 }
 
+// IsLiveStandardRule reports whether r is a live Rule of a Standard Realm
+// (STDRLM-014): not Abandoned, Retired or Terminated, and not a Draft Rule that
+// supersedes another. A Draft transcription fix doesn't count until it is
+// Published, and the Rule it supersedes stays live until then.
+func IsLiveStandardRule(r Rule) bool {
+	switch r.State {
+	case StateAbandoned, StateRetired, StateTerminated:
+		return false
+	case StateDraft:
+		return r.Supersedes == nil
+	}
+	return true
+}
+
 // ValidateTransition checks whether a state transition is allowed.
 func ValidateTransition(from, to string) error {
 	if terminalStates[from] {

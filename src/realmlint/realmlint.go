@@ -165,6 +165,9 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	// RM007: Realm field validation.
 	checkRealmFields(rf, realmPath, res)
 
+	// RM021–RM025: Standard Realm fields, Realm Notes and the manifest hash.
+	checkManifestNotesAndHash(rf, data, realmPath, res)
+
 	// RM003 + RM004: Directory structure.
 	checkSchemaDir(dir, res)
 
@@ -181,10 +184,11 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
 
-	// RL031: Without a rule linter here the caller runs LintRealm, which holds
-	// this check.
+	// RL031, RL033–RL041: Without a rule linter here the caller runs
+	// LintRealm, which holds these checks.
 	if l.cfg.RuleLinter != nil {
 		rulelint.CheckRealmStandards(dir, rf, res)
+		rulelint.CheckStandardRealm(dir, rf, res)
 	}
 
 	if l.cfg.Strict {
@@ -749,11 +753,13 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		// A sub-realm is a Realm in its own right (RLM-003, RLM-004,
 		// RLMMNFST-002), so its manifest and layout get the same checks as
-		// the parent: RM002 schema, RM007 fields, RM003/RM004 _schema/,
-		// RM014–RM016 dependencies.
+		// the parent: RM002 schema, RM007 fields, RM021–RM025 Standard Realm
+		// fields, notes and hash, RM003/RM004 _schema/, RM014–RM016
+		// dependencies.
 		sub := l.forSubRealm(srDir, srRF)
 		sub.checkRealmSchema(ctx, srData, srRealmPath, res)
 		checkRealmFields(srRF, srRealmPath, res)
+		checkManifestNotesAndHash(srRF, srData, srRealmPath, res)
 		checkSchemaDir(srDir, res)
 		srCoreDir := l.checkDependencies(ctx, srDir, srRF, srRealmPath, res)
 		if !declaresCore(srRF) {

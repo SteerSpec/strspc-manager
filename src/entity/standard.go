@@ -46,14 +46,17 @@ type StandardRef struct {
 	Profile string `json:"profile,omitempty"`
 }
 
-// ValidateStandardRef checks one reference against STDREF-002, STDREF-004 and
-// STDREF-008.
+// ValidateStandardRef checks one reference against STDREF-002, STDREF-004,
+// STDREF-008 and STDREF-019.
 func ValidateStandardRef(ref StandardRef) error {
 	if !standardIDRe.MatchString(ref.ID) {
 		return fmt.Errorf("standard id %q: must be a dot-separated lowercase slug (STDREF-002)", ref.ID)
 	}
 	if ref.Relation != RelationImplements && ref.Relation != RelationDerivedFrom {
 		return fmt.Errorf("standard %s: relation %q must be %s or %s (STDREF-004)", ref.ID, ref.Relation, RelationImplements, RelationDerivedFrom)
+	}
+	if ref.Profile != "" && ref.Realm == "" {
+		return fmt.Errorf("standard %s: profile %q is allowed only with a realm (STDREF-019)", ref.ID, ref.Profile)
 	}
 	if ref.URL != "" {
 		u, err := url.Parse(ref.URL)
