@@ -37,6 +37,13 @@ type StandardRef struct {
 	Version string `json:"version,omitempty"`
 	// URL is the absolute URL of the standard (STDREF-008).
 	URL string `json:"url,omitempty"`
+	// Realm is the ID of the Standard Realm the reference links to, a
+	// dependency of the Realm tree (STDREF-017). Empty means the reference
+	// links to none.
+	Realm string `json:"realm,omitempty"`
+	// Profile is the claimed profile of the linked Standard Realm, allowed
+	// only with Realm (STDREF-019).
+	Profile string `json:"profile,omitempty"`
 }
 
 // ValidateStandardRef checks one reference against STDREF-002, STDREF-004 and

@@ -80,6 +80,13 @@ type Rule struct {
 	// realm-qualified, or nil when it overrides none. Unlike Supersedes it is
 	// omitted when nil, so files without overrides keep their bytes and hash.
 	Overrides *string `json:"overrides,omitempty"`
+	// Clause names the clause of an external standard the rule transcribes
+	// (RUL-015). Only a Standard Realm's rules have one (RUL-017). It stays
+	// omitted when empty, so files without it keep their bytes and hash.
+	Clause string `json:"clause,omitempty"`
+	// Profiles lists the profiles of its Standard Realm the rule belongs to
+	// (RUL-016). It stays omitted when empty.
+	Profiles []string `json:"profiles,omitempty"`
 }
 
 // Note represents an annotation attached to a specific rule.
@@ -118,6 +125,43 @@ type RealmFile struct {
 	// defaults (RLM-002, RLMMNFST-004); nil keeps them, or for a sub-realm
 	// means the parent's format applies (RLM-015).
 	RuleIdentifierFormat *RuleIdentifierFormat `json:"rule_identifier_format,omitempty"`
+	// Notes lists the Realm Notes (RLMMNFST-012, NTE-029). It stays omitted
+	// when empty, so a manifest declaring none keeps its bytes.
+	Notes []RealmNote `json:"notes,omitempty"`
+	// Hash is the blake3:<hex> hash of the manifest without its hash field
+	// (RLMMNFST-013). Empty, and then omitted, when the manifest has none.
+	Hash string `json:"hash,omitempty"`
+}
+
+// RealmNote is a Note stored in a Realm manifest rather than attached to a
+// rule (NTE-029).
+type RealmNote struct {
+	// ID is the note identifier in REALM/NNN form (NTE-030).
+	ID string `json:"id"`
+	// Type is one of exclusion, rationale, clarification or reference
+	// (NTE-031).
+	Type string `json:"type"`
+	// Ref is the <id>:<clause> an exclusion excludes (NTE-034), kept when
+	// the exclusion is withdrawn by retyping it to reference (NTE-035); empty
+	// on any other note.
+	Ref string `json:"ref,omitempty"`
+	// Content is the free-text body of the note.
+	Content string `json:"content"`
+	// AddedBy names the author who added the note.
+	AddedBy string `json:"added_by"`
+	// AddedAt is the YYYY-MM-DD date the note was added.
+	AddedAt string `json:"added_at"`
+	// Revision is the edit counter of the note; it is 0 when the note is
+	// added.
+	Revision int `json:"revision"`
+}
+
+// Attribution credits the source of a Realm's content (RLMMNFST-011).
+type Attribution struct {
+	// Text is the attribution statement.
+	Text string `json:"text"`
+	// URL is the absolute http or https URL of the source.
+	URL string `json:"url"`
 }
 
 // DependsOn reports whether the manifest declares a dependency on the Realm
@@ -151,6 +195,10 @@ type RuleIdentifierFormat struct {
 	StateSplitter string `json:"state_splitter,omitempty"`
 }
 
+// KindStandard is the kind of a Standard Realm, the only value a manifest may
+// declare (RLMMNFST-008).
+const KindStandard = "standard"
+
 // RealmMeta holds the identity and versioning for a Realm.
 type RealmMeta struct {
 	// ID is the Realm identifier.
@@ -168,6 +216,21 @@ type RealmMeta struct {
 	// It stays omitted when empty, so a manifest declaring none keeps its
 	// bytes.
 	Standards []StandardRef `json:"standards,omitempty"`
+	// Kind is the Realm's kind (RLMMNFST-008): KindStandard, or empty for a
+	// code Realm (RLMMNFST-009).
+	Kind string `json:"kind,omitempty"`
+	// License is the SPDX license identifier of the Realm's content
+	// (RLMMNFST-010).
+	License string `json:"license,omitempty"`
+	// Attribution credits the source of the Realm's content (RLMMNFST-011);
+	// nil when the manifest has none.
+	Attribution *Attribution `json:"attribution,omitempty"`
+	// Edition names the edition of the standard a Standard Realm transcribes
+	// (STDRLM-002).
+	Edition string `json:"edition,omitempty"`
+	// Profiles lists, in order, the profile names a Standard Realm's rules may
+	// declare (STDRLM-004).
+	Profiles []string `json:"profiles,omitempty"`
 	// Contributors lists the Realm's contributors (CTRB-004). A sub-realm
 	// uses its parent's (CTRB-006). It stays omitted when empty, so a
 	// manifest declaring none keeps its bytes.
