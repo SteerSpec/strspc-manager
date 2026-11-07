@@ -27,6 +27,46 @@ type Location struct {
 	Excerpt string `json:"excerpt,omitempty"`
 }
 
+// Detail says which verdicts a provider details: re-reads the diff against
+// the rule, confirms or withdraws the verdict, and gives an explanation, a
+// confidence and evidence locations. A violated verdict is always detailed.
+type Detail int
+
+// The detail levels. not_applicable is never detailed.
+const (
+	// DetailViolated details violated verdicts only. It is the zero value and
+	// the default, and the cheapest: most rules of a diff are compliant or
+	// not applicable.
+	DetailViolated Detail = iota
+	// DetailCompliant also details compliant verdicts, citing the code that
+	// satisfies the rule. Each compliant rule costs one more request.
+	DetailCompliant
+)
+
+// Covers reports whether d details a rule judged v.
+func (d Detail) Covers(v Verdict) bool {
+	switch v {
+	case Violated:
+		return true
+	case Compliant:
+		return d == DetailCompliant
+	default:
+		return false
+	}
+}
+
+// String returns the level's name, which cache keys mix in.
+func (d Detail) String() string {
+	switch d {
+	case DetailViolated:
+		return "violated"
+	case DetailCompliant:
+		return "compliant"
+	default:
+		return "Detail(" + strconv.Itoa(int(d)) + ")"
+	}
+}
+
 // BatchRequest asks a provider to evaluate several rules of one entity
 // against the same diff in a single round trip.
 type BatchRequest struct {
@@ -37,6 +77,8 @@ type BatchRequest struct {
 	Inputs []RuleInput
 	// Diff is the unified diff every rule is evaluated against.
 	Diff string
+	// Detail says which verdicts the provider details.
+	Detail Detail
 }
 
 // BatchResponse carries one verdict per requested rule ID. Errors holds
@@ -84,8 +126,9 @@ type Usage struct {
 	CacheWriteTokens int64
 	// Requests counts the provider calls made.
 	Requests int
-	// Withdrawn counts violations the detail step took back after
-	// re-reading the diff with the single rule in focus.
+	// Withdrawn counts verdicts the detail step took back after re-reading
+	// the diff with the single rule in focus: violations, and with
+	// DetailCompliant compliant verdicts too.
 	Withdrawn int
 }
 

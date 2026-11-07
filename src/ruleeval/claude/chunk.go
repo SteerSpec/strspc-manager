@@ -249,7 +249,8 @@ func precedence(v ruleeval.Verdict) int {
 }
 
 // mergeVerdict folds v into dst[id] using precedence. Equal-precedence
-// violations accumulate their evidence.
+// violated or compliant verdicts accumulate their evidence, so the
+// locations cover every part of the diff, not one.
 func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.EvalResponse) {
 	cur, ok := dst[id]
 	if !ok {
@@ -259,19 +260,20 @@ func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.
 	switch {
 	case precedence(v.Verdict) > precedence(cur.Verdict):
 		dst[id] = cloneResponse(v)
-	case precedence(v.Verdict) == precedence(cur.Verdict) && v.Verdict == ruleeval.Violated:
+	case precedence(v.Verdict) == precedence(cur.Verdict) && (v.Verdict == ruleeval.Violated || v.Verdict == ruleeval.Compliant):
 		cur.Evidence = append(cur.Evidence, v.Evidence...)
 		if v.Confidence > cur.Confidence {
 			cur.Confidence = v.Confidence
 		}
-		// A chunk whose detail request failed carries no explanation; a
-		// later chunk's explanation fills it rather than being dropped.
+		// A chunk whose detail request failed, or a compliant chunk that
+		// was not detailed, carries no explanation; a later chunk's
+		// explanation fills it rather than being dropped.
 		if cur.Explanation == "" {
 			cur.Explanation = v.Explanation
 		}
 	case precedence(v.Verdict) == precedence(cur.Verdict):
-		// Equal non-violating verdicts: a chunk whose detail step withdrew a
-		// violation carries an explanation and a confidence that a plain
+		// Equal not_applicable verdicts: a chunk whose detail step withdrew
+		// a verdict carries an explanation and a confidence that a plain
 		// verdict-only chunk lacks; keep them rather than the empty ones.
 		if cur.Explanation == "" && v.Explanation != "" {
 			cur.Explanation, cur.Confidence = v.Explanation, v.Confidence

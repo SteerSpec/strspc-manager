@@ -2,7 +2,8 @@
 // top of the Anthropic Messages API using structured outputs. Each request
 // asks for the verdicts of a group of rules as an object keyed by rule id;
 // a second, per-rule request then collects explanation and evidence for
-// every rule judged violated.
+// every rule judged violated, and with ruleeval.DetailCompliant for every
+// rule judged compliant.
 //
 // One request carries the shared system prompt and the diff (both marked
 // as prompt-cache breakpoints) followed by up to MaxRulesPerRequest rules.
@@ -201,6 +202,7 @@ func (p *Provider) Evaluate(ctx context.Context, req ruleeval.EvalRequest) (*rul
 		EntityID: req.EntityID,
 		Inputs:   []ruleeval.RuleInput{req.Input()},
 		Diff:     req.Diff,
+		Detail:   req.Detail,
 	})
 	if err != nil {
 		return nil, err
@@ -302,7 +304,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		go func(i int, it work) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i], errs[i] = p.call(ctx, diffBlock(chunks[it.chunk]), groups[it.group], rulesBlocks[it.group])
+			results[i], errs[i] = p.call(ctx, diffBlock(chunks[it.chunk]), groups[it.group], rulesBlocks[it.group], req.Detail)
 			if errs[i] != nil {
 				cancel() // no point finishing the batch; the evaluator reports it
 			}
@@ -405,12 +407,12 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 }
 
 // wireResponse is the merged result of one chunk×group request: a verdict
-// per rule, with details for the violated ones. Errors lists violated rules
+// per rule, with details for the detailed ones. Errors lists detailed rules
 // whose detail request failed recoverably; their verdict is kept.
 type wireResponse struct {
 	// Verdicts holds one entry per evaluated rule.
 	Verdicts []wireVerdict
-	// Errors lists recoverable detail-request failures for violated rules.
+	// Errors lists recoverable detail-request failures.
 	Errors []error
 }
 
@@ -419,8 +421,7 @@ type wireVerdict struct {
 	RuleID string
 	// Verdict is the raw verdict string returned by the model.
 	Verdict string
-	// Explanation is the model's reasoning, filled by the detail step for
-	// violated rules.
+	// Explanation is the model's reasoning, filled by the detail step.
 	Explanation string
 	// Confidence is the model's certainty from 0 to 1, filled by the detail
 	// step.
@@ -446,7 +447,7 @@ type wireLocation struct {
 	File string `json:"file"`
 	// Line is the line number in the new version of the file.
 	Line int `json:"line"`
-	// Excerpt is a short quote of the offending line.
+	// Excerpt is a short quote of the line cited.
 	Excerpt string `json:"excerpt"`
 }
 
@@ -463,10 +464,10 @@ func (v wireVerdict) toResponse() *ruleeval.EvalResponse {
 }
 
 // call evaluates one rendered diff block against one group of rules: a
-// verdict request keyed by rule id, then one detail request per violated
-// rule. Ids the model was not asked about are kept so that EvaluateBatch can
-// report them; they never trigger a detail request.
-func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.RuleInput, rulesBlock string) (*wireResponse, error) {
+// verdict request keyed by rule id, then one detail request per rule whose
+// verdict level covers. Ids the model was not asked about are kept so that
+// EvaluateBatch can report them; they never trigger a detail request.
+func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.RuleInput, rulesBlock string, level ruleeval.Detail) (*wireResponse, error) {
 	ids := make([]string, len(group))
 	byID := make(map[string]ruleeval.RuleInput, len(group))
 	for i, in := range group {
@@ -501,17 +502,23 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 		}
 		seen[id] = true
 		wv := wireVerdict{RuleID: id, Verdict: v}
-		if ruleeval.Verdict(v) == ruleeval.Violated {
-			d, err := p.detail(ctx, diffBlock, byID[id])
+		if given := ruleeval.Verdict(v); level.Covers(given) {
+			d, err := p.detail(ctx, diffBlock, byID[id], given)
 			switch {
 			case err == nil:
 				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
 				// The detail step re-reads the diff with the single rule in
 				// focus and may withdraw the verdict (strspc-manager#87). A
-				// withdrawn violation keeps its explanation so the caller can
-				// see why, but carries no evidence.
-				if w := ruleeval.Verdict(d.Verdict); w == ruleeval.Compliant || w == ruleeval.NotApplicable {
-					wv.Verdict, wv.Evidence = string(w), nil
+				// verdict withdrawn to compliant or not_applicable keeps its
+				// explanation so the caller can see why, but no evidence: the
+				// lines cited for a withdrawn violation broke nothing. A
+				// compliant verdict withdrawn to violated keeps the lines that
+				// break the rule.
+				if w := ruleeval.Verdict(d.Verdict); w != given {
+					wv.Verdict = string(w)
+					if w != ruleeval.Violated {
+						wv.Evidence = nil
+					}
 					p.mu.Lock()
 					p.usage.Withdrawn++
 					p.mu.Unlock()
@@ -519,10 +526,11 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 			case errors.Is(err, ruleeval.ErrUnavailable) || ctx.Err() != nil:
 				return nil, err
 			default:
-				// The violation stands even without its explanation: dropping
-				// it would let an Implemented-rule violation pass as a
-				// warning. The error keeps the batch out of the cache.
-				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged violated but its details could not be retrieved: %w", id, err))
+				// The verdict stands even without its explanation: dropping
+				// a violation would let an Implemented-rule violation pass as
+				// a warning. The error keeps the batch out of the cache, so a
+				// rerun asks again for the reasons a caller asked for.
+				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged %s but its details could not be retrieved: %w", id, given, err))
 			}
 		}
 		out.Verdicts = append(out.Verdicts, wv)
@@ -536,12 +544,12 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 }
 
 // detail asks for the explanation, confidence and evidence of a rule the
-// verdict request judged violated. The diff block is byte-identical to the
+// verdict request judged given. The diff block is byte-identical to the
 // verdict request's so the prompt cache prefix is reused.
-func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.RuleInput) (*wireDetail, error) {
+func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.RuleInput, given ruleeval.Verdict) (*wireDetail, error) {
 	text, err := p.send(ctx, diffBlock, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(prompt.RulesBlock([]ruleeval.RuleInput{in})),
-		anthropic.NewTextBlock(prompt.DetailInstruction(in.Rule.ID)),
+		anthropic.NewTextBlock(prompt.DetailInstructionFor(in.Rule.ID, given)),
 	}, prompt.DetailSchema())
 	if err != nil {
 		return nil, err
@@ -550,7 +558,7 @@ func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.Rul
 	if err := json.Unmarshal([]byte(text), &d); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
-	// The verdict is what lets the detail step withdraw a violation, so a
+	// The verdict is what lets the detail step withdraw a verdict, so a
 	// response without one (an older detail shape from a proxy, say) must
 	// not pass as a confirmation.
 	switch ruleeval.Verdict(d.Verdict) {
