@@ -361,3 +361,56 @@ func TestLinked_Resolved(t *testing.T) {
 	}
 	checkFigures(t, Compute(res.Entities, WithLinks(links)), "- owasp.asvs/ 1/3", "TEAM owasp.asvs/ 1/3")
 }
+
+// TestLinked_RelativePath checks that an entity path relative to the working
+// directory finds its Realm.
+func TestLinked_RelativePath(t *testing.T) {
+	lt := newLinkedTree(t)
+	t.Chdir(filepath.Dir(lt.dir))
+	e := entityIn(lt.dir, lt.app, lt.scope)
+	e.Path = filepath.Join(filepath.Base(lt.dir), "APP.json")
+	checkFigures(t, lt.compute(t, e), "- owasp.asvs/ 1/3", "APP owasp.asvs/ 1/3")
+}
+
+// TestLinked_ExclusionOutsideTheList checks that a mapping outside the
+// reference's narrowed list keeps its status though the manifest excludes
+// its clause.
+func TestLinked_ExclusionOutsideTheList(t *testing.T) {
+	lt := newLinkedTree(t)
+	lt.rf.Realm.Standards[0].Profile = "L1" // V1 and V3; V2 is above it.
+	lt.rf.Notes = append(lt.rf.Notes, exclusion(2, "owasp.asvs:V2"))
+	check(t, lt.compute(t),
+		"APP owasp.asvs@5.0.0:V1 covered",
+		"APP owasp.asvs@5.0.0:V2 mapped",
+		"APP owasp.asvs@5.0.0:V3 excluded",
+	)
+}
+
+// TestLinked_EntityScopeEqualToManifest checks that a reference an entity
+// holding this one declares is an entity's, though its list equals the
+// manifest's: it excludes nothing.
+func TestLinked_EntityScopeEqualToManifest(t *testing.T) {
+	lt := newLinkedTree(t)
+	e := entityIn(lt.dir, lt.app, []entity.StandardRef{linkedASVS}, lt.rf.Realm.Standards)
+	checkFigures(t, lt.compute(t, e), "- owasp.asvs/ 2/4", "APP owasp.asvs/ 2/4")
+}
+
+// TestLinked_ReferenceResolvesInItsRealm checks that the root's reference
+// resolves its realm against the root's dependencies for an entity of a
+// sub-realm that pins another transcription, so one clause list backs the
+// reference.
+func TestLinked_ReferenceResolvesInItsRealm(t *testing.T) {
+	lt := newLinkedTree(t)
+	pinned := filepath.Join(filepath.Dir(lt.dir), "std-next")
+	nextRF := &entity.RealmFile{Realm: entity.RealmMeta{ID: stdID, Title: "S", Version: "2.0.0", Kind: entity.KindStandard, Edition: "5.0.0"}}
+	writeJSON(t, filepath.Join(pinned, "realm.json"), nextRF)
+	writeJSON(t, filepath.Join(pinned, "V.json"), &entity.File{Entity: entity.Entity{ID: "V", Title: "V"}, Rules: []entity.Rule{clauseRule("V-001", entity.StatePublished, "V1")}})
+	subDir := filepath.Join(lt.dir, "team")
+	sub := &entity.RealmFile{Realm: entity.RealmMeta{ID: "dev.test.app.team", Title: "T", Version: "1.0.0"}}
+	lt.res.SubRealms = []*realmresolve.ResolvedRealm{{Realm: sub, Dir: subDir, Dependencies: []*realmresolve.ResolvedRealm{{Realm: nextRF, Dir: pinned}}}}
+	other := file("OTHER", nil, []entity.Rule{rule("OTHER-001", entity.StateImplemented)}, map[string][]string{"OTHER-001": {"owasp.asvs:V5"}})
+	r := lt.compute(t, entityIn(lt.dir, lt.app, lt.scope), entityIn(subDir, other, sub.Realm.Standards, lt.rf.Realm.Standards))
+	// Both read the root's list (V1, V2, V3, V5 less V3), not the sub-realm's
+	// pin (V1 alone), and share one Realm figure.
+	checkFigures(t, r, "- owasp.asvs/ 2/3", "APP owasp.asvs/ 1/3", "OTHER owasp.asvs/ 1/3")
+}

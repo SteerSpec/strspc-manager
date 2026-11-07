@@ -113,7 +113,11 @@ func (l *Links) Warnings() []string {
 
 // realmFor returns the Realm holding the entity file at path: the one whose
 // directory is the longest prefix of it, so a sub-realm wins over its parent.
+// A relative path is made absolute first, as the Realms' directories are.
 func (l *Links) realmFor(path string) *linkRealm {
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
 	var best *linkRealm
 	for _, r := range l.realms {
 		if strings.HasPrefix(path, r.dir+string(filepath.Separator)) && (best == nil || len(r.dir) > len(best.dir)) {
@@ -151,7 +155,7 @@ func (l *Links) standardRealm(r *linkRealm, id string) *entity.StandardRealm {
 	return nil
 }
 
-// exclusionKey is a clause of a standard an exclusion names.
+// exclusionKey is a standard's clause that an exclusion names.
 type exclusionKey struct{ standard, clause string }
 
 // exclusions returns the clauses the `exclusion` Realm Notes of rf name
@@ -186,21 +190,24 @@ func clauseList(sr *entity.StandardRealm, profile string) []string {
 }
 
 // realmFigureKey identifies a Realm figure: a reference in one tree, as the
-// manifest that declares it holds it, nil for one an entity declares. A
-// sub-realm that declares a reference with the same id has a reference of its
-// own, with its own exclusions and figure, as strspc-rules#177 clarifies STDREF-025.
+// manifest that declares it holds it, nil for one an entity declares, and the
+// Standard Realm it was measured against. A sub-realm that declares a
+// reference with the same id has a reference of its own, with its own
+// exclusions and figure, as strspc-rules#177 clarifies STDREF-025.
 type realmFigureKey struct {
 	tree *linkTree
 	decl *linkRealm
 	ref  entity.StandardRef
+	sr   *entity.StandardRealm
 }
 
 // declaring returns the Realm whose manifest declares the reference id
 // resolves to for the entity hop of lr, or nil when an entity, or a manifest
 // outside the links, declares it. The scopes of an entity are its own, those
-// of the entities holding it, its Realm's, then, for a sub-realm, its
-// parent's (NTE-016); the nearest that holds id is the declaring one, and a
-// scope is a manifest's when it holds that manifest's references.
+// of the entities holding it, then the manifests' (NTE-016): its Realm's and,
+// for a sub-realm, its parent's, last. The nearest scope that holds id is the
+// declaring one, and a manifest's scope is told by its position, so an entity
+// whose references equal a manifest's is still an entity.
 func declaring(lr *linkRealm, hop inherit.Hop, id string) *linkRealm {
 	manifests := []*linkRealm{lr}
 	if root := lr.tree.realms[0]; root != lr {
@@ -211,14 +218,15 @@ func declaring(lr *linkRealm, hop inherit.Hop, id string) *linkRealm {
 	if entity.FindStandard(hop.Entity.Entity.Standards, id) != nil {
 		return nil
 	}
-	for _, scope := range hop.Scopes {
+	// The manifests' scopes are the last of hop.Scopes, in that order. A
+	// hop built with fewer, as a test may, has the first of them.
+	first := max(len(hop.Scopes)-len(manifests), 0)
+	for i, scope := range hop.Scopes {
 		if entity.FindStandard(scope, id) == nil {
 			continue
 		}
-		for _, m := range manifests {
-			if slices.Equal(scope, m.rf.Realm.Standards) {
-				return m
-			}
+		if i >= first && i-first < len(manifests) {
+			return manifests[i-first]
 		}
 		return nil
 	}
@@ -260,18 +268,28 @@ func (r *Report) linkEntity(c *computer, e *realmresolve.Inheritance, claims, la
 			if ref == nil || ref.Realm == "" || ref.Relation != entity.RelationImplements {
 				continue
 			}
-			sr := c.links.standardRealm(lr, ref.Realm)
+			// A manifest's reference resolves its `realm` against the
+			// dependencies of the Realm declaring it, so every entity
+			// measured against it reads one clause list. One an entity
+			// declares, or the unresolved parent's, resolves against the
+			// entity's Realm.
+			decl := declaring(lr, hop, s.ID)
+			from := lr
+			if decl != nil && len(decl.deps) > 0 {
+				from = decl
+			}
+			sr := c.links.standardRealm(from, ref.Realm)
 			if sr == nil {
 				continue
 			}
-			decl := declaring(lr, hop, s.ID)
 			var excluded map[exclusionKey]bool
 			if decl != nil {
 				excluded = exclusions(decl.rf, nil)
 			}
 			fig := Figure{Tree: hop.RealmID, Entity: euid, Standard: ref.ID, Version: ref.Version, Realm: ref.Realm, Profile: ref.Profile}
-			agg := c.realmFigure(realmFigureKey{lr.tree, decl, *ref}, hop.RealmID, sr)
-			for _, clause := range clauseList(sr, ref.Profile) {
+			agg := c.realmFigure(realmFigureKey{lr.tree, decl, *ref, sr}, hop.RealmID, sr)
+			list := clauseList(sr, ref.Profile)
+			for _, clause := range list {
 				key := clauseKey{ref.ID, ref.Version, clause}
 				isExcluded := excluded[exclusionKey{ref.ID, clause}]
 				if isExcluded {
@@ -299,10 +317,16 @@ func (r *Report) linkEntity(c *computer, e *realmresolve.Inheritance, claims, la
 			}
 			fig.Defined = fig.Total > 0
 			r.Figures = append(r.Figures, fig)
-			// A clause the Realm excludes is excluded, whatever maps it.
-			for _, set := range []map[clauseKey]*Clause{claims, lapsed} {
-				for key, cl := range set {
-					if key.standard == ref.ID && key.version == ref.Version && excluded[exclusionKey{ref.ID, key.clause}] {
+			// A clause of the list that the declaring manifest excludes is
+			// excluded, whatever maps it. A mapping outside the list, such
+			// as one above the profile, keeps its status.
+			for _, clause := range list {
+				if !excluded[exclusionKey{ref.ID, clause}] {
+					continue
+				}
+				key := clauseKey{ref.ID, ref.Version, clause}
+				for _, set := range []map[clauseKey]*Clause{claims, lapsed} {
+					if cl, ok := set[key]; ok {
 						cl.Status = StatusExcluded
 					}
 				}

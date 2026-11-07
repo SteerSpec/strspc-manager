@@ -95,9 +95,9 @@ type clauseKey struct{ standard, version, clause string }
 type Option func(*computer)
 
 // WithLinks measures entities against the Standard Realms their references
-// link through `realm`, as links resolves them: the clause list narrowed to
-// the reference's profile, the excluded and unmapped clauses, and the
-// figures (STDREF-020 to STDREF-028).
+// link through `realm`, which links resolves to their clause lists. Compute
+// then reports each list narrowed to the reference's profile, its excluded
+// and unmapped clauses, and the figures (STDREF-020 to STDREF-028).
 func WithLinks(links *Links) Option {
 	return func(c *computer) { c.links = links }
 }
