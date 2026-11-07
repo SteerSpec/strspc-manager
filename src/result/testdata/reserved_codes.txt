@@ -48,6 +48,15 @@ RL029 active standard-note-malformed
 RL030 active standard-note-duplicate
 RL031 active standard-undeclared
 RL032 active added-by-not-contributor-id
+RL033 active standard-rule-clause-missing
+RL034 active clause-outside-standard-realm
+RL035 active rule-profile-undeclared
+RL036 active clause-profiles-differ
+RL037 active standard-rule-implemented
+RL038 active transcription-fix-clause-differs
+RL039 active rule-superseded-twice
+RL040 active supersedes-rule-not-live
+RL041 active superseded-rule-not-terminated
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -93,6 +102,11 @@ RM017 active sub-realm-language
 RM018 active realm-standards-invalid
 RM019 active realm-contributors-invalid
 RM020 active sub-realm-contributors
+RM021 active standard-realm-field-missing
+RM022 active realm-note-ids-not-sequential
+RM023 active exclusion-ref-invalid
+RM024 active realm-note-ref-not-allowed
+RM025 active realm-manifest-hash-mismatch
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable

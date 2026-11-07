@@ -1,0 +1,103 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "STD",
+    "title": "QA entity STD"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:c191057aafe4ac596e9b07fabc861968a106e4d0e9bfa83c63c0eeb16851d81e"
+  },
+  "rules": [
+    {
+      "id": "STD-001",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of the first clause MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    },
+    {
+      "id": "STD-002",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of the second clause MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V1.1.1",
+      "profiles": [
+        "L9"
+      ]
+    },
+    {
+      "id": "STD-003",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of the third clause MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V1.2.1",
+      "profiles": [
+        "L1"
+      ]
+    },
+    {
+      "id": "STD-004",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of the third clause MUST also hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V1.2.1",
+      "profiles": [
+        "L2"
+      ]
+    },
+    {
+      "id": "STD-005",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of the fourth clause MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V1.3.1"
+    },
+    {
+      "id": "STD-006",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of the fourth clause MUST hold, as fixed.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": "STD-005",
+      "clause": "V1.4.1"
+    },
+    {
+      "id": "STD-007",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of the fourth clause MUST hold, as fixed again.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": "STD-005",
+      "clause": "V1.3.1"
+    },
+    {
+      "id": "STD-008",
+      "revision": 0,
+      "state": "D",
+      "body": "The subject of the fourth clause MUST hold, as fixed a third time.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": "STD-007",
+      "clause": "V1.3.1"
+    }
+  ],
+  "notes": []
+}

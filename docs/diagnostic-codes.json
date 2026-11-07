@@ -589,8 +589,8 @@
     "module": "rule-lint",
     "severity": "Error",
     "title": "Invalid standards entry",
-    "summary": "An entry of `entity.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
-    "fix": "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
+    "summary": "An entry of `entity.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019).",
+    "fix": "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`. Give a `profile` only with the `realm` it is a profile of.",
     "retired": false
   },
   {
@@ -627,6 +627,87 @@
     "title": "added_by not a contributor identifier",
     "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
     "fix": "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
+    "retired": false
+  },
+  {
+    "code": "RL033",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Standard rule without a clause",
+    "summary": "A live rule of a Standard Realm has no `clause` (STDRLM-005).",
+    "fix": "Give the rule the `clause` of the standard it transcribes. A Draft rule can be edited; a Published one is superseded by a fix that has the clause.",
+    "retired": false
+  },
+  {
+    "code": "RL034",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Clause outside a Standard Realm",
+    "summary": "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017).",
+    "fix": "Remove `clause` and `profiles` from the rule, or declare `kind` `standard` in the manifest of a Realm that transcribes a standard. To map a rule to a clause, add a `standard` note.",
+    "retired": false
+  },
+  {
+    "code": "RL035",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Undeclared rule profile",
+    "summary": "An entry of a rule's `profiles` is not in the `profiles` of its Standard Realm's manifest (STDRLM-008).",
+    "fix": "Declare the profile in `realm.profiles`, or fix the name on the rule.",
+    "retired": false
+  },
+  {
+    "code": "RL036",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Clause with differing profiles",
+    "summary": "Live rules of a Standard Realm that carry the same `clause` declare different `profiles`, compared as sets (STDRLM-009). The set most of the clause's rules declare is the clause's, the first one found on a tie, and each rule that declares another is reported.",
+    "fix": "Give every live rule of the clause the same `profiles`.",
+    "retired": false
+  },
+  {
+    "code": "RL037",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Implemented standard rule",
+    "summary": "A rule of a Standard Realm is Implemented (STDRLM-010).",
+    "fix": "Leave a Standard Realm's rules Published: they transcribe a standard and are never enforced on code. A project implements a standard with its own rules, mapped by `standard` notes.",
+    "retired": false
+  },
+  {
+    "code": "RL038",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Transcription fix changes the clause",
+    "summary": "A rule of a Standard Realm that supersedes another and is not Abandoned has a `clause` other than that rule's (STDRLM-012).",
+    "fix": "Give the fix the `clause` of the rule it supersedes. A rule for another clause is a new rule, not a fix.",
+    "retired": false
+  },
+  {
+    "code": "RL039",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Rule superseded twice",
+    "summary": "More than one rule that is not Abandoned supersedes the same rule of a Standard Realm (STDRLM-016).",
+    "fix": "Abandon the competing fixes until one is left.",
+    "retired": false
+  },
+  {
+    "code": "RL040",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Fix supersedes a rule that is not live",
+    "summary": "A rule of a Standard Realm that is not Abandoned supersedes an Abandoned rule, or is Draft and supersedes a rule that is not live (STDRLM-017). Whether the target was live when a fix that is now past Draft was drafted is not checked here.",
+    "fix": "Supersede the live rule that transcribes the clause, not a Draft fix or an Abandoned, Retired or Terminated rule.",
+    "retired": false
+  },
+  {
+    "code": "RL041",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Superseded standard rule not Terminated",
+    "summary": "A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013).",
+    "fix": "Move the superseded rule to Terminated in the change that publishes the fix.",
     "retired": false
   },
   {
@@ -787,8 +868,8 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Invalid realm standards entry",
-    "summary": "An entry of `realm.standards` has a bad `id`, an unknown `relation` or a `url` that is not http or https, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008).",
-    "fix": "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`.",
+    "summary": "An entry of `realm.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019).",
+    "fix": "Use a dot-separated lowercase `id`, a `relation` of `implements` or `derived_from`, and an absolute http or https `url`. Give a `profile` only with the `realm` it is a profile of.",
     "retired": false
   },
   {
@@ -807,6 +888,51 @@
     "title": "Sub-realm declares contributors",
     "summary": "A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006).",
     "fix": "Remove `contributors` from the sub-realm's `realm.json`, and list the contributors on the parent.",
+    "retired": false
+  },
+  {
+    "code": "RM021",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Standard Realm field missing",
+    "summary": "A `realm.json` that declares `kind` `standard` has no `edition`, `license` or `attribution` (STDRLM-002, STDRLM-003, STDRLM-015).",
+    "fix": "Declare the `edition` of the standard, the SPDX `license` of its text and an `attribution` with `text` and `url` in `realm`.",
+    "retired": false
+  },
+  {
+    "code": "RM022",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Realm Note ids not sequential",
+    "summary": "The Realm Notes of `realm.json` repeat or skip a number, or use `REALM/000`: they are numbered from `REALM/001` with no gap, in any order (NTE-030).",
+    "fix": "Renumber the Realm Notes from `REALM/001`. A withdrawn exclusion keeps its id, retyped to `reference`.",
+    "retired": false
+  },
+  {
+    "code": "RM023",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Invalid exclusion ref",
+    "summary": "A Realm Note of type `exclusion` has no `ref`, a `ref` not of the form `<id>:<clause>`, or one whose `<id>` names no entry of `realm.standards` with a `realm` (NTE-034).",
+    "fix": "Write the `ref` as `<id>:<clause>`, where `<id>` is a `realm.standards` entry that links its Standard Realm with `realm`.",
+    "retired": false
+  },
+  {
+    "code": "RM024",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Ref on a Realm Note that can't have one",
+    "summary": "A Realm Note of type `rationale` or `clarification` has a `ref`; only an `exclusion`, or a `reference` withdrawn from one, has a `ref` (NTE-035).",
+    "fix": "Remove the `ref`, or retype the note: an exclusion is withdrawn only by retyping it to `reference`.",
+    "retired": false
+  },
+  {
+    "code": "RM025",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Manifest hash mismatch",
+    "summary": "`realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported.",
+    "fix": "Recompute the `hash` after every change to the manifest (RLMMNFST-014), as `entity.ComputeRealmHash` does, or leave it out: it stays optional until the CLI recomputes it on every write.",
     "retired": false
   },
   {

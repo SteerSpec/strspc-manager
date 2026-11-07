@@ -1,0 +1,62 @@
+{
+  "$schema": "./_schema/realm.v1.schema.json",
+  "realm": {
+    "id": "dev.steerspec.qa.std",
+    "title": "QA realm dev.steerspec.qa.std",
+    "version": "1.0.0",
+    "standards": [
+      {
+        "id": "owasp.asvs",
+        "relation": "implements",
+        "version": "5.0.0",
+        "realm": "dev.steerspec.std.owasp.asvs.v5"
+      },
+      {
+        "id": "ietf.rfc2119",
+        "relation": "derived_from"
+      }
+    ],
+    "kind": "standard",
+    "license": "CC-BY-SA-4.0",
+    "attribution": {
+      "text": "QA standard, transcribed for the QA fixtures.",
+      "url": "https://steerspec.dev"
+    },
+    "profiles": [
+      "L1",
+      "L2"
+    ]
+  },
+  "sub_realms": [
+    "app"
+  ],
+  "notes": [
+    {
+      "id": "REALM/001",
+      "type": "exclusion",
+      "content": "Excludes a clause but names none.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "REALM/003",
+      "type": "rationale",
+      "ref": "owasp.asvs:V1.1.1",
+      "content": "A rationale may not carry a ref, and REALM/002 is missing.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "REALM/004",
+      "type": "exclusion",
+      "ref": "ietf.rfc2119:2",
+      "content": "Names a standard that links to no Standard Realm.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ],
+  "hash": "blake3:0000000000000000000000000000000000000000000000000000000000000000"
+}
