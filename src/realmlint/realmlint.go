@@ -444,9 +444,12 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 			})
 			continue
 		}
-		if tagMatches {
-			fetched.add(dir, dep.RealmID, fetchedDep{dir: depDir, rf: depRF, declaredAt: realmPath})
+		// A dependency that fails either half of RM014 is not the one pinned,
+		// so neither RM015 nor RM026–RM029 compare anything with it.
+		if !tagMatches {
+			continue
 		}
+		fetched.add(dir, dep.RealmID, fetchedDep{dir: depDir, rf: depRF, declaredAt: realmPath})
 		if dep.RealmID == coreRealmID {
 			coreDir = depDir
 		}
