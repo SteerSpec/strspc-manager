@@ -1,7 +1,9 @@
 // Package coverage reports how a Realm tree's rules map to the clauses of the
-// external standards it cites (STDREF-010 to STDREF-016). It reports only what
-// is mapped: SteerSpec holds no clause lists, so a clause nothing maps can't be
-// named.
+// external standards it cites (STDREF-010 to STDREF-016). On its own it reports
+// only what is mapped: SteerSpec holds no clause lists. A Standard Reference
+// that links a Standard Realm through `realm` has one, and with Links, Compute
+// also reports the clauses of that list nothing maps and the coverage figures
+// (STDREF-020 to STDREF-028).
 package coverage
 
 import (
@@ -30,6 +32,14 @@ const (
 	// StatusCited is a `derived_from` clause, which claims no coverage
 	// (STDREF-006). It takes none of the classes above.
 	StatusCited Status = "cited"
+	// StatusExcluded is a clause of a linked clause list that the entity's
+	// Realm excludes with an `exclusion` Realm Note (STDREF-022), whatever
+	// maps it. Only Compute with Links reports it.
+	StatusExcluded Status = "excluded"
+	// StatusUnmapped is a clause of a linked clause list that is none of
+	// covered, mapped, lapsed or excluded in the entity (STDREF-023). Only
+	// Compute with Links reports it.
+	StatusUnmapped Status = "unmapped"
 )
 
 // Mapping is one `standard` note on one rule.
@@ -70,13 +80,42 @@ type Report struct {
 	// resolves to no reference, which RL029 and RL031 report for the Realm's own
 	// rules, not a dependency's.
 	Unresolved []Mapping
+	// Figures lists the coverage figures of the references that link a
+	// Standard Realm, sorted by tree, reference and entity, each Realm figure
+	// before its entities'. Only Compute with Links reports them.
+	Figures []Figure
+	// Warnings lists what kept a linked reference from getting a figure, such
+	// as a Standard Realm whose clause list couldn't be read.
+	Warnings []string
 }
 
 type clauseKey struct{ standard, version, clause string }
 
+// Option configures Compute.
+type Option func(*computer)
+
+// WithLinks measures entities against the Standard Realms their references
+// link through `realm`, which links resolves to their clause lists. Compute
+// then reports each list narrowed to the reference's profile, its excluded
+// and unmapped clauses, and the figures (STDREF-020 to STDREF-028).
+func WithLinks(links *Links) Option {
+	return func(c *computer) { c.links = links }
+}
+
+// computer holds the state of one Compute call.
+type computer struct {
+	links        *Links
+	realmFigures map[realmFigureKey]*realmFigure
+	realmOrder   []realmFigureKey
+}
+
 // Compute measures each entity over its coverage rule set (STDREF-010), which
 // inherit.Effective yields with its default states.
-func Compute(entities []*realmresolve.Inheritance) *Report {
+func Compute(entities []*realmresolve.Inheritance, opts ...Option) *Report {
+	c := &computer{realmFigures: make(map[realmFigureKey]*realmFigure)}
+	for _, opt := range opts {
+		opt(c)
+	}
 	r := &Report{}
 	declared := make(map[entity.StandardRef]bool)
 	for _, e := range entities {
@@ -86,7 +125,12 @@ func Compute(entities []*realmresolve.Inheritance) *Report {
 				declared[ref] = true
 			}
 		}
-		r.measure(e, declared)
+		r.measure(c, e, declared)
+	}
+	if c.links != nil {
+		r.addRealmFigures(c)
+		sortFigures(r.Figures)
+		r.Warnings = c.links.Warnings()
 	}
 	for ref := range declared {
 		r.Declared = append(r.Declared, ref)
@@ -102,7 +146,7 @@ func Compute(entities []*realmresolve.Inheritance) *Report {
 
 // measure adds the clauses of one entity, and to declared the references they
 // resolve to, which an inherited rule's owner may hold outside its scopes.
-func (r *Report) measure(e *realmresolve.Inheritance, declared map[entity.StandardRef]bool) {
+func (r *Report) measure(c *computer, e *realmresolve.Inheritance, declared map[entity.StandardRef]bool) {
 	euid := e.Entity.Entity.Entity.ID
 	claims := make(map[clauseKey]*Clause)
 	cites := make(map[clauseKey]*Clause)
@@ -143,12 +187,15 @@ func (r *Report) measure(e *realmresolve.Inheritance, declared map[entity.Standa
 		})
 	}
 
+	if c.links != nil {
+		r.linkEntity(c, e, claims, lapsed)
+	}
 	for _, set := range []map[clauseKey]*Clause{claims, cites, lapsed} {
-		for _, c := range set {
-			slices.SortFunc(c.Rules, func(a, b Mapping) int {
+		for _, cl := range set {
+			slices.SortFunc(cl.Rules, func(a, b Mapping) int {
 				return cmp.Or(cmp.Compare(a.Rule, b.Rule), cmp.Compare(a.Note, b.Note))
 			})
-			r.Clauses = append(r.Clauses, *c)
+			r.Clauses = append(r.Clauses, *cl)
 		}
 	}
 }
