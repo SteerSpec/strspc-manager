@@ -862,7 +862,7 @@ The `fail_on` list references rule lifecycle state codes, not severity levels (s
 - **Large sets.** A file set too large for one request is split by whole files. A file too large for one part is split into line ranges, each tag giving its range and the file's line count, and a line too large to send is reported like an oversize hunk. Every part lists the files of the whole set, and as with a split diff a part may not report a violation for something missing that could sit in a file or lines it does not show. So a rule spanning files is only conclusive about something missing when the set fits in one request. Verdicts merge across parts as for a diff.
 - **Providers.** The provider must implement `ruleeval.Auditor`. `Audit` refuses any other with `ErrAuditUnsupported`, because a provider that ignored the files would judge an empty diff and pass every rule.
 - **Cache.** An audit verdict is keyed on the file set (every path and content, in order) and on the audit prompt version, which also carries the diff prompt version it shares the rules block with. It never serves a diff verdict, nor the other way round.
-- **Notices.** An empty file set reports `RE004`, and static-only mode `RE003`. Details (`WithDetail`) work as in step 6.
+- **Notices.** An empty file set reports `RE004`, and static-only mode `RE003`, before the provider is checked, since neither sends anything. Details (`WithDetail`) work as in step 6.
 
 ### 8.4 Local Mode (Pre-commit Hook, Free Tier)
 

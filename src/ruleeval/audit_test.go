@@ -74,6 +74,17 @@ func TestAudit_EmptyFileSet(t *testing.T) {
 	if err != nil || len(res.Diagnostics) != 1 || res.Diagnostics[0].Code != ruleeval.CodeNoDiff || len(p.batches) != 0 {
 		t.Fatalf("Audit = %+v, %v (%d requests); want one RE004 and no request", res, err, len(p.batches))
 	}
+
+	// An empty set needs no provider, so one that cannot audit gets RE004
+	// too, as an empty diff would.
+	ev, err = ruleeval.New(&batchProvider{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err = ev.Audit(context.Background(), auditInputs(), []ruleeval.File{})
+	if err != nil || len(res.Diagnostics) != 1 || res.Diagnostics[0].Code != ruleeval.CodeNoDiff {
+		t.Fatalf("Audit = %+v, %v; want one RE004 whatever the provider", res, err)
+	}
 }
 
 // TestAudit_ForwardsFiles checks a batch request carries the files and no

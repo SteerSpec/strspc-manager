@@ -442,11 +442,11 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // meets is reported missing. A caller that narrows the set asserts that
 // nothing outside it bears on the rules.
 //
-// The provider must implement Auditor with a non-empty audit prompt
-// version; otherwise Audit returns ErrAuditUnsupported and evaluates
-// nothing, since a provider that ignored the files would judge an empty
-// diff and pass every rule. In static-only mode it reports RE003, and an
-// empty file set reports RE004.
+// In static-only mode Audit reports RE003, and for an empty file set RE004,
+// whatever the provider. Otherwise the provider must implement Auditor with
+// a non-empty audit prompt version, or Audit returns ErrAuditUnsupported
+// and evaluates nothing, since a provider that ignored the files would
+// judge an empty diff and pass every rule.
 func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File) (*result.Result, error) {
 	res := &result.Result{}
 	if e.cfg.StaticOnly {
@@ -458,10 +458,9 @@ func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File)
 		})
 		return res, nil
 	}
-	if a, ok := e.provider.(Auditor); !ok || a.AuditPromptVersion() == "" {
-		return nil, ErrAuditUnsupported
-	}
 	if len(files) == 0 {
+		// Nothing is sent, so the provider's capability doesn't matter, as
+		// for an empty diff.
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     CodeNoDiff,
@@ -469,6 +468,9 @@ func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File)
 			Message:  "nothing to audit: the file set is empty",
 		})
 		return res, nil
+	}
+	if a, ok := e.provider.(Auditor); !ok || a.AuditPromptVersion() == "" {
+		return nil, ErrAuditUnsupported
 	}
 	e.evaluate(ctx, res, inputs, subject{files: files})
 	return res, nil
