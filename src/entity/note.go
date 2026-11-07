@@ -13,6 +13,9 @@ const (
 	// NoteTypeStandard marks a Note that maps its Rule to one clause of a
 	// standard (NTE-013).
 	NoteTypeStandard = "standard"
+	// NoteTypeStructured marks a Note holding the machine-readable form of its
+	// Rule (NTE-036), as `<format>:<payload>` (NTE-037).
+	NoteTypeStructured = "structured"
 	// NoteTypeReference marks a free-text reference, and a withdrawn mapping
 	// (NTE-019) or exclusion (NTE-035).
 	NoteTypeReference = "reference"
@@ -81,6 +84,7 @@ var noteTypes = []string{
 	"extends",
 	"related",
 	NoteTypeStandard,
+	NoteTypeStructured,
 }
 
 // validNoteTypes is the set form of noteTypes.

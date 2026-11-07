@@ -1341,3 +1341,66 @@ func TestRD022_AppendOnlyToStandard(t *testing.T) {
 	assertHasCode(t, res, "RD012")
 	assertHasCode(t, res, "RD022")
 }
+
+func TestRD025_StructuredFreeze(t *testing.T) {
+	note := func(rule, typ, content string, rev int) entity.Note {
+		return entity.Note{
+			ID: rule + "/02", RuleRef: rule, Type: typ, Content: content,
+			AddedBy: "test@example.com", AddedAt: "2026-01-01", Revision: rev,
+		}
+	}
+	const (
+		draft     = "TSTENT-001"
+		published = "TSTENT-002"
+	)
+	tests := []struct {
+		name     string
+		from, to *entity.Note
+		rule     string
+		want     bool
+	}{
+		{"added to a Draft rule", nil, ptrNote(note(draft, "structured", "f:1", 0)), draft, false},
+		{"added to a Published rule", nil, ptrNote(note(published, "structured", "f:1", 0)), published, true},
+		{"revised on a Published rule", ptrNote(note(published, "structured", "f:1", 0)), ptrNote(note(published, "structured", "f:2", 1)), published, true},
+		{"revised on a Draft rule", ptrNote(note(draft, "structured", "f:1", 0)), ptrNote(note(draft, "structured", "f:2", 1)), draft, false},
+		{"retyped into structured on a Published rule", ptrNote(note(published, "reference", "f:1", 0)), ptrNote(note(published, "structured", "f:1", 1)), published, true},
+		{"retyped away on a Published rule", ptrNote(note(published, "structured", "f:1", 0)), ptrNote(note(published, "reference", "f:1", 1)), published, true},
+		{"unchanged on a Published rule", ptrNote(note(published, "structured", "f:1", 0)), ptrNote(note(published, "structured", "f:1", 0)), published, false},
+		{"other type on a Published rule", nil, ptrNote(note(published, "rationale", "why", 0)), published, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := makeBase()
+			if tt.from != nil {
+				base.Notes = append(base.Notes, *tt.from)
+			}
+			head := makeHead(base)
+			if tt.from != nil {
+				head.Notes[len(head.Notes)-1] = *tt.to
+			} else {
+				head.Notes = append(head.Notes, *tt.to)
+			}
+			res := New().Diff(base, head)
+			if tt.want {
+				assertHasCode(t, res, "RD025")
+			} else {
+				assertNoCode(t, res, "RD025")
+			}
+		})
+	}
+}
+
+// The state in the base decides, so a note may arrive in the change that
+// publishes its rule.
+func TestRD025_NoteWithPromotion(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].State = "P"
+	head.Notes = append(head.Notes, entity.Note{
+		ID: "TSTENT-001/02", RuleRef: "TSTENT-001", Type: "structured", Content: "f:1",
+		AddedBy: "test@example.com", AddedAt: "2026-01-01",
+	})
+	assertNoCode(t, New().Diff(base, head), "RD025")
+}
+
+func ptrNote(n entity.Note) *entity.Note { return &n }

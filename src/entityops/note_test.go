@@ -365,3 +365,80 @@ func TestStandardMappingsStayUnique(t *testing.T) {
 		t.Fatal("a revision that duplicates a mapping must be refused (NTE-015)")
 	}
 }
+
+func TestAddNote_Structured(t *testing.T) {
+	const content = `raci/1:{"enabled":["min-ra"]}`
+	t.Run("adds to a Draft rule", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, content, "github:alice"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+	})
+	t.Run("refuses malformed content", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, "no format", "github:alice"); err == nil {
+			t.Fatal("content without <format>:<payload> must be refused (NTE-037)")
+		}
+	})
+	t.Run("refuses a second note on the rule", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, content, "github:alice"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, `raci/1:{}`, "github:alice"); err == nil {
+			t.Fatal("a second structured note must be refused (NTE-040)")
+		}
+	})
+	t.Run("refuses a rule that has left Draft", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StatePublished)
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, content, "github:alice"); err == nil {
+			t.Fatal("a structured note on a Published rule must be refused (NTE-041)")
+		}
+	})
+}
+
+func TestUpdateNote_Structured(t *testing.T) {
+	const content = `raci/1:{"a":1}`
+	const noteID = "TST-001/01"
+	add := func(t *testing.T, state, typ string) *entity.File {
+		f := makeFileWithRule(t, state)
+		if _, err := AddNote(f, "TST-001", typ, content, "github:alice"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		return f
+	}
+	t.Run("revises in Draft", func(t *testing.T) {
+		f := add(t, entity.StateDraft, entity.NoteTypeStructured)
+		if err := UpdateNoteContent(f, noteID, `raci/1:{"a":2}`); err != nil {
+			t.Fatalf("UpdateNoteContent: %v", err)
+		}
+	})
+	t.Run("retypes a reference note in Draft", func(t *testing.T) {
+		f := add(t, entity.StateDraft, entity.NoteTypeReference)
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeStructured); err != nil {
+			t.Fatalf("UpdateNote: %v", err)
+		}
+	})
+	t.Run("refuses a malformed revision", func(t *testing.T) {
+		f := add(t, entity.StateDraft, entity.NoteTypeStructured)
+		if err := UpdateNoteContent(f, noteID, "no format"); err == nil {
+			t.Fatal("malformed content must be refused (NTE-037)")
+		}
+	})
+	t.Run("refuses a revision once the rule is Published", func(t *testing.T) {
+		f := add(t, entity.StatePublished, entity.NoteTypeReference)
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeStructured); err == nil {
+			t.Fatal("retyping to structured on a Published rule must be refused (NTE-041)")
+		}
+	})
+	t.Run("refuses to retype away once the rule is Published", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateDraft)
+		if _, err := AddNote(f, "TST-001", entity.NoteTypeStructured, content, "github:alice"); err != nil {
+			t.Fatalf("AddNote: %v", err)
+		}
+		f.Rules[0].State = entity.StatePublished
+		if err := UpdateNote(f, noteID, "", entity.NoteTypeReference); err == nil {
+			t.Fatal("retyping a structured note of a Published rule must be refused (NTE-041)")
+		}
+	})
+}

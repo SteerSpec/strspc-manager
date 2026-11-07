@@ -93,7 +93,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Unknown note type",
 		Summary:  "A note type is outside the closed enum.",
-		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related` or `standard`.",
+		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard` or `structured`.",
 	},
 	{
 		Code:     "RL011",
@@ -344,6 +344,22 @@ var codeTable = []CodeInfo{
 		Fix:      "Move the superseded rule to Terminated in the change that publishes the fix.",
 	},
 	{
+		Code:     "RL042",
+		Module:   "rule-lint",
+		Severity: "Error",
+		Title:    "Malformed structured note",
+		Summary:  "The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037).",
+		Fix:      "Write the format, a colon and a payload that is not blank.",
+	},
+	{
+		Code:     "RL043",
+		Module:   "rule-lint",
+		Severity: "Error",
+		Title:    "Second structured note",
+		Summary:  "A rule holds more than one `structured` note (NTE-040).",
+		Fix:      "Keep one note. To withdraw the other, retype it to `reference`.",
+	},
+	{
 		Code:     "RD000",
 		Module:   "rule-diff",
 		Severity: "Error",
@@ -543,6 +559,14 @@ var codeTable = []CodeInfo{
 		Title:    "Supersedes changed after Draft",
 		Summary:  "`supersedes` was added, removed or retargeted on a rule that has left Draft.",
 		Fix:      "Restore `supersedes`. To replace a different rule, add a new rule with `strspc rule supersede`.",
+	},
+	{
+		Code:     "RD025",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Structured note changed after Draft",
+		Summary:  "A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041).",
+		Fix:      "Restore the note. To change the structured form, supersede the rule with a new one.",
 	},
 	{
 		Code:     "RM001",

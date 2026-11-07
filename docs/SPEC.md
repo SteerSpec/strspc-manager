@@ -164,6 +164,7 @@ The evaluator receives the note types listed in `ruleeval.PromptNoteTypes`, ever
 | `extends` | Declares that this rule builds on another rule. The AI evaluator reads the body of each live rule it names alongside this rule, one hop only. | Rules |
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
 | `standard` | Maps the rule to one clause of an external standard, as `<id>:<clause>` split at the first colon (NTE-013, NTE-014). Can be added, revised or withdrawn in any rule state, and never moves the rule's revision (NTE-017, NTE-018). | Rules |
+| `structured` | Holds the machine-readable form of the rule as `<format>:<payload>` split at the first colon, the payload being opaque to SteerSpec (NTE-036, NTE-037, NTE-039). At most one per rule, and frozen once the rule leaves Draft (NTE-040, NTE-041). | Rules |
 | `exclusion` | Declares one clause not applicable to its Realm, with `ref` `<id>:<clause>` and the justification as content (NTE-032 to NTE-034). Withdrawn only by retyping it to `reference` (NTE-035). Core 1.21.0 or later. | Realms (Realm Notes) |
 
 Realm Notes, stored in the `notes` array of `realm.json` (§2.8, Realm Manifest), take only `exclusion`, `rationale`, `clarification` and `reference` (NTE-029, NTE-031).
@@ -536,6 +537,8 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL039 | Error | More than one rule that is not Abandoned supersedes the same rule of a Standard Realm (STDRLM-016). |
 | RL040 | Error | A rule of a Standard Realm that is not Abandoned supersedes an Abandoned rule, or is Draft and supersedes a rule that is not live (STDRLM-017). Whether the target was live when a fix that is now past Draft was drafted is not checked here. |
 | RL041 | Error | A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013). |
+| RL042 | Error | The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037). |
+| RL043 | Error | A rule holds more than one `structured` note (NTE-040). |
 
 #### `rule-diff` (RD)
 
@@ -566,6 +569,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
 | RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
 | RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
+| RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
 
