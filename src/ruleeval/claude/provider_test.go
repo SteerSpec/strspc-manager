@@ -45,6 +45,7 @@ type scenario struct {
 	recordable bool // can be recorded against the live API (verdict-level checks only)
 	single     bool // call Evaluate (per-rule) instead of EvaluateBatch
 	detail     ruleeval.Detail
+	files      []ruleeval.File // audited instead of diff when set
 	cfg        func(*claude.Config)
 	inputs     []ruleeval.RuleInput
 	diff       string
@@ -1164,13 +1165,13 @@ func runScenario(t *testing.T, sc scenario, rt *replay.Transport, cfg claude.Con
 		var v *ruleeval.EvalResponse
 		v, err = p.Evaluate(ctx, ruleeval.EvalRequest{
 			Rule: in.Rule, Notes: in.Notes, Diff: sc.diff,
-			EntityID: in.EntityID, Source: in.Source, Scope: in.Scope, Detail: sc.detail,
+			EntityID: in.EntityID, Source: in.Source, Scope: in.Scope, Detail: sc.detail, Files: sc.files,
 		})
 		if v != nil {
 			resp = &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{in.Rule.ID: v}}
 		}
 	} else {
-		resp, err = p.EvaluateBatch(ctx, ruleeval.BatchRequest{EntityID: "CMD", Inputs: sc.inputs, Diff: sc.diff, Detail: sc.detail})
+		resp, err = p.EvaluateBatch(ctx, ruleeval.BatchRequest{EntityID: "CMD", Inputs: sc.inputs, Diff: sc.diff, Files: sc.files, Detail: sc.detail})
 	}
 	sc.check(t, resp, err, p, rt)
 }
@@ -1183,7 +1184,7 @@ func TestProvider_Scenarios(t *testing.T) {
 	if mode == replay.ModeRecord && key == "" {
 		t.Fatalf("%s=1 requires %s to be set", replay.EnvRecord, claude.EnvAPIKey)
 	}
-	for _, sc := range scenarios() {
+	for _, sc := range append(scenarios(), auditScenarios()...) {
 		t.Run(sc.name, func(t *testing.T) {
 			var upstream http.RoundTripper
 			cfg := claude.Config{APIKey: "test-key"}
@@ -1225,7 +1226,7 @@ func TestSynthesizeCassettes(t *testing.T) {
 	if os.Getenv("STRSPC_SYNTHESIZE") != "1" {
 		t.Skip("set STRSPC_SYNTHESIZE=1 to regenerate synthetic cassettes")
 	}
-	for _, sc := range scenarios() {
+	for _, sc := range append(scenarios(), auditScenarios()...) {
 		t.Run(sc.name, func(t *testing.T) {
 			var calls atomic.Int32
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

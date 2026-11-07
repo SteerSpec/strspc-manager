@@ -1,10 +1,12 @@
 // Package ruleeval provides AI-powered evaluation of code changes against
-// SteerSpec rules. It supports pluggable providers and a static-only mode
-// for structural checks without AI.
+// SteerSpec rules, and audits of code as it stands (Evaluator.Audit). It
+// supports pluggable providers and a static-only mode for structural checks
+// without AI.
 //
 // A Provider evaluates one rule at a time. Providers may additionally
-// implement BatchProvider (one request per entity), UsageReporter and
-// Describer; the Evaluator detects these capabilities at runtime.
+// implement BatchProvider (one request per entity), UsageReporter,
+// Describer and Auditor; the Evaluator detects these capabilities at
+// runtime.
 package ruleeval
 
 import (
@@ -31,8 +33,8 @@ const (
 	// CodeStaticOnly (RE003) reports that AI evaluation was skipped because the
 	// evaluator runs in static-only mode.
 	CodeStaticOnly = "RE003"
-	// CodeNoDiff (RE004) reports that the diff is empty and there is nothing to
-	// evaluate.
+	// CodeNoDiff (RE004) reports that the diff, or the file set of an audit,
+	// is empty and there is nothing to evaluate.
 	CodeNoDiff = "RE004"
 )
 
@@ -185,8 +187,11 @@ type EvalRequest struct {
 	Rule entity.Rule
 	// Notes are the contextual notes (rationale, examples, applies_to, …).
 	Notes []entity.Note
-	// Diff is the code diff to evaluate.
+	// Diff is the code diff to evaluate. It is empty in an audit.
 	Diff string
+	// Files is the file set to audit instead of a diff (see Evaluator.Audit);
+	// nil when a diff is evaluated.
+	Files []File
 	// EntityID is the ID of the entity that owns Rule.
 	EntityID string
 	// Source is the configured rule source the rule came from.
@@ -421,11 +426,73 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 		})
 		return res
 	}
+	e.evaluate(ctx, res, inputs, subject{diff: diff})
+	return res
+}
 
+// Audit checks the code as it stands, the files given, against each rule
+// input and returns diagnostics as Evaluate does. Where Evaluate asks
+// whether a change breaks a rule, Audit asks whether the code complies, so
+// something the rule requires that is missing is a violation. Files are
+// sent in the order given, with their lines numbered so that evidence cites
+// exact lines.
+//
+// The file set stands for the whole code the rules may need to see: what it
+// leaves out counts as absent, so a requirement that only a left-out file
+// meets is reported missing. A caller that narrows the set asserts that
+// nothing outside it bears on the rules.
+//
+// In static-only mode Audit reports RE003, and for an empty file set RE004,
+// whatever the provider. Otherwise the provider must implement Auditor with
+// a non-empty audit prompt version, or Audit returns ErrAuditUnsupported
+// and evaluates nothing, since a provider that ignored the files would
+// judge an empty diff and pass every rule.
+func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File) (*result.Result, error) {
+	res := &result.Result{}
+	if e.cfg.StaticOnly {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     CodeStaticOnly,
+			Severity: result.Info,
+			Message:  "AI audit skipped: static-only mode",
+		})
+		return res, nil
+	}
+	if len(files) == 0 {
+		// Nothing is sent, so the provider's capability doesn't matter, as
+		// for an empty diff.
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     CodeNoDiff,
+			Severity: result.Info,
+			Message:  "nothing to audit: the file set is empty",
+		})
+		return res, nil
+	}
+	if a, ok := e.provider.(Auditor); !ok || a.AuditPromptVersion() == "" {
+		return nil, ErrAuditUnsupported
+	}
+	e.evaluate(ctx, res, inputs, subject{files: files})
+	return res, nil
+}
+
+// subject is what rules are judged against: a diff, or in an audit a file
+// set.
+type subject struct {
+	diff  string
+	files []File
+}
+
+// audit reports whether the subject is a file set.
+func (s subject) audit() bool { return s.files != nil }
+
+// evaluate judges inputs against sub and adds the diagnostics to res, in
+// input order.
+func (e *Evaluator) evaluate(ctx context.Context, res *result.Result, inputs []RuleInput, sub subject) {
 	outcomes := make([]outcome, len(inputs))
 	keys := make([]string, len(inputs))
-	groups := e.plan(inputs, diff, outcomes, keys)
-	groupErrs := e.run(ctx, groups, inputs, diff, outcomes)
+	groups := e.plan(inputs, sub, outcomes, keys)
+	groupErrs := e.run(ctx, groups, inputs, sub, outcomes)
 
 	for i, input := range inputs {
 		o := outcomes[i]
@@ -478,23 +545,29 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 			Message:  fmt.Sprintf("evaluation incomplete for entity %s: %v", ge.entityID, ge.err),
 		})
 	}
-
-	return res
 }
 
 // plan filters inputs by state, consults the cache and groups the
 // remaining inputs by entity in first-seen order.
-func (e *Evaluator) plan(inputs []RuleInput, diff string, outcomes []outcome, keys []string) []group {
+func (e *Evaluator) plan(inputs []RuleInput, sub subject, outcomes []outcome, keys []string) []group {
 	var model, promptVersion, diffHash string
 	if e.cfg.Cache != nil {
 		d := e.provider.(Describer) // enforced by New
 		model, promptVersion = d.Model(), d.PromptVersion()
+		if sub.audit() {
+			// An audit verdict answers another question with another prompt,
+			// so it never shares a key with a diff verdict.
+			promptVersion = e.provider.(Auditor).AuditPromptVersion() // checked by Audit
+		}
 		if e.cfg.Detail != DetailViolated {
 			// A detailed verdict and an undetailed one are different results.
 			// The default adds nothing, so its keys don't depend on the option.
 			promptVersion += "/detail=" + e.cfg.Detail.String()
 		}
-		diffHash = DiffHash(diff)
+		diffHash = DiffHash(sub.diff)
+		if sub.audit() {
+			diffHash = "files:" + FilesHash(sub.files)
+		}
 	}
 
 	var groups []group
@@ -538,7 +611,7 @@ type groupError struct {
 // into outcomes. It stops scheduling new groups once ctx is cancelled.
 // Group errors are returned in group (first-seen entity) order regardless
 // of which goroutine finished first, so diagnostics stay deterministic.
-func (e *Evaluator) run(ctx context.Context, groups []group, inputs []RuleInput, diff string, outcomes []outcome) []groupError {
+func (e *Evaluator) run(ctx context.Context, groups []group, inputs []RuleInput, sub subject, outcomes []outcome) []groupError {
 	var (
 		perGroup = make([][]groupError, len(groups)) // each goroutine owns one slot
 		wg       sync.WaitGroup
@@ -553,7 +626,7 @@ func (e *Evaluator) run(ctx context.Context, groups []group, inputs []RuleInput,
 		go func(gi int, g group) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			perGroup[gi] = e.runGroup(ctx, g, inputs, diff, outcomes)
+			perGroup[gi] = e.runGroup(ctx, g, inputs, sub, outcomes)
 		}(gi, g)
 	}
 	wg.Wait()
@@ -567,7 +640,7 @@ func (e *Evaluator) run(ctx context.Context, groups []group, inputs []RuleInput,
 
 // runGroup evaluates one entity's pending rules. Each goroutine writes only
 // to the outcome slots it owns, so no locking is needed on outcomes.
-func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, diff string, outcomes []outcome) []groupError {
+func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, sub subject, outcomes []outcome) []groupError {
 	ids := make([]string, len(g.idx))
 	for n, i := range g.idx {
 		ids[n] = inputs[i].Rule.ID
@@ -581,7 +654,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 			}
 			in := inputs[i]
 			resp, err := e.provider.Evaluate(ctx, EvalRequest{
-				Rule: in.Rule, Notes: in.Notes, Diff: diff,
+				Rule: in.Rule, Notes: in.Notes, Diff: sub.diff, Files: sub.files,
 				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
 				Owner: in.Owner, InheritedBy: in.InheritedBy, Overrides: in.Overrides, OverriddenBy: in.OverriddenBy, Extended: in.Extended,
 				Detail: e.cfg.Detail,
@@ -595,7 +668,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, d
 	if ctx.Err() != nil {
 		return nil
 	}
-	req := BatchRequest{EntityID: g.entityID, Diff: diff, Detail: e.cfg.Detail, Inputs: make([]RuleInput, 0, len(g.idx))}
+	req := BatchRequest{EntityID: g.entityID, Diff: sub.diff, Files: sub.files, Detail: e.cfg.Detail, Inputs: make([]RuleInput, 0, len(g.idx))}
 	for _, i := range g.idx {
 		req.Inputs = append(req.Inputs, inputs[i])
 	}

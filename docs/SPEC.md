@@ -666,7 +666,7 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 | RE001 | Warning / Error | The diff violates a rule; Error when the rule's state is in `fail_on`, Warning otherwise. |
 | RE002 | Warning | The AI provider failed for a rule or entity, or returned no verdict or an unrecognized one. |
 | RE003 | Info | AI evaluation skipped because the evaluator runs in static-only mode. |
-| RE004 | Info | The diff is empty; nothing to evaluate. |
+| RE004 | Info | The diff, or the file set of an audit, is empty; nothing to evaluate. |
 
 #### `rule-refs` (RF)
 
@@ -859,11 +859,20 @@ The `fail_on` list references rule lifecycle state codes, not severity levels (s
 6. The AI returns exactly one verdict per rule — compliant, violated, or not applicable — as a structured object keyed by rule id, so the output schema itself guarantees a verdict for every rule sent; a second request per violated rule then re-reads the diff with that single rule in focus and either confirms the verdict with its explanation and evidence locations (file, line, excerpt) or withdraws it (`compliant` or `not_applicable`, explanation kept, counted in `Usage.Withdrawn`). `not_applicable` is the default when the rule's subject is absent from the diff. A caller that needs reasons for compliance too, such as a gate promoting a rule to Implemented, opts in with `ruleeval.WithDetail(ruleeval.DetailCompliant)`: each rule judged compliant then gets the same second request, which confirms the verdict with an explanation and the lines that satisfy the rule, or withdraws it (`violated`, keeping the lines that break the rule, or `not_applicable`), also counted in `Usage.Withdrawn`. It costs one more request per compliant rule, so a PR check leaves it off. On a split diff the evidence of every part that judged the rule compliant is merged, as it is for a violation. `not_applicable` is never detailed. A detailed verdict is cached apart from an undetailed one.
 7. Report results. Violations carry the first evidence location; a provider failure is a warning (`RE002`) for each affected rule and never blocks on its own. Block merge if `fail_on` conditions are met.
 
+**Audit mode.** `Evaluator.Audit` judges rules against code as it stands, a set of files, instead of a change, which a gate needs before promoting a rule to Implemented. The flow is the one above with these differences:
+
+- **The question.** An audit has its own system prompt: does the code comply with the rule? Something the rule requires that is missing from the code is a violation, where a diff only answers for what it changes.
+- **The input.** Each file is sent in a `<file>` block naming its path, with its lines numbered, so evidence cites exact lines. The file set stands for the whole code the rules may need to see: what it leaves out counts as absent. A caller that narrows it, to some paths say, asserts that nothing outside them bears on the rules.
+- **Large sets.** A file set too large for one request is split by whole files. A file too large for one part is split into line ranges, each tag giving its range and the file's line count, and a line too large to send is reported like an oversize hunk. Every part lists the files of the whole set, and as with a split diff a part may not report a violation for something missing that could sit in a file or lines it does not show. So a rule spanning files is only conclusive about something missing when the set fits in one request. Verdicts merge across parts as for a diff.
+- **Providers.** The provider must implement `ruleeval.Auditor`. `Audit` refuses any other with `ErrAuditUnsupported`, because a provider that ignored the files would judge an empty diff and pass every rule.
+- **Cache.** An audit verdict is keyed on the file set (every path and content, in order) and on the audit prompt version, which also carries the diff prompt version it shares the rules block with. It never serves a diff verdict, nor the other way round.
+- **Notices.** An empty file set reports `RE004`, and static-only mode `RE003`, before the provider is checked, since neither sends anything. Details (`WithDetail`) work as in step 6.
+
 ### 8.4 Local Mode (Pre-commit Hook, Free Tier)
 
 - CLI tool: `strspc init`, `strspc check`, `strspc sync`.
 - Resolved rules cached locally under `.strspc/cache/`; evaluation results in `.strspc/cache.db`, an embedded key-value store (no external database).
-- Evaluation results are keyed on `(rule_id, rule_revision, rule_body, notes, source, scope, diff_hash, model, prompt_version)`, where `prompt_version` also carries the detail level when it isn't the default — the same diff against the same rule skips re-evaluation, while a rule edit, model change or prompt revision invalidates the entry. A provider that cannot report its model and prompt version cannot be used with the cache. Entries expire after `cache.ttl`.
+- Evaluation results are keyed on `(rule_id, rule_revision, rule_body, notes, source, scope, diff_hash, model, prompt_version)`, where `prompt_version` also carries the detail level when it isn't the default, and for the Claude provider the effort and the split configuration (input budget, rules per request, bytes per token): a part cannot report what may sit in another, so a verdict judged in parts must not serve a request that fits in one. In an audit, `diff_hash` is the file set's hash and `prompt_version` the audit prompt version (§8.3) — the same diff against the same rule skips re-evaluation, while a rule edit, model change or prompt revision invalidates the entry. A provider that cannot report its model and prompt version cannot be used with the cache. Entries expire after `cache.ttl`.
 - If the cache file is locked by another process the check runs without a cache and says so; a corrupt cache file is recreated.
 - The developer provides their own LLM (API key for Claude, local Ollama, etc.) via `.strspc/config.yaml`.
 - Graceful degradation: if no LLM is configured, only JSON Schema validation runs (structural checks, no behavioral evaluation).
