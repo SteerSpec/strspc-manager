@@ -184,18 +184,33 @@ func New(cfg Config) (*Provider, error) {
 // Model returns the configured model id.
 func (p *Provider) Model() string { return p.cfg.Model }
 
-// PromptVersion returns the prompt revision qualified by the effort level,
-// e.g. "v1/effort=medium". Effort changes how carefully the model judges
-// the same prompt, so it is part of the cache identity: raising effort
-// must not reuse a verdict produced at a lower one.
-func (p *Provider) PromptVersion() string { return prompt.Version + "/effort=" + p.cfg.Effort }
+// PromptVersion returns the prompt revision qualified by the effort level
+// and the split configuration, e.g. "v8/effort=medium/split=100000,40,2/1".
+// Effort changes how carefully the model judges the same prompt, so it is
+// part of the cache identity: raising effort must not reuse a verdict
+// produced at a lower one. The split configuration (MaxInputTokens,
+// MaxRulesPerRequest and the bytes-per-token ratio) decides whether a diff
+// is split, and a part cannot report what may sit in another, so a verdict
+// judged in parts must not be reused where the diff would fit one request.
+func (p *Provider) PromptVersion() string {
+	return prompt.Version + "/effort=" + p.cfg.Effort + p.splitIdentity()
+}
 
 // AuditPromptVersion returns the audit prompt revision with the prompt
-// revision it shares the rules block and verdict schema with, qualified by
-// the effort level, e.g. "audit-a1+v8/effort=medium". The provider audits
-// every request whose Files are set (ruleeval.Auditor).
+// revision it shares the rules block and verdict schema with, qualified as
+// PromptVersion is, e.g. "audit-a1+v8/effort=medium/split=100000,40,2/1".
+// The split configuration matters even more to an audit, where something
+// missing from a set that fits one request is a violation that a part may
+// not report. The provider audits every request whose Files are set
+// (ruleeval.Auditor).
 func (p *Provider) AuditPromptVersion() string {
-	return "audit-" + prompt.AuditVersion + "+" + prompt.Version + "/effort=" + p.cfg.Effort
+	return "audit-" + prompt.AuditVersion + "+" + prompt.Version + "/effort=" + p.cfg.Effort + p.splitIdentity()
+}
+
+// splitIdentity renders the configuration that decides how a request is
+// split into parts.
+func (p *Provider) splitIdentity() string {
+	return fmt.Sprintf("/split=%d,%d,%d/%d", p.cfg.MaxInputTokens, p.cfg.MaxRulesPerRequest, bytesPerTokenNum, bytesPerTokenDen)
 }
 
 // Usage returns the tokens and completed requests accumulated so far.

@@ -233,8 +233,34 @@ func TestAuditPromptVersion_IsDistinct(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := p.AuditPromptVersion()
-	if got == p.PromptVersion() || !strings.Contains(got, prompt.AuditVersion) || !strings.Contains(got, prompt.Version) || !strings.HasSuffix(got, "/effort=high") {
+	if got == p.PromptVersion() || !strings.Contains(got, prompt.AuditVersion) || !strings.Contains(got, prompt.Version) || !strings.Contains(got, "/effort=high/") {
 		t.Errorf("AuditPromptVersion = %q, PromptVersion = %q", got, p.PromptVersion())
 	}
 	var _ ruleeval.Auditor = p
+}
+
+// TestPromptVersions_FollowTheSplit checks that a budget or rules-per-request
+// change, which decides whether a request is split into parts, changes both
+// cache identities: a verdict judged in parts cannot say what is missing
+// across them, so it must not serve a request that fits one.
+func TestPromptVersions_FollowTheSplit(t *testing.T) {
+	base, err := claude.New(claude.Config{APIKey: "k"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, cfg := range map[string]claude.Config{
+		"budget":            {APIKey: "k", MaxInputTokens: 30000},
+		"rules per request": {APIKey: "k", MaxRulesPerRequest: 5},
+	} {
+		p, err := claude.New(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.PromptVersion() == base.PromptVersion() || p.AuditPromptVersion() == base.AuditPromptVersion() {
+			t.Errorf("%s: a split change must change both versions, got %q and %q", name, p.PromptVersion(), p.AuditPromptVersion())
+		}
+	}
+	if !strings.Contains(base.PromptVersion(), fmt.Sprintf("/split=%d,%d,", claude.DefaultMaxInputTokens, claude.DefaultMaxRulesPerRequest)) {
+		t.Errorf("PromptVersion = %q, want the default split", base.PromptVersion())
+	}
 }
