@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.45.0](https://github.com/SteerSpec/strspc-manager/compare/v1.44.0...v1.45.0) (2026-11-07)
+
+
+### Features
+
+* **entityops:** add and update Realm Notes (core 1.21.0, 18c.5) ([#311](https://github.com/SteerSpec/strspc-manager/issues/311)) ([8894e6b](https://github.com/SteerSpec/strspc-manager/commit/8894e6bedf2b8fe822de6bb907c3b7f2506ae635))
+* **lint:** check Standard Realm manifests and rules (core 1.21.0, 18c stage 1) ([#310](https://github.com/SteerSpec/strspc-manager/issues/310)) ([a624e68](https://github.com/SteerSpec/strspc-manager/commit/a624e68eb54f40b2ac10b8dc6bcf79e7bf06ba78))
+
 ## [1.44.0](https://github.com/SteerSpec/strspc-manager/compare/v1.43.0...v1.44.0) (2026-11-07)
 
 
