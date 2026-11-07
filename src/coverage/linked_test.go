@@ -129,6 +129,8 @@ func checkFigures(t *testing.T, r *Report, want ...string) {
 	}
 }
 
+// TestLinked_Statuses checks each status a linked clause list gives, and the
+// figures, for an entity of the root.
 func TestLinked_Statuses(t *testing.T) {
 	lt := newLinkedTree(t)
 	r := lt.compute(t)
@@ -151,7 +153,8 @@ func TestLinked_Statuses(t *testing.T) {
 	}
 }
 
-// A profile narrows the list to the clauses whose rules declare it
+// TestLinked_Profile checks that a profile narrows the list to the clauses
+// whose rules declare it
 // (STDREF-020); a mapping above it keeps its row but doesn't count.
 func TestLinked_Profile(t *testing.T) {
 	lt := newLinkedTree(t)
@@ -166,7 +169,8 @@ func TestLinked_Profile(t *testing.T) {
 	checkFigures(t, r, "- owasp.asvs/L1 1/1", "APP owasp.asvs/L1 1/1")
 }
 
-// A figure whose every clause is excluded is undefined (STDREF-028).
+// TestLinked_ZeroDivisor checks that a figure whose every clause is excluded
+// is undefined (STDREF-028).
 func TestLinked_ZeroDivisor(t *testing.T) {
 	lt := newLinkedTree(t)
 	lt.rf.Realm.Standards[0].Profile = "L1"
@@ -174,7 +178,8 @@ func TestLinked_ZeroDivisor(t *testing.T) {
 	checkFigures(t, lt.compute(t), "- owasp.asvs/L1 undefined", "APP owasp.asvs/L1 undefined")
 }
 
-// A `derived_from` reference gets no figure (STDREF-026), and a reference
+// TestLinked_NoFigure checks that a `derived_from` reference gets no figure
+// (STDREF-026), and a reference
 // without a realm none either.
 func TestLinked_NoFigure(t *testing.T) {
 	for name, ref := range map[string]entity.StandardRef{
@@ -196,7 +201,8 @@ func TestLinked_NoFigure(t *testing.T) {
 	}
 }
 
-// The Realm figure counts a clause covered in any entity of the tree
+// TestLinked_RealmFigure checks that the Realm figure counts a clause covered
+// in any entity of the tree
 // (STDREF-025), and each entity's figure only its own.
 func TestLinked_RealmFigure(t *testing.T) {
 	lt := newLinkedTree(t)
@@ -206,8 +212,9 @@ func TestLinked_RealmFigure(t *testing.T) {
 	checkFigures(t, r, "- owasp.asvs/ 2/3", "APP owasp.asvs/ 1/3", "OTHER owasp.asvs/ 1/3")
 }
 
-// A clause is excluded for a reference when the manifest declaring the
-// reference excludes it (STDREF-022): an entity of a sub-realm measured
+// TestLinked_SubRealm checks that a clause is excluded for a reference when
+// the manifest declaring the reference excludes it (STDREF-022): an entity of
+// a sub-realm measured
 // against the root's reference takes the root's exclusions, and a reference
 // the sub-realm declares itself, with the same id, is a reference of its own
 // with its own exclusions and figure, as strspc-rules#177 clarifies STDREF-025.
@@ -252,7 +259,8 @@ func TestLinked_SubRealm(t *testing.T) {
 	checkFigures(t, lt.compute(t, entityIn(subDir, lt.app, sub.Realm.Standards, lt.rf.Realm.Standards)), "- owasp.asvs/ 1/1", "APP owasp.asvs/ 1/1")
 }
 
-// A reference an entity declares excludes nothing: only a manifest holds
+// TestLinked_EntityReference checks that a reference an entity declares
+// excludes nothing: only a manifest holds
 // Realm Notes.
 func TestLinked_EntityReference(t *testing.T) {
 	lt := newLinkedTree(t)
@@ -267,7 +275,8 @@ func TestLinked_EntityReference(t *testing.T) {
 	checkFigures(t, r, "- owasp.asvs/ 2/4", "APP owasp.asvs/ 2/4")
 }
 
-// A Standard Realm whose clause list can't be read gives a warning and no
+// TestLinked_UnreadableStandardRealm checks that a Standard Realm whose clause
+// list can't be read gives a warning and no
 // figure.
 func TestLinked_UnreadableStandardRealm(t *testing.T) {
 	lt := newLinkedTree(t)
@@ -281,7 +290,8 @@ func TestLinked_UnreadableStandardRealm(t *testing.T) {
 	}
 }
 
-// An entity outside every tree added, and a dependency that isn't a
+// TestLinked_OutsideTheLinks checks that an entity outside every tree added,
+// and a dependency that isn't a
 // Standard Realm, are measured as before.
 func TestLinked_OutsideTheLinks(t *testing.T) {
 	lt := newLinkedTree(t)
@@ -296,7 +306,8 @@ func TestLinked_OutsideTheLinks(t *testing.T) {
 	checkFigures(t, lt.compute(t))
 }
 
-// Links work on what realm-resolve gives: its entity paths, sub-realm
+// TestLinked_Resolved checks that Links work on what realm-resolve gives: its
+// entity paths, sub-realm
 // directories and scopes.
 func TestLinked_Resolved(t *testing.T) {
 	base := t.TempDir()
