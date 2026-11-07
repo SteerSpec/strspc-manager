@@ -725,7 +725,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Invalid exclusion ref",
-		Summary:  "A Realm Note of type `exclusion` has no `ref`, or the `<id>` of its `ref` names no entry of `realm.standards` with a `realm` (NTE-034).",
+		Summary:  "A Realm Note of type `exclusion` has no `ref`, a `ref` not of the form `<id>:<clause>`, or one whose `<id>` names no entry of `realm.standards` with a `realm` (NTE-034).",
 		Fix:      "Write the `ref` as `<id>:<clause>`, where `<id>` is a `realm.standards` entry that links its Standard Realm with `realm`.",
 	},
 	{

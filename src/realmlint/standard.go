@@ -4,16 +4,9 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
-)
-
-// The Realm Note types other than exclusion and reference (NTE-031).
-const (
-	noteTypeRationale     = "rationale"
-	noteTypeClarification = "clarification"
 )
 
 // realmNoteIDRe matches a Realm Note identifier, capturing its number
@@ -25,7 +18,9 @@ var realmNoteIDRe = regexp.MustCompile(`^REALM/(\d{3})$`)
 // (NTE-030), RM023 (NTE-034), RM024 (NTE-035) and RM025 (RLMMNFST-013). data
 // is the manifest as read, which RM025 hashes. The schema (RM002) already
 // checks the kind, the shape of attribution and profiles, the form of a note
-// id, the note types and the form of a ref and hash.
+// id, the note types and the form of a hash. It checks the form of a ref too,
+// and RM023 checks it again on an exclusion, through the same
+// entity.CheckExclusionRef that entityops.AddRealmNote uses.
 func checkManifestNotesAndHash(rf *entity.RealmFile, data []byte, realmPath string, res *result.Result) {
 	checkStandardRealmFields(&rf.Realm, realmPath, res)
 	checkRealmNoteIDs(rf.Notes, realmPath, res)
@@ -119,16 +114,16 @@ func checkRealmNoteRefs(rf *entity.RealmFile, realmPath string, res *result.Resu
 	for _, n := range rf.Notes {
 		switch n.Type {
 		case entity.NoteTypeExclusion:
-			if msg := exclusionRefProblem(n.Ref, rf.Realm.Standards); msg != "" {
+			if err := entity.CheckExclusionRef(n.Ref, rf.Realm.Standards); err != nil {
 				res.Add(result.Diagnostic{
 					Module:   module,
 					Code:     "RM023",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("exclusion %s: %s (NTE-034)", n.ID, msg),
+					Message:  fmt.Sprintf("exclusion %s: %v (NTE-034)", n.ID, err),
 					Path:     realmPath,
 				})
 			}
-		case noteTypeRationale, noteTypeClarification:
+		case entity.NoteTypeRationale, entity.NoteTypeClarification:
 			if n.Ref != "" {
 				res.Add(result.Diagnostic{
 					Module:   module,
@@ -140,26 +135,6 @@ func checkRealmNoteRefs(rf *entity.RealmFile, realmPath string, res *result.Resu
 			}
 		}
 	}
-}
-
-// exclusionRefProblem describes what is wrong with the ref of an exclusion, or
-// returns "" when its <id> names a Standard Reference with a realm in standards.
-func exclusionRefProblem(ref string, standards []entity.StandardRef) string {
-	if ref == "" {
-		return "has no ref"
-	}
-	id, _, ok := strings.Cut(ref, ":")
-	if !ok {
-		return fmt.Sprintf("ref %q is not <id>:<clause>", ref)
-	}
-	std := entity.FindStandard(standards, id)
-	switch {
-	case std == nil:
-		return fmt.Sprintf("ref %q names standard %q, which this manifest doesn't declare", ref, id)
-	case std.Realm == "":
-		return fmt.Sprintf("ref %q names standard %q, which links to no Standard Realm", ref, id)
-	}
-	return ""
 }
 
 // checkManifestHash runs RM025: a manifest that declares a hash declares the

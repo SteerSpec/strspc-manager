@@ -104,7 +104,7 @@ A Rule Set groups all rules applicable to a specific entity. Every entity has ex
 | `timestamp` | string | UTC ISO timestamp of the last change. |
 | `hash` | string or null | `blake3:<hex>` hash of the canonical JSON content. |
 
-**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003).
+**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003). The Realm Note operations change the manifest, not a Rule Set, and bump no version (§2 Realm Manifest).
 
 **Visibility and `realm.version`:** narrowing an entity's `visibility` can break Realms that inherit it, so it needs a MAJOR bump of `realm.version`; widening needs a MINOR one. `strspc diff` says which (RD020); it can't enforce it, because it doesn't read `realm.json`.
 
@@ -204,6 +204,10 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `hash` | string | Blake3 hash of the manifest without its `hash` field (RLMMNFST-013), recomputed on every change (RLMMNFST-014). Core 1.21.0 or later. |
 
 The core 1.21.0 fields are modeled and kept on every rewrite. The checks their Draft rules describe that need only the Realm itself are in `rule-lint` (RL033 to RL041) and `realm-lint` (RM021 to RM025): Standard Realm fields and rules, Realm Note identifiers and refs, and the manifest hash. Three kinds of check are not implemented yet: those that resolve a Standard Reference's `realm` in another Realm (STDREF-017, STDREF-018, STDREF-021, STDREF-027, and the clause an exclusion names, NTE-034); those that compare a change with the history (`rule-diff` on clauses, profiles and Realm Notes); and supersede and promote in a Standard Realm (`entityops`). The CLI does not yet recompute the hash on every write (RLMMNFST-014), so a missing `hash` is not reported.
+
+`entity.ComputeRealmHash` gives the manifest hash, and `realm-lint` checks a declared one with it (RM025). `entityops.AddRealmNote` and `entityops.UpdateRealmNote` change Realm Notes. They leave the Realm's version and hash to the caller, which recomputes the hash when it writes the manifest.
+- **Add:** a note gets the next `REALM/NNN` (NTE-030) at revision 0. An exclusion has a `ref` that passes `entity.CheckExclusionRef`, the same check as RM023 (NTE-034), and no other note may be given a `ref`. `added_by` must name one of the contributors the caller passes, when it passes any (CTRB-005). Those are the ones `entity.RealmContributors` returns, which for a sub-realm are its parent's (CTRB-006).
+- **Update:** the revision goes up once per change (NTE-008). The only change of type is withdrawing an exclusion to `reference`, which keeps its `ref` and content (NTE-035). No operation changes a `ref` or removes a note (NTE-009).
 
 RLMMNFST-002 sets the required fields. Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
@@ -553,7 +557,7 @@ RD023 runs only when the caller passes the Realm's contributors with `WithContri
 
 #### `realm-lint` (RM)
 
-RM002, RM003, RM004, RM007, RM014–RM016, RM018, RM019 and RM021–RM025 fire for the parent manifest and for each sub-realm manifest. RM021–RM025 check only what the schema can't: RM002 already checks `kind`, the shape of `attribution` and `profiles`, the form of a Realm Note `id`, `type` and `ref`, and the form of `hash`.
+RM002, RM003, RM004, RM007, RM014–RM016, RM018, RM019 and RM021–RM025 fire for the parent manifest and for each sub-realm manifest. RM021–RM025 check only what the schema can't: RM002 already checks `kind`, the shape of `attribution` and `profiles`, the form of a Realm Note `id`, `type` and `ref`, and the form of `hash`. The one overlap is RM023, which also reports an exclusion whose `ref` is not `<id>:<clause>`, through the same check `entityops.AddRealmNote` makes.
 RM015, RM016 and the manifest half of RM014 need a dependency fetcher, and are skipped without one. A sub-realm that pins no core Realm of its own is compared with its parent's.
 RM002 and RL002 validate a Realm against the schemas of the core version it pins. The caller selects the core Realm's own `_schema/` explicitly (`--core`); a Realm declaring the core ID does not. Any other Realm's `_schema/` never decides validation. A sub-realm that pins no core Realm of its own uses its parent's; one that does is validated against its own pin only, not also against its parent's, when the caller supplies the linters for sub-realms to `realm-lint` and, for the Realm tree, to `rule-lint`.
 A caller that lints the entity files itself, as `rule-lint` over the Realm tree, can tell `realm-lint` so; `realm-lint` then runs without a rule linter and does not emit the Info form of RM005.
@@ -583,7 +587,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
 | RM021 | Error | A `realm.json` that declares `kind` `standard` has no `edition`, `license` or `attribution` (STDRLM-002, STDRLM-003, STDRLM-015). |
 | RM022 | Error | The Realm Notes of `realm.json` repeat or skip a number, or use `REALM/000`: they are numbered from `REALM/001` with no gap, in any order (NTE-030). |
-| RM023 | Error | A Realm Note of type `exclusion` has no `ref`, or the `<id>` of its `ref` names no entry of `realm.standards` with a `realm` (NTE-034). |
+| RM023 | Error | A Realm Note of type `exclusion` has no `ref`, a `ref` not of the form `<id>:<clause>`, or one whose `<id>` names no entry of `realm.standards` with a `realm` (NTE-034). |
 | RM024 | Error | A Realm Note of type `rationale` or `clarification` has a `ref`; only an `exclusion`, or a `reference` withdrawn from one, has a `ref` (NTE-035). |
 | RM025 | Error | `realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported. |
 
