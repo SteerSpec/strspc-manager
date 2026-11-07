@@ -188,7 +188,7 @@ func clauseList(sr *entity.StandardRealm, profile string) []string {
 // realmFigureKey identifies a Realm figure: a reference in one tree, as the
 // manifest that declares it holds it, nil for one an entity declares. A
 // sub-realm that declares a reference with the same id has a reference of its
-// own, with its own exclusions and figure (STDREF-025/01).
+// own, with its own exclusions and figure, as strspc-rules#177 clarifies STDREF-025.
 type realmFigureKey struct {
 	tree *linkTree
 	decl *linkRealm
@@ -325,7 +325,7 @@ func (c *computer) realmFigure(key realmFigureKey, treeID string, sr *entity.Sta
 // addRealmFigures adds the Realm figure of each reference measured: a clause
 // counts as covered when any entity of the tree measured against the
 // reference covers it (STDREF-025), and as excluded when the manifest that
-// declares the reference excludes it (STDREF-025/01).
+// declares the reference excludes it, as strspc-rules#177 clarifies STDREF-025.
 func (r *Report) addRealmFigures(c *computer) {
 	for _, key := range c.realmOrder {
 		agg := c.realmFigures[key]

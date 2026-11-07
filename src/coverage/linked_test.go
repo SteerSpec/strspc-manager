@@ -210,7 +210,7 @@ func TestLinked_RealmFigure(t *testing.T) {
 // reference excludes it (STDREF-022): an entity of a sub-realm measured
 // against the root's reference takes the root's exclusions, and a reference
 // the sub-realm declares itself, with the same id, is a reference of its own
-// with its own exclusions and figure (STDREF-025/01).
+// with its own exclusions and figure, as strspc-rules#177 clarifies STDREF-025.
 func TestLinked_SubRealm(t *testing.T) {
 	lt := newLinkedTree(t)
 	subDir := filepath.Join(lt.dir, "team")
