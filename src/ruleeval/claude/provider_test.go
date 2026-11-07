@@ -129,11 +129,14 @@ var (
 	codeDiff = strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/result/codes_table.go")
 )
 
-// twoChunks leaves room for one fixture file per chunk: ~265 tokens past the
-// system prompt and the overhead of 256 pay for the rules (~55), the file
-// list (~55) and one ~430-byte file. It follows the system prompt's size, so
-// rewording the prompt does not move the split.
-func twoChunks(c *claude.Config) { c.MaxInputTokens = (len(prompt.System())+2)/3 + 256 + 265 }
+// twoChunks leaves room for one fixture file per chunk: 795 bytes past the
+// system prompt and the overhead of 256 tokens pay for the rules (~165
+// bytes), the file list (~165 bytes) and one ~430-byte file. It follows the
+// system prompt's size and the provider's own estimate, so neither rewording
+// the prompt nor retuning the estimate moves the split.
+func twoChunks(c *claude.Config) {
+	c.MaxInputTokens = claude.EstimateTokens(prompt.System()) + 256 + claude.EstimateTokens(strings.Repeat("x", 795))
+}
 
 // --- synthetic Messages API responses -------------------------------------
 

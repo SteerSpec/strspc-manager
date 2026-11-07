@@ -41,8 +41,12 @@ const (
 	// DefaultMaxTokens caps the response size when Config.MaxTokens is zero.
 	DefaultMaxTokens = 8192
 	// DefaultMaxInputTokens is the per-request input budget, which drives diff
-	// chunking, when Config.MaxInputTokens is zero.
-	DefaultMaxInputTokens = 60000
+	// chunking, when Config.MaxInputTokens is zero. It was 60000 while
+	// EstimateTokens counted 3 bytes per token, so a part held about 180 KB of
+	// diff and real requests on Go code reached about 84k tokens. At 2 bytes
+	// per token, 100000 keeps parts about that size (some 190 KB), so a diff
+	// is not split more than before.
+	DefaultMaxInputTokens = 100000
 	// DefaultMaxRulesPerRequest bounds how many rules share one request when
 	// Config.MaxRulesPerRequest is zero.
 	DefaultMaxRulesPerRequest = 40
@@ -258,10 +262,10 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		}
 	}
 	budgetTokens := available - maxRulesTokens
-	chunks, oversize := chunkDiff(req.Diff, budgetTokens*3)
+	chunks, oversize := chunkDiff(req.Diff, bytesForTokens(budgetTokens))
 	diffBlock := prompt.DiffBlock
 	if len(chunks) > 1 || len(oversize) > 0 {
-		files, unlisted := capFiles(changedFiles(req.Diff), budgetTokens*3/fileListShare)
+		files, unlisted := capFiles(changedFiles(req.Diff), bytesForTokens(budgetTokens)/fileListShare)
 		if unlisted > 0 {
 			// Without the full list a rule spanning files cannot be judged on
 			// what a part leaves out, so the result must not pass as complete.
@@ -271,7 +275,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		}
 		diffBlock = func(chunk string) string { return prompt.PartialDiffBlock(chunk, files, unlisted) }
 		budgetTokens -= estimateTokens(diffBlock("")) - estimateTokens(prompt.DiffBlock(""))
-		chunks, oversize = chunkDiff(req.Diff, budgetTokens*3)
+		chunks, oversize = chunkDiff(req.Diff, bytesForTokens(budgetTokens))
 	}
 	for _, o := range oversize {
 		out.Errors = append(out.Errors, fmt.Errorf(
