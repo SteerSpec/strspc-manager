@@ -261,3 +261,77 @@ func TestLinked_SubRealm(t *testing.T) {
 		t.Errorf("sub-realm alone: got %v, want none", got)
 	}
 }
+
+// A dependency whose source tag differs from its pin is RM014's even when its
+// manifest matches, and only the static checks run on references to it.
+func TestLinked_SourceTagMismatch(t *testing.T) {
+	f := newLinkedFixture()
+	f.realm.Dependencies[0].Source = "github://acme/std@v9.9.9/std"
+	f.realm.Realm.Standards[0].Version = "4.0.3" // Needs the edition.
+	dir := f.write(t)
+	std := filepath.Join(dir, "..", "std")
+	fetch := func(_ context.Context, _ string, _ entity.RealmDep) (string, error) { return std, nil }
+	got := countCodes(lintLinked(t, dir, WithDependencyFetcher(fetch)), append(linkedCodes, "RM014")...)
+	if want := map[string]int{"RM014": 1}; !maps.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+// A sub-realm that declares a dependency its parent also declares is judged
+// against its own pin (RLM-014), and the parent against its own.
+func TestLinked_SubRealmOverridesPin(t *testing.T) {
+	f := newLinkedFixture()
+	f.realm.SubRealms = []string{"team"}
+	root := f.write(t)
+	// A later transcription of the same Standard Realm, of another edition.
+	std3 := filepath.Join(root, "..", "std3")
+	next := *f.std
+	next.Realm.Version, next.Realm.Edition = "3.0.0", "6.0.0"
+	writeManifest(t, std3, &next, false)
+	writeEntityFile(t, std3, "V.json", f.stdV)
+	team := filepath.Join(root, "team")
+	ref := f.realm.Realm.Standards[0]
+	for _, tt := range []struct {
+		version string
+		want    map[string]int
+	}{
+		{"6.0.0", map[string]int{}},           // The sub-realm's own edition.
+		{"5.0.0", map[string]int{"RM027": 1}}, // The parent's edition.
+	} {
+		ref.Version = tt.version
+		writeManifest(t, team, &entity.RealmFile{
+			Schema:       "./_schema/realm.v1.schema.json",
+			Realm:        entity.RealmMeta{ID: "dev.test.app.team", Title: "T", Version: "1.0.0", Standards: []entity.StandardRef{ref}},
+			Dependencies: []entity.RealmDep{{RealmID: stdID, Version: "3.0.0", Source: "../../std3/"}},
+		}, false)
+		got := countCodes(lintLinked(t, root, WithDependencyFetcher(localFetcher)), append(linkedCodes, "RM014")...)
+		if !maps.Equal(got, tt.want) {
+			t.Errorf("sub-realm version %s: got %v, want %v", tt.version, got, tt.want)
+		}
+	}
+}
+
+// A dependency one sub-realm declares is a dependency of the Realm tree for
+// the references of another (STDREF-017), judged against that fetch.
+func TestLinked_SiblingDependency(t *testing.T) {
+	f := newLinkedFixture()
+	f.realm.SubRealms = []string{"a", "b"}
+	deps, refs := f.realm.Dependencies, f.realm.Realm.Standards
+	f.realm.Dependencies, f.realm.Realm.Standards = nil, nil
+	root := f.write(t)
+	deps[0].Source = "../../std/"
+	writeManifest(t, filepath.Join(root, "a"), &entity.RealmFile{
+		Schema:       "./_schema/realm.v1.schema.json",
+		Realm:        entity.RealmMeta{ID: "dev.test.app.a", Title: "A", Version: "1.0.0"},
+		Dependencies: deps,
+	}, false)
+	refs[0].Version = "4.0.3" // Not the edition the sibling's fetch declares.
+	writeManifest(t, filepath.Join(root, "b"), &entity.RealmFile{
+		Schema: "./_schema/realm.v1.schema.json",
+		Realm:  entity.RealmMeta{ID: "dev.test.app.b", Title: "B", Version: "1.0.0", Standards: refs},
+	}, false)
+	got := countCodes(lintLinked(t, root, WithDependencyFetcher(localFetcher)), linkedCodes...)
+	if want := map[string]int{"RM027": 1}; !maps.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}

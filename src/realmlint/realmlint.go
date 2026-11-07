@@ -391,16 +391,19 @@ func checkSchemaDir(dir string, res *result.Result) {
 
 // checkDependencies validates the dependencies rf declares (RM014, RM016) and
 // returns the directory of the core Realm it pins, "" if it pins none or the
-// core could not be fetched or is not what was pinned. Each dependency fetched
-// whose manifest declares what was pinned is recorded in fetched, for the
-// checks on the Standard Realms the tree links (RM026–RM029).
+// core could not be fetched or is not what was pinned. Each dependency that
+// passes both halves of RM014 is recorded in fetched under dir, for the checks
+// on the Standard Realms the tree links (RM026–RM029), which fetch nothing
+// themselves.
 func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *entity.RealmFile, realmPath string, fetched fetchedDeps, res *result.Result) string {
 	coreDir := ""
 	for _, dep := range rf.Dependencies {
 		// RM014: a github:// source pinned to a release tag names the version.
 		// A commit SHA or @latest names none, so only the manifest check applies.
+		tagMatches := true
 		if ref, err := remote.ParseGitHub(dep.Source); err == nil {
 			if m := versionTagRe.FindStringSubmatch(ref.Ref); m != nil && m[1] != dep.Version {
+				tagMatches = false
 				res.Add(result.Diagnostic{
 					Module:   module,
 					Code:     "RM014",
@@ -441,8 +444,8 @@ func (l *RealmLinter) checkDependencies(ctx context.Context, dir string, rf *ent
 			})
 			continue
 		}
-		if _, ok := fetched[dep.RealmID]; !ok {
-			fetched[dep.RealmID] = fetchedDep{dir: depDir, rf: depRF, declaredAt: realmPath}
+		if tagMatches {
+			fetched.add(dir, dep.RealmID, fetchedDep{dir: depDir, rf: depRF, declaredAt: realmPath})
 		}
 		if dep.RealmID == coreRealmID {
 			coreDir = depDir
