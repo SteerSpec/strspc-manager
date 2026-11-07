@@ -6,9 +6,9 @@
     "description": "Code, test and commit conventions for the Go sources."
   },
   "rule_set": {
-    "version": "0.10.1",
-    "timestamp": "2026-11-05T07:49:23Z",
-    "hash": "blake3:42a4793cb437ac2a135378c28b7b843a12a76ab721c71ce1415f38ea0054c91d"
+    "version": "0.10.2",
+    "timestamp": "2026-11-07T21:43:54Z",
+    "hash": "blake3:eec49503b655689d2b12c4ad9b20df39c2e1c67eb2ff55a82a15f3decf1a2c32"
   },
   "rules": [
     {
@@ -84,5 +84,15 @@
       "supersedes": "GOCONV-003"
     }
   ],
-  "notes": []
+  "notes": [
+    {
+      "id": "GOCONV-007/01",
+      "rule_ref": "GOCONV-007",
+      "type": "clarification",
+      "content": "Test, Benchmark, Fuzz and Example functions in _test.go files are not covered: go test finds them by name and go doc does not show them. A test may still carry a doc comment, and other exported identifiers in _test.go files are covered.",
+      "added_by": "github:pleberre",
+      "added_at": "2026-11-07",
+      "revision": 0
+    }
+  ]
 }
