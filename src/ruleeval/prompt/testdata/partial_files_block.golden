@@ -1,0 +1,11 @@
+<audit_scope>
+Only part of the file set is shown below. Files of the whole set:
+- src/cmd/lint.go
+- src/cmd/sync.go
+</audit_scope>
+<files>
+<file path="src/cmd/lint.go" lines="1-2 of 2">
+1	package cmd
+2	
+</file>
+</files>

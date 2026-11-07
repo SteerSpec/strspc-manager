@@ -3,8 +3,11 @@
 //
 // Version changes whenever the wording of System, DiffBlock, PartialDiffBlock,
 // RulesBlock or the shape of VerdictSchema or DetailSchema changes in a way
-// that could alter verdicts.
-// It is mixed into evaluation cache keys.
+// that could alter verdicts. AuditVersion changes likewise with the parts
+// only an audit uses (AuditSystem, FilesBlock, PartialFilesBlock, FileSlice,
+// AuditDetailSchema, AuditDetailInstruction); an audit's cache keys carry
+// both, since it shares RulesBlock and VerdictSchema. They are mixed into
+// evaluation cache keys.
 package prompt
 
 import (
@@ -176,13 +179,20 @@ func VerdictSchema(ids []string) map[string]any {
 // judged violated or compliant: the verdict after a re-read, explanation,
 // confidence and evidence locations. The map is fresh on every call.
 func DetailSchema() map[string]any {
+	return detailSchema("Path of the file as written in the diff header.", "Line number in the new version of the file.",
+		"The verdict after re-reading the diff: the verdict being detailed confirms it, any other value withdraws it.")
+}
+
+// detailSchema is DetailSchema with the descriptions of the evidence file
+// and line and of the verdict given.
+func detailSchema(fileDesc, lineDesc, verdictDesc string) map[string]any {
 	evidence := map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
 		"required":             []string{"file", "line", "excerpt"},
 		"properties": map[string]any{
-			"file":    map[string]any{"type": "string", "description": "Path of the file as written in the diff header."},
-			"line":    map[string]any{"type": "integer", "description": "Line number in the new version of the file."},
+			"file":    map[string]any{"type": "string", "description": fileDesc},
+			"line":    map[string]any{"type": "integer", "description": lineDesc},
 			"excerpt": map[string]any{"type": "string", "description": "Short excerpt of the line cited."},
 		},
 	}
@@ -191,7 +201,7 @@ func DetailSchema() map[string]any {
 		"additionalProperties": false,
 		"required":             []string{"verdict", "explanation", "confidence", "evidence"},
 		"properties": map[string]any{
-			"verdict":     map[string]any{"type": "string", "enum": []string{"violated", "compliant", "not_applicable"}, "description": "The verdict after re-reading the diff: the verdict being detailed confirms it, any other value withdraws it."},
+			"verdict":     map[string]any{"type": "string", "enum": []string{"violated", "compliant", "not_applicable"}, "description": verdictDesc},
 			"explanation": map[string]any{"type": "string", "description": "One or two sentences justifying the verdict."},
 			"confidence":  map[string]any{"type": "number", "description": "Certainty from 0 (guess) to 1 (certain)."},
 			"evidence":    map[string]any{"type": "array", "items": evidence},

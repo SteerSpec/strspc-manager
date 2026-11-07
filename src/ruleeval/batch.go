@@ -17,6 +17,29 @@ import (
 // unreachable endpoint. Callers should stop evaluating rather than retry.
 var ErrUnavailable = errors.New("ruleeval: provider unavailable")
 
+// ErrAuditUnsupported is returned by Evaluator.Audit when the provider does
+// not implement Auditor, or reports an empty audit prompt version.
+var ErrAuditUnsupported = errors.New("ruleeval: provider does not support audits")
+
+// File is one file of the code an audit judges.
+type File struct {
+	// Path is the file's path, as evidence cites it.
+	Path string
+	// Content is the file's text.
+	Content string
+}
+
+// Auditor is an optional capability of a Provider: it judges the rules of
+// a BatchRequest or EvalRequest whose Files are set as an audit of those
+// files, not as a diff. Evaluator.Audit requires it.
+type Auditor interface {
+	// AuditPromptVersion identifies the audit prompt revision, which cache
+	// keys mix in for audit verdicts. A wrapper around another provider
+	// returns the wrapped provider's version, or "" when that provider
+	// cannot audit.
+	AuditPromptVersion() string
+}
+
 // Location points at a place in the diff that supports a verdict.
 type Location struct {
 	// File is the path of the file, as given in the diff header.
@@ -75,8 +98,12 @@ type BatchRequest struct {
 	// Inputs lists the rules of the entity to evaluate, with their notes and
 	// source metadata.
 	Inputs []RuleInput
-	// Diff is the unified diff every rule is evaluated against.
+	// Diff is the unified diff every rule is evaluated against. It is empty
+	// in an audit.
 	Diff string
+	// Files is the file set to audit instead of a diff, in the order to show
+	// it; nil when a diff is evaluated. Only an Auditor reads it.
+	Files []File
 	// Detail says which verdicts the provider details.
 	Detail Detail
 }
@@ -272,6 +299,20 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	}
 	sum := blake3.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
+}
+
+// FilesHash returns the hex-encoded BLAKE3 hash of a file set: every path
+// and content, length-prefixed, in order. The order counts, since it is the
+// order the files are shown in.
+func FilesHash(files []File) string {
+	h := blake3.New(32, nil)
+	for _, f := range files {
+		for _, s := range []string{f.Path, f.Content} {
+			_, _ = h.Write([]byte(strconv.Itoa(len(s)) + ":"))
+			_, _ = h.Write([]byte(s))
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // DiffHash returns the hex-encoded BLAKE3 hash of a diff.

@@ -1069,8 +1069,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-eval",
 		Severity: "Info",
 		Title:    "Nothing to evaluate",
-		Summary:  "The diff is empty; nothing to evaluate.",
-		Fix:      "No action is needed. If you expected changes, check the refs being compared.",
+		Summary:  "The diff, or the file set of an audit, is empty; nothing to evaluate.",
+		Fix:      "No action is needed. If you expected changes, check the refs being compared, or for an audit the paths selected.",
 	},
 	{
 		Code:     "RF001",
