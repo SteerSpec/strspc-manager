@@ -340,7 +340,7 @@ func TestAuditCache_FailedRequestKeepsCompleteGroups(t *testing.T) {
 			switch {
 			case isJudgeRequest(body):
 				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{
-					"CMD-001": {Verdict: "compliant", Explanation: "Long is set."}, "CMD-002": testFileJudge(body, files),
+					"CMD-001": {Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.9}, "CMD-002": testFileJudge(body, files),
 				}), nil))
 			case broken && asks(body, "CMD-002"):
 				writeJSON(w, 200, message("end_turn", "not json", nil))
@@ -396,7 +396,7 @@ func TestAuditCache_FailedJudgementKeepsTheOthers(t *testing.T) {
 			case isJudgeRequest(body) && asks(body, "CMD-002"):
 				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-002": testFileJudge(body, files)}), nil))
 			case isJudgeRequest(body):
-				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "compliant", Explanation: "Long is set."}}), nil))
+				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.9}}), nil))
 			case asks(body, "CMD-002"):
 				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-002": commandFacts(body, files)}), nil))
 			default:
@@ -459,5 +459,160 @@ func TestAuditCache_BadValuesRead(t *testing.T) {
 	run := f.audit(t, store, files, nil)
 	if len(run.extractions()) != 3 || run.judgements() != 1 || verdictOf(t, run) != ruleeval.Violated {
 		t.Fatalf("bad values: %d extractions, %d judgements", len(run.extractions()), run.judgements())
+	}
+}
+
+// emptyJudgement is the judgement of strspc-manager#338: every field
+// present, nothing in them.
+var emptyJudgement = judgement{Verdict: "violated"}
+
+// auditJudgedBy runs an audit of CMD-001 and CMD-002 over files with store,
+// one judgement for both rules, against a server that extracts
+// commandFacts for CMD-002 and nothing for CMD-001, and judges with judge.
+func (f cacheFixture) auditJudgedBy(t *testing.T, store ruleeval.BlobStore, files []ruleeval.File, judge func(body string) map[string]judgement) cacheRun {
+	t.Helper()
+	inputs := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule), f.inputs[0]}
+	var (
+		mu  sync.Mutex
+		run cacheRun
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		body := string(raw)
+		mu.Lock()
+		run.bodies = append(run.bodies, body)
+		mu.Unlock()
+		if isJudgeRequest(body) {
+			writeJSON(w, 200, message("end_turn", judgeText(judge(body)), nil))
+			return
+		}
+		fs := map[string][]prompt.Finding{}
+		if asks(body, "CMD-001") {
+			fs["CMD-001"] = nil
+		}
+		if asks(body, "CMD-002") {
+			fs["CMD-002"] = commandFacts(body, files)
+		}
+		writeJSON(w, 200, message("end_turn", findingsText(fs), nil))
+	}))
+	defer srv.Close()
+	cfg := claude.Config{APIKey: "k", BaseURL: srv.URL, Model: testModel}
+	partsBudget(inputs, 2600)(&cfg)
+	p, err := claude.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run.resp, err = p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{EntityID: "CMD", Inputs: inputs, Files: files, Store: store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return run
+}
+
+// judgeRequests returns the judge requests of r.
+func (r cacheRun) judgeRequests() []string {
+	var out []string
+	for _, b := range r.bodies {
+		if isJudgeRequest(b) {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// TestAuditCache_EmptyJudgementIsAskedAgainAlone checks a rule whose
+// judgement comes back empty is judged again on its own, once, and that
+// what that second judgement says is kept (strspc-manager#338).
+func TestAuditCache_EmptyJudgementIsAskedAgainAlone(t *testing.T) {
+	f := newCacheFixture()
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
+	store := newMemStore()
+	judge := func(body string) map[string]judgement {
+		if asks(body, "CMD-001") {
+			return map[string]judgement{
+				"CMD-001": {Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.9},
+				"CMD-002": emptyJudgement,
+			}
+		}
+		return map[string]judgement{"CMD-002": testFileJudge(body, files)}
+	}
+	run := f.auditJudgedBy(t, store, files, judge)
+	if len(run.resp.Errors) != 0 {
+		t.Fatalf("errors = %v, want none", run.resp.Errors)
+	}
+	for id, want := range map[string]ruleeval.Verdict{"CMD-001": ruleeval.Compliant, "CMD-002": ruleeval.Violated} {
+		if v := run.resp.Verdicts[id]; v == nil || v.Verdict != want || v.Explanation == "" {
+			t.Errorf("%s = %+v, want %s with its explanation", id, v, want)
+		}
+	}
+	reqs := run.judgeRequests()
+	if len(reqs) != 2 || asks(reqs[1], "CMD-001") || !asks(reqs[1], "CMD-002") {
+		t.Fatalf("want the group judged, then CMD-002 alone: %d judge requests", len(reqs))
+	}
+
+	rerun := f.auditJudgedBy(t, store, files, judge)
+	if len(rerun.bodies) != 0 {
+		t.Errorf("the rerun should be served from the store, sent %d requests", len(rerun.bodies))
+	}
+}
+
+// TestAuditCache_EmptyJudgementTwiceIsNotJudged checks a rule whose
+// judgement comes back empty again when asked alone gets no verdict, an
+// error, and nothing kept, so a rerun asks again (strspc-manager#338).
+func TestAuditCache_EmptyJudgementTwiceIsNotJudged(t *testing.T) {
+	f := newCacheFixture()
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
+	store := newMemStore()
+	judge := func(body string) map[string]judgement {
+		m := map[string]judgement{"CMD-002": emptyJudgement}
+		if asks(body, "CMD-001") {
+			m["CMD-001"] = judgement{Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.9}
+		}
+		return m
+	}
+	for i, wantExtractions := range []int{3, 0} {
+		run := f.auditJudgedBy(t, store, files, judge)
+		if v := run.resp.Verdicts["CMD-002"]; v != nil {
+			t.Errorf("run %d: CMD-002 = %+v, want no verdict", i, v)
+		}
+		if v := run.resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant {
+			t.Errorf("run %d: CMD-001 = %+v, want compliant", i, v)
+		}
+		if len(run.resp.Errors) != 1 || !strings.Contains(run.resp.Errors[0].Error(), "rule CMD-002 came back twice with no explanation") {
+			t.Errorf("run %d: errors = %v, want CMD-002 reported not judged", i, run.resp.Errors)
+		}
+		// The first run judges both rules, then CMD-002 alone; the rerun
+		// has CMD-001 kept and asks for CMD-002 twice more.
+		wantJudgements := 2
+		if len(run.extractions()) != wantExtractions || run.judgements() != wantJudgements {
+			t.Errorf("run %d: %d extractions, %d judgements, want %d and %d",
+				i, len(run.extractions()), run.judgements(), wantExtractions, wantJudgements)
+		}
+	}
+}
+
+// TestAuditCache_StoredEmptyJudgementIsAMiss checks an empty judgement an
+// earlier version kept is judged again rather than served.
+func TestAuditCache_StoredEmptyJudgementIsAMiss(t *testing.T) {
+	f := newCacheFixture()
+	store := newMemStore()
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
+	f.audit(t, store, files, nil)
+	n := 0
+	for k := range store.m {
+		if strings.Contains(k, "/judge/") {
+			store.m[k] = []byte(`{"verdict":"violated","explanation":"","confidence":0,"evidence":[]}`)
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("store holds %d judgements, want 1", n)
+	}
+	run := f.audit(t, store, files, nil)
+	if len(run.extractions()) != 0 || run.judgements() != 1 {
+		t.Fatalf("%d extractions, %d judgements, want 0 and 1", len(run.extractions()), run.judgements())
+	}
+	if v := run.resp.Verdicts["CMD-002"]; v == nil || v.Verdict != ruleeval.Violated || v.Explanation == "" {
+		t.Fatalf("CMD-002 = %+v, want violated with its explanation", v)
 	}
 }

@@ -676,6 +676,37 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "detail_empty",
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffMissingLong,
+			// A detail with no explanation and no confidence says nothing
+			// anyone can check (strspc-manager#338): it neither withdraws
+			// the violation nor confirms it, and the batch reports it so it
+			// is not cached.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isDetailRequest(body) {
+					writeJSON(w, 200, message("end_turn", withdrawnDetailText("compliant", "", 0), nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "violated"), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated || v.Explanation != "" {
+					t.Fatalf("verdict = %+v, want violated kept, not withdrawn", v)
+				}
+				if p.Usage().Withdrawn != 0 {
+					t.Errorf("Usage().Withdrawn = %d, want 0", p.Usage().Withdrawn)
+				}
+				if len(resp.Errors) != 1 || !errors.Is(resp.Errors[0], claude.ErrMalformed) || !strings.Contains(resp.Errors[0].Error(), "no explanation") {
+					t.Fatalf("expected one ErrMalformed error for the empty detail, got %v", resp.Errors)
+				}
+			},
+		},
+		{
 			name:   "two_chunk_withdrawn",
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			// Same two-chunk split as two_chunk_diff. The first chunk is
