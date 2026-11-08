@@ -45,52 +45,63 @@ const (
 // Mapping is one `standard` note on one rule.
 type Mapping struct {
 	// Rule is the rule's qualified ID.
-	Rule string
+	Rule string `json:"rule"`
 	// State is the rule's lifecycle state.
-	State string
+	State string `json:"state"`
 	// Note is the note's ID.
-	Note string
+	Note string `json:"note"`
 }
 
 // Clause is one clause of a standard as it stands in one entity. A clause is
-// identified by Standard, Version and Clause (STDREF-011).
+// identified by Standard, Version and Clause (STDREF-011), and the entity by
+// Realm and Entity.
 type Clause struct {
 	// Standard is the Standard Reference's `id`.
-	Standard string
+	Standard string `json:"standard"`
 	// Version is its `version`, empty when it names no edition.
-	Version string
+	Version string `json:"version,omitempty"`
 	// Clause is the clause as the note writes it.
-	Clause string
+	Clause string `json:"clause"`
+	// Realm is the ID of the Realm tree holding the entity measured
+	// (inherit.Hop.RealmID), so that entities of two trees sharing an EUID
+	// stay apart. An entity of a sub-realm has its tree's ID, as EUIDs are
+	// unique across a tree (RLM-013).
+	Realm string `json:"realm"`
 	// Entity is the EUID of the entity measured.
-	Entity string
+	Entity string `json:"entity"`
 	// Status is the clause's class in that entity.
-	Status Status
+	Status Status `json:"status"`
 	// Rules lists the mappings behind the status, sorted.
-	Rules []Mapping
+	Rules []Mapping `json:"rules"`
 	// Exclusion is the `exclusion` Realm Note behind an excluded clause,
 	// including one that overrides the clause's mappings, nil for any other
 	// status.
-	Exclusion *ExclusionRef
+	Exclusion *ExclusionRef `json:"exclusion,omitempty"`
 }
 
-// Report is the coverage of a set of entities.
+// Report is the coverage of a set of entities. Its declared, clauses and
+// unresolved have the JSON shape `strspc standards coverage --json` prints,
+// with `realm` added to each clause, so a report saved by an earlier run
+// decodes into a Report that Compare can read. Its figures don't: here total
+// leaves out the excluded clauses, and the command's total includes them.
 type Report struct {
 	// Declared lists each Standard Reference in scope of the entities, sorted,
 	// so a standard nothing maps still shows.
-	Declared []entity.StandardRef
-	// Clauses lists the clauses, sorted by standard, version, clause and entity.
-	Clauses []Clause
+	Declared []entity.StandardRef `json:"declared"`
+	// Clauses lists the clauses, sorted by standard, version, clause, realm,
+	// entity and status.
+	Clauses []Clause `json:"clauses"`
 	// Unresolved lists the `standard` notes that are malformed or whose `<id>`
 	// resolves to no reference, which RL029 and RL031 report for the Realm's own
 	// rules, not a dependency's.
-	Unresolved []Mapping
+	Unresolved []Mapping `json:"unresolved"`
 	// Figures lists the coverage figures of the references that link a
 	// Standard Realm, sorted by tree, reference and entity, each Realm figure
 	// before its entities'. Only Compute with Links reports them.
-	Figures []Figure
+	Figures []Figure `json:"figures,omitempty"`
 	// Warnings lists what kept a linked reference from getting a figure, such
 	// as a Standard Realm whose clause list couldn't be read.
-	Warnings []string
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 type clauseKey struct{ standard, version, clause string }
@@ -143,7 +154,8 @@ func Compute(entities []*realmresolve.Inheritance, opts ...Option) *Report {
 		return cmp.Or(cmp.Compare(a.ID, b.ID), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Relation, b.Relation), cmp.Compare(a.URL, b.URL))
 	})
 	slices.SortFunc(r.Clauses, func(a, b Clause) int {
-		return cmp.Or(cmp.Compare(a.Standard, b.Standard), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Clause, b.Clause), cmp.Compare(a.Entity, b.Entity), cmp.Compare(a.Status, b.Status))
+		return cmp.Or(cmp.Compare(a.Standard, b.Standard), cmp.Compare(a.Version, b.Version), cmp.Compare(a.Clause, b.Clause),
+			cmp.Compare(a.Realm, b.Realm), cmp.Compare(a.Entity, b.Entity), cmp.Compare(a.Status, b.Status))
 	})
 	return r
 }
@@ -157,7 +169,7 @@ func (r *Report) measure(c *computer, e *realmresolve.Inheritance, declared map[
 	add := func(set map[clauseKey]*Clause, key clauseKey, status Status, m Mapping) {
 		c, ok := set[key]
 		if !ok {
-			c = &Clause{Standard: key.standard, Version: key.version, Clause: key.clause, Entity: euid, Status: status}
+			c = &Clause{Standard: key.standard, Version: key.version, Clause: key.clause, Realm: e.Entity.RealmID, Entity: euid, Status: status}
 			set[key] = c
 		}
 		if !slices.Contains(c.Rules, m) {
