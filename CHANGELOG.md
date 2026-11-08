@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.47.1](https://github.com/SteerSpec/strspc-manager/compare/v1.47.0...v1.47.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **ruleeval:** do not take or keep an empty audit judgement ([#339](https://github.com/SteerSpec/strspc-manager/issues/339)) ([a63f1d8](https://github.com/SteerSpec/strspc-manager/commit/a63f1d855e378310af3ce7806c1a76b0f206a706))
+
 ## [1.47.0](https://github.com/SteerSpec/strspc-manager/compare/v1.46.0...v1.47.0) (2026-11-08)
 
 
