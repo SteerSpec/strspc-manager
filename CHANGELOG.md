@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.46.0](https://github.com/SteerSpec/strspc-manager/compare/v1.45.0...v1.46.0) (2026-11-08)
+
+
+### Features
+
+* **coverage:** measure against linked Standard Realms (x1r) ([#315](https://github.com/SteerSpec/strspc-manager/issues/315)) ([539d8f6](https://github.com/SteerSpec/strspc-manager/commit/539d8f63d8922a88cdea35b9882fee9081cd739e))
+* **entity:** support the structured note type ([#322](https://github.com/SteerSpec/strspc-manager/issues/322)) ([05b484f](https://github.com/SteerSpec/strspc-manager/commit/05b484ff033e483b2b6508c40b51e6d6b3ec1a78))
+* **lint:** check Standard References against the realm they link (18c.2) ([#314](https://github.com/SteerSpec/strspc-manager/issues/314)) ([40b1a7a](https://github.com/SteerSpec/strspc-manager/commit/40b1a7a388be2cbe5131a1a73c34e7b70a62655d))
+* **ruleeval:** audit code as it stands, with numbered lines ([#324](https://github.com/SteerSpec/strspc-manager/issues/324)) ([d717f2b](https://github.com/SteerSpec/strspc-manager/commit/d717f2b59e278097ea065f1c6890672f5ea051de))
+* **ruleeval:** audit large file sets in parts, judging their findings ([#326](https://github.com/SteerSpec/strspc-manager/issues/326)) ([0d2df22](https://github.com/SteerSpec/strspc-manager/commit/0d2df22607019a4622ec3809b87676f742eca0ae))
+* **ruleeval:** keep what each file holds per rule, so audits rerun on changes ([#327](https://github.com/SteerSpec/strspc-manager/issues/327)) ([7429813](https://github.com/SteerSpec/strspc-manager/commit/74298133b4f6e4835888c5a9b166ff5dff0de577))
+* **ruleeval:** opt-in reasons and evidence for compliant verdicts ([#319](https://github.com/SteerSpec/strspc-manager/issues/319)) ([5d42a14](https://github.com/SteerSpec/strspc-manager/commit/5d42a14c2c0c88afb3880a4d1f28aa83cac2d89c))
+
+
+### Bug Fixes
+
+* **ruleeval:** estimate 2 bytes per token, budget 100k per request ([#321](https://github.com/SteerSpec/strspc-manager/issues/321)) ([9c56d95](https://github.com/SteerSpec/strspc-manager/commit/9c56d95d45e3f35dade4abfd4915f1332d0c4edc))
+* **rules:** exempt test functions from GOCONV-007 ([#325](https://github.com/SteerSpec/strspc-manager/issues/325)) ([33285b5](https://github.com/SteerSpec/strspc-manager/commit/33285b55e3e311814596f75044022167836e1bdb))
+
 ## [1.45.0](https://github.com/SteerSpec/strspc-manager/compare/v1.44.0...v1.45.0) (2026-11-07)
 
 
