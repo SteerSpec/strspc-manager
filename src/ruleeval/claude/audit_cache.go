@@ -183,10 +183,15 @@ func (c *auditCache) judgement(in ruleeval.RuleInput, scope string, findings map
 	}
 	switch ruleeval.Verdict(d.Verdict) {
 	case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
-		return d, true
 	default:
 		return wireDetail{}, false
 	}
+	// An empty judgement is never kept, but an older version kept them
+	// (strspc-manager#338), and serving one would answer every rerun with it.
+	if d.empty() {
+		return wireDetail{}, false
+	}
+	return d, true
 }
 
 // keepJudgement stores the judgement d of in on scope and its findings.

@@ -295,7 +295,7 @@ func auditPartsScenarios() []scenario {
 			cfg:    partsBudget(cmd, 1400),
 			script: func(w http.ResponseWriter, body string, _ int) {
 				if isJudgeRequest(body) {
-					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "not_applicable", Explanation: "No command."}}), nil))
+					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "not_applicable", Explanation: "No command.", Confidence: 0.9}}), nil))
 					return
 				}
 				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
@@ -358,7 +358,7 @@ func auditPartsScenarios() []scenario {
 			script: func(w http.ResponseWriter, body string, _ int) {
 				switch {
 				case isJudgeRequest(body):
-					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "compliant", Explanation: "Long is set."}}), nil))
+					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "compliant", Explanation: "Long is set.", Confidence: 0.9}}), nil))
 				case asks(body, "CMD-002"):
 					writeJSON(w, 200, message("max_tokens", `{"CMD-002": [`, nil))
 				default:
@@ -446,7 +446,7 @@ func auditPartsScenarios() []scenario {
 					writeJSON(w, 200, message("max_tokens", `{"CMD-002": {`, nil))
 				default:
 					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{
-						"CMD-001": {Verdict: "not_applicable", Explanation: "No command."},
+						"CMD-001": {Verdict: "not_applicable", Explanation: "No command.", Confidence: 0.9},
 						"CMD-999": {Verdict: "compliant"},
 					}), nil))
 				}
@@ -510,7 +510,7 @@ func auditPartsScenarios() []scenario {
 				if isJudgeRequest(body) {
 					// The unknown verdict is under a rule nobody asked for.
 					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{
-						"CMD-001": {Verdict: "not_applicable", Explanation: "No command."}, "CMD-999": {Verdict: "maybe"},
+						"CMD-001": {Verdict: "not_applicable", Explanation: "No command.", Confidence: 0.9}, "CMD-999": {Verdict: "maybe"},
 					}), nil))
 					return
 				}
