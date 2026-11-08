@@ -81,10 +81,14 @@ func findingsText(m map[string][]prompt.Finding) string {
 
 // judgement is one rule's value in a judge response.
 type judgement struct {
-	Verdict     string         `json:"verdict"`
-	Explanation string         `json:"explanation"`
-	Confidence  float64        `json:"confidence"`
-	Evidence    []locationJSON `json:"evidence"`
+	// Verdict is "compliant", "violated" or "not_applicable".
+	Verdict string `json:"verdict"`
+	// Explanation says in a sentence or two why.
+	Explanation string `json:"explanation"`
+	// Confidence is the model's certainty, from 0 to 1.
+	Confidence float64 `json:"confidence"`
+	// Evidence lists the findings the verdict rests on.
+	Evidence []locationJSON `json:"evidence"`
 }
 
 // judgeText renders a judge response.
