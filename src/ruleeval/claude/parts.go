@@ -134,14 +134,18 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		}
 	}
 	results := make([]judged, len(groups))
-	if err := p.runAll(ctx, len(groups), func(ctx context.Context, i int) error {
+	judgedOK := make([]bool, len(groups))
+	runErr = p.runAll(ctx, len(groups), func(ctx context.Context, i int) error {
 		var err error
 		results[i], err = p.judge(ctx, jp.scope, groups[i], findings)
+		judgedOK[i] = err == nil
 		return err
-	}); err != nil {
-		return nil, err
-	}
+	})
+	// A judgement that came back is kept even when another failed.
 	for i, r := range results {
+		if !judgedOK[i] {
+			continue
+		}
 		out.Errors = append(out.Errors, r.errs...)
 		for _, in := range groups[i] {
 			if d, ok := r.details[in.Rule.ID]; ok {
@@ -149,6 +153,9 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 				cache.keepJudgement(in, jp.scope, findings, d)
 			}
 		}
+	}
+	if runErr != nil {
+		return nil, runErr
 	}
 	return out, nil
 }

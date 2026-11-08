@@ -80,7 +80,8 @@ func TestBlob_ExpiresAndIsPruned(t *testing.T) {
 }
 
 // TestBlob_UndecodableValue checks a value that does not decode is an
-// error on read and is removed by Prune.
+// error on read and is removed by Prune, as is a verdict whose response
+// does not decode, though its creation time does.
 func TestBlob_UndecodableValue(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cache.db")
 	s, err := evalcache.Open(context.Background(), path)
@@ -93,6 +94,9 @@ func TestBlob_UndecodableValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.Update(func(tx *bolt.Tx) error {
+		if err := tx.Bucket([]byte("eval/v1")).Put([]byte("bad"), []byte(`{"created_at":"2026-11-08T00:00:00Z","response":"oops"}`)); err != nil {
+			return err
+		}
 		return tx.Bucket([]byte("blob/v1")).Put([]byte("bad"), []byte("not json"))
 	}); err != nil {
 		t.Fatal(err)
@@ -107,8 +111,11 @@ func TestBlob_UndecodableValue(t *testing.T) {
 	if _, _, err := s.GetBlob("bad"); err == nil {
 		t.Error("an undecodable value should be an error")
 	}
-	if n, err := s.Prune(); err != nil || n != 1 {
-		t.Errorf("Prune = %d, %v; want the undecodable value removed", n, err)
+	if _, _, err := s.Get("bad"); err == nil {
+		t.Error("an undecodable verdict should be an error")
+	}
+	if n, err := s.Prune(); err != nil || n != 2 {
+		t.Errorf("Prune = %d, %v; want the undecodable value and verdict removed", n, err)
 	}
 }
 

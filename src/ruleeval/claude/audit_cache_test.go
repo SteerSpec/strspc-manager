@@ -377,6 +377,59 @@ func TestAuditCache_FailedRequestKeepsCompleteGroups(t *testing.T) {
 	}
 }
 
+// TestAuditCache_FailedJudgementKeepsTheOthers checks a judgement request
+// that fails the audit leaves the judgements that came back kept.
+func TestAuditCache_FailedJudgementKeepsTheOthers(t *testing.T) {
+	f := newCacheFixture()
+	inputs := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule), f.inputs[0]}
+	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	store := newMemStore()
+	run := func(broken bool) []string {
+		var bodies []string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			raw, _ := io.ReadAll(r.Body)
+			body := string(raw)
+			bodies = append(bodies, body)
+			switch {
+			case isJudgeRequest(body) && asks(body, "CMD-002") && broken:
+				writeJSON(w, 200, message("end_turn", "not json", nil))
+			case isJudgeRequest(body) && asks(body, "CMD-002"):
+				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-002": testFileJudge(body, files)}), nil))
+			case isJudgeRequest(body):
+				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "compliant", Explanation: "Long is set."}}), nil))
+			case asks(body, "CMD-002"):
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-002": commandFacts(body, files)}), nil))
+			default:
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
+			}
+		}))
+		defer srv.Close()
+		// One rule per judgement, one request at a time: CMD-001's comes
+		// back before CMD-002's fails.
+		cfg := claude.Config{APIKey: "k", BaseURL: srv.URL, Model: testModel, MaxRulesPerRequest: 1, Concurrency: 1}
+		partsBudget(inputs, 2600)(&cfg)
+		p, err := claude.New(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{EntityID: "CMD", Inputs: inputs, Files: files, Store: store})
+		if broken != errors.Is(err, claude.ErrMalformed) {
+			t.Fatalf("broken=%v: err = %v", broken, err)
+		}
+		return bodies
+	}
+
+	run(true)
+	for _, b := range run(false) {
+		if isJudgeRequest(b) && asks(b, "CMD-001") {
+			t.Error("the rerun should not judge CMD-001 again")
+		}
+		if isExtractRequest(b) {
+			t.Errorf("the rerun should read nothing: %.200s", b)
+		}
+	}
+}
+
 // TestAuditCache_FailingStoreReadsEmpty checks a store that fails reads as
 // an empty one and does not fail the audit.
 func TestAuditCache_FailingStoreReadsEmpty(t *testing.T) {

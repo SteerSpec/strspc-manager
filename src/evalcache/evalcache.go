@@ -402,9 +402,7 @@ func (s *Store) Prune() (int, error) {
 			}
 			var stale [][]byte
 			err := b.ForEach(func(k, v []byte) error {
-				// Both kinds of entry carry created_at, the only field read.
-				var e blobEntry
-				if err := json.Unmarshal(v, &e); err != nil || s.expired(e.CreatedAt) {
+				if !s.live(name, v) {
 					stale = append(stale, append([]byte(nil), k...))
 				}
 				return nil
@@ -498,6 +496,19 @@ func (s *Store) Close() error {
 	err := s.db.Close()
 	s.db = nil
 	return err
+}
+
+// live reports whether v, from the bucket name, decodes as what that
+// bucket holds and has not expired. It is decoded as its reader would, so
+// that an entry Get or GetBlob cannot read is pruned rather than kept
+// failing.
+func (s *Store) live(name, v []byte) bool {
+	if string(name) == string(blobBucket) {
+		var e blobEntry
+		return json.Unmarshal(v, &e) == nil && !s.expired(e.CreatedAt)
+	}
+	var e entry
+	return json.Unmarshal(v, &e) == nil && !s.expired(e.CreatedAt)
 }
 
 func (s *Store) expired(createdAt time.Time) bool {
