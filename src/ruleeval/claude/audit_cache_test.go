@@ -170,6 +170,9 @@ func TestAuditCache_RerunSendsOnlyWhatChanged(t *testing.T) {
 	if verdictOf(t, same) != ruleeval.Violated || len(same.bodies) != 0 {
 		t.Fatalf("an unchanged set should send nothing, sent %d", len(same.bodies))
 	}
+	if store.calls != 1 {
+		t.Errorf("an unchanged set should store nothing, nor erase what was kept: %d calls", store.calls)
+	}
 
 	// Editing a comment leaves the findings as they were: the file is read
 	// again, the judgement is kept.
@@ -315,6 +318,60 @@ func TestAuditCache_FailedRuleIsNotKept(t *testing.T) {
 	}
 	if resp.Verdicts["CMD-002"] != nil || store.puts != 0 {
 		t.Fatalf("a failed rule: verdict %+v, %d values kept; want none", resp.Verdicts["CMD-002"], store.puts)
+	}
+}
+
+// TestAuditCache_FailedRequestKeepsCompleteGroups checks a request that
+// fails the audit still keeps what the groups that were done found, so the
+// rerun reads only for the rest.
+func TestAuditCache_FailedRequestKeepsCompleteGroups(t *testing.T) {
+	f := newCacheFixture()
+	inputs := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule), f.inputs[0]}
+	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	store := newMemStore()
+	run := func(broken bool) []string {
+		var bodies []string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			raw, _ := io.ReadAll(r.Body)
+			body := string(raw)
+			bodies = append(bodies, body)
+			switch {
+			case isJudgeRequest(body):
+				writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{
+					"CMD-001": {Verdict: "compliant", Explanation: "Long is set."}, "CMD-002": testFileJudge(body, files),
+				}), nil))
+			case broken && asks(body, "CMD-002"):
+				writeJSON(w, 200, message("end_turn", "not json", nil))
+			case asks(body, "CMD-002"):
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-002": commandFacts(body, files)}), nil))
+			default:
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
+			}
+		}))
+		defer srv.Close()
+		// One rule per group, one request at a time: CMD-001's group is
+		// done before CMD-002's fails.
+		cfg := claude.Config{APIKey: "k", BaseURL: srv.URL, Model: testModel, MaxRulesPerRequest: 1, Concurrency: 1}
+		partsBudget(inputs, 2600)(&cfg)
+		p, err := claude.New(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{EntityID: "CMD", Inputs: inputs, Files: files, Store: store})
+		if broken != errors.Is(err, claude.ErrMalformed) {
+			t.Fatalf("broken=%v: err = %v", broken, err)
+		}
+		return bodies
+	}
+
+	run(true)
+	if store.puts != len(files) {
+		t.Fatalf("values kept = %d, want CMD-001's findings of every file", store.puts)
+	}
+	for _, b := range run(false) {
+		if isExtractRequest(b) && asks(b, "CMD-001") {
+			t.Errorf("the rerun should not read for CMD-001 again: %.200s", b)
+		}
 	}
 }
 

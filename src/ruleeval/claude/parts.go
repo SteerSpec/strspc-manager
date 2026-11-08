@@ -65,32 +65,55 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		}
 	}
 	found := make([]extracted, len(items))
-	if err := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
+	done := make([]bool, len(items))
+	runErr := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
 		var err error
 		it := items[i]
 		gp := plans[it.group]
 		found[i], err = p.extract(ctx, prompt.FilesBlock(gp.parts[it.chunk]), rp.groups[it.group], it.chunk+1, len(gp.parts))
+		done[i] = err == nil
 		return err
-	}); err != nil {
-		return nil, err
-	}
+	})
 
+	// Items run group by group, part by part. A group every part of which
+	// answered is kept even when another group's request failed, so that a
+	// rerun after the failure reads only what was lost.
 	failed := map[string]bool{}
-	for i, f := range found {
-		out.Errors = append(out.Errors, f.errs...)
-		for id := range f.failed {
-			failed[id] = true
-		}
-		cache.record(f.findings, plans[items[i].group].shown[items[i].chunk])
-	}
-	var toJudge []ruleeval.RuleInput
+	var errs []error
 	for g, group := range rp.groups {
+		complete := true
+		for i, it := range items {
+			if it.group == g && !done[i] {
+				complete = false
+				break
+			}
+		}
+		if !complete {
+			continue
+		}
+		for i, it := range items {
+			if it.group != g {
+				continue
+			}
+			errs = append(errs, found[i].errs...)
+			for id := range found[i].failed {
+				failed[id] = true
+			}
+			cache.record(found[i].findings, plans[g].shown[it.chunk])
+		}
+		cache.keep(group, plans[g].files, failed)
+	}
+	if runErr != nil {
+		return nil, runErr
+	}
+	out.Errors = append(out.Errors, errs...)
+	var toJudge []ruleeval.RuleInput
+	for _, group := range rp.groups {
 		for _, in := range group {
 			if !failed[in.Rule.ID] {
 				toJudge = append(toJudge, in)
 			}
 		}
-		cache.keep(group, plans[g].files, failed)
 	}
 	findings := cache.findings(toJudge)
 
