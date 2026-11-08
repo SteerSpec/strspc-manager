@@ -20,32 +20,37 @@ import (
 // read as 0 % or 100 %.
 type Figure struct {
 	// Tree is the ID of the Realm tree measured.
-	Tree string
+	Tree string `json:"tree"`
 	// Entity is the EUID of the entity measured, or empty for the Realm
 	// figure, which counts a clause covered in any entity of the tree
 	// (STDREF-025).
-	Entity string
+	Entity string `json:"entity,omitempty"`
 	// Standard, Version, Realm and Profile are the reference's.
-	Standard, Version, Realm, Profile string
+	Standard string `json:"standard"`
+	Version  string `json:"version,omitempty"`
+	Realm    string `json:"realm"`
+	Profile  string `json:"profile,omitempty"`
 	// DeclaredBy is the realm_id of the manifest that declares the
 	// reference, empty when an entity declares it or the manifest isn't in
 	// the Links. It tells apart the figures of the references that two
 	// sub-realms each declare with the same id.
-	DeclaredBy string
+	DeclaredBy string `json:"declared_by,omitempty"`
 	// Covered is the number of clauses of the list, not excluded, covered.
-	Covered int
+	Covered int `json:"covered"`
 	// Mapped, Lapsed and Unmapped are the numbers of clauses of the list,
 	// not excluded, that are mapped, lapsed and unmapped, so that with
 	// Covered they add up to Total. A Realm figure gives a clause the first
 	// status any entity of the tree gives it, of covered, mapped and lapsed,
 	// and unmapped when none does.
-	Mapped, Lapsed, Unmapped int
+	Mapped   int `json:"mapped"`
+	Lapsed   int `json:"lapsed"`
+	Unmapped int `json:"unmapped"`
 	// Total is the number of clauses of the list less those excluded.
-	Total int
+	Total int `json:"total"`
 	// Excluded is the number of clauses of the list excluded.
-	Excluded int
+	Excluded int `json:"excluded"`
 	// Defined is false when Total is 0 (STDREF-028).
-	Defined bool
+	Defined bool `json:"defined"`
 }
 
 // Links holds what Compute needs to measure entities against the Standard
@@ -170,11 +175,11 @@ func (l *Links) standardRealm(r *linkRealm, id string) *entity.StandardRealm {
 // (STDREF-022).
 type ExclusionRef struct {
 	// Realm is the realm_id of the manifest holding the note.
-	Realm string
+	Realm string `json:"realm"`
 	// Note is the note's ID, in REALM/NNN form (NTE-030).
-	Note string
+	Note string `json:"note"`
 	// Content is the note's body: why the clause doesn't apply.
-	Content string
+	Content string `json:"content"`
 }
 
 // exclusionKey is a standard's clause that an exclusion names.
@@ -352,7 +357,7 @@ func (r *Report) linkEntity(c *computer, e *realmresolve.Inheritance, claims, la
 				if isClaimed || isLapsed {
 					continue
 				}
-				cl := Clause{Standard: ref.ID, Version: ref.Version, Clause: clause, Entity: euid, Status: status}
+				cl := Clause{Standard: ref.ID, Version: ref.Version, Clause: clause, Realm: hop.RealmID, Entity: euid, Status: status}
 				if isExcluded {
 					cl.Status, cl.Exclusion = StatusExcluded, &ex
 				}
