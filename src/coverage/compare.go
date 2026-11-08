@@ -32,8 +32,8 @@ const (
 	// crosswalk between them Compare can't tell what carried forward. A
 	// caller may allow it, so that a gate doesn't block every edition upgrade.
 	KindRebased Kind = "rebased"
-	// KindUnresolved is a `standard` note that backed a claimed clause in
-	// base, so it resolved, and no longer resolves in head.
+	// KindUnresolved is a `standard` note that backed a covered or mapped
+	// clause in base, so it resolved, and no longer resolves in head.
 	KindUnresolved Kind = "unresolved"
 )
 
@@ -53,7 +53,8 @@ type Regression struct {
 	// Base is the clause's status in base, empty for a reference and for
 	// KindUnresolved.
 	Base Status `json:"base,omitempty"`
-	// Head is the clause's status in head, empty when head has no row for it.
+	// Head is the clause's status in head: its claim, else `cited` when only
+	// a citation is left, empty when head has no row for it.
 	Head Status `json:"head,omitempty"`
 	// Rules lists the mappings behind the clause in base, or for
 	// KindUnresolved the note as head holds it.
@@ -100,9 +101,15 @@ func Compare(base, head *Report) []Regression {
 		return false
 	}
 
+	// A clause can stand in an entity twice, cited and claimed, when two
+	// references of one id have different relations: the claim is what a
+	// clause is compared with, and a citation only says why it is lost.
 	heads := make(map[clauseID]*Clause)
+	cites := make(map[clauseID]bool)
 	for i := range head.Clauses {
-		if c := &head.Clauses[i]; c.Status != StatusCited {
+		if c := &head.Clauses[i]; c.Status == StatusCited {
+			cites[idOf(c)] = true
+		} else {
 			heads[idOf(c)] = c
 		}
 	}
@@ -116,8 +123,11 @@ func Compare(base, head *Report) []Regression {
 			Base: b.Status, Rules: b.Rules,
 		}
 		h := heads[idOf(b)]
-		if h != nil {
+		switch {
+		case h != nil:
 			r.Head = h.Status
+		case cites[idOf(b)]:
+			r.Head = StatusCited
 		}
 		switch {
 		case h != nil && h.Status == StatusCovered:
@@ -146,12 +156,12 @@ func Compare(base, head *Report) []Regression {
 		}
 	}
 
-	// A note that backed only a citation claimed nothing, so it can't
-	// regress either. A note's relation comes from its rule's owner, so it is
-	// a citation in every entity or in none.
+	// Only a note behind a covered or mapped clause claimed anything, as
+	// only such a clause can regress. One behind a citation, a lapsed or an
+	// excluded clause alone is debt in the report itself.
 	resolved := make(map[mappingID]bool)
 	for i := range base.Clauses {
-		if base.Clauses[i].Status == StatusCited {
+		if st := base.Clauses[i].Status; st != StatusCovered && st != StatusMapped {
 			continue
 		}
 		for _, m := range base.Clauses[i].Rules {

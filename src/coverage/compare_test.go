@@ -71,7 +71,7 @@ func TestCompare(t *testing.T) {
 			want: []string{
 				"lost owasp.asvs@5.0:1 prod:AUTH covered>",
 				"lost owasp.asvs@5.0:2 prod:AUTH mapped>unmapped",
-				"lost owasp.asvs@5.0:3 prod:AUTH covered>",
+				"lost owasp.asvs@5.0:3 prod:AUTH covered>cited",
 			},
 		},
 		{
@@ -153,14 +153,17 @@ func TestCompareCarriesTheDetail(t *testing.T) {
 
 // TestCompareUnresolved checks a note that stops resolving, once however many
 // entities inherit its rule, and not a note new in head, already unresolved,
-// or that backed only a citation.
+// or that backed only a cited, lapsed or excluded clause.
 func TestCompareUnresolved(t *testing.T) {
 	m := Mapping{Rule: "prod:AUTH-001", State: "I", Note: "AUTH-001/01"}
 	inherited := row("1", StatusCovered)
 	inherited.Entity = "SAV"
 	citation := Clause{Standard: "ietf.rfc2119", Clause: "1", Realm: "prod", Entity: "KWRD", Status: StatusCited,
 		Rules: []Mapping{{Rule: "prod:KWRD-001", State: "I", Note: "KWRD-001/01"}}}
-	base := report(nil, row("1", StatusCovered), inherited, citation)
+	lapsed, excluded := row("2", StatusLapsed), row("3", StatusExcluded)
+	lapsed.Rules = []Mapping{{Rule: "prod:AUTH-004", State: "R", Note: "AUTH-004/01"}}
+	excluded.Rules = []Mapping{{Rule: "prod:AUTH-005", State: "I", Note: "AUTH-005/01"}}
+	base := report(nil, row("1", StatusCovered), inherited, citation, lapsed, excluded)
 	base.Unresolved = []Mapping{{Rule: "prod:AUTH-002", State: "I", Note: "AUTH-002/01"}}
 	head := report(nil)
 	head.Unresolved = []Mapping{
@@ -169,6 +172,8 @@ func TestCompareUnresolved(t *testing.T) {
 		{Rule: "prod:AUTH-002", State: "I", Note: "AUTH-002/01"},
 		{Rule: "prod:AUTH-003", State: "I", Note: "AUTH-003/01"},
 		{Rule: "prod:KWRD-001", State: "I", Note: "KWRD-001/01"},
+		{Rule: "prod:AUTH-004", State: "R", Note: "AUTH-004/01"},
+		{Rule: "prod:AUTH-005", State: "I", Note: "AUTH-005/01"},
 	}
 	var unresolved []Regression
 	for _, r := range Compare(base, head) {

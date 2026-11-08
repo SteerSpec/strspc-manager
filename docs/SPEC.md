@@ -85,7 +85,7 @@ Each clause also carries `Realm`, the ID of the Realm tree holding the entity (`
 - `excluded`: covered or mapped in base, and excluded in head (STDREF-022). The exclusion states a reason, so a caller may allow this kind.
 - `dropped`: a `(id, version)` declared `implements` in base that head doesn't declare `implements`, whether it is gone or now `derived_from`. A changed `url` is the same reference.
 - `rebased`: a clause that would be `lost`, or a reference that would be `dropped`, when head declares no `implements` reference to the base edition and one to another edition of the same `id`. Editions are different clauses (STDREF-011), and SteerSpec has no crosswalk between them yet (strspc-rules#144), so `Compare` can't tell what carried forward. A caller may allow this kind, so that a gate doesn't block every edition upgrade.
-- `unresolved`: a `standard` note, by rule and note ID, that backs a clause other than a `cited` one in base and is in head's `Unresolved`. A note new in head, already unresolved, or that only backed a citation isn't one: the report's own `Unresolved` is that debt.
+- `unresolved`: a `standard` note, by rule and note ID, that backs a covered or mapped clause in base and is in head's `Unresolved`. A note new in head, already unresolved, or that backed only cited, lapsed or excluded clauses isn't one: the report's own `Unresolved` is that debt.
 
 A `cited` clause never regresses (STDREF-006), nor does one lapsed, excluded or unmapped in base. An improvement isn't reported, and two identical reports give none. Which kinds fail is the caller's policy.
 
