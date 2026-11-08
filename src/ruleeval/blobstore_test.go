@@ -9,8 +9,8 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 )
 
-// blobCache is a memCache that also keeps provider values, or fails to
-// when err is set.
+// blobCache is a memCache that also keeps provider values. When err is
+// set, GetBlob and PutBlobs fail with it.
 type blobCache struct {
 	*memCache
 	mu    sync.Mutex
