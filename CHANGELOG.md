@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.48.0](https://github.com/SteerSpec/strspc-manager/compare/v1.47.1...v1.48.0) (2026-11-08)
+
+
+### Features
+
+* **coverage:** compare two reports for regressions, and qualify clauses by realm ([#343](https://github.com/SteerSpec/strspc-manager/issues/343)) ([a2968d7](https://github.com/SteerSpec/strspc-manager/commit/a2968d7001cc4c523eb757c84526ad6241b799f8))
+
 ## [1.47.1](https://github.com/SteerSpec/strspc-manager/compare/v1.47.0...v1.47.1) (2026-11-08)
 
 
