@@ -27,8 +27,19 @@ type Figure struct {
 	Entity string
 	// Standard, Version, Realm and Profile are the reference's.
 	Standard, Version, Realm, Profile string
+	// DeclaredBy is the realm_id of the manifest that declares the
+	// reference, empty when an entity declares it or the manifest isn't in
+	// the Links. It tells apart the figures of the references that two
+	// sub-realms each declare with the same id.
+	DeclaredBy string
 	// Covered is the number of clauses of the list, not excluded, covered.
 	Covered int
+	// Mapped, Lapsed and Unmapped are the numbers of clauses of the list,
+	// not excluded, that are mapped, lapsed and unmapped, so that with
+	// Covered they add up to Total. A Realm figure gives a clause the first
+	// status any entity of the tree gives it, of covered, mapped and lapsed,
+	// and unmapped when none does.
+	Mapped, Lapsed, Unmapped int
 	// Total is the number of clauses of the list less those excluded.
 	Total int
 	// Excluded is the number of clauses of the list excluded.
@@ -155,25 +166,47 @@ func (l *Links) standardRealm(r *linkRealm, id string) *entity.StandardRealm {
 	return nil
 }
 
+// ExclusionRef is the `exclusion` Realm Note that excludes a clause
+// (STDREF-022).
+type ExclusionRef struct {
+	// Realm is the realm_id of the manifest holding the note.
+	Realm string
+	// Note is the note's ID, in REALM/NNN form (NTE-030).
+	Note string
+	// Content is the note's body: why the clause doesn't apply.
+	Content string
+}
+
 // exclusionKey is a standard's clause that an exclusion names.
 type exclusionKey struct{ standard, clause string }
 
 // exclusions returns the clauses the `exclusion` Realm Notes of rf name
-// (STDREF-022). A ref that isn't <id>:<clause> is RM023's and excludes
-// nothing.
-func exclusions(rf *entity.RealmFile, into map[exclusionKey]bool) map[exclusionKey]bool {
-	if into == nil {
-		into = make(map[exclusionKey]bool)
-	}
+// (STDREF-022), each with the first note that names it. A ref that isn't
+// <id>:<clause> is RM023's and excludes nothing.
+func exclusions(rf *entity.RealmFile) map[exclusionKey]ExclusionRef {
+	out := make(map[exclusionKey]ExclusionRef)
 	for _, n := range rf.Notes {
 		if n.Type != entity.NoteTypeExclusion {
 			continue
 		}
-		if id, clause, ok := strings.Cut(n.Ref, ":"); ok && id != "" && clause != "" {
-			into[exclusionKey{id, clause}] = true
+		id, clause, ok := strings.Cut(n.Ref, ":")
+		if !ok || id == "" || clause == "" {
+			continue
+		}
+		key := exclusionKey{id, clause}
+		if _, dup := out[key]; !dup {
+			out[key] = ExclusionRef{Realm: rf.Realm.ID, Note: n.ID, Content: n.Content}
 		}
 	}
-	return into
+	return out
+}
+
+// realmID returns the realm_id of r's manifest, empty when r is nil.
+func (r *linkRealm) realmID() string {
+	if r == nil {
+		return ""
+	}
+	return r.rf.Realm.ID
 }
 
 // clauseList returns the clauses of sr, narrowed to those whose rules declare
@@ -233,11 +266,12 @@ func declaring(lr *linkRealm, hop inherit.Hop, id string) *linkRealm {
 	return nil
 }
 
-// realmFigure gathers what a Realm figure counts across a tree's entities.
+// realmFigure gathers what a Realm figure counts across a tree's entities:
+// the clauses that some entity covers, maps and has lapsed.
 type realmFigure struct {
-	treeID  string
-	sr      *entity.StandardRealm
-	covered map[string]bool
+	treeID                  string
+	sr                      *entity.StandardRealm
+	covered, mapped, lapsed map[string]bool
 }
 
 // linkEntity adds what the links say of one entity measured: for each
@@ -282,38 +316,47 @@ func (r *Report) linkEntity(c *computer, e *realmresolve.Inheritance, claims, la
 			if sr == nil {
 				continue
 			}
-			var excluded map[exclusionKey]bool
+			var excluded map[exclusionKey]ExclusionRef
 			if decl != nil {
-				excluded = exclusions(decl.rf, nil)
+				excluded = exclusions(decl.rf)
 			}
-			fig := Figure{Tree: hop.RealmID, Entity: euid, Standard: ref.ID, Version: ref.Version, Realm: ref.Realm, Profile: ref.Profile}
+			fig := Figure{Tree: hop.RealmID, Entity: euid, Standard: ref.ID, Version: ref.Version, Realm: ref.Realm, Profile: ref.Profile, DeclaredBy: decl.realmID()}
 			agg := c.realmFigure(realmFigureKey{lr.tree, decl, *ref, sr}, hop.RealmID, sr)
 			list := clauseList(sr, ref.Profile)
 			for _, clause := range list {
 				key := clauseKey{ref.ID, ref.Version, clause}
-				isExcluded := excluded[exclusionKey{ref.ID, clause}]
+				ex, isExcluded := excluded[exclusionKey{ref.ID, clause}]
+				claim, isClaimed := claims[key]
+				_, isLapsed := lapsed[key]
+				status := StatusUnmapped
+				switch {
+				case isClaimed:
+					status = claim.Status
+				case isLapsed:
+					status = StatusLapsed
+				}
+				switch status {
+				case StatusCovered:
+					agg.covered[clause] = true
+				case StatusMapped:
+					agg.mapped[clause] = true
+				case StatusLapsed:
+					agg.lapsed[clause] = true
+				}
 				if isExcluded {
 					fig.Excluded++
 				} else {
 					fig.Total++
+					fig.count(status)
 				}
-				if cl, ok := claims[key]; ok && cl.Status == StatusCovered {
-					agg.covered[clause] = true
-					if !isExcluded {
-						fig.Covered++
-					}
-				}
-				if _, ok := claims[key]; ok {
+				if isClaimed || isLapsed {
 					continue
 				}
-				if _, ok := lapsed[key]; ok {
-					continue
-				}
-				status := StatusUnmapped
+				cl := Clause{Standard: ref.ID, Version: ref.Version, Clause: clause, Entity: euid, Status: status}
 				if isExcluded {
-					status = StatusExcluded
+					cl.Status, cl.Exclusion = StatusExcluded, &ex
 				}
-				r.Clauses = append(r.Clauses, Clause{Standard: ref.ID, Version: ref.Version, Clause: clause, Entity: euid, Status: status})
+				r.Clauses = append(r.Clauses, cl)
 			}
 			fig.Defined = fig.Total > 0
 			r.Figures = append(r.Figures, fig)
@@ -321,13 +364,14 @@ func (r *Report) linkEntity(c *computer, e *realmresolve.Inheritance, claims, la
 			// excluded, whatever maps it. A mapping outside the list, such
 			// as one above the profile, keeps its status.
 			for _, clause := range list {
-				if !excluded[exclusionKey{ref.ID, clause}] {
+				ex, ok := excluded[exclusionKey{ref.ID, clause}]
+				if !ok {
 					continue
 				}
 				key := clauseKey{ref.ID, ref.Version, clause}
 				for _, set := range []map[clauseKey]*Clause{claims, lapsed} {
 					if cl, ok := set[key]; ok {
-						cl.Status = StatusExcluded
+						cl.Status, cl.Exclusion = StatusExcluded, &ExclusionRef{Realm: ex.Realm, Note: ex.Note, Content: ex.Content}
 					}
 				}
 			}
@@ -340,32 +384,54 @@ func (c *computer) realmFigure(key realmFigureKey, treeID string, sr *entity.Sta
 	if f, ok := c.realmFigures[key]; ok {
 		return f
 	}
-	f := &realmFigure{treeID: treeID, sr: sr, covered: make(map[string]bool)}
+	f := &realmFigure{treeID: treeID, sr: sr, covered: make(map[string]bool), mapped: make(map[string]bool), lapsed: make(map[string]bool)}
 	c.realmFigures[key] = f
 	c.realmOrder = append(c.realmOrder, key)
 	return f
 }
 
+// count adds a clause of the list, not excluded, to the count of its status.
+func (f *Figure) count(status Status) {
+	switch status {
+	case StatusCovered:
+		f.Covered++
+	case StatusMapped:
+		f.Mapped++
+	case StatusLapsed:
+		f.Lapsed++
+	default:
+		f.Unmapped++
+	}
+}
+
 // addRealmFigures adds the Realm figure of each reference measured: a clause
 // counts as covered when any entity of the tree measured against the
-// reference covers it (STDREF-025), and as excluded when the manifest that
-// declares the reference excludes it, as strspc-rules#177 clarifies STDREF-025.
+// reference covers it (STDREF-025), else as mapped or lapsed when any maps it
+// or has it lapsed, and as excluded when the manifest that declares the
+// reference excludes it, as strspc-rules#177 clarifies STDREF-025.
 func (r *Report) addRealmFigures(c *computer) {
 	for _, key := range c.realmOrder {
 		agg := c.realmFigures[key]
-		var excluded map[exclusionKey]bool
+		var excluded map[exclusionKey]ExclusionRef
 		if key.decl != nil {
-			excluded = exclusions(key.decl.rf, nil)
+			excluded = exclusions(key.decl.rf)
 		}
-		fig := Figure{Tree: agg.treeID, Standard: key.ref.ID, Version: key.ref.Version, Realm: key.ref.Realm, Profile: key.ref.Profile}
+		fig := Figure{Tree: agg.treeID, Standard: key.ref.ID, Version: key.ref.Version, Realm: key.ref.Realm, Profile: key.ref.Profile, DeclaredBy: key.decl.realmID()}
 		for _, clause := range clauseList(agg.sr, key.ref.Profile) {
-			if excluded[exclusionKey{key.ref.ID, clause}] {
+			if _, ok := excluded[exclusionKey{key.ref.ID, clause}]; ok {
 				fig.Excluded++
 				continue
 			}
 			fig.Total++
-			if agg.covered[clause] {
-				fig.Covered++
+			switch {
+			case agg.covered[clause]:
+				fig.count(StatusCovered)
+			case agg.mapped[clause]:
+				fig.count(StatusMapped)
+			case agg.lapsed[clause]:
+				fig.count(StatusLapsed)
+			default:
+				fig.count(StatusUnmapped)
 			}
 		}
 		fig.Defined = fig.Total > 0
@@ -373,11 +439,11 @@ func (r *Report) addRealmFigures(c *computer) {
 	}
 }
 
-// sortFigures sorts the figures by tree, reference and entity, a Realm figure
-// before those of its entities.
+// sortFigures sorts the figures by tree, reference, declaring manifest and
+// entity, a Realm figure before those of its entities.
 func sortFigures(figs []Figure) {
 	slices.SortFunc(figs, func(a, b Figure) int {
 		return cmp.Or(cmp.Compare(a.Tree, b.Tree), cmp.Compare(a.Standard, b.Standard), cmp.Compare(a.Version, b.Version),
-			cmp.Compare(a.Realm, b.Realm), cmp.Compare(a.Profile, b.Profile), cmp.Compare(a.Entity, b.Entity))
+			cmp.Compare(a.Realm, b.Realm), cmp.Compare(a.Profile, b.Profile), cmp.Compare(a.DeclaredBy, b.DeclaredBy), cmp.Compare(a.Entity, b.Entity))
 	})
 }

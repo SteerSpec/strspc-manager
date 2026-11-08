@@ -55,21 +55,21 @@ func (s *memStore) PutBlobs(values map[string][]byte) error {
 // cacheFixture is the audit of testFileRule over command and test files,
 // one file per part, that the cache tests rerun.
 type cacheFixture struct {
-	inputs                        []ruleeval.RuleInput
-	lint, sync, lintTest, syncTst ruleeval.File
-	cfg                           func(*claude.Config)
+	inputs                               []ruleeval.RuleInput
+	lintCmd, syncCmd, lintTest, syncTest ruleeval.File
+	cfg                                  func(*claude.Config)
 }
 
 func newCacheFixture() cacheFixture {
 	f := cacheFixture{
 		inputs:   []ruleeval.RuleInput{rule("CMD-002", testFileRule)},
-		lint:     ruleeval.File{Path: "src/cmd/lint.go", Content: commandGo("lint")},
-		sync:     ruleeval.File{Path: "src/cmd/sync.go", Content: commandGo("sync")},
+		lintCmd:  ruleeval.File{Path: "src/cmd/lint.go", Content: commandGo("lint")},
+		syncCmd:  ruleeval.File{Path: "src/cmd/sync.go", Content: commandGo("sync")},
 		lintTest: ruleeval.File{Path: "src/cmd/lint_test.go", Content: commandTestGo("lint")},
-		syncTst:  ruleeval.File{Path: "src/cmd/sync_test.go", Content: commandTestGo("sync")},
+		syncTest: ruleeval.File{Path: "src/cmd/sync_test.go", Content: commandTestGo("sync")},
 	}
 	room := 0
-	for _, file := range []ruleeval.File{f.lint, f.sync, f.lintTest, f.syncTst} {
+	for _, file := range []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest, f.syncTest} {
 		lines := strings.Split(strings.TrimSuffix(file.Content, "\n"), "\n")
 		// Room for one file of a few more lines than the fixtures.
 		room = max(room, len(prompt.FileSlice(file.Path, 1, len(lines), lines))+200)
@@ -158,7 +158,7 @@ func verdictOf(t *testing.T, r cacheRun) ruleeval.Verdict {
 func TestAuditCache_RerunSendsOnlyWhatChanged(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 
 	first := f.audit(t, store, files, nil)
 	if verdictOf(t, first) != ruleeval.Violated || len(first.extractions()) != 3 || first.judgements() != 1 {
@@ -178,11 +178,11 @@ func TestAuditCache_RerunSendsOnlyWhatChanged(t *testing.T) {
 
 	// Editing a comment leaves the findings as they were: the file is read
 	// again, the judgement is kept.
-	edited := f.lint
+	edited := f.lintCmd
 	edited.Content = strings.Replace(edited.Content, "lint note 01", "lint note 1!", 1)
 	files[0] = edited
 	reword := f.audit(t, store, files, nil)
-	if verdictOf(t, reword) != ruleeval.Violated || len(reword.extractions()) != 1 || !shows(reword.extractions()[0], f.lint.Path) || reword.judgements() != 0 {
+	if verdictOf(t, reword) != ruleeval.Violated || len(reword.extractions()) != 1 || !shows(reword.extractions()[0], f.lintCmd.Path) || reword.judgements() != 0 {
 		t.Fatalf("a reworded comment: %d extractions, %d judgements", len(reword.extractions()), reword.judgements())
 	}
 
@@ -191,14 +191,14 @@ func TestAuditCache_RerunSendsOnlyWhatChanged(t *testing.T) {
 	edited.Content = "// Added.\n" + edited.Content
 	files[0] = edited
 	moved := f.audit(t, store, files, nil)
-	if verdictOf(t, moved) != ruleeval.Violated || len(moved.extractions()) != 1 || !shows(moved.extractions()[0], f.lint.Path) || moved.judgements() != 1 {
+	if verdictOf(t, moved) != ruleeval.Violated || len(moved.extractions()) != 1 || !shows(moved.extractions()[0], f.lintCmd.Path) || moved.judgements() != 1 {
 		t.Fatalf("a moved finding: %d extractions, %d judgements", len(moved.extractions()), moved.judgements())
 	}
 
 	// The missing test added: only it is read, and the rule now holds.
-	files = append(files, f.syncTst)
+	files = append(files, f.syncTest)
 	added := f.audit(t, store, files, nil)
-	if verdictOf(t, added) != ruleeval.Compliant || len(added.extractions()) != 1 || !shows(added.extractions()[0], f.syncTst.Path) || added.judgements() != 1 {
+	if verdictOf(t, added) != ruleeval.Compliant || len(added.extractions()) != 1 || !shows(added.extractions()[0], f.syncTest.Path) || added.judgements() != 1 {
 		t.Fatalf("an added test: %d extractions, %d judgements, verdict %v", len(added.extractions()), added.judgements(), verdictOf(t, added))
 	}
 }
@@ -208,7 +208,7 @@ func TestAuditCache_RerunSendsOnlyWhatChanged(t *testing.T) {
 // same.
 func TestAuditCache_MatchesWithoutStore(t *testing.T) {
 	f := newCacheFixture()
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	judgeBody := func(r cacheRun) string {
 		for _, b := range r.bodies {
 			if isJudgeRequest(b) {
@@ -223,7 +223,7 @@ func TestAuditCache_MatchesWithoutStore(t *testing.T) {
 	store := newMemStore()
 	f.audit(t, store, files, nil)
 	// Only sync.go changes, in a comment; the others come from the store.
-	edited := f.sync
+	edited := f.syncCmd
 	edited.Content = strings.Replace(edited.Content, "sync note 01", "sync note 1!", 1)
 	// Forget the judgement so that the rule is judged again.
 	for k := range store.m {
@@ -231,7 +231,7 @@ func TestAuditCache_MatchesWithoutStore(t *testing.T) {
 			delete(store.m, k)
 		}
 	}
-	mixed := f.audit(t, store, []ruleeval.File{f.lint, edited, f.lintTest}, nil)
+	mixed := f.audit(t, store, []ruleeval.File{f.lintCmd, edited, f.lintTest}, nil)
 	if len(mixed.extractions()) != 1 {
 		t.Fatalf("extractions = %d, want sync.go only", len(mixed.extractions()))
 	}
@@ -246,9 +246,9 @@ func TestAuditCache_MatchesWithoutStore(t *testing.T) {
 func TestAuditCache_LooseFindingIsJudgedNotKept(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	loose := func(body string) []prompt.Finding {
-		if !shows(body, f.lint.Path) {
+		if !shows(body, f.lintCmd.Path) {
 			return nil
 		}
 		return []prompt.Finding{{Kind: prompt.FindingFact, File: "cmd/lint.go", Line: 1, Excerpt: "package cmd", Note: "loose note"}}
@@ -266,7 +266,7 @@ func TestAuditCache_LooseFindingIsJudgedNotKept(t *testing.T) {
 	}
 
 	second := f.audit(t, store, files, loose)
-	if len(second.extractions()) != 1 || !shows(second.extractions()[0], f.lint.Path) || second.judgements() != 0 {
+	if len(second.extractions()) != 1 || !shows(second.extractions()[0], f.lintCmd.Path) || second.judgements() != 0 {
 		t.Fatalf("second run: %d extractions, %d judgements; want lint.go read again, the judgement kept",
 			len(second.extractions()), second.judgements())
 	}
@@ -278,7 +278,7 @@ func TestAuditCache_UnreadFileIsNotKept(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
 	minified := ruleeval.File{Path: "web/app.min.js", Content: "var a = 1;\n" + strings.Repeat("x", 20000) + "\n"}
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest, minified}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest, minified}
 
 	first := f.audit(t, store, files, nil)
 	if len(first.resp.Errors) != 1 || !strings.Contains(first.resp.Errors[0].Error(), "line 2 of web/app.min.js") {
@@ -298,10 +298,10 @@ func TestAuditCache_UnreadFileIsNotKept(t *testing.T) {
 func TestAuditCache_FailedRuleIsNotKept(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
-		if shows(string(raw), f.sync.Path) {
+		if shows(string(raw), f.syncCmd.Path) {
 			writeJSON(w, 200, message("end_turn", `{}`, nil))
 			return
 		}
@@ -329,7 +329,7 @@ func TestAuditCache_FailedRuleIsNotKept(t *testing.T) {
 func TestAuditCache_FailedRequestKeepsCompleteGroups(t *testing.T) {
 	f := newCacheFixture()
 	inputs := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule), f.inputs[0]}
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	store := newMemStore()
 	run := func(broken bool) []string {
 		var bodies []string
@@ -382,7 +382,7 @@ func TestAuditCache_FailedRequestKeepsCompleteGroups(t *testing.T) {
 func TestAuditCache_FailedJudgementKeepsTheOthers(t *testing.T) {
 	f := newCacheFixture()
 	inputs := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule), f.inputs[0]}
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	store := newMemStore()
 	run := func(broken bool) []string {
 		var bodies []string
@@ -436,7 +436,7 @@ func TestAuditCache_FailingStoreReadsEmpty(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
 	store.err = errors.New("disk full")
-	run := f.audit(t, store, []ruleeval.File{f.lint, f.sync, f.lintTest}, nil)
+	run := f.audit(t, store, []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}, nil)
 	if verdictOf(t, run) != ruleeval.Violated || len(run.resp.Errors) != 0 || len(run.extractions()) != 3 {
 		t.Fatalf("a failing store: %d extractions, errors %v", len(run.extractions()), run.resp.Errors)
 	}
@@ -447,7 +447,7 @@ func TestAuditCache_FailingStoreReadsEmpty(t *testing.T) {
 func TestAuditCache_BadValuesRead(t *testing.T) {
 	f := newCacheFixture()
 	store := newMemStore()
-	files := []ruleeval.File{f.lint, f.sync, f.lintTest}
+	files := []ruleeval.File{f.lintCmd, f.syncCmd, f.lintTest}
 	f.audit(t, store, files, nil)
 	for k := range store.m {
 		if strings.Contains(k, "/judge/") {
