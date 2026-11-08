@@ -25,7 +25,10 @@ const (
 // paths its part showed. When a finding names no file of its part, it is
 // still judged, but nothing is kept for that rule from any file of the
 // part, since the model's path cannot say which file it came from. Nothing
-// is kept of a file with content no part shows, nor for a rule that failed.
+// is kept of a file with content no part shows, nor for a rule whose
+// findings could not be collected from every part. A rule whose findings
+// are too large to judge keeps them: they are complete, and a rerun reports
+// the same error without reading every file again.
 //
 // Without a store it keeps nothing: every group of rules reads every file.
 // A failing store reads as empty.
