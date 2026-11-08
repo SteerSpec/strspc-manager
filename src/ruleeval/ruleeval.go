@@ -380,6 +380,34 @@ func (e *Evaluator) observe(ev Event) {
 	}
 }
 
+// observedStore is the BlobStore an Evaluator forwards to its provider. It
+// reports a failure of the cache to the Observer and hands the provider a
+// miss instead, so that a cache failure never fails a batch or keeps its
+// verdicts out of the cache.
+type observedStore struct {
+	store    BlobStore
+	e        *Evaluator
+	entityID string
+}
+
+// GetBlob returns the stored value, or a miss when the cache fails.
+func (s observedStore) GetBlob(key string) ([]byte, bool, error) {
+	v, ok, err := s.store.GetBlob(key)
+	if err != nil {
+		s.e.observe(Event{Kind: EventCacheError, EntityID: s.entityID, Err: err})
+		return nil, false, nil
+	}
+	return v, ok, nil
+}
+
+// PutBlobs stores values, reporting a failure to the Observer only.
+func (s observedStore) PutBlobs(values map[string][]byte) error {
+	if err := s.store.PutBlobs(values); err != nil {
+		s.e.observe(Event{Kind: EventCacheError, EntityID: s.entityID, Err: err})
+	}
+	return nil
+}
+
 // outcome is the per-input result collected before diagnostics are emitted
 // in input order.
 type outcome struct {
@@ -669,6 +697,9 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, s
 		return nil
 	}
 	req := BatchRequest{EntityID: g.entityID, Diff: sub.diff, Files: sub.files, Detail: e.cfg.Detail, Inputs: make([]RuleInput, 0, len(g.idx))}
+	if bs, ok := e.cfg.Cache.(BlobStore); ok && sub.audit() {
+		req.Store = observedStore{store: bs, e: e, entityID: g.entityID}
+	}
 	for _, i := range g.idx {
 		req.Inputs = append(req.Inputs, inputs[i])
 	}

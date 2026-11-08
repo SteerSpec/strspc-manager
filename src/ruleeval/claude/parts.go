@@ -21,6 +21,11 @@ import (
 // rule requires that no part found is missing, as in an audit that fits one
 // request.
 //
+// With req.Store, what each file holds for each rule is kept, and so is
+// each judgement, keyed on what it was judged on (auditCache): a rerun
+// extracts only the files a rule has no findings of, and judges only the
+// rules whose findings or paths changed.
+//
 // A rule whose findings could not be collected from every part, or whose
 // findings are too large to judge in one request, gets no verdict and an
 // error in out.Errors, which keeps the batch out of the cache.
@@ -36,59 +41,121 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		return out, nil
 	}
 
+	// Each group of rules reads the files some rule of it has no findings
+	// of, in parts of their own; without a store that is every file, in
+	// the parts above.
+	cache := p.newAuditCache(req.Store, req.Files, unread)
+	// What was learnt is kept even when a later request fails.
+	defer cache.flush()
+	type groupParts struct {
+		files []ruleeval.File
+		parts []string
+		shown [][]string
+	}
+	plans := make([]groupParts, len(rp.groups))
 	var items []work
-	for c := range parts {
-		for g := range rp.groups {
+	// byGroup lists, per group, the indices of its items.
+	byGroup := make([][]int, len(rp.groups))
+	for g, group := range rp.groups {
+		files := cache.toExtract(group)
+		gp := groupParts{files: files}
+		// Lines too large to send were reported with the whole set.
+		gp.parts, gp.shown, _ = chunkFileParts(files, bytesForTokens(rp.budget))
+		plans[g] = gp
+		for c := range gp.parts {
+			byGroup[g] = append(byGroup[g], len(items))
 			items = append(items, work{chunk: c, group: g})
 		}
 	}
 	found := make([]extracted, len(items))
-	if err := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
+	done := make([]bool, len(items))
+	runErr := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
 		var err error
 		it := items[i]
-		found[i], err = p.extract(ctx, prompt.FilesBlock(parts[it.chunk]), rp.groups[it.group], it.chunk+1, len(parts))
+		gp := plans[it.group]
+		found[i], err = p.extract(ctx, prompt.FilesBlock(gp.parts[it.chunk]), rp.groups[it.group], it.chunk+1, len(gp.parts))
+		done[i] = err == nil
 		return err
-	}); err != nil {
-		return nil, err
-	}
+	})
 
-	// Items run part by part, so each rule's findings keep the order of the
-	// parts, and of the files within them.
-	findings := map[string][]prompt.Finding{}
+	// Items run group by group, part by part. A group every part of which
+	// answered is kept even when another group's request failed, so that a
+	// rerun after the failure reads only what was lost.
 	failed := map[string]bool{}
-	for _, f := range found {
-		out.Errors = append(out.Errors, f.errs...)
-		for id := range f.failed {
-			failed[id] = true
+	var errs []error
+	for g, group := range rp.groups {
+		complete := true
+		for _, i := range byGroup[g] {
+			if !done[i] {
+				complete = false
+				break
+			}
 		}
-		for id, fs := range f.findings {
-			findings[id] = append(findings[id], fs...)
+		if !complete {
+			continue
 		}
+		for _, i := range byGroup[g] {
+			errs = append(errs, found[i].errs...)
+			for id := range found[i].failed {
+				failed[id] = true
+			}
+			cache.record(found[i].findings, plans[g].shown[items[i].chunk])
+		}
+		cache.keep(group, plans[g].files, failed)
 	}
+	if runErr != nil {
+		return nil, runErr
+	}
+	out.Errors = append(out.Errors, errs...)
 	var toJudge []ruleeval.RuleInput
-	for _, g := range rp.groups {
-		for _, in := range g {
+	for _, group := range rp.groups {
+		for _, in := range group {
 			if !failed[in.Rule.ID] {
 				toJudge = append(toJudge, in)
 			}
 		}
 	}
+	findings := cache.findings(toJudge)
 
 	jp := p.planJudge(toJudge, findings, filePaths(req.Files), unread)
 	out.Errors = append(out.Errors, jp.errs...)
-	results := make([]judged, len(jp.groups))
-	if err := p.runAll(ctx, len(jp.groups), func(ctx context.Context, i int) error {
-		var err error
-		results[i], err = p.judge(ctx, jp.scope, jp.groups[i], findings)
-		return err
-	}); err != nil {
-		return nil, err
-	}
-	for _, r := range results {
-		out.Errors = append(out.Errors, r.errs...)
-		for id, d := range r.details {
-			out.Verdicts[id] = d.toResponse()
+	var groups [][]ruleeval.RuleInput
+	for _, g := range jp.groups {
+		var rest []ruleeval.RuleInput
+		for _, in := range g {
+			if d, ok := cache.judgement(in, jp.scope, findings); ok {
+				out.Verdicts[in.Rule.ID] = d.toResponse()
+				continue
+			}
+			rest = append(rest, in)
 		}
+		if len(rest) > 0 {
+			groups = append(groups, rest)
+		}
+	}
+	results := make([]judged, len(groups))
+	judgedOK := make([]bool, len(groups))
+	runErr = p.runAll(ctx, len(groups), func(ctx context.Context, i int) error {
+		var err error
+		results[i], err = p.judge(ctx, jp.scope, groups[i], findings)
+		judgedOK[i] = err == nil
+		return err
+	})
+	// A judgement that came back is kept even when another failed.
+	for i, r := range results {
+		if !judgedOK[i] {
+			continue
+		}
+		out.Errors = append(out.Errors, r.errs...)
+		for _, in := range groups[i] {
+			if d, ok := r.details[in.Rule.ID]; ok {
+				out.Verdicts[in.Rule.ID] = d.toResponse()
+				cache.keepJudgement(in, jp.scope, findings, d)
+			}
+		}
+	}
+	if runErr != nil {
+		return nil, runErr
 	}
 	return out, nil
 }

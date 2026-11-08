@@ -109,6 +109,26 @@ type BatchRequest struct {
 	Files []File
 	// Detail says which verdicts the provider details.
 	Detail Detail
+	// Store keeps what a provider learns of parts of the subject, so that
+	// a rerun sends only what changed: in an audit too large for one
+	// request, what each file holds for each rule. It is nil when the
+	// Evaluator's cache does not implement BlobStore, or for a diff. A
+	// provider treats a failing Store as empty; the Evaluator reports the
+	// failure to its Observer.
+	Store BlobStore
+}
+
+// BlobStore is an optional capability of a Cache: it keeps opaque values
+// that a provider derives and keys itself, apart from the verdicts. The
+// Evaluator forwards it in BatchRequest.Store for audits. Implementations
+// must be safe for concurrent use.
+type BlobStore interface {
+	// GetBlob returns the value stored under key; ok is false on a miss.
+	GetBlob(key string) (value []byte, ok bool, err error)
+	// PutBlobs stores every value under its key, at once: a provider may
+	// keep thousands of values from one request, which a store writing to
+	// disk should not commit one by one.
+	PutBlobs(values map[string][]byte) error
 }
 
 // BatchResponse carries one verdict per requested rule ID. Errors holds
@@ -198,8 +218,9 @@ const (
 	EventCacheHit EventKind = iota
 	// EventCacheMiss reports that no cached verdict was found; RuleID is set.
 	EventCacheMiss
-	// EventCacheError reports a cache read or write failure; RuleID and Err are
-	// set.
+	// EventCacheError reports a cache read or write failure; Err is set, with
+	// RuleID for a verdict, or EntityID alone for what a provider stores
+	// through BatchRequest.Store.
 	EventCacheError
 	// EventProviderCall reports a provider request; EntityID and RuleIDs are
 	// set, and Err on failure.

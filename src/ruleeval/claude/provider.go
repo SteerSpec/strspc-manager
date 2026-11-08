@@ -20,7 +20,10 @@
 // all parts and the paths of the whole set, so that something a rule
 // requires is reported missing when no part found it. That judgement gives
 // the explanation and evidence of every verdict at once, whatever the
-// detail level.
+// detail level. With a ruleeval.BlobStore in the request, what each file
+// holds for each rule is kept, and each judgement on what it was judged
+// on, so that a rerun reads only the files that changed and judges only
+// the rules whose findings did.
 //
 // Requests are retried by the SDK on 429/5xx (honouring Retry-After);
 // credential and model errors are reported as ruleeval.ErrUnavailable.
