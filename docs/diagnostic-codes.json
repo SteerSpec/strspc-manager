@@ -234,6 +234,15 @@
     "retired": false
   },
   {
+    "code": "RD025",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Structured note changed after Draft",
+    "summary": "A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041).",
+    "fix": "Restore the note. To change the structured form, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
     "code": "RE001",
     "module": "rule-eval",
     "severity": "Warning / Error",
@@ -265,8 +274,8 @@
     "module": "rule-eval",
     "severity": "Info",
     "title": "Nothing to evaluate",
-    "summary": "The diff is empty; nothing to evaluate.",
-    "fix": "No action is needed. If you expected changes, check the refs being compared.",
+    "summary": "The diff, or the file set of an audit, is empty; nothing to evaluate.",
+    "fix": "No action is needed. If you expected changes, check the refs being compared, or for an audit the paths selected.",
     "retired": false
   },
   {
@@ -428,7 +437,7 @@
     "severity": "Error",
     "title": "Unknown note type",
     "summary": "A note type is outside the closed enum.",
-    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related` or `standard`.",
+    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard` or `structured`.",
     "retired": false
   },
   {
@@ -711,6 +720,24 @@
     "retired": false
   },
   {
+    "code": "RL042",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Malformed structured note",
+    "summary": "The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037).",
+    "fix": "Write the format, a colon and a payload that is not blank.",
+    "retired": false
+  },
+  {
+    "code": "RL043",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Second structured note",
+    "summary": "A rule holds more than one `structured` note (NTE-040).",
+    "fix": "Keep one note. To withdraw the other, retype it to `reference`.",
+    "retired": false
+  },
+  {
     "code": "RM001",
     "module": "realm-lint",
     "severity": "Error",
@@ -850,7 +877,7 @@
     "module": "realm-lint",
     "severity": "Warning",
     "title": "Dependency unavailable",
-    "summary": "A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run.",
+    "summary": "A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run; or an entity file of a linked Standard Realm cannot be read, so RM029 does not check notes against its clause list.",
     "fix": "Check the dependency's `source`, your network connection and your GitHub token, then run the check again.",
     "retired": false
   },
@@ -933,6 +960,42 @@
     "title": "Manifest hash mismatch",
     "summary": "`realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported.",
     "fix": "Recompute the `hash` after every change to the manifest (RLMMNFST-014), as `entity.ComputeRealmHash` does, or leave it out: it stays optional until the CLI recomputes it on every write.",
+    "retired": false
+  },
+  {
+    "code": "RM026",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Linked realm is not a Standard Realm dependency",
+    "summary": "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
+    "fix": "Add the Standard Realm to `dependencies`, pinned to the transcription release, or correct the `realm` to the `realm_id` of one.",
+    "retired": false
+  },
+  {
+    "code": "RM027",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Standard version is not the linked edition",
+    "summary": "A Standard Reference with a `realm` has no `version`, or, with a dependency fetcher, a `version` other than the `edition` of that Realm (STDREF-018).",
+    "fix": "Set `version` to the `edition` the linked Standard Realm declares. The dependency's own `version` pins the transcription release, not the edition.",
+    "retired": false
+  },
+  {
+    "code": "RM028",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Profile not declared by the linked realm",
+    "summary": "With a dependency fetcher: the `profile` of a Standard Reference names none of the `profiles` of the Standard Realm its `realm` names (STDREF-027).",
+    "fix": "Use one of the `profiles` the linked Standard Realm declares, or remove `profile` to claim the whole clause list.",
+    "retired": false
+  },
+  {
+    "code": "RM029",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Clause not in the linked realm",
+    "summary": "With a dependency fetcher: a `standard` note whose Standard Reference has a `realm` maps a clause that is not in that Realm's clause list, the distinct `clause` values of its live rules, matched exactly (STDREF-021).",
+    "fix": "Correct the clause to one the linked Standard Realm transcribes. A clause whose rules are all Terminated or Retired has left the list: map the clause of the rule that superseded it.",
     "retired": false
   },
   {

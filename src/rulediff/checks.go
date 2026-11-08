@@ -14,7 +14,7 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022 and RD024 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022, RD024 and RD025 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -51,6 +51,9 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 
 	// RD011–RD016: notes.
 	checkNotes(base.Notes, head.Notes, res, path)
+
+	// RD025: structured notes of rules that have left Draft.
+	checkStructuredFreeze(base, head, res, path)
 }
 
 // checkExistingRule runs RD001, RD002, RD003, RD006 for a rule present in both versions.
@@ -576,5 +579,40 @@ func checkSequentialRuleNums(nums []int, nextExpected int, res *result.Result, p
 				Path:     path,
 			})
 		}
+	}
+}
+
+// checkStructuredFreeze runs RD025: a `structured` note is not added, changed or
+// retyped once its rule has left Draft (NTE-041). The rule's state in the base
+// decides, so a note may be added in the change that publishes its rule. A
+// removed note is RD014.
+func checkStructuredFreeze(base, head *entity.File, res *result.Result, path string) {
+	frozen := make(map[string]bool, len(base.Rules))
+	for _, r := range base.Rules {
+		if r.State != entity.StateDraft {
+			frozen[r.ID] = true
+		}
+	}
+	baseNotes := make(map[string]entity.Note, len(base.Notes))
+	for _, n := range base.Notes {
+		baseNotes[n.ID] = n
+	}
+	for _, h := range head.Notes {
+		if !frozen[h.RuleRef] {
+			continue
+		}
+		b, existed := baseNotes[h.ID]
+		intoStructured := h.Type == entity.NoteTypeStructured && (!existed || b.Type != entity.NoteTypeStructured || b.Content != h.Content)
+		outOfStructured := existed && b.Type == entity.NoteTypeStructured && (h.Type != entity.NoteTypeStructured || b.Content != h.Content)
+		if !intoStructured && !outOfStructured {
+			continue
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD025",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("structured note %q of rule %s changed, added or retyped after the rule left Draft", h.ID, h.RuleRef),
+			Path:     path + "/notes/" + h.ID,
+		})
 	}
 }

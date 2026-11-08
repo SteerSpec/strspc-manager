@@ -1,0 +1,41 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "V",
+    "title": "QA Standard Realm entity V"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:cfa249391764475280edff8b1d1db717eb9ae999abb9a4918e5c8ee94e0da326"
+  },
+  "rules": [
+    {
+      "id": "V-001",
+      "revision": 0,
+      "state": "P",
+      "body": "The application MUST check V1.1.1.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V1.1.1",
+      "profiles": [
+        "L1"
+      ]
+    },
+    {
+      "id": "V-002",
+      "revision": 0,
+      "state": "T",
+      "body": "The application MUST check V2.1.1.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "clause": "V2.1.1",
+      "profiles": [
+        "L2"
+      ]
+    }
+  ],
+  "notes": []
+}

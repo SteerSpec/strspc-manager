@@ -1,0 +1,88 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "CMD-001": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "excerpt": {
+            "description": "Short excerpt of the line cited, without its number.",
+            "type": "string"
+          },
+          "file": {
+            "description": "Path of the file, as its file tag names it.",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "violation",
+              "fact"
+            ],
+            "type": "string"
+          },
+          "line": {
+            "description": "Line number shown at the start of the line.",
+            "type": "integer"
+          },
+          "note": {
+            "description": "A few words saying what the finding is.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "file",
+          "line",
+          "excerpt",
+          "note"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "CMD-002": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "excerpt": {
+            "description": "Short excerpt of the line cited, without its number.",
+            "type": "string"
+          },
+          "file": {
+            "description": "Path of the file, as its file tag names it.",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "violation",
+              "fact"
+            ],
+            "type": "string"
+          },
+          "line": {
+            "description": "Line number shown at the start of the line.",
+            "type": "integer"
+          },
+          "note": {
+            "description": "A few words saying what the finding is.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "file",
+          "line",
+          "excerpt",
+          "note"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "CMD-001",
+    "CMD-002"
+  ],
+  "type": "object"
+}

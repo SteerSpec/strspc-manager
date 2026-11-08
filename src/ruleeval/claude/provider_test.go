@@ -44,6 +44,8 @@ type scenario struct {
 	name       string
 	recordable bool // can be recorded against the live API (verdict-level checks only)
 	single     bool // call Evaluate (per-rule) instead of EvaluateBatch
+	detail     ruleeval.Detail
+	files      []ruleeval.File // audited instead of diff when set
 	cfg        func(*claude.Config)
 	inputs     []ruleeval.RuleInput
 	diff       string
@@ -128,11 +130,14 @@ var (
 	codeDiff = strings.ReplaceAll(diffMissingLong, "src/cmd/lint.go", "src/result/codes_table.go")
 )
 
-// twoChunks leaves room for one fixture file per chunk: ~265 tokens past the
-// system prompt and the overhead of 256 pay for the rules (~55), the file
-// list (~55) and one ~430-byte file. It follows the system prompt's size, so
-// rewording the prompt does not move the split.
-func twoChunks(c *claude.Config) { c.MaxInputTokens = (len(prompt.System())+2)/3 + 256 + 265 }
+// twoChunks leaves room for one fixture file per chunk: 795 bytes past the
+// system prompt and the overhead of 256 tokens pay for the rules (~165
+// bytes), the file list (~165 bytes) and one ~430-byte file. It follows the
+// system prompt's size and the provider's own estimate, so neither rewording
+// the prompt nor retuning the estimate moves the split.
+func twoChunks(c *claude.Config) {
+	c.MaxInputTokens = claude.EstimateTokens(prompt.System()) + 256 + claude.EstimateTokens(strings.Repeat("x", 795))
+}
 
 // --- synthetic Messages API responses -------------------------------------
 
@@ -154,10 +159,15 @@ func verdictsText(kv ...string) string {
 
 // detailText renders a detail response for one violated rule.
 func detailText(explanation string, confidence float64, evidence ...locationJSON) string {
+	return verdictDetailText("violated", explanation, confidence, evidence...)
+}
+
+// verdictDetailText renders a detail response holding verdict.
+func verdictDetailText(verdict, explanation string, confidence float64, evidence ...locationJSON) string {
 	if evidence == nil {
 		evidence = []locationJSON{}
 	}
-	b, _ := json.Marshal(map[string]any{"verdict": "violated", "explanation": explanation, "confidence": confidence, "evidence": evidence})
+	b, _ := json.Marshal(map[string]any{"verdict": verdict, "explanation": explanation, "confidence": confidence, "evidence": evidence})
 	return string(b)
 }
 
@@ -170,6 +180,13 @@ func withdrawnDetailText(verdict, explanation string, confidence float64) string
 // isDetailRequest reports whether a request body carries the detail schema
 // (the only one with an evidence excerpt) rather than the verdict schema.
 func isDetailRequest(body string) bool { return strings.Contains(body, `"excerpt"`) }
+
+// isCompliantDetail reports whether a request asks for the details of a
+// compliant verdict. The system prompt mentions compliant details too, so
+// it matches the instruction's own wording.
+func isCompliantDetail(body string) bool {
+	return isDetailRequest(body) && strings.Contains(body, `was judged \"compliant\"`)
+}
 
 // message renders a Messages API response in the documented shape.
 func message(stopReason, text string, extra map[string]any) string {
@@ -769,6 +786,210 @@ func scenarios() []scenario {
 			},
 		},
 		{
+			name:   "compliant_detailed",
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			// With DetailCompliant a compliant verdict gets a detail request
+			// that confirms it and cites the line that satisfies the rule.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isCompliantDetail(body) {
+					writeJSON(w, 200, message("end_turn", verdictDetailText("compliant",
+						"newLintCmd sets Long on the cobra.Command it returns.", 0.95,
+						locationJSON{File: "src/cmd/lint.go", Line: 15, Excerpt: `Long:  "Validate entity files`}), nil))
+					return
+				}
+				ok(w, body, 1)
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected a verdict request and a compliant detail request, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("verdict = %+v, want compliant", v)
+				}
+				if v.Explanation == "" || v.Confidence != 0.95 {
+					t.Errorf("expected explanation and confidence, got %+v", v)
+				}
+				if len(v.Evidence) != 1 || v.Evidence[0].File != "src/cmd/lint.go" || v.Evidence[0].Line != 15 {
+					t.Errorf("expected the satisfying line as evidence, got %+v", v.Evidence)
+				}
+				if p.Usage().Withdrawn != 0 || len(resp.Errors) != 0 {
+					t.Errorf("Withdrawn = %d, errors = %v", p.Usage().Withdrawn, resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "single_rule_compliant_detailed",
+			single: true,
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			// Evaluate forwards the level to the batch it delegates to.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isCompliantDetail(body) {
+					writeJSON(w, 200, message("end_turn", verdictDetailText("compliant",
+						"newLintCmd sets Long.", 0.9,
+						locationJSON{File: "src/cmd/lint.go", Line: 15, Excerpt: `Long:  "Validate entity files`}), nil))
+					return
+				}
+				ok(w, body, 1)
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("Evaluate should detail the compliant verdict, transport saw %d requests", rt.Requests())
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant || len(v.Evidence) != 1 {
+					t.Fatalf("verdict = %+v, want compliant with evidence", v)
+				}
+			},
+		},
+		{
+			name:   "compliant_withdrawn_violated",
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffMissingLong,
+			// The verdict request says compliant; the re-read finds the
+			// missing Long and withdraws to violated. The cited lines are
+			// now violation evidence and are kept.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isCompliantDetail(body) {
+					writeJSON(w, 200, message("end_turn", verdictDetailText("violated",
+						"newLintCmd constructs a cobra.Command without Long.", 0.9,
+						locationJSON{File: "src/cmd/lint.go", Line: 12, Excerpt: "return &cobra.Command{"}), nil))
+					return
+				}
+				ok(w, body, 1)
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("a withdrawal to violated needs no second detail, transport saw %d requests", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Violated {
+					t.Fatalf("verdict = %+v, want violated", v)
+				}
+				if len(v.Evidence) != 1 || v.Evidence[0].Line != 12 || v.Explanation == "" {
+					t.Errorf("the violation should keep its evidence and explanation, got %+v", v)
+				}
+				if p.Usage().Withdrawn != 1 {
+					t.Errorf("Withdrawn = %d, want 1", p.Usage().Withdrawn)
+				}
+			},
+		},
+		{
+			name:   "compliant_withdrawn_not_applicable",
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffReadme,
+			// A compliant verdict on a README change is withdrawn to
+			// not_applicable: the explanation stays, the evidence goes.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isCompliantDetail(body) {
+					writeJSON(w, 200, message("end_turn", verdictDetailText("not_applicable",
+						"The diff changes no cobra command.", 0.9,
+						locationJSON{File: "README.md", Line: 4, Excerpt: "More words about the project."}), nil))
+					return
+				}
+				ok(w, body, 1)
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, p *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.NotApplicable {
+					t.Fatalf("verdict = %+v, want not_applicable", v)
+				}
+				if v.Explanation == "" || len(v.Evidence) != 0 {
+					t.Errorf("a withdrawal keeps its explanation and drops its evidence, got %+v", v)
+				}
+				if p.Usage().Withdrawn != 1 {
+					t.Errorf("Withdrawn = %d, want 1", p.Usage().Withdrawn)
+				}
+			},
+		},
+		{
+			name:   "two_chunk_compliant_evidence",
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			// Two commands, one per chunk, both compliant. The merged verdict
+			// cites the satisfying line of each.
+			diff: diffWithLong + strings.ReplaceAll(diffWithLong, "src/cmd/lint.go", "src/cmd/sync.go"),
+			cfg:  twoChunks,
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if !isCompliantDetail(body) {
+					ok(w, body, 1)
+					return
+				}
+				file := "src/cmd/lint.go"
+				if strings.Contains(body, "b/src/cmd/sync.go") {
+					file = "src/cmd/sync.go"
+				}
+				writeJSON(w, 200, message("end_turn", verdictDetailText("compliant",
+					"The command in "+file+" sets Long.", 0.9,
+					locationJSON{File: file, Line: 15, Excerpt: `Long:  "Validate entity files`}), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rt.Requests() != 4 {
+					t.Errorf("expected a verdict and a detail request per chunk, transport saw %d", rt.Requests())
+				}
+				v := resp.Verdicts["CMD-001"]
+				if v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("merged verdict = %+v, want compliant", v)
+				}
+				files := map[string]bool{}
+				for _, e := range v.Evidence {
+					files[e.File] = true
+				}
+				if len(v.Evidence) != 2 || !files["src/cmd/lint.go"] || !files["src/cmd/sync.go"] {
+					t.Errorf("merged evidence should cite both chunks, got %+v", v.Evidence)
+				}
+				if v.Explanation == "" || len(resp.Errors) != 0 {
+					t.Errorf("explanation = %q, errors = %v", v.Explanation, resp.Errors)
+				}
+			},
+		},
+		{
+			name:   "compliant_detail_fails",
+			detail: ruleeval.DetailCompliant,
+			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
+			diff:   diffWithLong,
+			// The compliant verdict stands without its reasons, and the
+			// failure is reported so the batch is not cached.
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isCompliantDetail(body) {
+					writeJSON(w, 200, message("max_tokens", `{"explanation":"newLintCmd`, nil))
+					return
+				}
+				ok(w, body, 1)
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("verdict = %+v, want compliant kept despite the detail failure", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "judged compliant") || !errors.Is(resp.Errors[0], claude.ErrTruncated) {
+					t.Errorf("errors = %v, want one wrapped ErrTruncated naming the compliant verdict", resp.Errors)
+				}
+			},
+		},
+		{
 			name: "multi_rule_batch",
 			// Three rules in one verdict request: two violated, one compliant.
 			// Every verdict must survive, each violation must get its own
@@ -944,13 +1165,13 @@ func runScenario(t *testing.T, sc scenario, rt *replay.Transport, cfg claude.Con
 		var v *ruleeval.EvalResponse
 		v, err = p.Evaluate(ctx, ruleeval.EvalRequest{
 			Rule: in.Rule, Notes: in.Notes, Diff: sc.diff,
-			EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
+			EntityID: in.EntityID, Source: in.Source, Scope: in.Scope, Detail: sc.detail, Files: sc.files,
 		})
 		if v != nil {
 			resp = &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{in.Rule.ID: v}}
 		}
 	} else {
-		resp, err = p.EvaluateBatch(ctx, ruleeval.BatchRequest{EntityID: "CMD", Inputs: sc.inputs, Diff: sc.diff})
+		resp, err = p.EvaluateBatch(ctx, ruleeval.BatchRequest{EntityID: "CMD", Inputs: sc.inputs, Diff: sc.diff, Files: sc.files, Detail: sc.detail})
 	}
 	sc.check(t, resp, err, p, rt)
 }
@@ -963,7 +1184,7 @@ func TestProvider_Scenarios(t *testing.T) {
 	if mode == replay.ModeRecord && key == "" {
 		t.Fatalf("%s=1 requires %s to be set", replay.EnvRecord, claude.EnvAPIKey)
 	}
-	for _, sc := range scenarios() {
+	for _, sc := range append(scenarios(), auditScenarios()...) {
 		t.Run(sc.name, func(t *testing.T) {
 			var upstream http.RoundTripper
 			cfg := claude.Config{APIKey: "test-key"}
@@ -1005,7 +1226,7 @@ func TestSynthesizeCassettes(t *testing.T) {
 	if os.Getenv("STRSPC_SYNTHESIZE") != "1" {
 		t.Skip("set STRSPC_SYNTHESIZE=1 to regenerate synthetic cassettes")
 	}
-	for _, sc := range scenarios() {
+	for _, sc := range append(scenarios(), auditScenarios()...) {
 		t.Run(sc.name, func(t *testing.T) {
 			var calls atomic.Int32
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

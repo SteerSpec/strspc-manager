@@ -233,7 +233,7 @@ func TestStandardRealmRuleChecks(t *testing.T) {
 // codes may fire on this repo's own Realm.
 func TestManifest_OwnRealmUnaffected(t *testing.T) {
 	res := New(WithRuleLinter(rulelint.New())).Lint(t.Context(), filepath.Join("..", "..", "rules"))
-	codes := append(append([]string{}, manifestCodes...), "RL033", "RL034", "RL035", "RL036", "RL037", "RL038", "RL039", "RL040", "RL041")
+	codes := append(append(append([]string{}, manifestCodes...), linkedCodes...), "RL033", "RL034", "RL035", "RL036", "RL037", "RL038", "RL039", "RL040", "RL041")
 	if got := countCodes(res, codes...); len(got) != 0 {
 		t.Errorf("rules/ got %v, want none", got)
 	}

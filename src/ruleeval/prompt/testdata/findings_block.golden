@@ -1,0 +1,18 @@
+<audit_scope>
+Files of the codebase:
+- src/cmd/lint.go
+- src/cmd/sync.go
+- web/app.min.js
+- gen/huge.go
+Not shown to any part, being too long to send:
+- line 3 of web/app.min.js
+- the whole file gen/huge.go
+</audit_scope>
+<findings>
+<rule id="CMD-001">
+{"kind":"fact","file":"src/cmd/lint.go","line":5,"excerpt":"func newLintCmd() *cobra.Command {","note":"command lint defined"}
+{"kind":"violation","file":"src/cmd/sync.go","line":7,"excerpt":"Use: \"sync\",","note":"no Long"}
+</rule>
+<rule id="CMD-002">
+</rule>
+</findings>

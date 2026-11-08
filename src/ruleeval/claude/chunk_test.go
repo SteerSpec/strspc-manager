@@ -208,9 +208,27 @@ func TestMergeVerdict_Precedence(t *testing.T) {
 	}
 }
 
+// TestMergeVerdict_CompliantEvidence checks that compliant parts accumulate
+// their evidence and the highest confidence, and that a part left
+// undetailed takes the explanation of a later one.
+func TestMergeVerdict_CompliantEvidence(t *testing.T) {
+	dst := map[string]*ruleeval.EvalResponse{}
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant})
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant, Explanation: "a sets it", Confidence: 0.7, Evidence: []ruleeval.Location{{File: "a.go", Line: 3}}})
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.Compliant, Explanation: "b sets it", Confidence: 0.9, Evidence: []ruleeval.Location{{File: "b.go", Line: 4}}})
+	got := dst["R"]
+	if got.Verdict != ruleeval.Compliant || got.Explanation != "a sets it" || got.Confidence != 0.9 || len(got.Evidence) != 2 {
+		t.Fatalf("compliant parts should merge their evidence, got %+v", got)
+	}
+	mergeVerdict(dst, "R", &ruleeval.EvalResponse{Verdict: ruleeval.NotApplicable, Explanation: "na"})
+	if dst["R"].Verdict != ruleeval.Compliant || len(dst["R"].Evidence) != 2 {
+		t.Errorf("not_applicable must leave the compliant merge alone, got %+v", dst["R"])
+	}
+}
+
 func TestEstimateTokens(t *testing.T) {
-	if estimateTokens("") != 0 || estimateTokens("abc") != 1 || estimateTokens("abcd") != 2 {
-		t.Errorf("estimateTokens: %d %d %d", estimateTokens(""), estimateTokens("abc"), estimateTokens("abcd"))
+	if estimateTokens("") != 0 || estimateTokens("a") != 1 || estimateTokens("abcd") != 2 {
+		t.Errorf("estimateTokens: %d %d %d", estimateTokens(""), estimateTokens("a"), estimateTokens("abcd"))
 	}
 	for _, n := range []int{0, 1, 2, 3, 4, 5, 6, 3907, 1 << 20} {
 		if got, want := estimateTokensForBytes(n), estimateTokens(strings.Repeat("x", n)); got != want {
@@ -244,7 +262,7 @@ func ruleWithBody(id string, n int) ruleeval.RuleInput {
 
 func TestGroupRules_ByCountAndTokens(t *testing.T) {
 	small := []ruleeval.RuleInput{ruleWithBody("S-001", 30), ruleWithBody("S-002", 30), ruleWithBody("S-003", 30)}
-	groups, tooLarge := groupRules(small, 2, 1<<20)
+	groups, tooLarge := groupRules(small, 2, 1<<20, ruleTokens)
 	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 || len(groups[1]) != 1 {
 		t.Fatalf("count split: groups=%d tooLarge=%d", len(groups), len(tooLarge))
 	}
@@ -252,14 +270,14 @@ func TestGroupRules_ByCountAndTokens(t *testing.T) {
 	// Each rule costs ~ruleTokens; a budget that fits two but not three
 	// splits on tokens even though the count limit would allow all three.
 	per := ruleTokens(small[0])
-	groups, tooLarge = groupRules(small, 10, per*2)
+	groups, tooLarge = groupRules(small, 10, per*2, ruleTokens)
 	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 {
 		t.Fatalf("token split: groups=%v tooLarge=%d", len(groups), len(tooLarge))
 	}
 
 	// A rule bigger than the whole budget is reported, the others proceed.
 	mixed := []ruleeval.RuleInput{ruleWithBody("B-001", 5000), small[0], small[1]}
-	groups, tooLarge = groupRules(mixed, 10, per*2)
+	groups, tooLarge = groupRules(mixed, 10, per*2, ruleTokens)
 	if len(tooLarge) != 1 || tooLarge[0].Rule.ID != "B-001" {
 		t.Fatalf("expected B-001 too large, got %+v", tooLarge)
 	}
@@ -267,7 +285,7 @@ func TestGroupRules_ByCountAndTokens(t *testing.T) {
 		t.Fatalf("remaining rules should form one group, got %d groups", len(groups))
 	}
 
-	if groups, tooLarge = groupRules(nil, 10, 100); len(groups) != 0 || len(tooLarge) != 0 {
+	if groups, tooLarge = groupRules(nil, 10, 100, ruleTokens); len(groups) != 0 || len(tooLarge) != 0 {
 		t.Fatal("empty input → no groups")
 	}
 }

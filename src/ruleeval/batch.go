@@ -17,6 +17,29 @@ import (
 // unreachable endpoint. Callers should stop evaluating rather than retry.
 var ErrUnavailable = errors.New("ruleeval: provider unavailable")
 
+// ErrAuditUnsupported is returned by Evaluator.Audit when the provider does
+// not implement Auditor, or reports an empty audit prompt version.
+var ErrAuditUnsupported = errors.New("ruleeval: provider does not support audits")
+
+// File is one file of the code an audit judges.
+type File struct {
+	// Path is the file's path, as evidence cites it.
+	Path string
+	// Content is the file's text.
+	Content string
+}
+
+// Auditor is an optional capability of a Provider: it judges the rules of
+// a BatchRequest or EvalRequest whose Files are set as an audit of those
+// files, not as a diff. Evaluator.Audit requires it.
+type Auditor interface {
+	// AuditPromptVersion identifies the audit prompt revision, which cache
+	// keys mix in for audit verdicts. A wrapper around another provider
+	// returns the wrapped provider's version, or "" when that provider
+	// cannot audit.
+	AuditPromptVersion() string
+}
+
 // Location points at a place in the diff that supports a verdict.
 type Location struct {
 	// File is the path of the file, as given in the diff header.
@@ -27,6 +50,49 @@ type Location struct {
 	Excerpt string `json:"excerpt,omitempty"`
 }
 
+// Detail says which verdicts a provider details: re-reads the diff against
+// the rule, confirms or withdraws the verdict, and gives an explanation, a
+// confidence and evidence locations. A violated verdict is always detailed.
+// It is a floor, not a ceiling: a provider may detail more verdicts when it
+// costs nothing more, as the Claude provider does for an audit too large
+// for one request, whose judgement explains every verdict at once.
+type Detail int
+
+// The detail levels. not_applicable is never detailed.
+const (
+	// DetailViolated details violated verdicts only. It is the zero value and
+	// the default, and the cheapest: most rules of a diff are compliant or
+	// not applicable.
+	DetailViolated Detail = iota
+	// DetailCompliant also details compliant verdicts, citing the code that
+	// satisfies the rule. Each compliant rule costs one more request.
+	DetailCompliant
+)
+
+// Covers reports whether d details a rule judged v.
+func (d Detail) Covers(v Verdict) bool {
+	switch v {
+	case Violated:
+		return true
+	case Compliant:
+		return d == DetailCompliant
+	default:
+		return false
+	}
+}
+
+// String returns the level's name, which cache keys mix in.
+func (d Detail) String() string {
+	switch d {
+	case DetailViolated:
+		return "violated"
+	case DetailCompliant:
+		return "compliant"
+	default:
+		return "Detail(" + strconv.Itoa(int(d)) + ")"
+	}
+}
+
 // BatchRequest asks a provider to evaluate several rules of one entity
 // against the same diff in a single round trip.
 type BatchRequest struct {
@@ -35,8 +101,34 @@ type BatchRequest struct {
 	// Inputs lists the rules of the entity to evaluate, with their notes and
 	// source metadata.
 	Inputs []RuleInput
-	// Diff is the unified diff every rule is evaluated against.
+	// Diff is the unified diff every rule is evaluated against. It is empty
+	// in an audit.
 	Diff string
+	// Files is the file set to audit instead of a diff, in the order to show
+	// it; nil when a diff is evaluated. Only an Auditor reads it.
+	Files []File
+	// Detail says which verdicts the provider details.
+	Detail Detail
+	// Store keeps what a provider learns of parts of the subject, so that
+	// a rerun sends only what changed: in an audit too large for one
+	// request, what each file holds for each rule. It is nil when the
+	// Evaluator's cache does not implement BlobStore, or for a diff. A
+	// provider treats a failing Store as empty; the Evaluator reports the
+	// failure to its Observer.
+	Store BlobStore
+}
+
+// BlobStore is an optional capability of a Cache: it keeps opaque values
+// that a provider derives and keys itself, apart from the verdicts. The
+// Evaluator forwards it in BatchRequest.Store for audits. Implementations
+// must be safe for concurrent use.
+type BlobStore interface {
+	// GetBlob returns the value stored under key; ok is false on a miss.
+	GetBlob(key string) (value []byte, ok bool, err error)
+	// PutBlobs stores every value under its key, at once: a provider may
+	// keep thousands of values from one request, which a store writing to
+	// disk should not commit one by one.
+	PutBlobs(values map[string][]byte) error
 }
 
 // BatchResponse carries one verdict per requested rule ID. Errors holds
@@ -84,8 +176,9 @@ type Usage struct {
 	CacheWriteTokens int64
 	// Requests counts the provider calls made.
 	Requests int
-	// Withdrawn counts violations the detail step took back after
-	// re-reading the diff with the single rule in focus.
+	// Withdrawn counts verdicts the detail step took back after re-reading
+	// the diff with the single rule in focus: violations, and with
+	// DetailCompliant compliant verdicts too.
 	Withdrawn int
 }
 
@@ -125,8 +218,9 @@ const (
 	EventCacheHit EventKind = iota
 	// EventCacheMiss reports that no cached verdict was found; RuleID is set.
 	EventCacheMiss
-	// EventCacheError reports a cache read or write failure; RuleID and Err are
-	// set.
+	// EventCacheError reports a cache read or write failure; Err is set, with
+	// RuleID for a verdict, or EntityID alone for what a provider stores
+	// through BatchRequest.Store.
 	EventCacheError
 	// EventProviderCall reports a provider request; EntityID and RuleIDs are
 	// set, and Err on failure.
@@ -229,6 +323,20 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	}
 	sum := blake3.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
+}
+
+// FilesHash returns the hex-encoded BLAKE3 hash of a file set: every path
+// and content, length-prefixed, in order. The order counts, since it is the
+// order the files are shown in.
+func FilesHash(files []File) string {
+	h := blake3.New(32, nil)
+	for _, f := range files {
+		for _, s := range []string{f.Path, f.Content} {
+			_, _ = h.Write([]byte(strconv.Itoa(len(s)) + ":"))
+			_, _ = h.Write([]byte(s))
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // DiffHash returns the hex-encoded BLAKE3 hash of a diff.

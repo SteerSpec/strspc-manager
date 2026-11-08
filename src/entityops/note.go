@@ -33,6 +33,11 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 			return "", err
 		}
 	}
+	if noteType == entity.NoteTypeStructured {
+		if err := checkStructured(f, ruleID, "", content); err != nil {
+			return "", err
+		}
+	}
 
 	num := nextNoteNumber(f, ruleID)
 	if num > maxNoteNumber {
@@ -114,6 +119,9 @@ func UpdateNote(f *entity.File, noteID, content, noteType string) error {
 	if err := checkStandardChange(f, n, content, noteType); err != nil {
 		return err
 	}
+	if err := checkStructuredChange(f, n, content, noteType); err != nil {
+		return err
+	}
 
 	// Compute the new version first, so that a version that does not parse
 	// fails before anything is edited.
@@ -166,6 +174,62 @@ func checkMapping(f *entity.File, ruleID, noteID, content string) error {
 		if n.RuleRef == ruleID && n.ID != noteID && n.Type == entity.NoteTypeStandard && n.Content == content {
 			return fmt.Errorf("rule %q already maps %q in note %q (NTE-015)", ruleID, content, n.ID)
 		}
+	}
+	return nil
+}
+
+// checkStructuredChange refuses a change that touches a `structured` note once
+// its rule has left Draft (NTE-041), whether the note is revised, retyped away
+// from `structured` or retyped into it, and content that isn't well formed or
+// that a second note on the rule would repeat (NTE-037, NTE-040).
+func checkStructuredChange(f *entity.File, n *entity.Note, content, noteType string) error {
+	if n.Type != entity.NoteTypeStructured && noteType != entity.NoteTypeStructured {
+		return nil
+	}
+	if err := checkStructuredFrozen(f, n.RuleRef, n.ID); err != nil {
+		return err
+	}
+	if noteType != entity.NoteTypeStructured {
+		return nil
+	}
+	if err := checkStructured(f, n.RuleRef, n.ID, content); err != nil {
+		return fmt.Errorf("note %q: %w", n.ID, err)
+	}
+	return nil
+}
+
+// checkStructured refuses a `structured` note whose rule has left Draft
+// (NTE-041), whose content isn't `<format>:<payload>` (NTE-037) or that is a
+// second one on the rule (NTE-040). noteID is the note being changed, or empty
+// for a new one.
+func checkStructured(f *entity.File, ruleID, noteID, content string) error {
+	if err := checkStructuredFrozen(f, ruleID, noteID); err != nil {
+		return err
+	}
+	if _, _, err := entity.ParseStructuredNote(content); err != nil {
+		return err
+	}
+	for _, n := range f.Notes {
+		if n.RuleRef == ruleID && n.ID != noteID && n.Type == entity.NoteTypeStructured {
+			return fmt.Errorf("rule %q already holds the structured note %q (NTE-040)", ruleID, n.ID)
+		}
+	}
+	return nil
+}
+
+// checkStructuredFrozen refuses any change to the `structured` notes of a rule
+// that has left Draft (NTE-041).
+func checkStructuredFrozen(f *entity.File, ruleID, noteID string) error {
+	r, err := findRule(f, ruleID)
+	if err != nil {
+		return err
+	}
+	if r.State != entity.StateDraft {
+		what := "a `structured` note"
+		if noteID != "" {
+			what = fmt.Sprintf("note %q", noteID)
+		}
+		return fmt.Errorf("rule %q is in state %s: %s cannot be added, changed or retyped once its rule has left Draft (NTE-041)", ruleID, r.State, what)
 	}
 	return nil
 }

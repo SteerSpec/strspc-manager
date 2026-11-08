@@ -2,16 +2,31 @@
 // top of the Anthropic Messages API using structured outputs. Each request
 // asks for the verdicts of a group of rules as an object keyed by rule id;
 // a second, per-rule request then collects explanation and evidence for
-// every rule judged violated.
+// every rule judged violated, and with ruleeval.DetailCompliant for every
+// rule judged compliant.
 //
 // One request carries the shared system prompt and the diff (both marked
 // as prompt-cache breakpoints) followed by up to MaxRulesPerRequest rules.
 // Diffs larger than the input budget are split on file and hunk boundaries
 // and the verdicts are merged, a violation in any chunk winning. Each
 // request that shows only part of a diff also lists the files of the whole
-// diff, so that a rule spanning files is not judged on half of them. Requests
-// are retried by the SDK on 429/5xx (honouring Retry-After); credential
-// and model errors are reported as ruleeval.ErrUnavailable.
+// diff, so that a rule spanning files is not judged on half of them.
+//
+// A request whose Files are set audits the code as it stands instead
+// (ruleeval.Auditor), with numbered lines. A file set that fits one request
+// is judged like a diff. A larger one is audited in parts, a map-reduce:
+// each part only collects the findings its files hold for each rule, and
+// one request per group of rules then judges every rule on the findings of
+// all parts and the paths of the whole set, so that something a rule
+// requires is reported missing when no part found it. That judgement gives
+// the explanation and evidence of every verdict at once, whatever the
+// detail level. With a ruleeval.BlobStore in the request, what each file
+// holds for each rule is kept, and each judgement on what it was judged
+// on, so that a rerun reads only the files that changed and judges only
+// the rules whose findings did.
+//
+// Requests are retried by the SDK on 429/5xx (honouring Retry-After);
+// credential and model errors are reported as ruleeval.ErrUnavailable.
 package claude
 
 import (
@@ -40,8 +55,12 @@ const (
 	// DefaultMaxTokens caps the response size when Config.MaxTokens is zero.
 	DefaultMaxTokens = 8192
 	// DefaultMaxInputTokens is the per-request input budget, which drives diff
-	// chunking, when Config.MaxInputTokens is zero.
-	DefaultMaxInputTokens = 60000
+	// chunking, when Config.MaxInputTokens is zero. It was 60000 while
+	// EstimateTokens counted 3 bytes per token, so a part held about 180 KB of
+	// diff and real requests on Go code reached about 84k tokens. At 2 bytes
+	// per token, 100000 keeps parts about that size (some 190 KB), so a diff
+	// is not split more than before.
+	DefaultMaxInputTokens = 100000
 	// DefaultMaxRulesPerRequest bounds how many rules share one request when
 	// Config.MaxRulesPerRequest is zero.
 	DefaultMaxRulesPerRequest = 40
@@ -179,11 +198,34 @@ func New(cfg Config) (*Provider, error) {
 // Model returns the configured model id.
 func (p *Provider) Model() string { return p.cfg.Model }
 
-// PromptVersion returns the prompt revision qualified by the effort level,
-// e.g. "v1/effort=medium". Effort changes how carefully the model judges
-// the same prompt, so it is part of the cache identity: raising effort
-// must not reuse a verdict produced at a lower one.
-func (p *Provider) PromptVersion() string { return prompt.Version + "/effort=" + p.cfg.Effort }
+// PromptVersion returns the prompt revision qualified by the effort level
+// and the split configuration, e.g. "v8/effort=medium/split=100000,40,2/1".
+// Effort changes how carefully the model judges the same prompt, so it is
+// part of the cache identity: raising effort must not reuse a verdict
+// produced at a lower one. The split configuration (MaxInputTokens,
+// MaxRulesPerRequest and the bytes-per-token ratio) decides whether a diff
+// is split, and a part cannot report what may sit in another, so a verdict
+// judged in parts must not be reused where the diff would fit one request.
+func (p *Provider) PromptVersion() string {
+	return prompt.Version + "/effort=" + p.cfg.Effort + p.splitIdentity()
+}
+
+// AuditPromptVersion returns the audit prompt revision with the prompt
+// revision it shares the rules block and verdict schema with, qualified as
+// PromptVersion is, e.g. "audit-a1+v8/effort=medium/split=100000,40,2/1".
+// The split configuration matters even more to an audit, where something
+// missing from a set that fits one request is a violation that a part may
+// not report. The provider audits every request whose Files are set
+// (ruleeval.Auditor).
+func (p *Provider) AuditPromptVersion() string {
+	return "audit-" + prompt.AuditVersion + "+" + prompt.Version + "/effort=" + p.cfg.Effort + p.splitIdentity()
+}
+
+// splitIdentity renders the configuration that decides how a request is
+// split into parts.
+func (p *Provider) splitIdentity() string {
+	return fmt.Sprintf("/split=%d,%d,%d/%d", p.cfg.MaxInputTokens, p.cfg.MaxRulesPerRequest, bytesPerTokenNum, bytesPerTokenDen)
+}
 
 // Usage returns the tokens and completed requests accumulated so far.
 // SDK-internal retries are not counted as requests.
@@ -201,6 +243,8 @@ func (p *Provider) Evaluate(ctx context.Context, req ruleeval.EvalRequest) (*rul
 		EntityID: req.EntityID,
 		Inputs:   []ruleeval.RuleInput{req.Input()},
 		Diff:     req.Diff,
+		Files:    req.Files,
+		Detail:   req.Detail,
 	})
 	if err != nil {
 		return nil, err
@@ -215,70 +259,59 @@ func (p *Provider) Evaluate(ctx context.Context, req ruleeval.EvalRequest) (*rul
 	return v, nil
 }
 
-// work is one request: one diff chunk against one group of rules.
+// work is one request: one diff chunk, or part of a file set, against one
+// group of rules.
 type work struct {
 	chunk int
 	group int
 }
 
-// EvaluateBatch evaluates all rules in req against req.Diff. Rules are
-// split into groups of MaxRulesPerRequest and the diff into chunks that fit
+// EvaluateBatch evaluates all rules in req against req.Diff, or when
+// req.Files is set audits them against those files. Rules are split into
+// groups of MaxRulesPerRequest and the diff or file set into chunks that fit
 // the input budget; every chunk×group pair is one request. Any request
-// failure aborts the batch (the evaluator reports it per rule). Hunks too
-// large to send are skipped and reported in BatchResponse.Errors. Whenever
-// a request cannot show the whole diff, its diff block lists the diff's files.
+// failure aborts the batch (the evaluator reports it per rule). Hunks or
+// lines too large to send are skipped and reported in BatchResponse.Errors.
+// Whenever a request cannot show the whole diff, it lists its files. A file
+// set too large for one request is audited in parts (auditInParts).
 func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest) (*ruleeval.BatchResponse, error) {
 	out := &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{}}
 	if len(req.Inputs) == 0 {
 		return out, nil
 	}
 
-	// Tokens left once the system prompt and framing are paid for are shared
-	// between the rules block and the diff. Rules get at most half so that
-	// a token-heavy group can never starve the diff of its budget.
-	available := p.cfg.MaxInputTokens - estimateTokens(prompt.System()) - requestOverheadTokens
-	rulesBudget := available / 2
-	groups, tooLarge := groupRules(req.Inputs, p.cfg.MaxRulesPerRequest, rulesBudget)
-	for _, in := range tooLarge {
-		out.Errors = append(out.Errors, fmt.Errorf(
-			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
-			in.Rule.ID, ruleTokens(in), rulesBudget))
+	m := modeFor(req)
+	// The verdict schema is a few tokens per rule, left to
+	// requestOverheadTokens.
+	rp := p.planRules(m.system, nil, req.Inputs)
+	var (
+		chunks   []string
+		block    func(string) string
+		planErrs []error
+	)
+	if m.audit {
+		var unread []prompt.Unread
+		chunks, block, unread, planErrs = planAudit(req.Files, rp.budget)
+		if len(chunks) != 1 || len(unread) > 0 {
+			// More than one part, none when every file is too large for a
+			// request under the audit prompt, or one that leaves something
+			// out: auditInParts plans the parts again under its own, shorter
+			// prompt, tells the judgement what no part shows and reports
+			// it. A single request thus always shows every file whole.
+			return p.auditInParts(ctx, req, out)
+		}
+	} else {
+		chunks, block, planErrs = planDiff(req.Diff, rp.budget)
 	}
-	if len(groups) == 0 {
+	out.Errors = append(out.Errors, rp.errs...)
+	if len(rp.groups) == 0 {
 		return out, nil
 	}
-	rulesBlocks := make([]string, len(groups))
-	maxRulesTokens := 0
-	for i, g := range groups {
-		rulesBlocks[i] = prompt.RulesBlock(g)
-		if n := estimateTokens(rulesBlocks[i]); n > maxRulesTokens {
-			maxRulesTokens = n
-		}
-	}
-	budgetTokens := available - maxRulesTokens
-	chunks, oversize := chunkDiff(req.Diff, budgetTokens*3)
-	diffBlock := prompt.DiffBlock
-	if len(chunks) > 1 || len(oversize) > 0 {
-		files, unlisted := capFiles(changedFiles(req.Diff), budgetTokens*3/fileListShare)
-		if unlisted > 0 {
-			// Without the full list a rule spanning files cannot be judged on
-			// what a part leaves out, so the result must not pass as complete.
-			out.Errors = append(out.Errors, fmt.Errorf(
-				"diff too large to list every file: %d of %d files left off, so rules spanning files were judged on less",
-				unlisted, len(files)+unlisted))
-		}
-		diffBlock = func(chunk string) string { return prompt.PartialDiffBlock(chunk, files, unlisted) }
-		budgetTokens -= estimateTokens(diffBlock("")) - estimateTokens(prompt.DiffBlock(""))
-		chunks, oversize = chunkDiff(req.Diff, budgetTokens*3)
-	}
-	for _, o := range oversize {
-		out.Errors = append(out.Errors, fmt.Errorf(
-			"hunk in %s (%d bytes, ~%d tokens) exceeds the input budget of ~%d tokens and was not evaluated",
-			o.File, o.Bytes, estimateTokensForBytes(o.Bytes), budgetTokens))
-	}
+	out.Errors = append(out.Errors, planErrs...)
 	if len(chunks) == 0 {
 		return out, nil
 	}
+	groups := rp.groups
 
 	var items []work
 	for c := range chunks {
@@ -287,33 +320,12 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		}
 	}
 	results := make([]*wireResponse, len(items))
-	errs := make([]error, len(items))
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, p.cfg.Concurrency)
-	for i, it := range items {
-		if ctx.Err() != nil {
-			break
-		}
-		sem <- struct{}{}
-		wg.Add(1)
-		go func(i int, it work) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			results[i], errs[i] = p.call(ctx, diffBlock(chunks[it.chunk]), groups[it.group], rulesBlocks[it.group])
-			if errs[i] != nil {
-				cancel() // no point finishing the batch; the evaluator reports it
-			}
-		}(i, it)
-	}
-	wg.Wait()
-
-	if err := firstError(errs); err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
+	if err := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
+		var err error
+		it := items[i]
+		results[i], err = p.call(ctx, m, block(chunks[it.chunk]), groups[it.group], rp.blocks[it.group], req.Detail)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 
@@ -339,11 +351,89 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		for _, in := range groups[it.group] {
 			if !seen[in.Rule.ID] {
 				out.Errors = append(out.Errors, fmt.Errorf(
-					"provider returned no verdict for rule %s in diff chunk %d of %d", in.Rule.ID, it.chunk+1, len(chunks)))
+					"provider returned no verdict for rule %s in %s %d of %d", in.Rule.ID, m.part, it.chunk+1, len(chunks)))
 			}
 		}
 	}
 	return out, nil
+}
+
+// runAll calls fn for every index below n, at most Concurrency at a time.
+// The first failure cancels the calls still running and stops scheduling
+// new ones; the error returned is picked by firstError, or is the context's
+// own when it was cancelled from outside.
+func (p *Provider) runAll(ctx context.Context, n int, fn func(ctx context.Context, i int) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, p.cfg.Concurrency)
+	for i := range n {
+		if ctx.Err() != nil {
+			break
+		}
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if errs[i] = fn(ctx, i); errs[i] != nil {
+				cancel() // no point finishing the batch; the evaluator reports it
+			}
+		}(i)
+	}
+	wg.Wait()
+	if err := firstError(errs); err != nil {
+		return err
+	}
+	return ctx.Err()
+}
+
+// rulePlan is how the rules of a batch are sent: in groups, each rendered
+// as its rules block, leaving budget tokens per request for the diff or
+// files. errs reports the rules too large to send at all.
+type rulePlan struct {
+	groups [][]ruleeval.RuleInput
+	blocks []string
+	budget int
+	errs   []error
+}
+
+// planRules groups inputs for requests under the given system prompt and
+// response schema. Tokens left once the system prompt and framing are paid
+// for are shared between the rules, with their part of the schema, and the
+// diff or files. Rules get at most half, so that a token-heavy group can
+// never starve the code of its budget. The API turns the schema into a
+// prompt of its own, which grows with every rule; a nil schema is left to
+// requestOverheadTokens, as the verdict schema of a diff is.
+func (p *Provider) planRules(system string, schema func(ids []string) map[string]any, inputs []ruleeval.RuleInput) rulePlan {
+	available := p.cfg.MaxInputTokens - estimateTokens(system) - requestOverheadTokens
+	rulesBudget := available / 2
+	schemaCost := func(ids []string) int {
+		if schema == nil {
+			return 0
+		}
+		return schemaTokens(schema(ids))
+	}
+	cost := func(in ruleeval.RuleInput) int {
+		return ruleTokens(in) + schemaCost([]string{in.Rule.ID})
+	}
+	groups, tooLarge := groupRules(inputs, p.cfg.MaxRulesPerRequest, rulesBudget, cost)
+	rp := rulePlan{groups: groups, blocks: make([]string, len(groups))}
+	for _, in := range tooLarge {
+		rp.errs = append(rp.errs, fmt.Errorf(
+			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
+			in.Rule.ID, cost(in), rulesBudget))
+	}
+	maxRulesTokens := 0
+	for i, g := range groups {
+		rp.blocks[i] = prompt.RulesBlock(g)
+		if n := estimateTokens(rp.blocks[i]) + schemaCost(ruleIDs(g)); n > maxRulesTokens {
+			maxRulesTokens = n
+		}
+	}
+	rp.budget = available - maxRulesTokens
+	return rp
 }
 
 // firstError picks the error to report for a batch: ErrUnavailable first
@@ -376,10 +466,23 @@ func ruleTokens(in ruleeval.RuleInput) int {
 	return estimateTokens(prompt.RulesBlock([]ruleeval.RuleInput{in}))
 }
 
+// schemaTokens estimates the prompt cost of a response schema, sent as
+// JSON.
+func schemaTokens(schema map[string]any) int {
+	b, err := json.Marshal(schema)
+	if err != nil {
+		// The schemas are plain maps of strings, slices and maps, which
+		// always marshal.
+		return 0
+	}
+	return estimateTokens(string(b))
+}
+
 // groupRules packs inputs, in order, into groups of at most maxCount rules
-// whose estimated prompt size stays within tokenBudget. A single rule that
-// exceeds the budget on its own cannot be sent and is returned in tooLarge.
-func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups [][]ruleeval.RuleInput, tooLarge []ruleeval.RuleInput) {
+// whose estimated prompt size, cost per rule, stays within tokenBudget. A
+// single rule that exceeds the budget on its own cannot be sent and is
+// returned in tooLarge.
+func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int, cost func(ruleeval.RuleInput) int) (groups [][]ruleeval.RuleInput, tooLarge []ruleeval.RuleInput) {
 	var cur []ruleeval.RuleInput
 	curTokens := 0
 	flush := func() {
@@ -389,7 +492,7 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 		}
 	}
 	for _, in := range inputs {
-		n := ruleTokens(in)
+		n := cost(in)
 		if n > tokenBudget {
 			tooLarge = append(tooLarge, in)
 			continue
@@ -405,12 +508,12 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 }
 
 // wireResponse is the merged result of one chunk×group request: a verdict
-// per rule, with details for the violated ones. Errors lists violated rules
+// per rule, with details for the detailed ones. Errors lists detailed rules
 // whose detail request failed recoverably; their verdict is kept.
 type wireResponse struct {
 	// Verdicts holds one entry per evaluated rule.
 	Verdicts []wireVerdict
-	// Errors lists recoverable detail-request failures for violated rules.
+	// Errors lists recoverable detail-request failures.
 	Errors []error
 }
 
@@ -419,8 +522,7 @@ type wireVerdict struct {
 	RuleID string
 	// Verdict is the raw verdict string returned by the model.
 	Verdict string
-	// Explanation is the model's reasoning, filled by the detail step for
-	// violated rules.
+	// Explanation is the model's reasoning, filled by the detail step.
 	Explanation string
 	// Confidence is the model's certainty from 0 to 1, filled by the detail
 	// step.
@@ -446,7 +548,7 @@ type wireLocation struct {
 	File string `json:"file"`
 	// Line is the line number in the new version of the file.
 	Line int `json:"line"`
-	// Excerpt is a short quote of the offending line.
+	// Excerpt is a short quote of the line cited.
 	Excerpt string `json:"excerpt"`
 }
 
@@ -462,18 +564,18 @@ func (v wireVerdict) toResponse() *ruleeval.EvalResponse {
 	return r
 }
 
-// call evaluates one rendered diff block against one group of rules: a
-// verdict request keyed by rule id, then one detail request per violated
-// rule. Ids the model was not asked about are kept so that EvaluateBatch can
-// report them; they never trigger a detail request.
-func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.RuleInput, rulesBlock string) (*wireResponse, error) {
+// call evaluates one rendered diff or files block against one group of rules: a
+// verdict request keyed by rule id, then one detail request per rule whose
+// verdict level covers. Ids the model was not asked about are kept so that
+// EvaluateBatch can report them; they never trigger a detail request.
+func (p *Provider) call(ctx context.Context, m mode, diffBlock string, group []ruleeval.RuleInput, rulesBlock string, level ruleeval.Detail) (*wireResponse, error) {
 	ids := make([]string, len(group))
 	byID := make(map[string]ruleeval.RuleInput, len(group))
 	for i, in := range group {
 		ids[i] = in.Rule.ID
 		byID[in.Rule.ID] = in
 	}
-	text, err := p.send(ctx, diffBlock, []anthropic.ContentBlockParamUnion{
+	text, err := p.send(ctx, m.system, diffBlock, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(rulesBlock),
 	}, prompt.VerdictSchema(ids))
 	if err != nil {
@@ -501,17 +603,23 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 		}
 		seen[id] = true
 		wv := wireVerdict{RuleID: id, Verdict: v}
-		if ruleeval.Verdict(v) == ruleeval.Violated {
-			d, err := p.detail(ctx, diffBlock, byID[id])
+		if given := ruleeval.Verdict(v); level.Covers(given) {
+			d, err := p.detail(ctx, m, diffBlock, byID[id], given)
 			switch {
 			case err == nil:
 				wv.Explanation, wv.Confidence, wv.Evidence = d.Explanation, d.Confidence, d.Evidence
 				// The detail step re-reads the diff with the single rule in
 				// focus and may withdraw the verdict (strspc-manager#87). A
-				// withdrawn violation keeps its explanation so the caller can
-				// see why, but carries no evidence.
-				if w := ruleeval.Verdict(d.Verdict); w == ruleeval.Compliant || w == ruleeval.NotApplicable {
-					wv.Verdict, wv.Evidence = string(w), nil
+				// verdict withdrawn to compliant or not_applicable keeps its
+				// explanation so the caller can see why, but no evidence: the
+				// lines cited for a withdrawn violation broke nothing. A
+				// compliant verdict withdrawn to violated keeps the lines that
+				// break the rule.
+				if w := ruleeval.Verdict(d.Verdict); w != given {
+					wv.Verdict = string(w)
+					if w != ruleeval.Violated {
+						wv.Evidence = nil
+					}
 					p.mu.Lock()
 					p.usage.Withdrawn++
 					p.mu.Unlock()
@@ -519,10 +627,11 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 			case errors.Is(err, ruleeval.ErrUnavailable) || ctx.Err() != nil:
 				return nil, err
 			default:
-				// The violation stands even without its explanation: dropping
-				// it would let an Implemented-rule violation pass as a
-				// warning. The error keeps the batch out of the cache.
-				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged violated but its details could not be retrieved: %w", id, err))
+				// The verdict stands even without its explanation: dropping
+				// a violation would let an Implemented-rule violation pass as
+				// a warning. The error keeps the batch out of the cache, so a
+				// rerun asks again for the reasons a caller asked for.
+				out.Errors = append(out.Errors, fmt.Errorf("rule %s was judged %s but its details could not be retrieved: %w", id, given, err))
 			}
 		}
 		out.Verdicts = append(out.Verdicts, wv)
@@ -536,13 +645,13 @@ func (p *Provider) call(ctx context.Context, diffBlock string, group []ruleeval.
 }
 
 // detail asks for the explanation, confidence and evidence of a rule the
-// verdict request judged violated. The diff block is byte-identical to the
+// verdict request judged given. The diff block is byte-identical to the
 // verdict request's so the prompt cache prefix is reused.
-func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.RuleInput) (*wireDetail, error) {
-	text, err := p.send(ctx, diffBlock, []anthropic.ContentBlockParamUnion{
+func (p *Provider) detail(ctx context.Context, m mode, diffBlock string, in ruleeval.RuleInput, given ruleeval.Verdict) (*wireDetail, error) {
+	text, err := p.send(ctx, m.system, diffBlock, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(prompt.RulesBlock([]ruleeval.RuleInput{in})),
-		anthropic.NewTextBlock(prompt.DetailInstruction(in.Rule.ID)),
-	}, prompt.DetailSchema())
+		anthropic.NewTextBlock(m.instruction(in.Rule.ID, given)),
+	}, m.detailSchema())
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +659,7 @@ func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.Rul
 	if err := json.Unmarshal([]byte(text), &d); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
-	// The verdict is what lets the detail step withdraw a violation, so a
+	// The verdict is what lets the detail step withdraw a verdict, so a
 	// response without one (an older detail shape from a proxy, say) must
 	// not pass as a confirmation.
 	switch ruleeval.Verdict(d.Verdict) {
@@ -561,10 +670,11 @@ func (p *Provider) detail(ctx context.Context, diffBlock string, in ruleeval.Rul
 	return &d, nil
 }
 
-// send performs one Messages request (system prompt, cached diff block, then
-// blocks) with the structured-output schema and returns the response text.
+// send performs one Messages request (system prompt, cached diff or files
+// block, then blocks) with the structured-output schema and returns the
+// response text.
 // Usage is accumulated for every completed response.
-func (p *Provider) send(ctx context.Context, diffBlock string, blocks []anthropic.ContentBlockParamUnion, schema map[string]any) (string, error) {
+func (p *Provider) send(ctx context.Context, system, diffBlock string, blocks []anthropic.ContentBlockParamUnion, schema map[string]any) (string, error) {
 	content := append([]anthropic.ContentBlockParamUnion{{OfText: &anthropic.TextBlockParam{
 		Text:         diffBlock,
 		CacheControl: anthropic.NewCacheControlEphemeralParam(),
@@ -573,7 +683,7 @@ func (p *Provider) send(ctx context.Context, diffBlock string, blocks []anthropi
 		Model:     p.cfg.Model,
 		MaxTokens: p.cfg.MaxTokens,
 		System: []anthropic.TextBlockParam{{
-			Text:         prompt.System(),
+			Text:         system,
 			CacheControl: anthropic.NewCacheControlEphemeralParam(),
 		}},
 		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(content...)},

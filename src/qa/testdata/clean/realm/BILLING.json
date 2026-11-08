@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.1",
     "timestamp": "2026-11-01T14:06:35Z",
-    "hash": "blake3:7e1be882f4724f868d058d897d86aaa12af3f79f5de5cf4d3d9fa47308a9e41c"
+    "hash": "blake3:b6ce70f985811caaa13d125b26b18e6b6f57efcf92fb5879a35853ce362e929b"
   },
   "rules": [
     {
@@ -37,6 +37,15 @@
       "rule_ref": "BILLING-001",
       "type": "standard",
       "content": "owasp.asvs:2.1.1",
+      "added_by": "github:qa",
+      "added_at": "2026-11-01",
+      "revision": 0
+    },
+    {
+      "id": "BILLING-001/03",
+      "rule_ref": "BILLING-001",
+      "type": "structured",
+      "content": "qa/1:{\"limit\":3}",
       "added_by": "github:qa",
       "added_at": "2026-11-01",
       "revision": 0

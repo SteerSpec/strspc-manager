@@ -8,15 +8,41 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
 
-// estimateTokens approximates the token count of s as bytes/3, a
-// deliberately conservative figure for code and diffs.
-func estimateTokens(s string) int {
+// bytesPerToken is the ratio the estimate assumes, as the fraction
+// bytesPerTokenNum/bytesPerTokenDen. Request sizing and the inverse
+// conversion both read it, so it is the one place to tune.
+//
+// Measured with the count_tokens endpoint on claude-sonnet-5-5 (#318): a Go
+// diff of this repository ran 2.07 bytes per token, whole Go files sent as
+// an all-added diff 2.16, a Markdown diff 2.57 and English prose 3.17. Two
+// bytes per token stays at or under every sample, so the estimate errs high,
+// most for prose. The former 3 underestimated Go code by about a third.
+const (
+	bytesPerTokenNum = 2
+	bytesPerTokenDen = 1
+)
+
+// EstimateTokens approximates the input tokens that s costs, as the
+// provider counts them when it sizes requests and splits a diff. A caller
+// estimating a run ahead of time (a dry run, say) uses it to match the
+// provider.
+func EstimateTokens(s string) int {
 	return estimateTokensForBytes(len(s))
 }
 
-// estimateTokensForBytes is estimateTokens for a known byte count.
+// estimateTokens is EstimateTokens.
+func estimateTokens(s string) int { return EstimateTokens(s) }
+
+// estimateTokensForBytes is EstimateTokens for a known byte count, rounded
+// up.
 func estimateTokensForBytes(n int) int {
-	return (n + 2) / 3
+	return (n*bytesPerTokenDen + bytesPerTokenNum - 1) / bytesPerTokenNum
+}
+
+// bytesForTokens is the inverse of estimateTokensForBytes: the most bytes
+// that n tokens are assumed to hold, rounded down.
+func bytesForTokens(n int) int {
+	return n * bytesPerTokenNum / bytesPerTokenDen
 }
 
 // oversizeHunk describes a hunk that cannot fit in a single request.
@@ -249,7 +275,8 @@ func precedence(v ruleeval.Verdict) int {
 }
 
 // mergeVerdict folds v into dst[id] using precedence. Equal-precedence
-// violations accumulate their evidence.
+// violated or compliant verdicts accumulate their evidence, so the
+// locations cover every part of the diff, not one.
 func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.EvalResponse) {
 	cur, ok := dst[id]
 	if !ok {
@@ -259,19 +286,20 @@ func mergeVerdict(dst map[string]*ruleeval.EvalResponse, id string, v *ruleeval.
 	switch {
 	case precedence(v.Verdict) > precedence(cur.Verdict):
 		dst[id] = cloneResponse(v)
-	case precedence(v.Verdict) == precedence(cur.Verdict) && v.Verdict == ruleeval.Violated:
+	case precedence(v.Verdict) == precedence(cur.Verdict) && (v.Verdict == ruleeval.Violated || v.Verdict == ruleeval.Compliant):
 		cur.Evidence = append(cur.Evidence, v.Evidence...)
 		if v.Confidence > cur.Confidence {
 			cur.Confidence = v.Confidence
 		}
-		// A chunk whose detail request failed carries no explanation; a
-		// later chunk's explanation fills it rather than being dropped.
+		// A chunk whose detail request failed, or a compliant chunk that
+		// was not detailed, carries no explanation; a later chunk's
+		// explanation fills it rather than being dropped.
 		if cur.Explanation == "" {
 			cur.Explanation = v.Explanation
 		}
 	case precedence(v.Verdict) == precedence(cur.Verdict):
-		// Equal non-violating verdicts: a chunk whose detail step withdrew a
-		// violation carries an explanation and a confidence that a plain
+		// Equal not_applicable verdicts: a chunk whose detail step withdrew
+		// a verdict carries an explanation and a confidence that a plain
 		// verdict-only chunk lacks; keep them rather than the empty ones.
 		if cur.Explanation == "" && v.Explanation != "" {
 			cur.Explanation, cur.Confidence = v.Explanation, v.Confidence

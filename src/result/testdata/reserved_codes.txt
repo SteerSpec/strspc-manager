@@ -57,6 +57,8 @@ RL038 active transcription-fix-clause-differs
 RL039 active rule-superseded-twice
 RL040 active supersedes-rule-not-live
 RL041 active superseded-rule-not-terminated
+RL042 active structured-note-malformed
+RL043 active structured-note-duplicate
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -82,6 +84,7 @@ RD021 active revision-without-body-change
 RD022 active standard-note-retyped
 RD023 active added-by-not-listed-contributor
 RD024 active supersedes-changed
+RD025 active structured-note-changed
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
@@ -107,6 +110,10 @@ RM022 active realm-note-ids-not-sequential
 RM023 active exclusion-ref-invalid
 RM024 active realm-note-ref-not-allowed
 RM025 active realm-manifest-hash-mismatch
+RM026 active standard-realm-not-a-dependency
+RM027 active standard-version-not-edition
+RM028 active standard-profile-undeclared
+RM029 active standard-clause-unknown
 RR000 active context-cancelled
 RR001 active dependency-source-path-invalid
 RR002 active dependency-unreadable
