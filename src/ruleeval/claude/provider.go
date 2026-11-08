@@ -543,6 +543,15 @@ type wireDetail struct {
 	Evidence []wireLocation `json:"evidence"`
 }
 
+// empty reports whether d says neither why nor how surely: a blank
+// explanation or a confidence of 0 or less. The schema requires both
+// fields but cannot require them filled, and such a detail cannot be
+// checked by anyone, so it is not taken for a judgement
+// (strspc-manager#338).
+func (d wireDetail) empty() bool {
+	return strings.TrimSpace(d.Explanation) == "" || d.Confidence <= 0
+}
+
 type wireLocation struct {
 	// File is the file path from the diff header.
 	File string `json:"file"`
@@ -666,6 +675,10 @@ func (p *Provider) detail(ctx context.Context, m mode, diffBlock string, in rule
 	case ruleeval.Violated, ruleeval.Compliant, ruleeval.NotApplicable:
 	default:
 		return nil, fmt.Errorf("%w: detail for rule %s has unknown verdict %q", ErrMalformed, in.Rule.ID, d.Verdict)
+	}
+	// An empty detail must not confirm a verdict, nor withdraw one.
+	if d.empty() {
+		return nil, fmt.Errorf("%w: detail for rule %s has no explanation or no confidence", ErrMalformed, in.Rule.ID)
 	}
 	return &d, nil
 }

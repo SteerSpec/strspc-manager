@@ -133,31 +133,62 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 			groups = append(groups, rest)
 		}
 	}
+	empty, err := p.judgeAll(ctx, jp.scope, groups, findings, cache, out)
+	if err != nil {
+		return nil, err
+	}
+	// A judgement that says neither why nor how surely is no judgement
+	// (strspc-manager#338): the rule is asked again, alone, once.
+	var again [][]ruleeval.RuleInput
+	for _, in := range empty {
+		again = append(again, []ruleeval.RuleInput{in})
+	}
+	empty, err = p.judgeAll(ctx, jp.scope, again, findings, cache, out)
+	if err != nil {
+		return nil, err
+	}
+	for _, in := range empty {
+		out.Errors = append(out.Errors, fmt.Errorf(
+			"the judgement of rule %s came back twice with no explanation or no confidence, so it was not judged", in.Rule.ID))
+	}
+	return out, nil
+}
+
+// judgeAll judges each group of rules, sets the verdict of every rule
+// judged in out and keeps its judgement in cache. It returns the rules
+// whose judgement came back empty (wireDetail.empty), which get no verdict
+// and are not kept.
+func (p *Provider) judgeAll(ctx context.Context, scope string, groups [][]ruleeval.RuleInput, findings map[string][]prompt.Finding, cache *auditCache, out *ruleeval.BatchResponse) ([]ruleeval.RuleInput, error) {
 	results := make([]judged, len(groups))
 	judgedOK := make([]bool, len(groups))
-	runErr = p.runAll(ctx, len(groups), func(ctx context.Context, i int) error {
+	runErr := p.runAll(ctx, len(groups), func(ctx context.Context, i int) error {
 		var err error
-		results[i], err = p.judge(ctx, jp.scope, groups[i], findings)
+		results[i], err = p.judge(ctx, scope, groups[i], findings)
 		judgedOK[i] = err == nil
 		return err
 	})
 	// A judgement that came back is kept even when another failed.
+	var empty []ruleeval.RuleInput
 	for i, r := range results {
 		if !judgedOK[i] {
 			continue
 		}
 		out.Errors = append(out.Errors, r.errs...)
 		for _, in := range groups[i] {
+			if r.empty[in.Rule.ID] {
+				empty = append(empty, in)
+				continue
+			}
 			if d, ok := r.details[in.Rule.ID]; ok {
 				out.Verdicts[in.Rule.ID] = d.toResponse()
-				cache.keepJudgement(in, jp.scope, findings, d)
+				cache.keepJudgement(in, scope, findings, d)
 			}
 		}
 	}
 	if runErr != nil {
 		return nil, runErr
 	}
-	return out, nil
+	return empty, nil
 }
 
 // extracted is what a part yielded for a group of rules: the findings of
@@ -310,9 +341,11 @@ func (p *Provider) planJudge(inputs []ruleeval.RuleInput, findings map[string][]
 }
 
 // judged is the judgement of a group of rules: verdict, explanation,
-// confidence and evidence per rule, and the rules it could not judge.
+// confidence and evidence per rule, the rules whose judgement came back
+// empty, and the rules it could not judge.
 type judged struct {
 	details map[string]wireDetail
+	empty   map[string]bool
 	errs    []error
 }
 
@@ -320,8 +353,14 @@ func (j judged) merge(o judged) judged {
 	if j.details == nil {
 		j.details = map[string]wireDetail{}
 	}
+	if j.empty == nil {
+		j.empty = map[string]bool{}
+	}
 	for id, d := range o.details {
 		j.details[id] = d
+	}
+	for id := range o.empty {
+		j.empty[id] = true
 	}
 	j.errs = append(j.errs, o.errs...)
 	return j
@@ -329,7 +368,8 @@ func (j judged) merge(o judged) judged {
 
 // judge judges group on its findings, next to scope. A response cut short
 // by max_tokens is asked again for each half of the group, down to a
-// single rule, which then fails alone.
+// single rule, which then fails alone. A rule whose judgement is empty
+// (wireDetail.empty) is listed in empty, not in details.
 func (p *Provider) judge(ctx context.Context, scope string, group []ruleeval.RuleInput, findings map[string][]prompt.Finding) (judged, error) {
 	ids := ruleIDs(group)
 	text, err := p.send(ctx, prompt.AuditJudgeSystem(), scope+prompt.FindingsBlock(ids, findings), []anthropic.ContentBlockParamUnion{
@@ -358,7 +398,7 @@ func (p *Provider) judge(ctx context.Context, scope string, group []ruleeval.Rul
 	if err := json.Unmarshal([]byte(text), &got); err != nil {
 		return judged{}, fmt.Errorf("%w: %w", ErrMalformed, err)
 	}
-	out := judged{details: map[string]wireDetail{}}
+	out := judged{details: map[string]wireDetail{}, empty: map[string]bool{}}
 	requested := map[string]bool{}
 	for _, id := range ids {
 		requested[id] = true
@@ -375,6 +415,10 @@ func (p *Provider) judge(ctx context.Context, scope string, group []ruleeval.Rul
 	for _, id := range sortedKeys(got) {
 		if !requested[id] {
 			out.errs = append(out.errs, fmt.Errorf("provider returned a verdict for unrequested rule %q (ignored)", id))
+			continue
+		}
+		if got[id].empty() {
+			out.empty[id] = true
 			continue
 		}
 		out.details[id] = got[id]
