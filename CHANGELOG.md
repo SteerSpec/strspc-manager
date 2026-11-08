@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.47.0](https://github.com/SteerSpec/strspc-manager/compare/v1.46.0...v1.47.0) (2026-11-08)
+
+
+### Features
+
+* **coverage:** count figures per status, name exclusions and declarers ([#334](https://github.com/SteerSpec/strspc-manager/issues/334)) ([006392a](https://github.com/SteerSpec/strspc-manager/commit/006392a59d948727f516b2a2d20058fd6a22b144))
+
+
+### Documentation
+
+* **spec:** say which references get a linked coverage figure ([#333](https://github.com/SteerSpec/strspc-manager/issues/333)) ([727aa3b](https://github.com/SteerSpec/strspc-manager/commit/727aa3be8a1547b4abdd304439f3b3ffb51b562d))
+
 ## [1.46.0](https://github.com/SteerSpec/strspc-manager/compare/v1.45.0...v1.46.0) (2026-11-08)
 
 
