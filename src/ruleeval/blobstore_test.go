@@ -22,6 +22,7 @@ func newBlobCache(err error) *blobCache {
 	return &blobCache{memCache: newMemCache(), blobs: map[string][]byte{}, err: err}
 }
 
+// GetBlob returns the value under key, or err when the cache fails.
 func (c *blobCache) GetBlob(key string) ([]byte, bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -32,6 +33,7 @@ func (c *blobCache) GetBlob(key string) ([]byte, bool, error) {
 	return v, ok, nil
 }
 
+// PutBlobs stores values, or fails with err.
 func (c *blobCache) PutBlobs(values map[string][]byte) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -54,6 +56,8 @@ type storeProvider struct {
 	putErrs []error
 }
 
+// EvaluateBatch writes and reads a value through req.Store, records what
+// it saw, and answers as the wrapped auditProvider.
 func (s *storeProvider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest) (*ruleeval.BatchResponse, error) {
 	s.mu.Lock()
 	s.stores = append(s.stores, req.Store != nil)

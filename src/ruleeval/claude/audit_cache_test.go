@@ -26,6 +26,7 @@ type memStore struct {
 
 func newMemStore() *memStore { return &memStore{m: map[string][]byte{}} }
 
+// GetBlob returns the value under key, or err when the store fails.
 func (s *memStore) GetBlob(key string) ([]byte, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -36,6 +37,7 @@ func (s *memStore) GetBlob(key string) ([]byte, bool, error) {
 	return v, ok, nil
 }
 
+// PutBlobs stores values and counts them, or fails with err.
 func (s *memStore) PutBlobs(values map[string][]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
