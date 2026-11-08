@@ -58,13 +58,14 @@ func planDiff(diff string, budgetTokens int) (chunks []string, block func(string
 
 // planAudit splits files into parts of rendered FileSlices that fit
 // budgetTokens, and returns them with the function that renders a part as
-// its files block, and the recoverable errors: lines too large to send. A
-// set that needs more than one part is audited in parts (auditInParts),
-// where a part collects findings and judges nothing, so it is shown alone,
-// without the list of the whole set.
-func planAudit(files []ruleeval.File, budgetTokens int) (parts []string, block func(string) string, errs []error) {
+// its files block, what no part shows (lines too large to send) and the
+// recoverable errors that report it. A set that needs more than one part is
+// audited in parts (auditInParts), where a part collects findings and
+// judges nothing, so it is shown alone, without the list of the whole set.
+func planAudit(files []ruleeval.File, budgetTokens int) (parts []string, block func(string) string, unread []prompt.Unread, errs []error) {
 	parts, oversize := chunkFiles(files, bytesForTokens(budgetTokens))
 	for _, o := range oversize {
+		unread = append(unread, prompt.Unread{File: o.File, Line: o.Line})
 		what := fmt.Sprintf("line %d of %s", o.Line, o.File)
 		if o.Line == 0 {
 			what = "file " + o.File
@@ -73,7 +74,7 @@ func planAudit(files []ruleeval.File, budgetTokens int) (parts []string, block f
 			"%s (%d bytes, ~%d tokens) exceeds the input budget of ~%d tokens and was not audited",
 			what, o.Bytes, estimateTokensForBytes(o.Bytes), budgetTokens))
 	}
-	return parts, prompt.FilesBlock, errs
+	return parts, prompt.FilesBlock, unread, errs
 }
 
 // filePaths returns the path of every file, in order.

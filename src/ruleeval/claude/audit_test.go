@@ -96,10 +96,10 @@ func TestChunkFiles_Oversize(t *testing.T) {
 
 // TestPlanAudit_PartsStandAlone checks a split file set shows each part in
 // a files block of its own, without the list of the set, which only the
-// judgement carries, and reports a line it cannot send.
+// judgement carries, and reports a line it cannot send, as unread too.
 func TestPlanAudit_PartsStandAlone(t *testing.T) {
 	files := []ruleeval.File{{Path: "a.go", Content: numbered(40)}, {Path: "b.go", Content: numbered(40) + strings.Repeat("y", 2000) + "\n"}}
-	parts, block, errs := planAudit(files, 300)
+	parts, block, unread, errs := planAudit(files, 300)
 	if len(parts) < 2 {
 		t.Fatalf("parts = %d, want a split", len(parts))
 	}
@@ -111,7 +111,10 @@ func TestPlanAudit_PartsStandAlone(t *testing.T) {
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "line 41 of b.go") || !strings.Contains(errs[0].Error(), "not audited") {
 		t.Errorf("errs = %v, want line 41 of b.go reported", errs)
 	}
-	if parts, _, errs := planAudit(files[:1], 1<<16); len(parts) != 1 || len(errs) != 0 {
-		t.Errorf("a set that fits is one part: %d parts, %v", len(parts), errs)
+	if len(unread) != 1 || unread[0] != (prompt.Unread{File: "b.go", Line: 41}) {
+		t.Errorf("unread = %v, want line 41 of b.go", unread)
+	}
+	if parts, _, unread, errs := planAudit(files[:1], 1<<16); len(parts) != 1 || len(unread) != 0 || len(errs) != 0 {
+		t.Errorf("a set that fits is one part: %d parts, %v, %v", len(parts), unread, errs)
 	}
 }

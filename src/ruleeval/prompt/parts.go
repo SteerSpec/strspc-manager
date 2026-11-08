@@ -34,8 +34,8 @@ How to collect findings:
 const auditJudgeSystem = `You are the SteerSpec rule auditor, judging a codebase too large to read at once. Each part of it was read on its own, and the findings bearing on each rule were collected. You receive the paths of every file of the codebase, those findings and a list of governance rules, and you return one judgement per rule as JSON that conforms to the response schema.
 
 How to judge:
-- Judge the code as it stands, not a change to it. The paths of every file are listed inside <audit_scope>: a file it does not name is not in the codebase, unless the list ends by saying that more files are not listed. The findings are given inside <findings>, in one <rule> block per rule whose tag names the rule id, one JSON object per line with its kind, file, line, excerpt and note. A rule block with no lines means that no part found anything bearing on the rule.
-- The findings stand for the whole code: every part was asked for everything each rule needs. Something a rule requires that neither the findings nor the file paths show is missing, and missing breaks the rule. A finding of kind "violation" is code that a part judged to break the rule on its own; weigh it against the rule and the other findings rather than taking it as given. A finding of kind "fact" is something the rule needs judged across files, such as what is defined and what meets a requirement.
+- Judge the code as it stands, not a change to it. The paths of every file are listed inside <audit_scope>: a file it does not name is not in the codebase, unless the list says that more files are not listed: then a file it does not name may still exist. The list may also name lines, or whole files, that no part was shown, being too long to send. The findings are given inside <findings>, in one <rule> block per rule whose tag names the rule id, one JSON object per line with its kind, file, line, excerpt and note. A rule block with no lines means that no part found anything bearing on the rule.
+- The findings stand for the whole code: every part was asked for everything each rule needs. Something a rule requires that neither the findings nor the file paths show is missing, and missing breaks the rule, unless it could sit on a line or in a file that no part was shown: nothing is known of what those hold, so nothing is missing for want of a finding there. A finding of kind "violation" is code that a part judged to break the rule on its own; weigh it against the rule and the other findings rather than taking it as given. A finding of kind "fact" is something the rule needs judged across files, such as what is defined and what meets a requirement.
 - For each rule choose exactly one verdict. "violated": the code breaks the rule, or lacks what the rule requires. "compliant": the code holds the rule's subject and respects it. "not_applicable": the rule's subject is absent from the code; this is the default, so choose it whenever the rule's subject is absent rather than guessing.
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when no finding falls inside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule with "extended rules" builds on the rules quoted there. Read it together with them to understand what it requires, and give a verdict for the rule itself only. An extended rule is not judged here: code that breaks only the extended rule does not violate the rule that extends it.
@@ -78,9 +78,20 @@ type Finding struct {
 	Note string `json:"note"`
 }
 
+// Unread is a line of an audited file that no part shows, being too long
+// to send. Line 0 stands for the whole file, whose path alone is too long.
+type Unread struct {
+	// File is the path of the file.
+	File string
+	// Line is the line number, from 1, or 0 for the whole file.
+	Line int
+}
+
 // AuditScope lists files, the paths of a whole file set, for the judgement
-// of an audit in parts; unlisted counts the paths left off the list.
-func AuditScope(files []string, unlisted int) string {
+// of an audit in parts; unlisted counts the paths left off the list, and
+// unread lists what no part shows, so that the judgement knows nothing was
+// found there because nothing was read.
+func AuditScope(files []string, unlisted int, unread []Unread) string {
 	var b strings.Builder
 	b.WriteString("<audit_scope>\nFiles of the codebase:\n")
 	for _, f := range files {
@@ -88,6 +99,17 @@ func AuditScope(files []string, unlisted int) string {
 	}
 	if unlisted > 0 {
 		fmt.Fprintf(&b, "%d more files are not listed.\n", unlisted)
+	}
+	if len(unread) > 0 {
+		b.WriteString("Not shown to any part, being too long to send:\n")
+		for _, u := range unread {
+			path := strings.TrimPrefix(FileEntry(u.File), "- ")
+			if u.Line == 0 {
+				b.WriteString("- the whole file " + path)
+			} else {
+				fmt.Fprintf(&b, "- line %d of %s", u.Line, path)
+			}
+		}
 	}
 	b.WriteString("</audit_scope>\n")
 	return b.String()

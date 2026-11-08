@@ -278,14 +278,16 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	}
 
 	m := modeFor(req)
-	rp := p.planRules(m.system, req.Inputs)
+	// The verdict schema is a few tokens per rule, left to
+	// requestOverheadTokens.
+	rp := p.planRules(m.system, nil, req.Inputs)
 	var (
 		chunks   []string
 		block    func(string) string
 		planErrs []error
 	)
 	if m.audit {
-		chunks, block, planErrs = planAudit(req.Files, rp.budget)
+		chunks, block, _, planErrs = planAudit(req.Files, rp.budget)
 		if len(chunks) != 1 {
 			// More than one part, or none when every file is too large for
 			// a request under the audit prompt: auditInParts plans the parts
@@ -392,24 +394,36 @@ type rulePlan struct {
 	errs   []error
 }
 
-// planRules groups inputs for requests under the given system prompt.
-// Tokens left once the system prompt and framing are paid for are shared
-// between the rules block and the diff or files. Rules get at most half, so
-// that a token-heavy group can never starve the code of its budget.
-func (p *Provider) planRules(system string, inputs []ruleeval.RuleInput) rulePlan {
+// planRules groups inputs for requests under the given system prompt and
+// response schema. Tokens left once the system prompt and framing are paid
+// for are shared between the rules, with their part of the schema, and the
+// diff or files. Rules get at most half, so that a token-heavy group can
+// never starve the code of its budget. The API turns the schema into a
+// prompt of its own, which grows with every rule; a nil schema is left to
+// requestOverheadTokens, as the verdict schema of a diff is.
+func (p *Provider) planRules(system string, schema func(ids []string) map[string]any, inputs []ruleeval.RuleInput) rulePlan {
 	available := p.cfg.MaxInputTokens - estimateTokens(system) - requestOverheadTokens
 	rulesBudget := available / 2
-	groups, tooLarge := groupRules(inputs, p.cfg.MaxRulesPerRequest, rulesBudget)
+	schemaCost := func(ids []string) int {
+		if schema == nil {
+			return 0
+		}
+		return schemaTokens(schema(ids))
+	}
+	cost := func(in ruleeval.RuleInput) int {
+		return ruleTokens(in) + schemaCost([]string{in.Rule.ID})
+	}
+	groups, tooLarge := groupRules(inputs, p.cfg.MaxRulesPerRequest, rulesBudget, cost)
 	rp := rulePlan{groups: groups, blocks: make([]string, len(groups))}
 	for _, in := range tooLarge {
 		rp.errs = append(rp.errs, fmt.Errorf(
 			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
-			in.Rule.ID, ruleTokens(in), rulesBudget))
+			in.Rule.ID, cost(in), rulesBudget))
 	}
 	maxRulesTokens := 0
 	for i, g := range groups {
 		rp.blocks[i] = prompt.RulesBlock(g)
-		if n := estimateTokens(rp.blocks[i]); n > maxRulesTokens {
+		if n := estimateTokens(rp.blocks[i]) + schemaCost(ruleIDs(g)); n > maxRulesTokens {
 			maxRulesTokens = n
 		}
 	}
@@ -447,10 +461,23 @@ func ruleTokens(in ruleeval.RuleInput) int {
 	return estimateTokens(prompt.RulesBlock([]ruleeval.RuleInput{in}))
 }
 
+// schemaTokens estimates the prompt cost of a response schema, sent as
+// JSON.
+func schemaTokens(schema map[string]any) int {
+	b, err := json.Marshal(schema)
+	if err != nil {
+		// The schemas are plain maps of strings, slices and maps, which
+		// always marshal.
+		return 0
+	}
+	return estimateTokens(string(b))
+}
+
 // groupRules packs inputs, in order, into groups of at most maxCount rules
-// whose estimated prompt size stays within tokenBudget. A single rule that
-// exceeds the budget on its own cannot be sent and is returned in tooLarge.
-func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups [][]ruleeval.RuleInput, tooLarge []ruleeval.RuleInput) {
+// whose estimated prompt size, cost per rule, stays within tokenBudget. A
+// single rule that exceeds the budget on its own cannot be sent and is
+// returned in tooLarge.
+func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int, cost func(ruleeval.RuleInput) int) (groups [][]ruleeval.RuleInput, tooLarge []ruleeval.RuleInput) {
 	var cur []ruleeval.RuleInput
 	curTokens := 0
 	flush := func() {
@@ -460,7 +487,7 @@ func groupRules(inputs []ruleeval.RuleInput, maxCount, tokenBudget int) (groups 
 		}
 	}
 	for _, in := range inputs {
-		n := ruleTokens(in)
+		n := cost(in)
 		if n > tokenBudget {
 			tooLarge = append(tooLarge, in)
 			continue

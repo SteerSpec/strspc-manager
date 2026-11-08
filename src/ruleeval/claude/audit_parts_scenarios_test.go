@@ -99,13 +99,24 @@ func judgeText(m map[string]judgement) string {
 	return string(b)
 }
 
+// extractSchemaTokens estimates the extract schema of inputs, which the
+// provider counts with the rules.
+func extractSchemaTokens(inputs []ruleeval.RuleInput) int {
+	ids := make([]string, len(inputs))
+	for i, in := range inputs {
+		ids[i] = in.Rule.ID
+	}
+	b, _ := json.Marshal(prompt.ExtractSchema(ids))
+	return claude.EstimateTokens(string(b))
+}
+
 // partsBudget sizes MaxInputTokens so that a part of an audit in parts of
 // inputs holds room bytes of file slices, past the extract prompt, the
-// overhead and the rules.
+// overhead, the rules and their schema.
 func partsBudget(inputs []ruleeval.RuleInput, room int) func(*claude.Config) {
 	return func(c *claude.Config) {
 		c.MaxInputTokens = claude.EstimateTokens(prompt.AuditExtractSystem()) + 256 +
-			claude.EstimateTokens(prompt.RulesBlock(inputs)) +
+			claude.EstimateTokens(prompt.RulesBlock(inputs)) + extractSchemaTokens(inputs) +
 			claude.EstimateTokens(strings.Repeat("x", room))
 	}
 }
@@ -160,6 +171,8 @@ func auditPartsScenarios() []scenario {
 		room = max(room, len(prompt.FileSlice(f.Path, 1, len(lines), lines))+20)
 	}
 	commands := []ruleeval.File{lint, sync}
+	// minified has a line no part can hold.
+	minified := ruleeval.File{Path: "web/app.min.js", Content: "var a = 1;\n" + strings.Repeat("x", 3*room) + "\n"}
 	missing := []ruleeval.File{lint, sync, lintTest}
 	tested := []ruleeval.File{lint, sync, lintTest, syncTest}
 
@@ -174,6 +187,35 @@ func auditPartsScenarios() []scenario {
 		}
 	}
 	return []scenario{
+		{
+			// A line too long to send is reported, and the judgement is told
+			// that no part showed it, so that it judges nothing missing
+			// for want of a finding there.
+			name:   "audit_parts_unread_line",
+			inputs: cmd,
+			files:  []ruleeval.File{lint, sync, minified},
+			cfg:    partsBudget(cmd, room),
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isJudgeRequest(body) {
+					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {
+						Verdict: "compliant", Explanation: "Both commands set Long.", Confidence: 0.9,
+					}}), nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("verdict = %+v, want the judgement kept", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "line 2 of web/app.min.js") {
+					t.Errorf("errors = %v, want the unread line reported", resp.Errors)
+				}
+			},
+		},
 		{
 			name:   "audit_two_parts",
 			inputs: cmd,
@@ -214,7 +256,7 @@ func auditPartsScenarios() []scenario {
 			name:   "audit_split_file",
 			inputs: cmd,
 			files:  []ruleeval.File{{Path: "src/gen/big.go", Content: generatedGo(60)}},
-			cfg:    partsBudget(cmd, 900),
+			cfg:    partsBudget(cmd, 1400),
 			script: func(w http.ResponseWriter, body string, _ int) {
 				if isJudgeRequest(body) {
 					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "not_applicable", Explanation: "No command."}}), nil))
@@ -394,11 +436,15 @@ func auditPartsScenarios() []scenario {
 			inputs: cmd,
 			files:  commands,
 			cfg:    partsBudget(cmd, room),
+			// The finding of unknown kind is under a rule nobody asked for:
+			// it still makes the response malformed, not an ignored rule.
 			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": {{Kind: "rumour", File: lint.Path, Line: 1}}}), nil))
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{
+					"CMD-001": nil, "CMD-999": {{Kind: "rumour", File: lint.Path, Line: 1}},
+				}), nil))
 			},
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
-				if !errors.Is(err, claude.ErrMalformed) || !strings.Contains(err.Error(), `unknown kind "rumour"`) {
+				if !errors.Is(err, claude.ErrMalformed) || !strings.Contains(err.Error(), `rule CMD-999 has unknown kind "rumour"`) {
 					t.Fatalf("err = %v, want ErrMalformed for the unknown kind", err)
 				}
 			},
@@ -410,17 +456,38 @@ func auditPartsScenarios() []scenario {
 			cfg:    partsBudget(cmd, room),
 			script: func(w http.ResponseWriter, body string, _ int) {
 				if isJudgeRequest(body) {
-					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {Verdict: "maybe"}}), nil))
+					// The unknown verdict is under a rule nobody asked for.
+					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{
+						"CMD-001": {Verdict: "not_applicable", Explanation: "No command."}, "CMD-999": {Verdict: "maybe"},
+					}), nil))
 					return
 				}
 				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
 			},
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
-				if !errors.Is(err, claude.ErrMalformed) || !strings.Contains(err.Error(), `unknown verdict "maybe"`) {
+				if !errors.Is(err, claude.ErrMalformed) || !strings.Contains(err.Error(), `rule CMD-999 has unknown verdict "maybe"`) {
 					t.Fatalf("err = %v, want ErrMalformed for the unknown verdict", err)
 				}
 			},
 		},
+	}
+}
+
+// TestAuditParts_JudgeKnowsUnreadLines checks the judgement of a set with a
+// line too long to send names that line as shown to no part.
+func TestAuditParts_JudgeKnowsUnreadLines(t *testing.T) {
+	judges := 0
+	for _, body := range cassetteBodies(t, "audit_parts_unread_line") {
+		if !isJudgeRequest(body) {
+			continue
+		}
+		judges++
+		if !strings.Contains(body, `Not shown to any part, being too long to send:\n- line 2 of web/app.min.js\n`) {
+			t.Errorf("the judgement should name the unread line: %.400s", body)
+		}
+	}
+	if judges != 1 {
+		t.Errorf("judgements = %d, want 1", judges)
 	}
 }
 

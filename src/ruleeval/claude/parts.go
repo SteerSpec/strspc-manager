@@ -25,12 +25,12 @@ import (
 // findings are too large to judge in one request, gets no verdict and an
 // error in out.Errors, which keeps the batch out of the cache.
 func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, out *ruleeval.BatchResponse) (*ruleeval.BatchResponse, error) {
-	rp := p.planRules(prompt.AuditExtractSystem(), req.Inputs)
+	rp := p.planRules(prompt.AuditExtractSystem(), prompt.ExtractSchema, req.Inputs)
 	out.Errors = append(out.Errors, rp.errs...)
 	if len(rp.groups) == 0 {
 		return out, nil
 	}
-	parts, _, planErrs := planAudit(req.Files, rp.budget)
+	parts, _, unread, planErrs := planAudit(req.Files, rp.budget)
 	out.Errors = append(out.Errors, planErrs...)
 	if len(parts) == 0 {
 		return out, nil
@@ -74,7 +74,7 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		}
 	}
 
-	jp := p.planJudge(toJudge, findings, filePaths(req.Files))
+	jp := p.planJudge(toJudge, findings, filePaths(req.Files), unread)
 	out.Errors = append(out.Errors, jp.errs...)
 	results := make([]judged, len(jp.groups))
 	if err := p.runAll(ctx, len(jp.groups), func(ctx context.Context, i int) error {
@@ -156,16 +156,19 @@ func (p *Provider) extract(ctx context.Context, block string, group []ruleeval.R
 		requested[id] = true
 	}
 	for _, id := range sortedKeys(got) {
-		if !requested[id] {
-			out.errs = append(out.errs, fmt.Errorf("provider returned findings for unrequested rule %q (ignored)", id))
-			continue
-		}
+		// Structured outputs should guarantee the enum, but a finding of
+		// unknown kind must not pass for a fact or a violation, and makes
+		// the whole response suspect, whichever rule it is under.
 		for _, f := range got[id] {
-			// Structured outputs should guarantee the enum, but a finding of
-			// unknown kind must not pass for a fact or a violation.
 			if f.Kind != prompt.FindingViolation && f.Kind != prompt.FindingFact {
 				return extracted{}, fmt.Errorf("%w: finding for rule %s has unknown kind %q", ErrMalformed, id, f.Kind)
 			}
+		}
+	}
+	for _, id := range sortedKeys(got) {
+		if !requested[id] {
+			out.errs = append(out.errs, fmt.Errorf("provider returned findings for unrequested rule %q (ignored)", id))
+			continue
 		}
 		out.findings[id] = got[id]
 	}
@@ -192,9 +195,9 @@ type judgePlan struct {
 }
 
 // planJudge packs inputs, in order, into groups of at most
-// MaxRulesPerRequest rules whose rules and findings fit the input budget
-// next to the list of paths.
-func (p *Provider) planJudge(inputs []ruleeval.RuleInput, findings map[string][]prompt.Finding, paths []string) judgePlan {
+// MaxRulesPerRequest rules whose rules, findings and part of the schema fit
+// the input budget next to the list of paths and of what no part shows.
+func (p *Provider) planJudge(inputs []ruleeval.RuleInput, findings map[string][]prompt.Finding, paths []string, unread []prompt.Unread) judgePlan {
 	var jp judgePlan
 	if len(inputs) == 0 {
 		return jp
@@ -208,16 +211,17 @@ func (p *Provider) planJudge(inputs []ruleeval.RuleInput, findings map[string][]
 			"file set too large to list every file: %d of %d files left off, so rules were judged on less",
 			unlisted, len(listed)+unlisted))
 	}
-	jp.scope = prompt.AuditScope(listed, unlisted)
+	jp.scope = prompt.AuditScope(listed, unlisted, unread)
 	budget := available - estimateTokens(jp.scope+prompt.FindingsBlock(nil, nil))
 
 	var cur []ruleeval.RuleInput
 	curTokens := 0
 	for _, in := range inputs {
-		n := ruleTokens(in) + estimateTokens(prompt.RuleFindings(in.Rule.ID, findings[in.Rule.ID]))
+		n := ruleTokens(in) + estimateTokens(prompt.RuleFindings(in.Rule.ID, findings[in.Rule.ID])) +
+			schemaTokens(prompt.JudgeSchema([]string{in.Rule.ID}))
 		if n > budget {
 			jp.errs = append(jp.errs, fmt.Errorf(
-				"the findings for rule %s (~%d tokens with the rule) exceed the input budget of ~%d tokens, so it was not judged",
+				"the findings for rule %s (~%d tokens with the rule and its schema) exceed the input budget of ~%d tokens, so it was not judged",
 				in.Rule.ID, n, budget))
 			continue
 		}
@@ -289,17 +293,20 @@ func (p *Provider) judge(ctx context.Context, scope string, group []ruleeval.Rul
 		requested[id] = true
 	}
 	for _, id := range sortedKeys(got) {
-		d := got[id]
+		// An unknown verdict makes the whole response suspect, whichever
+		// rule it is under.
+		switch ruleeval.Verdict(got[id].Verdict) {
+		case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
+		default:
+			return judged{}, fmt.Errorf("%w: rule %s has unknown verdict %q", ErrMalformed, id, got[id].Verdict)
+		}
+	}
+	for _, id := range sortedKeys(got) {
 		if !requested[id] {
 			out.errs = append(out.errs, fmt.Errorf("provider returned a verdict for unrequested rule %q (ignored)", id))
 			continue
 		}
-		switch ruleeval.Verdict(d.Verdict) {
-		case ruleeval.Compliant, ruleeval.Violated, ruleeval.NotApplicable:
-		default:
-			return judged{}, fmt.Errorf("%w: rule %s has unknown verdict %q", ErrMalformed, id, d.Verdict)
-		}
-		out.details[id] = d
+		out.details[id] = got[id]
 	}
 	for _, id := range ids {
 		if _, ok := got[id]; !ok {

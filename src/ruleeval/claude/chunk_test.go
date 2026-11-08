@@ -262,7 +262,7 @@ func ruleWithBody(id string, n int) ruleeval.RuleInput {
 
 func TestGroupRules_ByCountAndTokens(t *testing.T) {
 	small := []ruleeval.RuleInput{ruleWithBody("S-001", 30), ruleWithBody("S-002", 30), ruleWithBody("S-003", 30)}
-	groups, tooLarge := groupRules(small, 2, 1<<20)
+	groups, tooLarge := groupRules(small, 2, 1<<20, ruleTokens)
 	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 || len(groups[1]) != 1 {
 		t.Fatalf("count split: groups=%d tooLarge=%d", len(groups), len(tooLarge))
 	}
@@ -270,14 +270,14 @@ func TestGroupRules_ByCountAndTokens(t *testing.T) {
 	// Each rule costs ~ruleTokens; a budget that fits two but not three
 	// splits on tokens even though the count limit would allow all three.
 	per := ruleTokens(small[0])
-	groups, tooLarge = groupRules(small, 10, per*2)
+	groups, tooLarge = groupRules(small, 10, per*2, ruleTokens)
 	if len(tooLarge) != 0 || len(groups) != 2 || len(groups[0]) != 2 {
 		t.Fatalf("token split: groups=%v tooLarge=%d", len(groups), len(tooLarge))
 	}
 
 	// A rule bigger than the whole budget is reported, the others proceed.
 	mixed := []ruleeval.RuleInput{ruleWithBody("B-001", 5000), small[0], small[1]}
-	groups, tooLarge = groupRules(mixed, 10, per*2)
+	groups, tooLarge = groupRules(mixed, 10, per*2, ruleTokens)
 	if len(tooLarge) != 1 || tooLarge[0].Rule.ID != "B-001" {
 		t.Fatalf("expected B-001 too large, got %+v", tooLarge)
 	}
@@ -285,7 +285,7 @@ func TestGroupRules_ByCountAndTokens(t *testing.T) {
 		t.Fatalf("remaining rules should form one group, got %d groups", len(groups))
 	}
 
-	if groups, tooLarge = groupRules(nil, 10, 100); len(groups) != 0 || len(tooLarge) != 0 {
+	if groups, tooLarge = groupRules(nil, 10, 100, ruleTokens); len(groups) != 0 || len(tooLarge) != 0 {
 		t.Fatal("empty input → no groups")
 	}
 }

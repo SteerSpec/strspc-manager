@@ -14,7 +14,7 @@
             "content-type": "application/json",
             "request-id": "req_synthetic"
           },
-          "body": "{\"content\":[{\"text\":\"{\\\"CMD-001\\\":[{\\\"kind\\\":\\\"rumour\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":1,\\\"excerpt\\\":\\\"\\\",\\\"note\\\":\\\"\\\"}]}\",\"type\":\"text\"}],\"id\":\"msg_synthetic_0001\",\"model\":\"claude-sonnet-5-5\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation_input_tokens\":900,\"cache_read_input_tokens\":0,\"input_tokens\":1200,\"output_tokens\":96}}"
+          "body": "{\"content\":[{\"text\":\"{\\\"CMD-001\\\":[],\\\"CMD-999\\\":[{\\\"kind\\\":\\\"rumour\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":1,\\\"excerpt\\\":\\\"\\\",\\\"note\\\":\\\"\\\"}]}\",\"type\":\"text\"}],\"id\":\"msg_synthetic_0001\",\"model\":\"claude-sonnet-5-5\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation_input_tokens\":900,\"cache_read_input_tokens\":0,\"input_tokens\":1200,\"output_tokens\":96}}"
         }
       ]
     },
@@ -31,7 +31,7 @@
             "content-type": "application/json",
             "request-id": "req_synthetic"
           },
-          "body": "{\"content\":[{\"text\":\"{\\\"CMD-001\\\":[{\\\"kind\\\":\\\"rumour\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":1,\\\"excerpt\\\":\\\"\\\",\\\"note\\\":\\\"\\\"}]}\",\"type\":\"text\"}],\"id\":\"msg_synthetic_0001\",\"model\":\"claude-sonnet-5-5\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation_input_tokens\":900,\"cache_read_input_tokens\":0,\"input_tokens\":1200,\"output_tokens\":96}}"
+          "body": "{\"content\":[{\"text\":\"{\\\"CMD-001\\\":[],\\\"CMD-999\\\":[{\\\"kind\\\":\\\"rumour\\\",\\\"file\\\":\\\"src/cmd/lint.go\\\",\\\"line\\\":1,\\\"excerpt\\\":\\\"\\\",\\\"note\\\":\\\"\\\"}]}\",\"type\":\"text\"}],\"id\":\"msg_synthetic_0001\",\"model\":\"claude-sonnet-5-5\",\"role\":\"assistant\",\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"type\":\"message\",\"usage\":{\"cache_creation_input_tokens\":900,\"cache_read_input_tokens\":0,\"input_tokens\":1200,\"output_tokens\":96}}"
         }
       ]
     }
