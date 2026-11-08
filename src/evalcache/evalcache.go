@@ -1,6 +1,8 @@
 // Package evalcache persists rule-eval verdicts in an embedded key-value
 // store (bbolt) at .strspc/cache.db, keyed by ruleeval.CacheKey. Entries
-// expire after a configurable TTL. The store implements ruleeval.Cache.
+// expire after a configurable TTL. The store implements ruleeval.Cache, and
+// ruleeval.BlobStore for what a provider keeps apart from the verdicts,
+// such as what each file of an audit holds for each rule.
 //
 // Two failure modes are made explicit so that callers can degrade
 // gracefully: ErrLocked when another process holds the database, and an
@@ -38,7 +40,10 @@ var ErrLocked = errors.New("evalcache: database is locked by another process")
 // ErrClosed is returned by Get, Put and Prune after Close.
 var ErrClosed = errors.New("evalcache: store is closed")
 
-var bucketName = []byte("eval/v1")
+var (
+	bucketName = []byte("eval/v1")
+	blobBucket = []byte("blob/v1")
+)
 
 const (
 	defaultLockTimeout = 2 * time.Second
@@ -91,6 +96,15 @@ type entry struct {
 	CreatedAt time.Time `json:"created_at"`
 	// Response is the cached verdict for the rule and diff the key identifies.
 	Response *ruleeval.EvalResponse `json:"response"`
+}
+
+// blobEntry is a stored provider value.
+type blobEntry struct {
+	// CreatedAt is the UTC time the entry was written; the TTL is measured from
+	// it.
+	CreatedAt time.Time `json:"created_at"`
+	// Value is the provider's value, opaque to the store.
+	Value []byte `json:"value"`
 }
 
 // Open opens or creates the cache at path, creating parent directories as
@@ -272,8 +286,12 @@ func open(ctx context.Context, path string, lockTimeout time.Duration) (*bolt.DB
 		return nil, ctx.Err()
 	}
 	if err := db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(bucketName)
-		return err
+		for _, name := range [][]byte{bucketName, blobBucket} {
+			if _, err := tx.CreateBucketIfNotExists(name); err != nil {
+				return err
+			}
+		}
+		return nil
 	}); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -364,8 +382,8 @@ func (s *Store) Put(key string, resp *ruleeval.EvalResponse) error {
 	})
 }
 
-// Prune deletes expired entries and returns how many were removed.
-// Undecodable entries are removed as well.
+// Prune deletes expired entries, verdicts and provider values alike, and
+// returns how many were removed. Undecodable entries are removed as well.
 func (s *Store) Prune() (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -377,30 +395,98 @@ func (s *Store) Prune() (int, error) {
 	}
 	removed := 0
 	err := s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(bucketName)
-		if b == nil {
-			return nil
-		}
-		var stale [][]byte
-		err := b.ForEach(func(k, v []byte) error {
-			var e entry
-			if err := json.Unmarshal(v, &e); err != nil || s.expired(e.CreatedAt) {
-				stale = append(stale, append([]byte(nil), k...))
+		for _, name := range [][]byte{bucketName, blobBucket} {
+			b := tx.Bucket(name)
+			if b == nil {
+				continue
 			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		for _, k := range stale {
-			if err := b.Delete(k); err != nil {
+			var stale [][]byte
+			err := b.ForEach(func(k, v []byte) error {
+				// Both kinds of entry carry created_at, the only field read.
+				var e blobEntry
+				if err := json.Unmarshal(v, &e); err != nil || s.expired(e.CreatedAt) {
+					stale = append(stale, append([]byte(nil), k...))
+				}
+				return nil
+			})
+			if err != nil {
 				return err
 			}
-			removed++
+			for _, k := range stale {
+				if err := b.Delete(k); err != nil {
+					return err
+				}
+				removed++
+			}
 		}
 		return nil
 	})
 	return removed, err
+}
+
+// GetBlob returns the provider value stored under key. ok is false on a
+// miss or when the entry has expired.
+func (s *Store) GetBlob(key string) ([]byte, bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.db == nil {
+		return nil, false, ErrClosed
+	}
+	var e blobEntry
+	found := false
+	err := s.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(blobBucket)
+		if b == nil {
+			return nil
+		}
+		raw := b.Get([]byte(key))
+		if raw == nil {
+			return nil
+		}
+		if err := json.Unmarshal(raw, &e); err != nil {
+			return fmt.Errorf("evalcache: decode value %q: %w", key, err)
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	if !found || s.expired(e.CreatedAt) {
+		return nil, false, nil
+	}
+	return e.Value, true, nil
+}
+
+// PutBlobs stores provider values under their keys, in one transaction,
+// with the current time as their creation time.
+func (s *Store) PutBlobs(values map[string][]byte) error {
+	now := s.cfg.now().UTC()
+	raws := make(map[string][]byte, len(values))
+	for k, v := range values {
+		raw, err := json.Marshal(blobEntry{CreatedAt: now, Value: v})
+		if err != nil {
+			return fmt.Errorf("evalcache: encode value: %w", err)
+		}
+		raws[k] = raw
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.db == nil {
+		return ErrClosed
+	}
+	return s.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists(blobBucket)
+		if err != nil {
+			return err
+		}
+		for k, raw := range raws {
+			if err := b.Put([]byte(k), raw); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // Close releases the file lock once in-flight operations have finished.

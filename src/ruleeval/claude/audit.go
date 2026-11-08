@@ -111,19 +111,34 @@ func splitLines(content string) []string {
 // split into line ranges, each a block of its own. A line too large for a
 // part on its own is reported in oversize and left out.
 func chunkFiles(files []ruleeval.File, budget int) (parts []string, oversize []oversizeLine) {
-	var cur strings.Builder
-	add := func(piece string) {
+	parts, _, oversize = chunkFileParts(files, budget)
+	return parts, oversize
+}
+
+// chunkFileParts is chunkFiles that also returns, for each part, the paths
+// of the files it shows, whole or in part, in order.
+func chunkFileParts(files []ruleeval.File, budget int) (parts []string, shown [][]string, oversize []oversizeLine) {
+	var (
+		cur      strings.Builder
+		curPaths []string
+	)
+	add := func(path, piece string) {
 		if cur.Len() > 0 && cur.Len()+len(piece) > budget {
 			parts = append(parts, cur.String())
+			shown = append(shown, curPaths)
 			cur.Reset()
+			curPaths = nil
 		}
 		cur.WriteString(piece)
+		if len(curPaths) == 0 || curPaths[len(curPaths)-1] != path {
+			curPaths = append(curPaths, path)
+		}
 	}
 	for _, f := range files {
 		lines := splitLines(f.Content)
 		total := len(lines)
 		if whole := prompt.FileSlice(f.Path, 1, total, lines); len(whole) <= budget {
-			add(whole)
+			add(f.Path, whole)
 			continue
 		}
 		// The widest tag a slice of this file can have, and its closing tag.
@@ -143,12 +158,13 @@ func chunkFiles(files []ruleeval.File, budget int) (parts []string, oversize []o
 				start++
 				continue
 			}
-			add(prompt.FileSlice(f.Path, start+1, total, lines[start:end]))
+			add(f.Path, prompt.FileSlice(f.Path, start+1, total, lines[start:end]))
 			start = end
 		}
 	}
 	if cur.Len() > 0 {
 		parts = append(parts, cur.String())
+		shown = append(shown, curPaths)
 	}
-	return parts, oversize
+	return parts, shown, oversize
 }
