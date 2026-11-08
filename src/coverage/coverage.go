@@ -67,6 +67,10 @@ type Clause struct {
 	Status Status
 	// Rules lists the mappings behind the status, sorted.
 	Rules []Mapping
+	// Exclusion is the `exclusion` Realm Note behind an excluded clause,
+	// including one that overrides the clause's mappings, nil for any other
+	// status.
+	Exclusion *ExclusionRef
 }
 
 // Report is the coverage of a set of entities.

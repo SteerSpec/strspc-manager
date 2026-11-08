@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -119,6 +120,8 @@ func figures(r *Report) []string {
 	return out
 }
 
+// checkFigures checks the figures, and that each one's per-status counts add
+// up to its Total.
 func checkFigures(t *testing.T, r *Report, want ...string) {
 	t.Helper()
 	if want == nil {
@@ -127,6 +130,33 @@ func checkFigures(t *testing.T, r *Report, want ...string) {
 	if got := figures(r); !reflect.DeepEqual(got, want) {
 		t.Errorf("figures: got  %v\nwant %v", got, want)
 	}
+	for _, f := range r.Figures {
+		if sum := f.Covered + f.Mapped + f.Lapsed + f.Unmapped; sum != f.Total {
+			t.Errorf("figure %+v: counts add up to %d, not Total", f, sum)
+		}
+	}
+}
+
+// counts renders a figure's per-status counts as
+// `covered/mapped/lapsed/unmapped of total, excluded`.
+func counts(f Figure) string {
+	return fmt.Sprintf("%d/%d/%d/%d of %d, %d", f.Covered, f.Mapped, f.Lapsed, f.Unmapped, f.Total, f.Excluded)
+}
+
+// exclusionOf returns the Exclusion of the clause of r, failing when the
+// clause isn't reported once.
+func exclusionOf(t *testing.T, r *Report, entityID, clause string) *ExclusionRef {
+	t.Helper()
+	var found []Clause
+	for _, c := range r.Clauses {
+		if c.Entity == entityID && c.Clause == clause {
+			found = append(found, c)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("clause %s of %s: got %d rows", clause, entityID, len(found))
+	}
+	return found[0].Exclusion
 }
 
 // TestLinked_Statuses checks each status a linked clause list gives, and the
@@ -151,6 +181,85 @@ func TestLinked_Statuses(t *testing.T) {
 	if f := r.Figures[1]; f.Excluded != 1 || f.Tree != "dev.test.app" || f.Realm != stdID {
 		t.Errorf("figure = %+v", f)
 	}
+	for _, f := range r.Figures {
+		if got := counts(f); got != "1/1/0/1 of 3, 1" {
+			t.Errorf("figure %q counts: got %s", f.Entity, got)
+		}
+		if f.DeclaredBy != "dev.test.app" {
+			t.Errorf("figure %q DeclaredBy = %q, want the root", f.Entity, f.DeclaredBy)
+		}
+	}
+	// V3's mapping is overridden by the root's exclusion.
+	want := &ExclusionRef{Realm: "dev.test.app", Note: "REALM/001", Content: "Not applicable."}
+	if got := exclusionOf(t, r, "APP", "V3"); !reflect.DeepEqual(got, want) {
+		t.Errorf("V3 exclusion: got %+v, want %+v", got, want)
+	}
+	for _, c := range []string{"V1", "V2", "V5"} {
+		if got := exclusionOf(t, r, "APP", c); got != nil {
+			t.Errorf("%s exclusion: got %+v, want nil", c, got)
+		}
+	}
+}
+
+// TestLinked_StatusCounts checks the per-status counts of a figure: an
+// entity's figure counts its own statuses, and the Realm figure gives a clause the
+// first status of covered, mapped and lapsed that any entity gives it.
+func TestLinked_StatusCounts(t *testing.T) {
+	lt := newLinkedTree(t)
+	// OTHER maps V1 (Draft), covers V2 and has V5 lapsed.
+	other := file("OTHER", nil,
+		[]entity.Rule{rule("OTHER-001", entity.StateDraft), rule("OTHER-002", entity.StateImplemented), rule("OTHER-003", entity.StateRetired)},
+		map[string][]string{"OTHER-001": {"owasp.asvs:V1"}, "OTHER-002": {"owasp.asvs:V2"}, "OTHER-003": {"owasp.asvs:V5"}})
+	r := lt.compute(t, entityIn(lt.dir, lt.app, lt.scope), entityIn(lt.dir, other, lt.scope))
+	checkFigures(t, r, "- owasp.asvs/ 2/3", "APP owasp.asvs/ 1/3", "OTHER owasp.asvs/ 1/3")
+	want := map[string]string{
+		// APP covers V1 and OTHER V2; V5 is only lapsed.
+		"":      "2/0/1/0 of 3, 1",
+		"APP":   "1/1/0/1 of 3, 1",
+		"OTHER": "1/1/1/0 of 3, 1",
+	}
+	for _, f := range r.Figures {
+		if got := counts(f); got != want[f.Entity] {
+			t.Errorf("figure %q counts: got %s, want %s", f.Entity, got, want[f.Entity])
+		}
+	}
+}
+
+// TestLinked_Exclusion checks that an excluded clause names the exclusion
+// behind it, the first that names the clause, whether nothing maps it, a live
+// rule does or its mapping lapsed.
+func TestLinked_Exclusion(t *testing.T) {
+	lt := newLinkedTree(t)
+	lt.rf.Notes = append(lt.rf.Notes, exclusion(2, "owasp.asvs:V5"), exclusion(3, "owasp.asvs:V3"))
+	lt.rf.Notes[1].Content = "No such interface."
+	r := lt.compute(t)
+	check(t, r,
+		"APP owasp.asvs@5.0.0:V1 covered",
+		"APP owasp.asvs@5.0.0:V2 mapped",
+		"APP owasp.asvs@5.0.0:V3 excluded",
+		"APP owasp.asvs@5.0.0:V5 excluded",
+	)
+	if got := exclusionOf(t, r, "APP", "V3"); got == nil || got.Note != "REALM/001" {
+		t.Errorf("V3 exclusion: got %+v, want REALM/001", got)
+	}
+	want := &ExclusionRef{Realm: "dev.test.app", Note: "REALM/002", Content: "No such interface."}
+	if got := exclusionOf(t, r, "APP", "V5"); !reflect.DeepEqual(got, want) {
+		t.Errorf("unmapped V5 exclusion: got %+v, want %+v", got, want)
+	}
+
+	// A lapsed mapping of V5 is excluded too, its mapping kept.
+	lt.app.Rules = append(lt.app.Rules, rule("APP-004", entity.StateRetired))
+	lt.app.Notes = append(lt.app.Notes, entity.Note{ID: "APP-004/01", RuleRef: "APP-004", Type: entity.NoteTypeStandard, Content: "owasp.asvs:V5"})
+	r = lt.compute(t)
+	if got := exclusionOf(t, r, "APP", "V5"); !reflect.DeepEqual(got, want) {
+		t.Errorf("lapsed V5 exclusion: got %+v, want %+v", got, want)
+	}
+	for _, c := range r.Clauses {
+		if c.Clause == "V5" && (c.Status != StatusExcluded || len(c.Rules) != 1) {
+			t.Errorf("lapsed V5: got %+v", c)
+		}
+	}
+	checkFigures(t, r, "- owasp.asvs/ 1/2", "APP owasp.asvs/ 1/2")
 }
 
 // TestLinked_Profile checks that a profile narrows the list to the clauses
@@ -273,6 +382,42 @@ func TestLinked_EntityReference(t *testing.T) {
 		"APP owasp.asvs@5.0.0:V5 unmapped",
 	)
 	checkFigures(t, r, "- owasp.asvs/ 2/4", "APP owasp.asvs/ 2/4")
+	for _, f := range r.Figures {
+		if f.DeclaredBy != "" {
+			t.Errorf("figure %q DeclaredBy = %q, want empty", f.Entity, f.DeclaredBy)
+		}
+	}
+}
+
+// TestLinked_TwoSubRealmsDeclare checks that the references two sub-realms
+// each declare with the same id get Realm figures told apart by DeclaredBy,
+// each with its own exclusions, sorted by it.
+func TestLinked_TwoSubRealmsDeclare(t *testing.T) {
+	lt := newLinkedTree(t)
+	var subs []*realmresolve.ResolvedRealm
+	for _, name := range []string{"beta", "alpha"} {
+		subs = append(subs, &realmresolve.ResolvedRealm{
+			Realm:        &entity.RealmFile{Realm: entity.RealmMeta{ID: "dev.test.app." + name, Title: name, Version: "1.0.0", Standards: []entity.StandardRef{linkedASVS}}},
+			Dir:          filepath.Join(lt.dir, name),
+			Dependencies: lt.res.Dependencies,
+		})
+	}
+	subs[1].Realm.Notes = []entity.RealmNote{exclusion(1, "owasp.asvs:V2")} // alpha excludes V2.
+	lt.res.SubRealms = subs
+	other := file("OTHER", nil, []entity.Rule{rule("OTHER-001", entity.StateImplemented)}, map[string][]string{"OTHER-001": {"owasp.asvs:V5"}})
+	r := lt.compute(t,
+		entityIn(subs[0].Dir, other, subs[0].Realm.Realm.Standards, lt.rf.Realm.Standards),
+		entityIn(subs[1].Dir, lt.app, subs[1].Realm.Realm.Standards, lt.rf.Realm.Standards))
+	// alpha: APP covers V1 and V3 of V1, V3, V5. beta: OTHER covers V5 of
+	// all four.
+	checkFigures(t, r, "- owasp.asvs/ 2/3", "APP owasp.asvs/ 2/3", "- owasp.asvs/ 1/4", "OTHER owasp.asvs/ 1/4")
+	var got []string
+	for _, f := range r.Figures {
+		got = append(got, f.DeclaredBy)
+	}
+	if want := []string{"dev.test.app.alpha", "dev.test.app.alpha", "dev.test.app.beta", "dev.test.app.beta"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("DeclaredBy: got %v, want %v", got, want)
+	}
 }
 
 // TestLinked_UnreadableStandardRealm checks that a Standard Realm whose clause
@@ -359,7 +504,13 @@ func TestLinked_Resolved(t *testing.T) {
 	if err := links.AddTree(teamDir, teamRF, res); err != nil {
 		t.Fatal(err)
 	}
-	checkFigures(t, Compute(res.Entities, WithLinks(links)), "- owasp.asvs/ 1/3", "TEAM owasp.asvs/ 1/3")
+	r = Compute(res.Entities, WithLinks(links))
+	checkFigures(t, r, "- owasp.asvs/ 1/3", "TEAM owasp.asvs/ 1/3")
+	for _, f := range r.Figures {
+		if f.DeclaredBy != "dev.test.app" {
+			t.Errorf("figure %q DeclaredBy = %q, want the parent", f.Entity, f.DeclaredBy)
+		}
+	}
 }
 
 // TestLinked_RelativePath checks that an entity path relative to the working
