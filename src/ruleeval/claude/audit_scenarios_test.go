@@ -42,27 +42,13 @@ func generatedGo(n int) string {
 // isAuditRequest reports whether a request carries the audit system prompt.
 func isAuditRequest(body string) bool { return strings.Contains(body, "SteerSpec rule auditor") }
 
-// auditBudget sizes MaxInputTokens so that a part of an audit of inputs
-// holds room bytes of file slices, past the system prompt, the overhead,
-// the rules and a scope listing paths.
-func auditBudget(inputs []ruleeval.RuleInput, paths []string, room int) func(*claude.Config) {
-	return func(c *claude.Config) {
-		c.MaxInputTokens = claude.EstimateTokens(prompt.AuditSystem()) + 256 +
-			claude.EstimateTokens(prompt.RulesBlock(inputs)) +
-			claude.EstimateTokens(prompt.PartialFilesBlock("", paths, 0)) +
-			claude.EstimateTokens(strings.Repeat("x", room))
-	}
-}
-
 func auditScenarios() []scenario {
 	cmd := []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)}
 	lint := ruleeval.File{Path: "src/cmd/lint.go", Content: lintGo}
-	sync := ruleeval.File{Path: "src/cmd/sync.go", Content: strings.ReplaceAll(lintGo, "lint", "sync")}
-	oneSlice := len(prompt.FileSlice(lint.Path, 1, 11, strings.Split(strings.TrimSuffix(lintGo, "\n"), "\n")))
 	compliant := func(w http.ResponseWriter, _ string, _ int) {
 		writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "compliant"), nil))
 	}
-	return []scenario{
+	return append([]scenario{
 		{
 			name:   "audit_compliant",
 			inputs: cmd,
@@ -144,45 +130,7 @@ func auditScenarios() []scenario {
 				}
 			},
 		},
-		{
-			name:   "audit_two_parts",
-			inputs: cmd,
-			files:  []ruleeval.File{lint, sync},
-			cfg:    auditBudget(cmd, []string{lint.Path, sync.Path}, oneSlice+20),
-			script: compliant,
-			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant || len(resp.Errors) != 0 {
-					t.Fatalf("verdict = %+v, errors = %v", v, resp.Errors)
-				}
-				if rt.Requests() != 2 {
-					t.Errorf("expected one request per file, transport saw %d", rt.Requests())
-				}
-			},
-		},
-		{
-			name:   "audit_split_file",
-			inputs: cmd,
-			files:  []ruleeval.File{{Path: "src/gen/big.go", Content: generatedGo(60)}},
-			cfg:    auditBudget(cmd, []string{"src/gen/big.go"}, 900),
-			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 200, message("end_turn", verdictsText("CMD-001", "not_applicable"), nil))
-			},
-			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
-				if err != nil {
-					t.Fatal(err)
-				}
-				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.NotApplicable || len(resp.Errors) != 0 {
-					t.Fatalf("verdict = %+v, errors = %v", v, resp.Errors)
-				}
-				if rt.Requests() < 2 {
-					t.Errorf("a file larger than a part should be split, transport saw %d requests", rt.Requests())
-				}
-			},
-		},
-	}
+	}, auditPartsScenarios()...)
 }
 
 // TestAudit_RequestShowsNumberedFiles inspects the recorded bodies: an
@@ -199,29 +147,6 @@ func TestAudit_RequestShowsNumberedFiles(t *testing.T) {
 		if isDetailRequest(body) && (!strings.Contains(body, "against this code") || !strings.Contains(body, "as its file tag names it")) {
 			t.Error("the detail request should use the audit instruction and schema")
 		}
-	}
-}
-
-// TestAudit_PartsListTheSet inspects the recorded bodies of split audits:
-// every part lists the whole set, and a split file is shown in consecutive
-// line ranges.
-func TestAudit_PartsListTheSet(t *testing.T) {
-	for i, body := range cassetteBodies(t, "audit_two_parts") {
-		if !strings.Contains(body, `- src/cmd/lint.go\n- src/cmd/sync.go\n`) {
-			t.Errorf("part %d does not list the set", i)
-		}
-	}
-	var ranges []string
-	for _, body := range cassetteBodies(t, "audit_split_file") {
-		i := strings.Index(body, `lines=\"`)
-		if i < 0 || !strings.Contains(body, `- src/gen/big.go\n`) {
-			t.Fatalf("a part of the split file lacks its range or the set: %.300s", body)
-		}
-		ranges = append(ranges, body[i+len(`lines=\"`):i+len(`lines=\"`)+strings.Index(body[i+len(`lines=\"`):], `\"`)])
-	}
-	joined := strings.Join(ranges, ",")
-	if !strings.Contains(joined, "1-") || !strings.Contains(joined, " of 60") {
-		t.Errorf("ranges = %v, want the 60 lines split from line 1", ranges)
 	}
 }
 

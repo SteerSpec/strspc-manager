@@ -9,14 +9,15 @@ import (
 )
 
 // AuditVersion identifies the revision of the parts of the prompt only an
-// audit uses. Bump it whenever a change to them could change verdicts.
-const AuditVersion = "a1"
+// audit uses, those of an audit in parts included (AuditExtractSystem,
+// AuditJudgeSystem and their blocks and schemas). Bump it whenever a change
+// to them could change verdicts.
+const AuditVersion = "a2"
 
 const auditSystem = `You are the SteerSpec rule auditor. You receive files of a codebase and a list of governance rules, and you return one verdict per rule as JSON that conforms to the response schema.
 
 How to audit:
 - Judge the code as it stands, not a change to it. The files are given inside <files>, each in a <file> block whose tag names its path. Every line of a file starts with its line number and a tab; the number is not part of the code. A rule is broken when the code shown breaks it, and also when something the rule requires is missing from the code.
-- A file set too large for one request is split, and each part is judged on its own. A part opens with an <audit_scope> block listing every file of the whole set. A large file may be shown only in part: its <file> tag gives the range of lines shown and the file's line count. Never answer "violated" because something is missing from what you can see when it could sit in a listed file or in lines of a file that this part does not show: answer "compliant" or "not_applicable" instead. A file the list does not name is not in the set, so something required of it really is missing, unless the list ends by saying that more files are not listed. Anything the code shown here breaks is judged as usual.
 - For each rule choose exactly one verdict. "violated": the code breaks the rule, or lacks what the rule requires. "compliant": the code holds the rule's subject and respects it. "not_applicable": the rule's subject is absent from the code; this is the default, so choose it whenever the rule's subject is absent rather than guessing.
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when no code shown falls inside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule with "extended rules" builds on the rules quoted there. Read it together with them to understand what it requires, and give a verdict for the rule itself only. An extended rule is not judged here: code that breaks only the extended rule does not violate the rule that extends it.
@@ -80,6 +81,10 @@ func FilesBlock(slices string) string {
 // part cannot show the rest of the set, so an <audit_scope> block ahead of
 // it lists files, the paths of the whole set; unlisted counts the paths left
 // off that list.
+//
+// Deprecated: an audit too large for one request is now read in parts that
+// only collect findings, shown in a FilesBlock each, and judged on them
+// with AuditScope and FindingsBlock. Nothing sends this block any more.
 func PartialFilesBlock(slices string, files []string, unlisted int) string {
 	var b strings.Builder
 	b.WriteString("<audit_scope>\nOnly part of the file set is shown below. Files of the whole set:\n")

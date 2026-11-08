@@ -13,8 +13,8 @@ import (
 // TestAuditVersion pins the audit prompt revision, so a change to it is
 // deliberate.
 func TestAuditVersion(t *testing.T) {
-	if prompt.AuditVersion != "a1" {
-		t.Fatalf("AuditVersion = %q, want a1", prompt.AuditVersion)
+	if prompt.AuditVersion != "a2" {
+		t.Fatalf("AuditVersion = %q, want a2", prompt.AuditVersion)
 	}
 }
 
@@ -24,14 +24,13 @@ func TestAuditSystem_Golden(t *testing.T) {
 	s := prompt.AuditSystem()
 	for _, want := range []string{
 		"as it stands", "missing from the code", "line number and a tab",
-		"<audit_scope>", "lines of a file that this part does not show", "more files are not listed",
 		`detail a rule judged "violated"`, `detail a rule judged "compliant"`, "the place it belongs",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("audit system prompt should mention %q", want)
 		}
 	}
-	for _, diffOnly := range []string{"<diff_scope>", "hunk", "pre-existing"} {
+	for _, diffOnly := range []string{"<diff_scope>", "<audit_scope>", "hunk", "pre-existing"} {
 		if strings.Contains(s, diffOnly) {
 			t.Errorf("audit system prompt should not speak of %q", diffOnly)
 		}

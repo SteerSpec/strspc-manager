@@ -4,10 +4,11 @@
 // Version changes whenever the wording of System, DiffBlock, PartialDiffBlock,
 // RulesBlock or the shape of VerdictSchema or DetailSchema changes in a way
 // that could alter verdicts. AuditVersion changes likewise with the parts
-// only an audit uses (AuditSystem, FilesBlock, PartialFilesBlock, FileSlice,
-// AuditDetailSchema, AuditDetailInstruction); an audit's cache keys carry
-// both, since it shares RulesBlock and VerdictSchema. They are mixed into
-// evaluation cache keys.
+// only an audit uses (AuditSystem, FilesBlock, FileSlice, AuditDetailSchema,
+// AuditDetailInstruction, and for an audit in parts AuditExtractSystem,
+// AuditJudgeSystem, AuditScope, FindingsBlock, ExtractSchema and
+// JudgeSchema); an audit's cache keys carry both, since it shares
+// RulesBlock and VerdictSchema. They are mixed into evaluation cache keys.
 package prompt
 
 import (
