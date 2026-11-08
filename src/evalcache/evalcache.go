@@ -459,17 +459,10 @@ func (s *Store) GetBlob(key string) ([]byte, bool, error) {
 }
 
 // PutBlobs stores provider values under their keys, in one transaction,
-// with the current time as their creation time.
+// with the current time as their creation time. Each value is encoded as
+// it is written, so that thousands of them are not held twice.
 func (s *Store) PutBlobs(values map[string][]byte) error {
 	now := s.cfg.now().UTC()
-	raws := make(map[string][]byte, len(values))
-	for k, v := range values {
-		raw, err := json.Marshal(blobEntry{CreatedAt: now, Value: v})
-		if err != nil {
-			return fmt.Errorf("evalcache: encode value: %w", err)
-		}
-		raws[k] = raw
-	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.db == nil {
@@ -480,7 +473,11 @@ func (s *Store) PutBlobs(values map[string][]byte) error {
 		if err != nil {
 			return err
 		}
-		for k, raw := range raws {
+		for k, v := range values {
+			raw, err := json.Marshal(blobEntry{CreatedAt: now, Value: v})
+			if err != nil {
+				return fmt.Errorf("evalcache: encode value: %w", err)
+			}
 			if err := b.Put([]byte(k), raw); err != nil {
 				return err
 			}

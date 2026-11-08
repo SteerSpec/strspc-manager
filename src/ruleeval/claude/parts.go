@@ -54,6 +54,8 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 	}
 	plans := make([]groupParts, len(rp.groups))
 	var items []work
+	// byGroup lists, per group, the indices of its items.
+	byGroup := make([][]int, len(rp.groups))
 	for g, group := range rp.groups {
 		files := cache.toExtract(group)
 		gp := groupParts{files: files}
@@ -61,6 +63,7 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		gp.parts, gp.shown, _ = chunkFileParts(files, bytesForTokens(rp.budget))
 		plans[g] = gp
 		for c := range gp.parts {
+			byGroup[g] = append(byGroup[g], len(items))
 			items = append(items, work{chunk: c, group: g})
 		}
 	}
@@ -82,8 +85,8 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 	var errs []error
 	for g, group := range rp.groups {
 		complete := true
-		for i, it := range items {
-			if it.group == g && !done[i] {
+		for _, i := range byGroup[g] {
+			if !done[i] {
 				complete = false
 				break
 			}
@@ -91,15 +94,12 @@ func (p *Provider) auditInParts(ctx context.Context, req ruleeval.BatchRequest, 
 		if !complete {
 			continue
 		}
-		for i, it := range items {
-			if it.group != g {
-				continue
-			}
+		for _, i := range byGroup[g] {
 			errs = append(errs, found[i].errs...)
 			for id := range found[i].failed {
 				failed[id] = true
 			}
-			cache.record(found[i].findings, plans[g].shown[it.chunk])
+			cache.record(found[i].findings, plans[g].shown[items[i].chunk])
 		}
 		cache.keep(group, plans[g].files, failed)
 	}
