@@ -156,9 +156,13 @@ func (p *Provider) extract(ctx context.Context, block string, group []ruleeval.R
 		requested[id] = true
 	}
 	for _, id := range sortedKeys(got) {
-		// Structured outputs should guarantee the enum, but a finding of
-		// unknown kind must not pass for a fact or a violation, and makes
-		// the whole response suspect, whichever rule it is under.
+		// Structured outputs should guarantee an array and the enum, but a
+		// null must not pass for a part that found nothing, nor a finding
+		// of unknown kind for a fact or a violation; either makes the whole
+		// response suspect, whichever rule it is under.
+		if got[id] == nil {
+			return extracted{}, fmt.Errorf("%w: findings for rule %s are null, not a list", ErrMalformed, id)
+		}
 		for _, f := range got[id] {
 			if f.Kind != prompt.FindingViolation && f.Kind != prompt.FindingFact {
 				return extracted{}, fmt.Errorf("%w: finding for rule %s has unknown kind %q", ErrMalformed, id, f.Kind)

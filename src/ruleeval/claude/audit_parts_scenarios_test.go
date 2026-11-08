@@ -172,7 +172,7 @@ func auditPartsScenarios() []scenario {
 	}
 	commands := []ruleeval.File{lint, sync}
 	// minified has a line no part can hold.
-	minified := ruleeval.File{Path: "web/app.min.js", Content: "var a = 1;\n" + strings.Repeat("x", 3*room) + "\n"}
+	minified := ruleeval.File{Path: "web/app.min.js", Content: "var a = 1;\n" + strings.Repeat("x", 6*room) + "\n"}
 	missing := []ruleeval.File{lint, sync, lintTest}
 	tested := []ruleeval.File{lint, sync, lintTest, syncTest}
 
@@ -213,6 +213,38 @@ func auditPartsScenarios() []scenario {
 				}
 				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "line 2 of web/app.min.js") {
 					t.Errorf("errors = %v, want the unread line reported", resp.Errors)
+				}
+			},
+		},
+		{
+			// What is left fits one request, which would show neither the
+			// line nor any sign of it: the set is audited in parts anyway,
+			// one extraction and a judgement told of the line.
+			name:   "audit_one_part_unread_line",
+			inputs: cmd,
+			files:  []ruleeval.File{lint, minified},
+			cfg:    partsBudget(cmd, 2*room),
+			script: func(w http.ResponseWriter, body string, _ int) {
+				if isJudgeRequest(body) {
+					writeJSON(w, 200, message("end_turn", judgeText(map[string]judgement{"CMD-001": {
+						Verdict: "compliant", Explanation: "The command sets Long.", Confidence: 0.9,
+					}}), nil))
+					return
+				}
+				writeJSON(w, 200, message("end_turn", findingsText(map[string][]prompt.Finding{"CMD-001": nil}), nil))
+			},
+			check: func(t *testing.T, resp *ruleeval.BatchResponse, err error, _ *claude.Provider, rt *replay.Transport) {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v := resp.Verdicts["CMD-001"]; v == nil || v.Verdict != ruleeval.Compliant {
+					t.Fatalf("verdict = %+v, want the judgement kept", v)
+				}
+				if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0].Error(), "line 2 of web/app.min.js") {
+					t.Errorf("errors = %v, want the unread line reported", resp.Errors)
+				}
+				if rt.Requests() != 2 {
+					t.Errorf("expected one extraction and one judgement, transport saw %d", rt.Requests())
 				}
 			},
 		},
@@ -450,6 +482,22 @@ func auditPartsScenarios() []scenario {
 			},
 		},
 		{
+			// A null in place of a list of findings is not a part that found
+			// nothing.
+			name:   "audit_extract_null",
+			inputs: cmd,
+			files:  commands,
+			cfg:    partsBudget(cmd, room),
+			script: func(w http.ResponseWriter, _ string, _ int) {
+				writeJSON(w, 200, message("end_turn", `{"CMD-001":null}`, nil))
+			},
+			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
+				if !errors.Is(err, claude.ErrMalformed) || !strings.Contains(err.Error(), "findings for rule CMD-001 are null") {
+					t.Fatalf("err = %v, want ErrMalformed for the null list", err)
+				}
+			},
+		},
+		{
 			name:   "audit_judge_malformed",
 			inputs: cmd,
 			files:  commands,
@@ -476,18 +524,20 @@ func auditPartsScenarios() []scenario {
 // TestAuditParts_JudgeKnowsUnreadLines checks the judgement of a set with a
 // line too long to send names that line as shown to no part.
 func TestAuditParts_JudgeKnowsUnreadLines(t *testing.T) {
-	judges := 0
-	for _, body := range cassetteBodies(t, "audit_parts_unread_line") {
-		if !isJudgeRequest(body) {
-			continue
+	for _, name := range []string{"audit_parts_unread_line", "audit_one_part_unread_line"} {
+		judges := 0
+		for _, body := range cassetteBodies(t, name) {
+			if !isJudgeRequest(body) {
+				continue
+			}
+			judges++
+			if !strings.Contains(body, `Not shown to any part, being too long to send:\n- line 2 of web/app.min.js\n`) {
+				t.Errorf("%s: the judgement should name the unread line: %.400s", name, body)
+			}
 		}
-		judges++
-		if !strings.Contains(body, `Not shown to any part, being too long to send:\n- line 2 of web/app.min.js\n`) {
-			t.Errorf("the judgement should name the unread line: %.400s", body)
+		if judges != 1 {
+			t.Errorf("%s: judgements = %d, want 1", name, judges)
 		}
-	}
-	if judges != 1 {
-		t.Errorf("judgements = %d, want 1", judges)
 	}
 }
 

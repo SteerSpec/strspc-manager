@@ -287,12 +287,14 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		planErrs []error
 	)
 	if m.audit {
-		chunks, block, _, planErrs = planAudit(req.Files, rp.budget)
-		if len(chunks) != 1 {
-			// More than one part, or none when every file is too large for
-			// a request under the audit prompt: auditInParts plans the parts
-			// again under its own, shorter prompt and reports what still
-			// cannot be sent.
+		var unread []prompt.Unread
+		chunks, block, unread, planErrs = planAudit(req.Files, rp.budget)
+		if len(chunks) != 1 || len(unread) > 0 {
+			// More than one part, none when every file is too large for a
+			// request under the audit prompt, or one that leaves something
+			// out: auditInParts plans the parts again under its own, shorter
+			// prompt, tells the judgement what no part shows and reports
+			// it. A single request thus always shows every file whole.
 			return p.auditInParts(ctx, req, out)
 		}
 	} else {

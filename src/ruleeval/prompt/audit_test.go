@@ -24,7 +24,6 @@ func TestAuditSystem_Golden(t *testing.T) {
 	s := prompt.AuditSystem()
 	for _, want := range []string{
 		"as it stands", "missing from the code", "line number and a tab",
-		"range of lines shown",
 		`detail a rule judged "violated"`, `detail a rule judged "compliant"`, "the place it belongs",
 	} {
 		if !strings.Contains(s, want) {
