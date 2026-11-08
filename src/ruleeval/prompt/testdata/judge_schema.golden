@@ -1,0 +1,120 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "CMD-001": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "description": "Certainty from 0 (guess) to 1 (certain).",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "excerpt": {
+                "description": "Short excerpt of the line cited.",
+                "type": "string"
+              },
+              "file": {
+                "description": "Path of the file, as the finding names it.",
+                "type": "string"
+              },
+              "line": {
+                "description": "Line number, as the finding gives it.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file",
+              "line",
+              "excerpt"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "explanation": {
+          "description": "One or two sentences justifying the verdict.",
+          "type": "string"
+        },
+        "verdict": {
+          "description": "The verdict on the rule across the whole codebase.",
+          "enum": [
+            "violated",
+            "compliant",
+            "not_applicable"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "explanation",
+        "confidence",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "CMD-002": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "description": "Certainty from 0 (guess) to 1 (certain).",
+          "type": "number"
+        },
+        "evidence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "excerpt": {
+                "description": "Short excerpt of the line cited.",
+                "type": "string"
+              },
+              "file": {
+                "description": "Path of the file, as the finding names it.",
+                "type": "string"
+              },
+              "line": {
+                "description": "Line number, as the finding gives it.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "file",
+              "line",
+              "excerpt"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "explanation": {
+          "description": "One or two sentences justifying the verdict.",
+          "type": "string"
+        },
+        "verdict": {
+          "description": "The verdict on the rule across the whole codebase.",
+          "enum": [
+            "violated",
+            "compliant",
+            "not_applicable"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "explanation",
+        "confidence",
+        "evidence"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "CMD-001",
+    "CMD-002"
+  ],
+  "type": "object"
+}

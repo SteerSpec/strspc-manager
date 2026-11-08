@@ -10,9 +10,20 @@
 // Diffs larger than the input budget are split on file and hunk boundaries
 // and the verdicts are merged, a violation in any chunk winning. Each
 // request that shows only part of a diff also lists the files of the whole
-// diff, so that a rule spanning files is not judged on half of them. Requests
-// are retried by the SDK on 429/5xx (honouring Retry-After); credential
-// and model errors are reported as ruleeval.ErrUnavailable.
+// diff, so that a rule spanning files is not judged on half of them.
+//
+// A request whose Files are set audits the code as it stands instead
+// (ruleeval.Auditor), with numbered lines. A file set that fits one request
+// is judged like a diff. A larger one is audited in parts, a map-reduce:
+// each part only collects the findings its files hold for each rule, and
+// one request per group of rules then judges every rule on the findings of
+// all parts and the paths of the whole set, so that something a rule
+// requires is reported missing when no part found it. That judgement gives
+// the explanation and evidence of every verdict at once, whatever the
+// detail level.
+//
+// Requests are retried by the SDK on 429/5xx (honouring Retry-After);
+// credential and model errors are reported as ruleeval.ErrUnavailable.
 package claude
 
 import (
@@ -258,51 +269,42 @@ type work struct {
 // the input budget; every chunk×group pair is one request. Any request
 // failure aborts the batch (the evaluator reports it per rule). Hunks or
 // lines too large to send are skipped and reported in BatchResponse.Errors.
-// Whenever a request cannot show the whole diff or set, it lists its files.
+// Whenever a request cannot show the whole diff, it lists its files. A file
+// set too large for one request is audited in parts (auditInParts).
 func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest) (*ruleeval.BatchResponse, error) {
 	out := &ruleeval.BatchResponse{Verdicts: map[string]*ruleeval.EvalResponse{}}
 	if len(req.Inputs) == 0 {
 		return out, nil
 	}
 
-	// Tokens left once the system prompt and framing are paid for are shared
-	// between the rules block and the diff. Rules get at most half so that
-	// a token-heavy group can never starve the diff of its budget.
 	m := modeFor(req)
-	available := p.cfg.MaxInputTokens - estimateTokens(m.system) - requestOverheadTokens
-	rulesBudget := available / 2
-	groups, tooLarge := groupRules(req.Inputs, p.cfg.MaxRulesPerRequest, rulesBudget)
-	for _, in := range tooLarge {
-		out.Errors = append(out.Errors, fmt.Errorf(
-			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
-			in.Rule.ID, ruleTokens(in), rulesBudget))
-	}
-	if len(groups) == 0 {
-		return out, nil
-	}
-	rulesBlocks := make([]string, len(groups))
-	maxRulesTokens := 0
-	for i, g := range groups {
-		rulesBlocks[i] = prompt.RulesBlock(g)
-		if n := estimateTokens(rulesBlocks[i]); n > maxRulesTokens {
-			maxRulesTokens = n
-		}
-	}
-	budgetTokens := available - maxRulesTokens
+	rp := p.planRules(m.system, req.Inputs)
 	var (
 		chunks   []string
 		block    func(string) string
 		planErrs []error
 	)
 	if m.audit {
-		chunks, block, planErrs = planAudit(req.Files, budgetTokens)
+		chunks, block, planErrs = planAudit(req.Files, rp.budget)
+		if len(chunks) != 1 {
+			// More than one part, or none when every file is too large for
+			// a request under the audit prompt: auditInParts plans the parts
+			// again under its own, shorter prompt and reports what still
+			// cannot be sent.
+			return p.auditInParts(ctx, req, out)
+		}
 	} else {
-		chunks, block, planErrs = planDiff(req.Diff, budgetTokens)
+		chunks, block, planErrs = planDiff(req.Diff, rp.budget)
+	}
+	out.Errors = append(out.Errors, rp.errs...)
+	if len(rp.groups) == 0 {
+		return out, nil
 	}
 	out.Errors = append(out.Errors, planErrs...)
 	if len(chunks) == 0 {
 		return out, nil
 	}
+	groups := rp.groups
 
 	var items []work
 	for c := range chunks {
@@ -311,33 +313,12 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		}
 	}
 	results := make([]*wireResponse, len(items))
-	errs := make([]error, len(items))
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, p.cfg.Concurrency)
-	for i, it := range items {
-		if ctx.Err() != nil {
-			break
-		}
-		sem <- struct{}{}
-		wg.Add(1)
-		go func(i int, it work) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			results[i], errs[i] = p.call(ctx, m, block(chunks[it.chunk]), groups[it.group], rulesBlocks[it.group], req.Detail)
-			if errs[i] != nil {
-				cancel() // no point finishing the batch; the evaluator reports it
-			}
-		}(i, it)
-	}
-	wg.Wait()
-
-	if err := firstError(errs); err != nil {
-		return nil, err
-	}
-	if err := ctx.Err(); err != nil {
+	if err := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
+		var err error
+		it := items[i]
+		results[i], err = p.call(ctx, m, block(chunks[it.chunk]), groups[it.group], rp.blocks[it.group], req.Detail)
+		return err
+	}); err != nil {
 		return nil, err
 	}
 
@@ -368,6 +349,72 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		}
 	}
 	return out, nil
+}
+
+// runAll calls fn for every index below n, at most Concurrency at a time.
+// The first failure cancels the calls still running and stops scheduling
+// new ones; the error returned is picked by firstError, or is the context's
+// own when it was cancelled from outside.
+func (p *Provider) runAll(ctx context.Context, n int, fn func(ctx context.Context, i int) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, p.cfg.Concurrency)
+	for i := range n {
+		if ctx.Err() != nil {
+			break
+		}
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if errs[i] = fn(ctx, i); errs[i] != nil {
+				cancel() // no point finishing the batch; the evaluator reports it
+			}
+		}(i)
+	}
+	wg.Wait()
+	if err := firstError(errs); err != nil {
+		return err
+	}
+	return ctx.Err()
+}
+
+// rulePlan is how the rules of a batch are sent: in groups, each rendered
+// as its rules block, leaving budget tokens per request for the diff or
+// files. errs reports the rules too large to send at all.
+type rulePlan struct {
+	groups [][]ruleeval.RuleInput
+	blocks []string
+	budget int
+	errs   []error
+}
+
+// planRules groups inputs for requests under the given system prompt.
+// Tokens left once the system prompt and framing are paid for are shared
+// between the rules block and the diff or files. Rules get at most half, so
+// that a token-heavy group can never starve the code of its budget.
+func (p *Provider) planRules(system string, inputs []ruleeval.RuleInput) rulePlan {
+	available := p.cfg.MaxInputTokens - estimateTokens(system) - requestOverheadTokens
+	rulesBudget := available / 2
+	groups, tooLarge := groupRules(inputs, p.cfg.MaxRulesPerRequest, rulesBudget)
+	rp := rulePlan{groups: groups, blocks: make([]string, len(groups))}
+	for _, in := range tooLarge {
+		rp.errs = append(rp.errs, fmt.Errorf(
+			"rule %s (~%d tokens with notes) exceeds the rules budget of ~%d tokens and was not evaluated",
+			in.Rule.ID, ruleTokens(in), rulesBudget))
+	}
+	maxRulesTokens := 0
+	for i, g := range groups {
+		rp.blocks[i] = prompt.RulesBlock(g)
+		if n := estimateTokens(rp.blocks[i]); n > maxRulesTokens {
+			maxRulesTokens = n
+		}
+	}
+	rp.budget = available - maxRulesTokens
+	return rp
 }
 
 // firstError picks the error to report for a batch: ErrUnavailable first

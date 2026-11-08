@@ -53,6 +53,9 @@ type Location struct {
 // Detail says which verdicts a provider details: re-reads the diff against
 // the rule, confirms or withdraws the verdict, and gives an explanation, a
 // confidence and evidence locations. A violated verdict is always detailed.
+// It is a floor, not a ceiling: a provider may detail more verdicts when it
+// costs nothing more, as the Claude provider does for an audit too large
+// for one request, whose judgement explains every verdict at once.
 type Detail int
 
 // The detail levels. not_applicable is never detailed.

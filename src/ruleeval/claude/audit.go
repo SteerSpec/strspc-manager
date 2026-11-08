@@ -56,23 +56,14 @@ func planDiff(diff string, budgetTokens int) (chunks []string, block func(string
 	return chunks, block, errs
 }
 
-// planAudit is planDiff for a file set: parts that fit budgetTokens, the
-// function that renders a part as its files block, and the recoverable
-// errors: a file list too long to give whole, lines too large to send.
+// planAudit splits files into parts of rendered FileSlices that fit
+// budgetTokens, and returns them with the function that renders a part as
+// its files block, and the recoverable errors: lines too large to send. A
+// set that needs more than one part is audited in parts (auditInParts),
+// where a part collects findings and judges nothing, so it is shown alone,
+// without the list of the whole set.
 func planAudit(files []ruleeval.File, budgetTokens int) (parts []string, block func(string) string, errs []error) {
 	parts, oversize := chunkFiles(files, bytesForTokens(budgetTokens))
-	block = prompt.FilesBlock
-	if len(parts) > 1 || len(oversize) > 0 {
-		paths, unlisted := capFiles(filePaths(files), bytesForTokens(budgetTokens)/fileListShare)
-		if unlisted > 0 {
-			errs = append(errs, fmt.Errorf(
-				"file set too large to list every file: %d of %d files left off, so rules spanning files were judged on less",
-				unlisted, len(paths)+unlisted))
-		}
-		block = func(part string) string { return prompt.PartialFilesBlock(part, paths, unlisted) }
-		budgetTokens -= estimateTokens(block("")) - estimateTokens(prompt.FilesBlock(""))
-		parts, oversize = chunkFiles(files, bytesForTokens(budgetTokens))
-	}
 	for _, o := range oversize {
 		what := fmt.Sprintf("line %d of %s", o.Line, o.File)
 		if o.Line == 0 {
@@ -82,7 +73,7 @@ func planAudit(files []ruleeval.File, budgetTokens int) (parts []string, block f
 			"%s (%d bytes, ~%d tokens) exceeds the input budget of ~%d tokens and was not audited",
 			what, o.Bytes, estimateTokensForBytes(o.Bytes), budgetTokens))
 	}
-	return parts, block, errs
+	return parts, prompt.FilesBlock, errs
 }
 
 // filePaths returns the path of every file, in order.
