@@ -40,6 +40,7 @@ package claude_test
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -260,8 +261,10 @@ var labelledCases = []labelled{
 
 // row is one call's result, written to results.jsonl as it completes.
 type row struct {
-	Set     string                      `json:"set"`
-	Case    string                      `json:"case"`
+	Set  string `json:"set"`
+	Case string `json:"case"`
+	// Title names a commit for the report; its case is the full SHA.
+	Title   string                      `json:"title,omitempty"`
 	Config  string                      `json:"config"`
 	Model   string                      `json:"model"`
 	Effort  string                      `json:"effort"`
@@ -286,6 +289,7 @@ func (r row) key() string { return r.Set + "|" + r.Case + "|" + r.Config + "|" +
 // groups `check` would send for it.
 type job struct {
 	set, id string
+	title   string
 	cfg     benchConfig
 	rep     int
 	rule    string
@@ -397,7 +401,7 @@ func TestBench(t *testing.T) {
 		}
 		for _, c := range recentCommits(t, root, prs) {
 			for _, cfg := range configs {
-				jobs = append(jobs, job{set: "prs", id: c.title, cfg: cfg, diff: c.diff, groups: groups})
+				jobs = append(jobs, job{set: "prs", id: c.sha, title: c.title, cfg: cfg, diff: c.diff, groups: groups})
 			}
 		}
 	}
@@ -484,7 +488,7 @@ func TestBench(t *testing.T) {
 // its own.
 func run(ctx context.Context, j job) row {
 	r := row{Set: j.set, Case: j.id, Config: j.cfg.String(), Model: j.cfg.Model, Effort: j.cfg.Effort, Rep: j.rep, Rule: j.rule, Label: j.label,
-		Fingerprint: j.fingerprint()}
+		Title: j.title, Fingerprint: j.fingerprint()}
 	p, err := claude.New(claude.Config{Model: j.cfg.Model, Effort: j.cfg.Effort})
 	if err != nil {
 		r.Error = err.Error()
@@ -581,25 +585,27 @@ func ruleInputs(ctx context.Context, t *testing.T, root string) ([]ruleeval.Rule
 	return inputs, core
 }
 
-type commit struct{ title, diff string }
+// commit is one commit of the prs set: its full SHA keys the rows, since two
+// commits may share a subject, and title shows it in the report.
+type commit struct{ sha, title, diff string }
 
 // recentCommits returns the diffs of the latest n commits of HEAD's first
 // parent history that change more than .beads/.
 func recentCommits(t *testing.T, root string, n int) []commit {
 	t.Helper()
-	out, err := exec.Command("git", "-C", root, "log", "--first-parent", "--format=%h %s", "-n", strconv.Itoa(n), "HEAD", "--", ".", ":(exclude).beads").Output()
+	out, err := exec.Command("git", "-C", root, "log", "--first-parent", "--format=%H %h %s", "-n", strconv.Itoa(n), "HEAD", "--", ".", ":(exclude).beads").Output()
 	if err != nil {
 		t.Fatalf("git log: %v", err)
 	}
 	var commits []commit
 	sc := bufio.NewScanner(strings.NewReader(string(out)))
 	for sc.Scan() {
-		sha, _, _ := strings.Cut(sc.Text(), " ")
+		sha, title, _ := strings.Cut(sc.Text(), " ")
 		diff, err := exec.Command("git", "-C", root, "show", "--format=", "--no-color", sha, "--", ".", ":(exclude).beads").Output()
 		if err != nil {
 			t.Fatalf("git show %s: %v", sha, err)
 		}
-		commits = append(commits, commit{title: sc.Text(), diff: string(diff)})
+		commits = append(commits, commit{sha: sha, title: title, diff: string(diff)})
 	}
 	return commits
 }
@@ -794,7 +800,7 @@ func writeReport(rows []row, configs []benchConfig) string {
 				if bv == v {
 					same++
 				} else if bv == ruleeval.Violated || v == ruleeval.Violated {
-					disagreements = append(disagreements, fmt.Sprintf("| %s | %s | %s | %s | %s |", c, r.Case, id, bv, v))
+					disagreements = append(disagreements, fmt.Sprintf("| %s | %s | %s | %s | %s |", c, cmp.Or(r.Title, r.Case), id, bv, v))
 				}
 			}
 		}
