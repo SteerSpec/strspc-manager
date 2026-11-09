@@ -38,9 +38,9 @@ func verbatimRules(id string) *entity.File {
 	return ef
 }
 
-// The bodies of a Standard Realm are the standard's wording: they MAY hold no
-// key word (STDRLM-020) and keep their examples (STDRLM-021), but are still
-// divided at sentence ends (STDRLM-019).
+// The bodies of a Standard Realm are the standard's wording: Draft rules in
+// strspc-rules#186 let them hold no key word and keep their examples, but they
+// are still divided at sentence ends.
 var (
 	wantStandard = map[string]int{"RL022": 1}
 	wantCode     = map[string]int{"RL021": 2, "RL022": 1, "RL026": 2}

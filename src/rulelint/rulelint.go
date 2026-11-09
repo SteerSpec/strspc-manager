@@ -106,8 +106,8 @@ func WithStrict(b bool) Option {
 
 // WithRealmKind sets the kind of the Realm whose files are linted, as its
 // manifest declares it (RLMMNFST-008). The body checks that don't apply in a
-// Standard Realm, RL021 and RL026 (STDRLM-020, STDRLM-021), are skipped when
-// it is entity.KindStandard.
+// Standard Realm, RL021 and RL026, are skipped when it is entity.KindStandard:
+// Draft rules in strspc-rules#186 exempt the standard's wording from both.
 func WithRealmKind(kind string) Option {
 	return func(c *Config) { c.RealmKind = kind }
 }
@@ -1195,8 +1195,8 @@ func isLiveState(state string) bool {
 // KWRD, RUL-004 and NTE-020. They cover Draft rules only: any other body is
 // immutable (RUL-007), so a finding there could only be fixed by superseding
 // the rule. In a Standard Realm (standard), a body is the standard's own
-// wording: it MAY hold no key word (STDRLM-020) and its examples MAY stay in
-// it (STDRLM-021), so RL021 and RL026 are skipped there.
+// wording, which Draft rules in strspc-rules#186 let hold no key word and keep
+// its examples, so RL021 and RL026 are skipped there.
 func checkDraftBodies(ef *entity.File, standard bool, res *result.Result, path string) {
 	drafts := make(map[string]bool, len(ef.Rules))
 	for _, r := range ef.Rules {

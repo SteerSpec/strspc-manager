@@ -240,9 +240,9 @@ func TestManifest_OwnRealmUnaffected(t *testing.T) {
 }
 
 // realm-lint lints each Realm's entity files as the kind its manifest
-// declares: in a Standard Realm a Draft body MAY hold no key word (STDRLM-020)
-// and keep its examples (STDRLM-021), so RL021 and RL026 don't fire there,
-// while RL022 still does (STDRLM-019).
+// declares: in a Standard Realm a Draft body may hold no key word and keep its
+// examples (Draft rules in strspc-rules#186), so RL021 and RL026 don't fire
+// there, while RL022 still does.
 func TestStandardRealmBodies(t *testing.T) {
 	codeRealm := &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: entity.RealmMeta{ID: "dev.test.code", Title: "C", Version: "1.0.0"}}
 	for name, tt := range map[string]struct {
