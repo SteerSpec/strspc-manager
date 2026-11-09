@@ -535,7 +535,7 @@
     "module": "rule-lint",
     "severity": "Warning",
     "title": "Rule body has no key word",
-    "summary": "A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored.",
+    "summary": "A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. Not checked in a Standard Realm, whose bodies are the standard's wording and may hold no key word (a Draft rule in strspc-rules#186).",
     "fix": "Reword the rule around a key word such as MUST or SHOULD, or `DEFINES` for a definition, with `strspc rule update`.",
     "retired": false
   },
@@ -544,7 +544,7 @@
     "module": "rule-lint",
     "severity": "Warning",
     "title": "Rule body has several sentences",
-    "summary": "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored.",
+    "summary": "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored, and so is the full stop of an abbreviation such as `e.g.`, `e. g.`, `eg.`, `etc.` or `vs.`.",
     "fix": "Cut the body to one sentence with `strspc rule update`, and put any further requirement in its own rule.",
     "retired": false
   },
@@ -580,7 +580,7 @@
     "module": "rule-lint",
     "severity": "Warning",
     "title": "Inline example",
-    "summary": "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+    "summary": "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. Not checked in a Standard Realm, whose bodies keep the standard's examples (a Draft rule in strspc-rules#186).",
     "fix": "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
     "retired": false
   },

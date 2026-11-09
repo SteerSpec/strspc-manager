@@ -180,7 +180,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Warning",
 		Title:    "Rule body has no key word",
-		Summary:  "A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored.",
+		Summary:  "A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. Not checked in a Standard Realm, whose bodies are the standard's wording and may hold no key word (a Draft rule in strspc-rules#186).",
 		Fix:      "Reword the rule around a key word such as MUST or SHOULD, or `DEFINES` for a definition, with `strspc rule update`.",
 	},
 	{
@@ -188,7 +188,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Warning",
 		Title:    "Rule body has several sentences",
-		Summary:  "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored.",
+		Summary:  "A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored, and so is the full stop of an abbreviation such as `e.g.`, `e. g.`, `eg.`, `etc.` or `vs.`.",
 		Fix:      "Cut the body to one sentence with `strspc rule update`, and put any further requirement in its own rule.",
 	},
 	{
@@ -220,7 +220,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Warning",
 		Title:    "Inline example",
-		Summary:  "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored.",
+		Summary:  "A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. Not checked in a Standard Realm, whose bodies keep the standard's examples (a Draft rule in strspc-rules#186).",
 		Fix:      "Move the example to a note of type `example`, or wrap the text in backticks if it is not an example.",
 	},
 	{
