@@ -238,3 +238,44 @@ func TestManifest_OwnRealmUnaffected(t *testing.T) {
 		t.Errorf("rules/ got %v, want none", got)
 	}
 }
+
+// realm-lint lints each Realm's entity files as the kind its manifest
+// declares: in a Standard Realm a Draft body MAY hold no key word (STDRLM-020)
+// and keep its examples (STDRLM-021), so RL021 and RL026 don't fire there,
+// while RL022 still does (STDRLM-019).
+func TestStandardRealmBodies(t *testing.T) {
+	codeRealm := &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: entity.RealmMeta{ID: "dev.test.code", Title: "C", Version: "1.0.0"}}
+	for name, tt := range map[string]struct {
+		rf   *entity.RealmFile
+		want map[string]int
+	}{
+		"standard": {stdManifest(), map[string]int{"RL022": 1}},
+		"code":     {codeRealm, map[string]int{"RL021": 1, "RL022": 1, "RL026": 2}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeManifest(t, dir, tt.rf, false)
+			ef := &entity.File{
+				Schema:  "./_schema/entity.v1.schema.json",
+				Entity:  entity.Entity{ID: "STD", Title: "S"},
+				RuleSet: entity.RuleSet{Version: "0.1.0", Timestamp: "2026-01-01T00:00:00Z"},
+				Rules: []entity.Rule{
+					{ID: "STD-001", State: entity.StateDraft, Body: "Verify that tokens, such as session tokens, are random.", AddedBy: "github:a", AddedAt: "2026-01-01"},
+					{ID: "STD-002", State: entity.StateDraft, Body: "It MUST hold. It MUST stay.", AddedBy: "github:a", AddedAt: "2026-01-01"},
+				},
+				Notes: []entity.Note{{ID: "STD-001/01", RuleRef: "STD-001", Type: "rationale", Content: "Tokens differ, e.g. by length.", AddedBy: "github:a", AddedAt: "2026-01-01"}},
+			}
+			data, err := json.Marshal(ef)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "STD.json"), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			res := New(WithRuleLinter(rulelint.New())).Lint(t.Context(), dir)
+			if got := countCodes(res, "RL021", "RL022", "RL026"); !maps.Equal(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -536,12 +536,12 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL018 | Error | An `inherits` chain followed through the scanned files (or, for a single file, through its own entities) is cyclic or longer than three hops. |
 | RL019 | Warning | The body of a `D`, `P` or `I` rule references an unqualified rule ID that was not found. Text in backticks is ignored. |
 | RL020 | Warning | The body of a `D`, `P` or `I` rule, or an `extends`/`related` note on one, references an unqualified rule ID in state `A`. Text in backticks is ignored in bodies. |
-| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. |
-| RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored. |
+| RL021 | Warning | A `D` rule's body has no key word from KWRD-002 to KWRD-006, or `DEFINES`. Text in backticks and rule IDs are ignored. Not checked in a Standard Realm, whose bodies are the standard's wording (STDRLM-020). |
+| RL022 | Warning | A `D` rule's body has more than one sentence (RUL-004). Text in backticks is ignored, and so is the full stop of an abbreviation such as `e.g.`, `e. g.`, `eg.`, `etc.` or `vs.`. |
 | RL023 | Error | An entity declares a `visibility` other than `private`, `protected` or `public` (ENT-011). |
 | RL024 | Error | A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it (ENT-018). |
 | RL025 | Error | A rule's `supersedes` names a rule of another entity (RUL-012). |
-| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. |
+| RL026 | Warning | A `D` rule's body, or a note on one of a type other than `example` and `counter_example`, holds `such as`, `e.g.`, `for example` or `cf.` (NTE-020). Text in backticks is ignored. Not checked in a Standard Realm, whose bodies keep the standard's examples (STDRLM-021). |
 | RL027 | Info | A `D` rule's body has more than one key word, so it may hold two statements (RUL-004). Text in backticks and rule IDs are ignored. |
 | RL028 | Error | An entry of `entity.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019). |
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
