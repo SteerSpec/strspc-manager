@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.49.0](https://github.com/SteerSpec/strspc-manager/compare/v1.48.0...v1.49.0) (2026-11-09)
+
+
+### Features
+
+* **entityops:** set clause and profiles on new rules, and keep them on supersede ([#349](https://github.com/SteerSpec/strspc-manager/issues/349)) ([3b78cbe](https://github.com/SteerSpec/strspc-manager/commit/3b78cbe7ba0c189d95875f80764c02dee3b4982b))
+
 ## [1.48.0](https://github.com/SteerSpec/strspc-manager/compare/v1.47.1...v1.48.0) (2026-11-08)
 
 
