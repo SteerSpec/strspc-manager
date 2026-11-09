@@ -179,7 +179,7 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	subRealmEUIDs := l.checkSubRealms(ctx, dir, rf, realmPath, coreDir, fetched, res)
 
 	// RM005 + RM006: Entity file scanning (excludes sub-realm dirs).
-	parentEUIDs := l.scanEntityFiles(ctx, dir, rf.SubRealms, res)
+	parentEUIDs := l.scanEntityFiles(ctx, dir, rf.Realm.Kind, rf.SubRealms, res)
 
 	// RM012: EUID collision between parent and sub-realms.
 	checkEUIDCollisions(parentEUIDs, subRealmEUIDs, res)
@@ -550,8 +550,9 @@ func readJSON(path string) (any, error) {
 // scanEntityFiles walks the Realm directory tree for .json entity files,
 // checking EUID uniqueness (RM006) and optionally delegating to rulelint (RM005).
 // The _schema/ subtree, realm.json files, and sub-realm directories are skipped.
-// Returns the EUID map (euid → file path) collected from the scanned files.
-func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDirs []string, res *result.Result) map[string]string {
+// kind is the kind the Realm's manifest declares, for the rule checks that
+// depend on it. Returns the EUID map (euid → file path) collected from the scanned files.
+func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir, kind string, excludeDirs []string, res *result.Result) map[string]string {
 	if l.cfg.RuleLinter == nil && !l.cfg.EntityLintingDelegated {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -633,7 +634,7 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir string, excludeDi
 		return nil
 	}, walkOpts...)
 	if l.cfg.RuleLinter != nil {
-		for i, fileRes := range l.cfg.RuleLinter.LintFiles(ctx, files) {
+		for i, fileRes := range l.cfg.RuleLinter.LintRealmFiles(ctx, kind, files) {
 			copyDiagnostics(fileRes, filePaths[i], res)
 		}
 	}
@@ -845,7 +846,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 		// Scan sub-realm entity files for EUID collection.
 		// If the sub-realm violates RM011 (nested sub_realms), exclude those
 		// dirs so their entities don't leak into this sub-realm's EUID set.
-		srEUIDs := sub.scanEntityFiles(ctx, srDir, srRF.SubRealms, res)
+		srEUIDs := sub.scanEntityFiles(ctx, srDir, srRF.Realm.Kind, srRF.SubRealms, res)
 		subRealmEUIDs[srName] = srEUIDs
 	}
 

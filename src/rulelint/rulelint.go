@@ -44,8 +44,9 @@ var (
 	// both forms count.
 	keywordRe = regexp.MustCompile(`\b(?:MUST|REQUIRED|SHALL|HAS|IS|DEFINES?|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b`)
 	// abbreviationRe finds abbreviations whose full stop ends no sentence:
-	// initialisms such as e.g. or U.S., plus etc. and vs.
-	abbreviationRe = regexp.MustCompile(`\b(?:(?:[A-Za-z]\.){2,}|(?:etc|vs)\.)`)
+	// initialisms such as e.g. or U.S., plus etc. and vs., and e.g. spelt
+	// "e. g." or "eg.".
+	abbreviationRe = regexp.MustCompile(`\b(?:(?:[A-Za-z]\.){2,}|(?:etc|vs)\.|(?i:e\.\s+g|eg)\.)`)
 	// sentenceBreakRe finds the end of one sentence, with any closing quote or
 	// bracket, and the start of the next.
 	sentenceBreakRe = regexp.MustCompile(`[.!?]["')\]]*\s+\S`)
@@ -83,6 +84,11 @@ type Config struct {
 	// SubRealmLinter is optional: when set, LintRealm lints the entity files of
 	// a sub-realm that pins its own core Realm with the linter it returns.
 	SubRealmLinter SubRealmLinter
+	// RealmKind is the kind declared by the manifest of the Realm whose files
+	// LintFile, LintBytes and LintFiles check: entity.KindStandard, or empty
+	// for a code Realm. LintDir and LintRealm take it from the manifests they
+	// read, and use it only for a directory without one.
+	RealmKind string
 }
 
 // SubRealmLinter returns the linter for the entity files of the sub-realm in
@@ -96,6 +102,14 @@ type Option func(*Config)
 // WithStrict causes warnings to be reported as errors.
 func WithStrict(b bool) Option {
 	return func(c *Config) { c.Strict = b }
+}
+
+// WithRealmKind sets the kind of the Realm whose files are linted, as its
+// manifest declares it (RLMMNFST-008). The body checks that don't apply in a
+// Standard Realm, RL021 and RL026, are skipped when it is entity.KindStandard:
+// Draft rules in strspc-rules#186 exempt the standard's wording from both.
+func WithRealmKind(kind string) Option {
+	return func(c *Config) { c.RealmKind = kind }
 }
 
 // WithSchemaVersion sets the schema version for validation.
@@ -149,7 +163,7 @@ func (l *Linter) LintFile(ef *entity.File) *result.Result {
 		})
 		return res
 	}
-	l.lintEntity(ef, entity.VisibilityPublic, res, "")
+	l.lintEntity(ef, entity.VisibilityPublic, l.standardRealm(), res, "")
 	checkFileInheritance(ef, res)
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -164,7 +178,7 @@ func (l *Linter) LintBytes(ctx context.Context, data []byte) *result.Result {
 	if f == nil {
 		return res
 	}
-	res = l.lintParsed(ctx, f, data)
+	res = l.lintParsed(ctx, f, data, l.standardRealm())
 	checkFileInheritance(f, res)
 	return res
 }
@@ -184,6 +198,13 @@ type FileInput struct {
 // file is not reported as a live override. The other cross-file reference
 // checks (RL012, RL014, RL016, RL019, RL020) stay with LintDir and LintRealm.
 func (l *Linter) LintFiles(ctx context.Context, files []FileInput) []*result.Result {
+	return l.LintRealmFiles(ctx, l.cfg.RealmKind, files)
+}
+
+// LintRealmFiles is LintFiles for the files of a Realm whose manifest declares
+// kind, which it uses in place of the configured RealmKind.
+func (l *Linter) LintRealmFiles(ctx context.Context, kind string, files []FileInput) []*result.Result {
+	standard := kind == entity.KindStandard
 	scope := make([]dirEntry, len(files))
 	for i, f := range files {
 		scope[i] = dirEntry{file: f.File}
@@ -191,7 +212,7 @@ func (l *Linter) LintFiles(ctx context.Context, files []FileInput) []*result.Res
 	superseded := collectSuperseded(scope)
 	out := make([]*result.Result, len(files))
 	for i, f := range files {
-		res := l.lintParsed(ctx, f.File, f.Data)
+		res := l.lintParsed(ctx, f.File, f.Data, standard)
 		checkFileInheritanceWith(f.File, superseded, res)
 		out[i] = res
 	}
@@ -220,11 +241,27 @@ func parseDiagnostic(err error) result.Diagnostic {
 	}
 }
 
+// standardRealm reports whether the configured RealmKind is a Standard Realm.
+func (l *Linter) standardRealm() bool {
+	return l.cfg.RealmKind == entity.KindStandard
+}
+
+// realmKindOf returns the kind declared by the manifest in dir, or the
+// configured RealmKind when dir has no manifest that can be loaded.
+func (l *Linter) realmKindOf(dir string) string {
+	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
+	if err != nil {
+		return l.cfg.RealmKind
+	}
+	return rf.Realm.Kind
+}
+
 // lintParsed runs every per-file check on an already-parsed entity file.
 // data must be the raw bytes f was parsed from: RL002 (schema) and RL011
 // (hash) need them. Callers that already hold a parsed file, such as the
-// directory walker, use this to avoid parsing twice.
-func (l *Linter) lintParsed(ctx context.Context, f *entity.File, data []byte) *result.Result {
+// directory walker, use this to avoid parsing twice. standard reports whether
+// the file belongs to a Standard Realm.
+func (l *Linter) lintParsed(ctx context.Context, f *entity.File, data []byte, standard bool) *result.Result {
 	res := &result.Result{}
 
 	// RL002: JSON Schema validation (requires raw bytes).
@@ -234,7 +271,7 @@ func (l *Linter) lintParsed(ctx context.Context, f *entity.File, data []byte) *r
 	l.checkHash(f, data, res)
 
 	// Remaining checks on parsed structure.
-	l.lintEntity(f, entity.VisibilityPublic, res, "")
+	l.lintEntity(f, entity.VisibilityPublic, standard, res, "")
 
 	if l.cfg.Strict {
 		promoteWarnings(res)
@@ -250,9 +287,10 @@ type dirEntry struct {
 
 // LintDir validates all entity JSON files in a directory and runs cross-file
 // reference checks (RL012). Only immediate children are scanned (shallow).
+// The Realm kind is the one dir/realm.json declares, when there is one.
 // ctx bounds the JSON Schema fetch (RL002).
 func (l *Linter) LintDir(ctx context.Context, dir string) *result.Result {
-	return l.lintDir(ctx, dir, entity.WithRecursive(false))
+	return l.lintDir(ctx, dir, l.realmKindOf(dir), entity.WithRecursive(false))
 }
 
 // LintRealm validates all entity JSON files in a realm directory tree recursively
@@ -268,16 +306,16 @@ func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
 	if err != nil {
 		// No realm.json: fall back to recursive walk.
-		return l.lintDir(ctx, dir)
+		return l.lintDir(ctx, dir, l.cfg.RealmKind)
 	}
 
 	var res *result.Result
 	if len(rf.SubRealms) == 0 {
-		res = l.lintDir(ctx, dir)
+		res = l.lintDir(ctx, dir, rf.Realm.Kind)
 	} else {
 		// Sub-realm-aware linting: lint parent excluding sub-realm dirs,
 		// then lint each sub-realm dir, and validate cross-refs globally.
-		res = l.lintRealmWithSubs(ctx, dir, rf.SubRealms)
+		res = l.lintRealmWithSubs(ctx, dir, rf)
 	}
 	CheckRealmStandards(dir, rf, res)
 	CheckStandardRealm(dir, rf, res)
@@ -286,7 +324,10 @@ func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 
 // lintRealmWithSubs lints the parent realm and each sub-realm separately,
 // then validates RL012/RL014 cross-references across the combined rule ID set.
-func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []string) *result.Result {
+// Each Realm is linted as the kind its own manifest declares: a sub-realm
+// without one is a code Realm (RLMMNFST-009).
+func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, rf *entity.RealmFile) *result.Result {
+	subRealms := rf.SubRealms
 	res := &result.Result{}
 
 	// Shared state for global RL012 cross-ref validation.
@@ -294,13 +335,13 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []
 	var allParsed []dirEntry
 
 	// Lint parent dir, excluding sub-realm directories.
-	l.lintDirCollect(ctx, dir, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
+	l.lintDirCollect(ctx, dir, rf.Realm.Kind == entity.KindStandard, res, allRuleIDs, &allParsed, entity.WithExcludeDirs(subRealms))
 
 	// Lint each sub-realm directory, with its own linter when it pins its own
 	// core Realm.
 	for _, sub := range subRealms {
 		subDir := filepath.Join(dir, sub)
-		l.forSubRealm(subDir).lintDirCollect(ctx, subDir, res, allRuleIDs, &allParsed)
+		l.forSubRealm(subDir).lintDirCollect(ctx, subDir, subRealmKind(subDir) == entity.KindStandard, res, allRuleIDs, &allParsed)
 	}
 
 	// Cross-file supersedes/relation/inheritance/body references (RL012,
@@ -313,6 +354,17 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, subRealms []
 	}
 
 	return res
+}
+
+// subRealmKind returns the kind declared by the manifest of the sub-realm in
+// dir, or empty, a code Realm, when it can't be loaded: realm-lint reports
+// that (RM009).
+func subRealmKind(dir string) string {
+	rf, err := entity.LoadRealm(filepath.Join(dir, "realm.json"))
+	if err != nil {
+		return ""
+	}
+	return rf.Realm.Kind
 }
 
 // forSubRealm returns the linter for the entity files of the sub-realm in dir:
@@ -334,7 +386,8 @@ func (l *Linter) forSubRealm(dir string) *Linter {
 
 // lintDirCollect lints entity files in dir and appends results to shared
 // collections (allRuleIDs, allParsed) for later cross-ref validation.
-func (l *Linter) lintDirCollect(ctx context.Context, dir string, res *result.Result, allRuleIDs map[string]string, allParsed *[]dirEntry, walkOpts ...entity.WalkOption) {
+// standard reports whether the files belong to a Standard Realm.
+func (l *Linter) lintDirCollect(ctx context.Context, dir string, standard bool, res *result.Result, allRuleIDs map[string]string, allParsed *[]dirEntry, walkOpts ...entity.WalkOption) {
 	walkErr := entity.WalkEntityFiles(dir, func(fpath string, data []byte, ef *entity.File, parseErr error) error {
 		if parseErr != nil {
 			if data == nil {
@@ -352,7 +405,7 @@ func (l *Linter) lintDirCollect(ctx context.Context, dir string, res *result.Res
 		}
 
 		// Reuse the walker's parsed file instead of parsing a second time.
-		for _, d := range l.lintParsed(ctx, ef, data).Diagnostics {
+		for _, d := range l.lintParsed(ctx, ef, data, standard).Diagnostics {
 			if d.Path == "" {
 				d.Path = fpath
 			} else {
@@ -374,13 +427,14 @@ func (l *Linter) lintDirCollect(ctx context.Context, dir string, res *result.Res
 }
 
 // lintDir is the internal implementation used by LintDir and LintRealm; recursion
-// behavior is controlled via the provided entity.WalkOption values.
-func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.WalkOption) *result.Result {
+// behavior is controlled via the provided entity.WalkOption values. kind is the
+// kind of the Realm the files belong to.
+func (l *Linter) lintDir(ctx context.Context, dir, kind string, walkOpts ...entity.WalkOption) *result.Result {
 	res := &result.Result{}
 	allRuleIDs := make(map[string]string)
 	var parsed []dirEntry
 
-	l.lintDirCollect(ctx, dir, res, allRuleIDs, &parsed, walkOpts...)
+	l.lintDirCollect(ctx, dir, kind == entity.KindStandard, res, allRuleIDs, &parsed, walkOpts...)
 
 	// Second pass: cross-file supersedes/relation/inheritance/body references
 	// (RL012, RL014, RL016, RL018–RL020).
@@ -394,12 +448,11 @@ func (l *Linter) lintDir(ctx context.Context, dir string, walkOpts ...entity.Wal
 	return res
 }
 
-// lintEntity runs checks RL003–RL010, RL013, RL015, RL021, RL022 on a single
-// entity and recurses into sub-entities. The path prefix is used for sub-entity
-// context.
 // lintEntity runs the per-entity checks on ef and its sub-entities. container
-// is the effective visibility of the entity containing ef.
-func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Result, pathPrefix string) {
+// is the effective visibility of the entity containing ef, and standard reports
+// whether ef belongs to a Standard Realm. The path prefix is used for
+// sub-entity context.
+func (l *Linter) lintEntity(ef *entity.File, container string, standard bool, res *result.Result, pathPrefix string) {
 	path := pathPrefix
 	if path != "" {
 		path += " > "
@@ -415,7 +468,7 @@ func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Resul
 	checkNoteSequence(ef, res, path)
 	checkNoteTypes(ef, res, path)
 	checkSemver(ef, res, path)
-	checkDraftBodies(ef, res, path)
+	checkDraftBodies(ef, standard, res, path)
 	checkStandards(ef, res, path)
 	checkStructured(ef, res, path)
 	checkAddedBy(ef, res, path)
@@ -427,7 +480,7 @@ func (l *Linter) lintEntity(ef *entity.File, container string, res *result.Resul
 		sub := &ef.SubEntities[i]
 		subPath := path + " > " + sub.Entity.ID
 		checkSubEntityParent(sub, ef.Entity.ID, res, subPath)
-		l.lintEntity(sub, effective, res, path)
+		l.lintEntity(sub, effective, standard, res, path)
 	}
 }
 
@@ -1141,8 +1194,10 @@ func isLiveState(state string) bool {
 // checkDraftBodies implements RL021, RL022, RL026 and RL027, which enforce
 // KWRD, RUL-004 and NTE-020. They cover Draft rules only: any other body is
 // immutable (RUL-007), so a finding there could only be fixed by superseding
-// the rule.
-func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
+// the rule. In a Standard Realm (standard), a body is the standard's own
+// wording, which Draft rules in strspc-rules#186 let hold no key word and keep
+// its examples, so RL021 and RL026 are skipped there.
+func checkDraftBodies(ef *entity.File, standard bool, res *result.Result, path string) {
 	drafts := make(map[string]bool, len(ef.Rules))
 	for _, r := range ef.Rules {
 		if r.State != entity.StateDraft {
@@ -1152,7 +1207,7 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 		body := inlineCodeRe.ReplaceAllString(r.Body, " ")
 		// A rule ID's EUID can spell a key word, as in HAS-001.
 		keywords := len(keywordRe.FindAllString(crossRefRe.ReplaceAllString(body, " "), 2))
-		if keywords == 0 {
+		if keywords == 0 && !standard {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL021",
@@ -1170,7 +1225,7 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 				Path:     path,
 			})
 		}
-		if inlineExampleRe.MatchString(body) {
+		if !standard && inlineExampleRe.MatchString(body) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RL026",
@@ -1189,7 +1244,9 @@ func checkDraftBodies(ef *entity.File, res *result.Result, path string) {
 			})
 		}
 	}
-	checkDraftNotes(ef, drafts, res, path)
+	if !standard {
+		checkDraftNotes(ef, drafts, res, path)
+	}
 }
 
 // checkDraftNotes runs RL026 on the notes of the Draft rules in drafts. Only
