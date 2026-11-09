@@ -209,6 +209,8 @@ func TestAddRuleWith_LintsClean(t *testing.T) {
 	}
 }
 
+// roundTripper is an http.RoundTripper made of one function.
 type roundTripper func(*http.Request) (*http.Response, error)
 
+// RoundTrip calls f.
 func (f roundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
