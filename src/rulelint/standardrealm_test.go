@@ -247,20 +247,6 @@ func TestStandardRealm_SubRealmOutsideIgnored(t *testing.T) {
 	}
 }
 
-// Two profile sets are told apart whatever characters their names hold, and
-// the same set matches in any order.
-func TestProfileKey(t *testing.T) {
-	if profileKey([]string{"a\x00b"}) == profileKey([]string{"a", "b"}) {
-		t.Error(`["a\x00b"] and ["a", "b"] share a key`)
-	}
-	if profileKey([]string{"a,b"}) == profileKey([]string{"a", "b"}) {
-		t.Error(`["a,b"] and ["a", "b"] share a key`)
-	}
-	if profileKey([]string{"L2", "L1"}) != profileKey([]string{"L1", "L2"}) {
-		t.Error("the order of the names changed the key")
-	}
-}
-
 // Without a manifest there is no Realm, so neither kind can be judged.
 func TestStandardRealm_NoManifest(t *testing.T) {
 	dir := t.TempDir()

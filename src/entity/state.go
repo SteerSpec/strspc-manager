@@ -1,6 +1,11 @@
 package entity
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
+)
 
 // Rule lifecycle state constants.
 const (
@@ -87,4 +92,17 @@ func ValidateTransition(from, to string) error {
 		}
 	}
 	return fmt.Errorf("invalid transition from %q to %q", from, to)
+}
+
+// ProfileSetKey returns a key that is equal for two `profiles` lists when they
+// name the same profiles in any order. Profiles are unique (RUL-016), so the
+// rules of one clause compare them as sets (STDRLM-009).
+func ProfileSetKey(profiles []string) string {
+	sorted := slices.Clone(profiles)
+	slices.Sort(sorted)
+	quoted := make([]string, len(sorted))
+	for i, p := range sorted {
+		quoted[i] = strconv.Quote(p)
+	}
+	return strings.Join(quoted, ",")
 }

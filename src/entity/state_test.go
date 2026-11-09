@@ -70,3 +70,17 @@ func TestValidateTransition(t *testing.T) {
 		}
 	}
 }
+
+// Two profile sets are told apart whatever characters their names hold, and
+// the same set matches in any order.
+func TestProfileSetKey(t *testing.T) {
+	if ProfileSetKey([]string{"a\x00b"}) == ProfileSetKey([]string{"a", "b"}) {
+		t.Error(`["a\x00b"] and ["a", "b"] share a key`)
+	}
+	if ProfileSetKey([]string{"a,b"}) == ProfileSetKey([]string{"a", "b"}) {
+		t.Error(`["a,b"] and ["a", "b"] share a key`)
+	}
+	if ProfileSetKey([]string{"L2", "L1"}) != ProfileSetKey([]string{"L1", "L2"}) {
+		t.Error("the order of the names changed the key")
+	}
+}
