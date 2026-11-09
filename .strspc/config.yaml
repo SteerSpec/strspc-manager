@@ -20,7 +20,13 @@ rules:
 # AI evaluator settings
 evaluator:
   provider: claude          # requires ANTHROPIC_API_KEY; use "null" to skip AI evaluation
-  # model: claude-sonnet-5-5   # model override
+  # Haiku is the provider default from this release on. CI runs the released
+  # CLI, so the model stays explicit until a CLI release carries the default.
+  # Benchmarked on 2026-11-09 (src/ruleeval/claude/bench_test.go): as accurate
+  # as claude-sonnet-5-5 on the labelled cases at medium effort, about 18x
+  # cheaper per run; high effort added false violations and xhigh hit the
+  # output cap.
+  model: claude-haiku-5-5
   # effort: medium             # low | medium | high
 
 # Local cache settings
