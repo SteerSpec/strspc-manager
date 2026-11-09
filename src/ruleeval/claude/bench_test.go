@@ -41,9 +41,12 @@ package claude_test
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -271,6 +274,10 @@ type row struct {
 	CostUSD float64                     `json:"cost_usd"`
 	Seconds float64                     `json:"latency_s"`
 	Error   string                      `json:"error,omitempty"`
+	// Fingerprint identifies what was sent: the diff and the rules. A rerun
+	// reuses a row only when it still matches, so a changed case or commit
+	// is evaluated again.
+	Fingerprint string `json:"fingerprint"`
 }
 
 func (r row) key() string { return r.Set + "|" + r.Case + "|" + r.Config + "|" + strconv.Itoa(r.Rep) }
@@ -285,6 +292,25 @@ type job struct {
 	label   ruleeval.Verdict
 	diff    string
 	groups  [][]ruleeval.RuleInput
+}
+
+// fingerprint hashes the diff and the rules j sends.
+func (j job) fingerprint() string {
+	h := sha256.New()
+	h.Write([]byte(j.diff))
+	for _, g := range j.groups {
+		for _, in := range g {
+			fmt.Fprintf(h, "\x00%s\x00%d\x00%s\x00%s", in.Rule.ID, in.Rule.Revision, in.Rule.State, in.Rule.Body)
+			for _, n := range in.Notes {
+				fmt.Fprintf(h, "\x00%s\x00%s", n.ID, n.Content)
+			}
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+func (j job) key() string {
+	return row{Set: j.set, Case: j.id, Config: j.cfg.String(), Rep: j.rep}.key()
 }
 
 func env(name, def string) string {
@@ -322,6 +348,9 @@ func TestBench(t *testing.T) {
 	}
 	reps, prs, workers := envInt(t, "STRSPC_BENCH_REPS", 3), envInt(t, "STRSPC_BENCH_PRS", 8), max(1, envInt(t, "STRSPC_BENCH_WORKERS", 4))
 	sets := env("STRSPC_BENCH_SETS", "both")
+	if sets != "both" && sets != "labelled" && sets != "prs" {
+		t.Fatalf("STRSPC_BENCH_SETS: want labelled, prs or both, got %q", sets)
+	}
 	out := os.Getenv("STRSPC_BENCH_OUT")
 	if out == "" {
 		out = filepath.Join(os.TempDir(), "strspc-bench-"+time.Now().Format("20060102-150405"))
@@ -393,17 +422,33 @@ func TestBench(t *testing.T) {
 	}
 	defer f.Close()
 
+	// Decide what to run before the workers start, so that only they touch
+	// done from here on.
+	var todo []job
+	for _, j := range jobs {
+		if r, ok := done[j.key()]; !ok || r.Fingerprint != j.fingerprint() {
+			todo = append(todo, j)
+		}
+	}
+	t.Logf("%d calls to make, %d reused from %s", len(todo), len(jobs)-len(todo), resultsPath)
+
 	var mu sync.Mutex
+	var writeErr error
 	queue := make(chan job)
 	var wg sync.WaitGroup
 	for range workers {
 		wg.Go(func() {
 			for j := range queue {
 				r := run(ctx, j)
+				data, err := json.Marshal(r)
 				mu.Lock()
 				done[r.key()] = r
-				data, _ := json.Marshal(r)
-				_, _ = f.Write(append(data, '\n'))
+				if err == nil {
+					_, err = f.Write(append(data, '\n'))
+				}
+				if err != nil && writeErr == nil {
+					writeErr = fmt.Errorf("recording %s: %w", r.key(), err)
+				}
 				mu.Unlock()
 				if r.Error != "" {
 					t.Logf("%s %s %s rep %d: %s", r.Set, r.Case, r.Config, r.Rep, r.Error)
@@ -411,18 +456,22 @@ func TestBench(t *testing.T) {
 			}
 		})
 	}
-	for _, j := range jobs {
-		if _, ok := done[row{Set: j.set, Case: j.id, Config: j.cfg.String(), Rep: j.rep}.key()]; ok {
-			continue
-		}
+	for _, j := range todo {
 		queue <- j
 	}
 	close(queue)
 	wg.Wait()
+	if writeErr != nil {
+		t.Fatal(writeErr)
+	}
 
+	// Report on this run's jobs only: rows of cases or commits no longer in
+	// the set, or that no longer match, stay in results.jsonl but out of it.
 	var rows []row
-	for _, r := range done {
-		rows = append(rows, r)
+	for _, j := range jobs {
+		if r, ok := done[j.key()]; ok && r.Fingerprint == j.fingerprint() {
+			rows = append(rows, r)
+		}
 	}
 	report := writeReport(rows, configs)
 	if err := os.WriteFile(filepath.Join(out, "report.md"), []byte(report), 0o644); err != nil {
@@ -434,7 +483,8 @@ func TestBench(t *testing.T) {
 // run makes the calls of one job on a provider of its own, so its usage is
 // its own.
 func run(ctx context.Context, j job) row {
-	r := row{Set: j.set, Case: j.id, Config: j.cfg.String(), Model: j.cfg.Model, Effort: j.cfg.Effort, Rep: j.rep, Rule: j.rule, Label: j.label}
+	r := row{Set: j.set, Case: j.id, Config: j.cfg.String(), Model: j.cfg.Model, Effort: j.cfg.Effort, Rep: j.rep, Rule: j.rule, Label: j.label,
+		Fingerprint: j.fingerprint()}
 	p, err := claude.New(claude.Config{Model: j.cfg.Model, Effort: j.cfg.Effort})
 	if err != nil {
 		r.Error = err.Error()
@@ -578,9 +628,11 @@ func readRows(t *testing.T, path string) map[string]row {
 }
 
 // estimate prints the input of every call at 2 bytes a token, the ratio the
-// provider measured for Go code (chunk.go), plus a fixed system prompt. It
-// leaves out detail requests, retries and prompt caching, so it is an upper
-// bound on what a config reads before it answers, not a cost.
+// provider measured for Go code (chunk.go), plus a fixed system prompt, priced
+// at the cache-write rate (1.25x input), the most a prompt token costs. It
+// leaves out output tokens, detail requests and retries, so it is a rough
+// guide, not a bound: output adds to the real cost and cache reads take from
+// it.
 func estimate(t *testing.T, jobs []job, configs []benchConfig) {
 	const systemTokens = 1500
 	perConfig := make(map[string]int)
@@ -599,7 +651,7 @@ func estimate(t *testing.T, jobs []job, configs []benchConfig) {
 	for _, c := range configs {
 		tok := perConfig[c.String()]
 		p := prices[c.Model]
-		t.Logf("%-18s ~%d input tokens, ~$%.2f before caching and output", c, tok, float64(tok)*p.In/1e6)
+		t.Logf("%-18s ~%d input tokens, ~$%.2f at the cache-write rate, output not included", c, tok, float64(tok)*p.In*1.25/1e6)
 	}
 }
 
@@ -729,7 +781,8 @@ func writeReport(rows []row, configs []benchConfig) string {
 			if r.Error != "" {
 				errs++
 			}
-			for id, v := range r.Graded {
+			for _, id := range slices.Sorted(maps.Keys(r.Graded)) {
+				v := r.Graded[id]
 				if v == ruleeval.Violated {
 					violated++
 				}
