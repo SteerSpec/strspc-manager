@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.50.0](https://github.com/SteerSpec/strspc-manager/compare/v1.49.0...v1.50.0) (2026-11-09)
+
+
+### Features
+
+* **ruleeval:** default the claude provider to claude-haiku-5-5 ([#354](https://github.com/SteerSpec/strspc-manager/issues/354)) ([dbd0bee](https://github.com/SteerSpec/strspc-manager/commit/dbd0beeeb0a961465ced91ba77014561a3463c07))
+
 ## [1.49.0](https://github.com/SteerSpec/strspc-manager/compare/v1.48.0...v1.49.0) (2026-11-09)
 
 
