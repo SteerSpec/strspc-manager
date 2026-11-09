@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.51.0](https://github.com/SteerSpec/strspc-manager/compare/v1.50.0...v1.51.0) (2026-11-09)
+
+
+### Features
+
+* **rulelint:** skip RL021 and RL026 in Standard Realms, and read "e. g." and "eg." as abbreviations in RL022 ([#359](https://github.com/SteerSpec/strspc-manager/issues/359)) ([8453fbf](https://github.com/SteerSpec/strspc-manager/commit/8453fbf4bda93f38a891a0867f0dfd854f1401d2))
+
 ## [1.50.0](https://github.com/SteerSpec/strspc-manager/compare/v1.49.0...v1.50.0) (2026-11-09)
 
 
