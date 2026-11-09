@@ -64,6 +64,8 @@ import (
 // benchConfig is one model and effort under comparison.
 type benchConfig struct{ Model, Effort string }
 
+// String names c as model/effort without the "claude-" prefix, as reports
+// and STRSPC_BENCH_CONFIGS write it.
 func (c benchConfig) String() string { return strings.TrimPrefix(c.Model, "claude-") + "/" + c.Effort }
 
 // price is the first-party API price in USD per million tokens, for prompts up
