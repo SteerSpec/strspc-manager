@@ -1293,7 +1293,9 @@ func TestNew_Validation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Model() != claude.DefaultModel || p.PromptVersion() == "" {
+	// The default is a decision backed by a benchmark (bench_test.go), so a
+	// change to it must be deliberate.
+	if p.Model() != "claude-haiku-5-5" || p.Model() != claude.DefaultModel || p.PromptVersion() == "" {
 		t.Errorf("defaults: model=%q promptVersion=%q", p.Model(), p.PromptVersion())
 	}
 	t.Setenv(claude.EnvAPIKey, "from-env")

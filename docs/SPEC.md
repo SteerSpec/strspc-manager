@@ -302,7 +302,7 @@ The optional `evaluator` object (SPCFG-006) declares:
 |-------|------|-------------|
 | `provider` | string | The AI provider (e.g., `claude`, `openai`, `ollama`, `static-only`). Required. Only `claude` is implemented today; `openai` and `ollama` are reserved and currently fail with an explicit not-implemented error. |
 | `endpoint` | string or null | Custom endpoint URL, or `null` for provider default. Optional. |
-| `model` | string | Model identifier passed to the provider (default `claude-sonnet-5-5` for `claude`). Optional. |
+| `model` | string | Model identifier passed to the provider (default `claude-haiku-5-5` for `claude`). Optional. |
 | `effort` | string | Reasoning effort hint: `low`, `medium` (default), `high`, `xhigh` or `max`. Optional. |
 
 #### Cache
@@ -850,7 +850,7 @@ rules:
 evaluator:
   provider: claude          # or static-only (openai, ollama reserved)
   endpoint: null            # defaults per provider
-  model: claude-sonnet-5-5  # provider default when omitted
+  model: claude-haiku-5-5   # provider default when omitted
   effort: medium            # low | medium | high | xhigh | max
 
 cache:

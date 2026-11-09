@@ -49,7 +49,7 @@ import (
 // Defaults applied by New when the corresponding Config field is zero.
 const (
 	// DefaultModel is the Claude model called when Config.Model is empty.
-	DefaultModel = "claude-sonnet-5-5"
+	DefaultModel = "claude-haiku-5-5"
 	// DefaultEffort is the reasoning effort used when Config.Effort is empty.
 	DefaultEffort = "medium"
 	// DefaultMaxTokens caps the response size when Config.MaxTokens is zero.
