@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -237,20 +236,20 @@ func checkClauseProfiles(live []standardRule, res *result.Result) {
 		rules := byClause[c]
 		count := make(map[string]int)
 		for _, sr := range rules {
-			count[profileKey(sr.rule.Profiles)]++
+			count[entity.ProfileSetKey(sr.rule.Profiles)]++
 		}
 		if len(count) < 2 {
 			continue
 		}
 		var want standardRule
 		for _, sr := range rules {
-			if k := profileKey(sr.rule.Profiles); want.rule == nil || count[k] > count[profileKey(want.rule.Profiles)] {
+			if k := entity.ProfileSetKey(sr.rule.Profiles); want.rule == nil || count[k] > count[entity.ProfileSetKey(want.rule.Profiles)] {
 				want = sr
 			}
 		}
-		wantKey := profileKey(want.rule.Profiles)
+		wantKey := entity.ProfileSetKey(want.rule.Profiles)
 		for _, sr := range rules {
-			if profileKey(sr.rule.Profiles) == wantKey {
+			if entity.ProfileSetKey(sr.rule.Profiles) == wantKey {
 				continue
 			}
 			res.Add(result.Diagnostic{
@@ -262,17 +261,4 @@ func checkClauseProfiles(live []standardRule, res *result.Result) {
 			})
 		}
 	}
-}
-
-// profileKey returns the profile names as one string, the same for any order.
-// Each name is quoted, so no two different sets share a key, whatever
-// characters the names hold.
-func profileKey(profiles []string) string {
-	sorted := slices.Clone(profiles)
-	slices.Sort(sorted)
-	quoted := make([]string, len(sorted))
-	for i, p := range sorted {
-		quoted[i] = strconv.Quote(p)
-	}
-	return strings.Join(quoted, ",")
 }

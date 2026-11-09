@@ -2,12 +2,16 @@ package entityops
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 )
 
 // SupersedeRule creates a new Draft rule that supersedes an existing rule.
-// The superseded rule must be in state P, I, or R.
+// The superseded rule must be in state P, I, or R. The new rule keeps its
+// clause and profiles: a Standard Realm's transcription fix has the clause of
+// the rule it fixes (STDRLM-012), and the profiles the clause's rules share
+// (STDRLM-009). Outside a Standard Realm a rule has neither (RUL-017).
 func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error) {
 	old, err := findRule(f, ruleID)
 	if err != nil {
@@ -53,6 +57,8 @@ func SupersedeRule(f *entity.File, ruleID, body, addedBy string) (string, error)
 		AddedBy:    addedBy,
 		AddedAt:    nowFunc().Format(dateFormat),
 		Supersedes: &supersededID,
+		Clause:     old.Clause,
+		Profiles:   slices.Clone(old.Profiles),
 	})
 
 	f.RuleSet.Version = v
