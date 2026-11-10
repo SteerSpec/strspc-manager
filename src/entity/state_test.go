@@ -117,6 +117,8 @@ func TestValidateSupersededTermination(t *testing.T) {
 		rules []Rule
 		want  string
 	}{
+		{"rule superseding itself", []Rule{successor(old, StatePublished)},
+			`rule "TST-001" is Published and no Published rule supersedes it (RULST-012)`},
 		{"no successor", []Rule{{ID: old, State: StatePublished}, other},
 			`rule "TST-001" is Published and no Published rule supersedes it (RULST-012)`},
 		{"Draft successor", []Rule{successor("TST-002", StateDraft)},

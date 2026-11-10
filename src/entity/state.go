@@ -23,8 +23,9 @@ const (
 	// StateRetired marks a rule that is no longer in force, typically because
 	// another rule supersedes it.
 	StateRetired = "R"
-	// StateTerminated marks a retired rule that is closed for good; the state
-	// is terminal.
+	// StateTerminated marks a rule that is closed for good: a Retired rule, or
+	// a superseded Published rule that was never in force (RULST-012); the
+	// state is terminal.
 	StateTerminated = "T"
 )
 
@@ -106,14 +107,14 @@ func ValidateTransition(from, to string) error {
 // successor lives (RUL-012), in the state they have after the change, so a
 // successor that enters Published in the same change counts. A Draft successor
 // may still change or be abandoned, and an Abandoned one replaces nothing, so
-// neither counts.
+// neither counts; nor does a rule that names itself.
 //
 // The plain state machine (ValidateTransition) has no P→T; callers that hold
 // the Entity's Rules use this check for that one move.
 func ValidateSupersededTermination(ruleID string, rules iter.Seq[Rule]) error {
 	var pending []string
 	for r := range rules {
-		if r.Supersedes == nil || *r.Supersedes != ruleID {
+		if r.Supersedes == nil || *r.Supersedes != ruleID || r.ID == ruleID {
 			continue
 		}
 		switch r.State {
