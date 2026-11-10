@@ -388,8 +388,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Illegal state transition",
-		Summary:  "A state transition is not allowed by the state machine (§3.2).",
-		Fix:      "Use only D→P, D→A, P→I, I→R and R→T; `A` and `T` are final. `strspc rule promote`, `retire` and `abandon` apply these.",
+		Summary:  "A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012).",
+		Fix:      "Use only D→P, D→A, P→I, I→R and R→T, plus P→T for a Published rule that a Published or later rule supersedes; `A` and `T` are final. `strspc rule promote`, `retire`, `terminate` and `abandon` apply these.",
 	},
 	{
 		Code:     "RD004",
@@ -412,8 +412,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Warning",
 		Title:    "Superseded rule not retired",
-		Summary:  "A superseding rule reached `I` but the superseded rule is missing or not in state `R`.",
-		Fix:      "Retire the superseded rule with `strspc rule retire`, or restore it if it is missing.",
+		Summary:  "A superseding rule reached `I` but the superseded rule is missing or in neither state `R` nor `T` (RULST-012 lets a superseded Published rule go to `T`).",
+		Fix:      "Retire the superseded rule with `strspc rule retire` if it is Implemented, terminate it with `strspc rule terminate` if it is Published, or restore it if it is missing.",
 	},
 	{
 		Code:     "RD007",

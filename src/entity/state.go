@@ -2,6 +2,7 @@ package entity
 
 import (
 	"fmt"
+	"iter"
 	"slices"
 	"strconv"
 	"strings"
@@ -43,6 +44,11 @@ var validStates = map[string]bool{
 //	P → I (Implemented)
 //	I → R (Retired)
 //	R → T (Terminated, terminal)
+//
+// RULST-012 also lets a superseded P rule go to T, but only once a rule that
+// supersedes it is Published; that move depends on the other rules of the
+// entity, so ValidateSupersededTermination checks it and this table leaves
+// it out.
 var validTransitions = map[string]map[string]bool{
 	StateDraft:       {StatePublished: true, StateAbandoned: true},
 	StatePublished:   {StateImplemented: true},
@@ -92,6 +98,36 @@ func ValidateTransition(from, to string) error {
 		}
 	}
 	return fmt.Errorf("invalid transition from %q to %q", from, to)
+}
+
+// ValidateSupersededTermination checks the condition RULST-012 puts on a
+// Published Rule that changes state to Terminated: a Rule that supersedes it
+// is Published or later. rules are the Rules of its own Entity, where its
+// successor lives (RUL-012), in the state they have after the change, so a
+// successor that enters Published in the same change counts. A Draft successor
+// may still change or be abandoned, and an Abandoned one replaces nothing, so
+// neither counts.
+//
+// The plain state machine (ValidateTransition) has no P→T; callers that hold
+// the Entity's Rules use this check for that one move.
+func ValidateSupersededTermination(ruleID string, rules iter.Seq[Rule]) error {
+	var pending []string
+	for r := range rules {
+		if r.Supersedes == nil || *r.Supersedes != ruleID {
+			continue
+		}
+		switch r.State {
+		case StatePublished, StateImplemented, StateRetired, StateTerminated:
+			return nil
+		}
+		pending = append(pending, fmt.Sprintf("%s is in state %q", r.ID, r.State))
+	}
+	msg := fmt.Sprintf("rule %q is Published and no Published rule supersedes it", ruleID)
+	if len(pending) > 0 {
+		slices.Sort(pending)
+		msg += ": " + strings.Join(pending, ", ")
+	}
+	return fmt.Errorf("%s (RULST-012)", msg)
 }
 
 // ProfileSetKey returns a key that is equal for two `profiles` lists when they
