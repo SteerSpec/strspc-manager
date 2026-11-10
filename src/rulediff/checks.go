@@ -2,6 +2,7 @@ package rulediff
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
 	"sort"
 	"strconv"
@@ -129,9 +130,11 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		})
 	}
 
-	// RD003: state transitions must follow the forward-only state machine.
+	// RD003: state transitions must follow the forward-only state machine. A
+	// Published rule may also go to Terminated once a rule that supersedes it
+	// is Published in head, in this change or an earlier one (RULST-012).
 	if h.State != b.State {
-		if err := entity.ValidateTransition(b.State, h.State); err != nil {
+		if err := validateTransition(b, h, headMap); err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD003",
@@ -142,7 +145,9 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		}
 	}
 
-	// RD006: when a superseding rule *transitions to* I, the superseded rule should be R.
+	// RD006: when a superseding rule *transitions to* I, the superseded rule should be
+	// R, or T if it went there from P without ever being in force (RULST-012). So a
+	// successor can't reach I while the rule it supersedes is still P.
 	// Scoped to the transition (b.State != I && h.State == I) to avoid false positives
 	// in later PRs where the superseder is already I and unrelated changes are made.
 	// Spec §7.2 allows retirement in a linked subsequent PR, so severity is Warning.
@@ -157,16 +162,26 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q not found in file", supersededID),
 				Path:     path,
 			})
-		} else if superseded.State != entity.StateRetired {
+		} else if superseded.State != entity.StateRetired && superseded.State != entity.StateTerminated {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD006",
 				Severity: result.Warning,
-				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q has state %q (expected R; may be a linked follow-up PR)", supersededID, superseded.State),
+				Message:  fmt.Sprintf("superseding rule reached I but superseded rule %q has state %q (expected R, or T for a rule that was Published, RULST-012; may be a linked follow-up PR)", supersededID, superseded.State),
 				Path:     path,
 			})
 		}
 	}
+}
+
+// validateTransition checks the move of rule b to h's state. The state machine
+// covers every move but P→T, which RULST-012 allows only for a rule that a rule
+// in head, of the same entity, supersedes and is Published or later.
+func validateTransition(b, h entity.Rule, headMap map[string]entity.Rule) error {
+	if b.State == entity.StatePublished && h.State == entity.StateTerminated {
+		return entity.ValidateSupersededTermination(h.ID, maps.Values(headMap))
+	}
+	return entity.ValidateTransition(b.State, h.State)
 }
 
 // isDraftReferenceEdit reports whether h is one edit of the Draft rule b's

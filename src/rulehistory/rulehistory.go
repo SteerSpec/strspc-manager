@@ -31,7 +31,8 @@ const (
 	Promoted Kind = "promoted"
 	// Retired marks a move from Implemented to Retired.
 	Retired Kind = "retired"
-	// Terminated marks a move from Retired to Terminated.
+	// Terminated marks a move from Retired to Terminated, or from Published
+	// to Terminated for a superseded rule (RULST-012).
 	Terminated Kind = "terminated"
 	// Abandoned marks a move from Draft to Abandoned.
 	Abandoned Kind = "abandoned"
@@ -287,7 +288,7 @@ func stateKind(from, to string) Kind {
 		return Promoted
 	case entity.StateImplemented + entity.StateRetired:
 		return Retired
-	case entity.StateRetired + entity.StateTerminated:
+	case entity.StateRetired + entity.StateTerminated, entity.StatePublished + entity.StateTerminated:
 		return Terminated
 	case entity.StateDraft + entity.StateAbandoned:
 		return Abandoned

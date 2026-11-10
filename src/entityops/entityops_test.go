@@ -323,6 +323,80 @@ func TestRetireRule(t *testing.T) {
 	})
 }
 
+// TerminateRule takes a superseded Published rule to Terminated once a rule
+// that supersedes it is Published or later (RULST-012), and a Retired rule to
+// Terminated.
+func TestTerminateRule(t *testing.T) {
+	// supersededFile holds TST-001 in Published and, unless state is "",
+	// TST-002 superseding it in state.
+	supersededFile := func(t *testing.T, state string) *entity.File {
+		t.Helper()
+		f := makeFileWithRule(t, entity.StatePublished)
+		if state != "" {
+			if _, err := SupersedeRule(f, "TST-001", "fixed body", "github:user"); err != nil {
+				t.Fatalf("SupersedeRule: %v", err)
+			}
+			f.Rules[1].State = state
+		}
+		return f
+	}
+
+	for _, state := range []string{entity.StatePublished, entity.StateImplemented} {
+		t.Run("P→T with a successor in "+state, func(t *testing.T) {
+			f := supersededFile(t, state)
+			v := f.RuleSet.Version
+
+			if err := TerminateRule(f, "TST-001"); err != nil {
+				t.Fatalf("TerminateRule: %v", err)
+			}
+			if f.Rules[0].State != entity.StateTerminated {
+				t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateTerminated)
+			}
+			expected, _ := BumpMinor(v)
+			if f.RuleSet.Version != expected {
+				t.Errorf("Version = %q, want %q", f.RuleSet.Version, expected)
+			}
+			assertHashCurrent(t, f)
+		})
+	}
+
+	rejected := []struct {
+		name, state, want string
+	}{
+		{"P→T with a Draft successor", entity.StateDraft,
+			`rule "TST-001" is Published and no Published rule supersedes it: TST-002 is in state "D" (RULST-012)`},
+		{"P→T with no successor", "",
+			`rule "TST-001" is Published and no Published rule supersedes it (RULST-012)`},
+	}
+	for _, tt := range rejected {
+		t.Run(tt.name, func(t *testing.T) {
+			f := supersededFile(t, tt.state)
+			version, hash := f.RuleSet.Version, *f.RuleSet.Hash
+
+			err := TerminateRule(f, "TST-001")
+			if err == nil || err.Error() != tt.want {
+				t.Fatalf("TerminateRule error = %v, want %q", err, tt.want)
+			}
+			if f.Rules[0].State != entity.StatePublished {
+				t.Errorf("State = %q, want it left at P", f.Rules[0].State)
+			}
+			if f.RuleSet.Version != version || *f.RuleSet.Hash != hash {
+				t.Errorf("rule_set changed to %q, %q on a rejected transition", f.RuleSet.Version, *f.RuleSet.Hash)
+			}
+		})
+	}
+
+	t.Run("R→T", func(t *testing.T) {
+		f := makeFileWithRule(t, entity.StateRetired)
+		if err := TerminateRule(f, "TST-001"); err != nil {
+			t.Fatalf("TerminateRule: %v", err)
+		}
+		if f.Rules[0].State != entity.StateTerminated {
+			t.Errorf("State = %q, want %q", f.Rules[0].State, entity.StateTerminated)
+		}
+	})
+}
+
 func TestAbandonRule(t *testing.T) {
 	t.Run("D→A", func(t *testing.T) {
 		f := makeFileWithRule(t, entity.StateDraft)
@@ -833,6 +907,7 @@ func TestLifecycleOps_RejectedStates(t *testing.T) {
 		cannotRetire    = `: cannot retire`
 		cannotAbandon   = `: only Draft rules can be abandoned`
 		cannotSupersede = `: only Published, Implemented, or Retired rules can be superseded`
+		cannotTerminate = `: only a Published rule that is superseded, or a Retired rule, can be terminated`
 	)
 	tests := []struct {
 		op      string
@@ -844,7 +919,7 @@ func TestLifecycleOps_RejectedStates(t *testing.T) {
 		{"PromoteRule", entity.StateRetired, cannotPromote},
 		{"PromoteRule", entity.StateTerminated, cannotPromote},
 		{"RetireRule", entity.StateDraft, cannotRetire},
-		{"RetireRule", entity.StatePublished, cannotRetire},
+		{"RetireRule", entity.StatePublished, `: cannot retire; a superseded Published rule goes to Terminated with TerminateRule (RULST-012)`},
 		{"RetireRule", entity.StateAbandoned, cannotRetire},
 		{"RetireRule", entity.StateTerminated, cannotRetire},
 		{"AbandonRule", entity.StatePublished, cannotAbandon},
@@ -855,6 +930,10 @@ func TestLifecycleOps_RejectedStates(t *testing.T) {
 		{"SupersedeRule", entity.StateDraft, cannotSupersede},
 		{"SupersedeRule", entity.StateAbandoned, cannotSupersede},
 		{"SupersedeRule", entity.StateTerminated, cannotSupersede},
+		{"TerminateRule", entity.StateDraft, cannotTerminate},
+		{"TerminateRule", entity.StateImplemented, cannotTerminate},
+		{"TerminateRule", entity.StateAbandoned, cannotTerminate},
+		{"TerminateRule", entity.StateTerminated, cannotTerminate},
 	}
 	for _, tt := range tests {
 		t.Run(tt.op+"/"+tt.state, func(t *testing.T) {
@@ -916,6 +995,9 @@ func TestOps_InvalidVersion(t *testing.T) {
 		{"AbandonRule", entity.StateDraft, func(f *entity.File) error {
 			return AbandonRule(f, "TST-001")
 		}},
+		{"TerminateRule", entity.StateRetired, func(f *entity.File) error {
+			return TerminateRule(f, "TST-001")
+		}},
 		{"SupersedeRule", entity.StatePublished, func(f *entity.File) error {
 			_, err := SupersedeRule(f, "TST-001", "body", "github:user")
 			return err
@@ -947,9 +1029,10 @@ func TestOps_InvalidVersion(t *testing.T) {
 // ruleOps maps each lifecycle operation that acts on an existing rule to a
 // common signature.
 var ruleOps = map[string]func(*entity.File, string) error{
-	"PromoteRule": PromoteRule,
-	"RetireRule":  RetireRule,
-	"AbandonRule": AbandonRule,
+	"PromoteRule":   PromoteRule,
+	"RetireRule":    RetireRule,
+	"AbandonRule":   AbandonRule,
+	"TerminateRule": TerminateRule,
 	"SupersedeRule": func(f *entity.File, ruleID string) error {
 		_, err := SupersedeRule(f, ruleID, "body", "github:user")
 		return err

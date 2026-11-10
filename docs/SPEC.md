@@ -130,7 +130,7 @@ A Rule Set groups all rules applicable to a specific entity. Every entity has ex
 | `timestamp` | string | UTC ISO timestamp of the last change. |
 | `hash` | string or null | `blake3:<hex>` hash of the canonical JSON content. |
 
-**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes or retires a rule (D→P, P→I, I→R, R→T); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003). The Realm Note operations change the manifest, not a Rule Set, and bump no version (§2 Realm Manifest).
+**Version bumping:** The Rule Set version must bump (to a strictly higher semver value) whenever any rule or note in the set changes — whether a revision increment, a state transition, a new rule, or a note added or revised. The system only enforces that `new_version > old_version`. The `entityops` operations follow this convention: minor on a state transition that promotes, retires or terminates a rule (D→P, P→I, I→R, R→T, and P→T for a superseded rule); patch on everything else (rule add, body update, abandon, supersede, note add, note update, `added_by` rewrite). Rule add, note add and supersede refuse an `added_by` that is not a contributor identifier (CTRB-003). The Realm Note operations change the manifest, not a Rule Set, and bump no version (§2 Realm Manifest).
 
 **Visibility and `realm.version`:** narrowing an entity's `visibility` can break Realms that inherit it, so it needs a MAJOR bump of `realm.version`; widening needs a MINOR one. `strspc diff` says which (RD020); it can't enforce it, because it doesn't read `realm.json`.
 
@@ -338,17 +338,20 @@ The optional `fail_on` array (SPCFG-007) contains state codes (`D`, `A`, `P`, `I
 
 ```
 D (Draft) ──────→ P (Published) ──→ I (Implemented) ──→ R (Retired) ──→ T (Terminated)
-   │
+   │                  │                                                 ↑
+   │                  └──── superseded by a Published rule (RULST-012) ─┘
    └─────────────→ A (Abandoned)
 ```
 
-Transitions are forward-only. No state may be skipped. No backward transitions. Each state is applied at most once to a given rule.
+Transitions are forward-only. No backward transitions. Each state is applied at most once to a given rule. No state may be skipped, with one exception: a Published rule MAY go to Terminated in or after the change in which a rule that supersedes it enters Published (RULST-012). The superseding rule must be of the same entity (RUL-012) and Published or later; a Draft successor may still change or be abandoned, so it does not count. A Published rule was never in force, so it skips Retired, which is for a rule still in force. `rule-diff` checks the condition (RD003) and `entityops.TerminateRule` applies the move.
 
 ### 3.3 Supersession
 
 When an Implemented rule needs to change, the author creates a new rule with a `supersedes` field pointing to the original. The new rule enters Draft and follows the normal lifecycle. When the new rule reaches Implemented, the superseded rule transitions to Retired.
 
-The PR validator enforces consistency: if a rule declares `supersedes` and reaches `I`, the superseded rule must move to `R` in the same PR or a subsequent linked PR.
+When the superseded rule is still Published, a Published text being fixed before it was ever in force, it goes straight to Terminated once the new rule is Published (§3.2, RULST-012), in the same PR or a later one.
+
+The PR validator enforces consistency: if a rule declares `supersedes` and reaches `I`, the superseded rule must be in `R` or `T` by then, or move there in the same PR or a subsequent linked PR (RD006). So the new rule can't reach `I` while the rule it supersedes is still Published.
 
 ### 3.4 Revision Semantics
 
@@ -567,10 +570,10 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed. |
 | RD001 | Error | A Draft rule body was edited without incrementing the revision, or together with a state change. |
 | RD002 | Error | The body of a rule that has left Draft was edited. |
-| RD003 | Error | A state transition is not allowed by the state machine (§3.2). |
+| RD003 | Error | A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012). |
 | RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
 | RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. |
-| RD006 | Warning | A superseding rule reached `I` but the superseded rule is missing or not in state `R`. |
+| RD006 | Warning | A superseding rule reached `I` but the superseded rule is missing or in neither state `R` nor `T` (RULST-012 lets a superseded Published rule go to `T`). |
 | RD007 | Error | `rule_set.version` is not valid semver or not strictly higher than the base version. |
 | RD008 | Error | `rule_set.hash` cannot be computed or differs from the Blake3 hash of the head file. |
 | RD009 | Error | `rule_set.timestamp` is unchanged from the base version. |
@@ -799,10 +802,10 @@ For each changed entity file, the validator compares the before and after states
 
 1. **Draft rule edited:** Revision must equal `previous_revision + 1`. State must remain `D`.
 2. **Non-draft rule body edited:** Reject. The rule is immutable. The author must supersede it with a new rule.
-3. **State transition:** Must follow the state machine (§3.2). No skipping states, no backward transitions.
+3. **State transition:** Must follow the state machine (§3.2). No skipping states, no backward transitions; the one skip is P→T for a superseded Published rule whose successor is Published or later in head (RULST-012).
 4. **New rule added:** Must have `revision: 0`, `state: "D"`, and the next sequential number for that entity.
 5. **Rule removed:** Reject. Rules are never removed from the file. They transition to `A` or `T`.
-6. **Supersession consistency:** If a rule with `supersedes` reaches state `I`, the superseded rule must move to `R` in the same PR or a linked subsequent PR.
+6. **Supersession consistency:** If a rule with `supersedes` reaches state `I`, the superseded rule must move to `R` (or to `T`, if it was Published) in the same PR or a linked subsequent PR.
 7. **Rule Set version:** Must be strictly higher than the previous version (semver comparison).
 8. **Rule Set hash:** Must be recomputed and updated to match the new file content.
 9. **Rule Set timestamp:** Must be updated.
