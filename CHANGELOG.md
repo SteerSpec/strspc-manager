@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.52.0](https://github.com/SteerSpec/strspc-manager/compare/v1.51.0...v1.52.0) (2026-11-10)
+
+
+### Features
+
+* **entityops:** let a superseded Published rule go to Terminated (RULST-012) ([#364](https://github.com/SteerSpec/strspc-manager/issues/364)) ([b478c05](https://github.com/SteerSpec/strspc-manager/commit/b478c050b55f699e1c86757f8bc33636bccaa4c9))
+
 ## [1.51.0](https://github.com/SteerSpec/strspc-manager/compare/v1.50.0...v1.51.0) (2026-11-09)
 
 
