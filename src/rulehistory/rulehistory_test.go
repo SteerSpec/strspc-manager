@@ -74,7 +74,7 @@ func TestBuildKinds(t *testing.T) {
 		{"skipped state", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "I", "one", 0)), "TST-001:state_changed"},
 		{"retired back to published", file("0.1.0", rule("TST-001", "R", "one", 0)), file("0.2.0", rule("TST-001", "P", "one", 0)), "TST-001:state_changed"},
 		{"draft retired", file("0.1.0", rule("TST-001", "D", "one", 0)), file("0.2.0", rule("TST-001", "R", "one", 0)), "TST-001:state_changed"},
-		{"published terminated", file("0.1.0", rule("TST-001", "P", "one", 0)), file("0.2.0", rule("TST-001", "T", "one", 0)), "TST-001:state_changed"},
+		{"published terminated", file("0.1.0", rule("TST-001", "P", "one", 0)), file("0.2.0", rule("TST-001", "T", "one", 0)), "TST-001:terminated"},
 		{"published abandoned", file("0.1.0", rule("TST-001", "P", "one", 0)), file("0.2.0", rule("TST-001", "A", "one", 0)), "TST-001:state_changed"},
 		{"metadata", file("0.1.0", rule("TST-001", "I", "one", 0)), file("0.1.1", meta), "TST-001:metadata_changed"},
 		{"unchanged rule", file("0.1.0", rule("TST-001", "I", "one", 0)), file("0.1.1", rule("TST-001", "I", "one", 0)), ""},
