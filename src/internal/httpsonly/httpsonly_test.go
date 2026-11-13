@@ -3,8 +3,10 @@ package httpsonly_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"strings"
@@ -99,14 +101,20 @@ func TestCheckRedirect(t *testing.T) {
 }
 
 func TestCheckRedirect_KeepsTheDefaultLimit(t *testing.T) {
-	next := redirectTo(t, "https://example.com/")
-	via := make([]*http.Request, 9)
-	if err := httpsonly.CheckRedirect(next, via); err != nil {
-		t.Errorf("9th redirect refused: %v", err)
+	tests := []struct {
+		hops    int // requests already made
+		refused bool
+	}{
+		{9, false},
+		{10, true},
 	}
-	via = append(via, next)
-	if err := httpsonly.CheckRedirect(next, via); err == nil || !strings.Contains(err.Error(), "10 redirects") {
-		t.Errorf("11th request = %v, want the 10-redirect limit", err)
+	for _, tt := range tests {
+		t.Run(fmt.Sprint(tt.hops), func(t *testing.T) {
+			err := httpsonly.CheckRedirect(redirectTo(t, "https://example.com/"), make([]*http.Request, tt.hops))
+			if refused := err != nil && strings.Contains(err.Error(), "10 redirects"); refused != tt.refused {
+				t.Errorf("after %d requests: err = %v, want refused = %v", tt.hops, err, tt.refused)
+			}
+		})
 	}
 }
 
@@ -118,7 +126,10 @@ func TestClient_Default(t *testing.T) {
 }
 
 func TestClient_CopiesAClientWithoutCheckRedirect(t *testing.T) {
-	jar := &noJar{}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	in := &http.Client{Timeout: time.Second, Transport: http.DefaultTransport, Jar: jar}
 	c := httpsonly.Client(in, time.Hour)
 	if c == in || in.CheckRedirect != nil {
@@ -132,26 +143,32 @@ func TestClient_CopiesAClientWithoutCheckRedirect(t *testing.T) {
 	}
 }
 
+// The HTTPS check runs first; the caller's own CheckRedirect decides only
+// for a secure target.
 func TestClient_ChainsTheCallersCheckRedirect(t *testing.T) {
 	stop := errors.New("caller's policy")
-	calls := 0
-	in := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error {
-		calls++
-		return stop
-	}}
-	c := httpsonly.Client(in, 0)
-	if err := c.CheckRedirect(redirectTo(t, "http://example.com/"), nil); !errors.Is(err, httpsonly.ErrInsecureURL) || calls != 0 {
-		t.Errorf("insecure redirect = %v after %d caller calls, want ErrInsecureURL before the caller runs", err, calls)
+	tests := []struct {
+		target     string
+		want       error
+		callerRuns bool
+	}{
+		{"http://example.com/", httpsonly.ErrInsecureURL, false},
+		{"https://example.com/", stop, true},
 	}
-	if err := c.CheckRedirect(redirectTo(t, "https://example.com/"), nil); !errors.Is(err, stop) || calls != 1 {
-		t.Errorf("secure redirect = %v after %d caller calls, want the caller's verdict", err, calls)
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			ran := false
+			c := httpsonly.Client(&http.Client{CheckRedirect: func(*http.Request, []*http.Request) error {
+				ran = true
+				return stop
+			}}, 0)
+			err := c.CheckRedirect(redirectTo(t, tt.target), nil)
+			if !errors.Is(err, tt.want) || ran != tt.callerRuns {
+				t.Errorf("err = %v, caller ran = %v; want %v, caller ran = %v", err, ran, tt.want, tt.callerRuns)
+			}
+		})
 	}
 }
-
-type noJar struct{}
-
-func (*noJar) SetCookies(*url.URL, []*http.Cookie) {}
-func (*noJar) Cookies(*url.URL) []*http.Cookie     { return nil }
 
 // get sends a GET for target through c and returns the body.
 func get(ctx context.Context, c *http.Client, target string) (string, error) {
