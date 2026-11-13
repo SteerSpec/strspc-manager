@@ -39,7 +39,7 @@ const (
 
 	// deadBaseURL is the API root of every fetcher. It is never dialled:
 	// offlineClient answers first, so a test cannot reach the network.
-	deadBaseURL = "http://qa.invalid"
+	deadBaseURL = "https://qa.invalid"
 
 	// defaultDiff is the diff of a scenario that declares no eval runs.
 	defaultDiff = "diff --git a/app.go b/app.go\n+// an unrelated change\n"
