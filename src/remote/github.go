@@ -28,6 +28,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 )
 
 const (
@@ -179,7 +181,8 @@ func ownerAllowed(owners []string, owner string) bool {
 // The zero value is usable once CacheDir is set.
 type Fetcher struct {
 	// Client is the HTTP client; nil selects a default client with a 60s
-	// timeout.
+	// timeout. The Fetcher uses a copy that refuses redirects to a non-https,
+	// non-loopback URL; see httpsonly.Client.
 	Client *http.Client
 	// Token is the bearer token sent as Authorization when non-empty.
 	Token string
@@ -187,7 +190,8 @@ type Fetcher struct {
 	// reference can come from a realm.json the user only cloned. Other owners
 	// are fetched anonymously. nil sends Token for every owner.
 	TokenOwners []string
-	// BaseURL is the API root; "" selects DefaultBaseURL.
+	// BaseURL is the API root; "" selects DefaultBaseURL. It must be https,
+	// or http to a loopback host.
 	BaseURL string
 	// CacheDir is required; content lands under <CacheDir>/github/.
 	CacheDir string
@@ -354,7 +358,9 @@ func (f *Fetcher) resolveLatest(ctx context.Context, ref Ref, repoDir string) (s
 		// A stale pointer covers transient network failures only. A
 		// cancelled or expired context is not "offline": propagate it so
 		// callers see the cancellation instead of a success built on cache.
-		if cached != nil && ctx.Err() == nil && !errors.Is(err, ErrNotFound) {
+		// Nor is an insecure URL, which is a configuration error.
+		if cached != nil && ctx.Err() == nil && !errors.Is(err, ErrNotFound) &&
+			!errors.Is(err, httpsonly.ErrInsecureURL) {
 			return cached.Tag, nil
 		}
 		return "", err
@@ -664,6 +670,9 @@ func (f *Fetcher) get(ctx context.Context, ref Ref, url, accept string) (*http.R
 	if err != nil {
 		return nil, fmt.Errorf("remote: building request: %w", err)
 	}
+	if err := httpsonly.Check(req.URL); err != nil {
+		return nil, fmt.Errorf("remote: %w", err)
+	}
 	req.Header.Set("Accept", accept)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	req.Header.Set("User-Agent", "strspc-manager")
@@ -707,10 +716,7 @@ func (f *Fetcher) statusError(resp *http.Response, ref Ref, what string) error {
 }
 
 func (f *Fetcher) client() *http.Client {
-	if f.Client != nil {
-		return f.Client
-	}
-	return &http.Client{Timeout: defaultTimeout}
+	return httpsonly.Client(f.Client, defaultTimeout)
 }
 
 func (f *Fetcher) baseURL() string {

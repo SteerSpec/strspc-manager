@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 )
 
 // tarEntry describes one entry in a generated tarball.
@@ -2094,8 +2096,61 @@ func TestFetcher_Client(t *testing.T) {
 	if got := (&Fetcher{}).client().Timeout; got != defaultTimeout {
 		t.Errorf("default client timeout = %v, want %v", got, defaultTimeout)
 	}
-	custom := &http.Client{}
-	if got := (&Fetcher{Client: custom}).client(); got != custom {
-		t.Errorf("client() = %p, want the configured client %p", got, custom)
+	custom := &http.Client{Timeout: time.Second, Transport: http.DefaultTransport}
+	got := (&Fetcher{Client: custom}).client()
+	if got == custom {
+		t.Error("client() returned the configured client itself, want a copy")
+	}
+	if got.Timeout != custom.Timeout || got.Transport != custom.Transport {
+		t.Errorf("client() = %+v, want a copy of the configured client %+v", got, custom)
+	}
+	if custom.CheckRedirect != nil {
+		t.Error("client() modified the configured client")
+	}
+}
+
+func TestEnsureDir_RefusesAnInsecureBaseURL(t *testing.T) {
+	sent := false
+	f := &Fetcher{
+		Client: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			sent = true
+			return nil, errors.New("must not be sent")
+		})},
+		BaseURL:  "http://ghe.example/api/v3",
+		CacheDir: t.TempDir(),
+	}
+	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"})
+	if !errors.Is(err, httpsonly.ErrInsecureURL) || sent {
+		t.Fatalf("err = %v (request sent: %v), want ErrInsecureURL before any request", err, sent)
+	}
+}
+
+// An insecure base URL is a configuration error, so a stale pointer must not
+// hide it as it hides an outage.
+func TestEnsureDir_InsecureBaseURLSkipsTheStalePointer(t *testing.T) {
+	f := &Fetcher{BaseURL: "http://ghe.example/api/v3", CacheDir: t.TempDir(), TTL: time.Hour}
+	now := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	f.now = func() time.Time { return now }
+	seedPointer(t, f, "v1", now.Add(-2*time.Hour))
+	ref := Ref{Owner: "o", Repo: "r", Ref: LatestRef}
+	repoDir, err := f.repoDir(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustMkdir(t, filepath.Join(repoDir, "v1", pathKey(""))) // v1 itself is cached
+
+	_, err = f.EnsureDir(context.Background(), ref)
+	if !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Fatalf("err = %v, want ErrInsecureURL", err)
+	}
+}
+
+func TestEnsureDir_RefusesAnInsecureRedirect(t *testing.T) {
+	f := newRawFetcher(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://codeload.example/o/r/tarball/v1", http.StatusFound)
+	})
+	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"})
+	if !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Fatalf("err = %v, want ErrInsecureURL", err)
 	}
 }

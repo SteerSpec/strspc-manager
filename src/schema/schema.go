@@ -21,6 +21,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 )
 
 // BaseURL is the default base URL for schema fetches.
@@ -63,10 +65,12 @@ type Config struct {
 	// CacheDir is the local cache directory (default:
 	// os.UserCacheDir()/strspc/schemas).
 	CacheDir string
-	// BaseURL is the base URL for schema fetches (default: BaseURL).
+	// BaseURL is the base URL for schema fetches (default: BaseURL). It must
+	// be https, or http to a loopback host; any other URL fails at fetch time.
 	BaseURL string
 	// Client is the HTTP client used for fetches; nil selects one with a
-	// 30-second timeout.
+	// 30-second timeout. The Fetcher uses a copy that refuses redirects to a
+	// non-https, non-loopback URL; see httpsonly.Client.
 	Client *http.Client
 	// CoreVersion selects the schemas of a core release (X.Y.Z). Empty uses
 	// the latest schemas.
@@ -152,16 +156,14 @@ type Fetcher struct {
 func New(opts ...Option) *Fetcher {
 	cfg := Config{
 		BaseURL: BaseURL,
-		Client:  &http.Client{Timeout: defaultTimeout},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	// Ensure Client is non-nil even if a caller passed nil via WithClient
-	// after the default was set (e.g. via a custom Option).
-	if cfg.Client == nil {
-		cfg.Client = &http.Client{Timeout: defaultTimeout}
-	}
+	// A nil Client (no WithClient, or a custom Option that cleared it) gets a
+	// default one; any client is copied so that it refuses redirects to a
+	// non-https, non-loopback URL.
+	cfg.Client = httpsonly.Client(cfg.Client, defaultTimeout)
 	if cfg.CacheDir == "" {
 		dir, err := os.UserCacheDir()
 		if err != nil {
@@ -257,7 +259,8 @@ func (f *Fetcher) fetchLatest(ctx context.Context, clean string) ([]byte, error)
 	// Fetch from remote using the canonicalized path.
 	data, err := f.download(ctx, strings.TrimRight(f.cfg.BaseURL, "/")+"/"+clean)
 	if err != nil {
-		if cacheErr == nil {
+		// An insecure BaseURL is a configuration error, not an outage.
+		if cacheErr == nil && !errors.Is(err, httpsonly.ErrInsecureURL) {
 			return cached, nil
 		}
 		return nil, err
@@ -273,6 +276,9 @@ func (f *Fetcher) download(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request for %s: %w", url, err)
+	}
+	if err := httpsonly.Check(req.URL); err != nil {
+		return nil, fmt.Errorf("fetching schema: %w", err)
 	}
 
 	resp, err := f.cfg.Client.Do(req)

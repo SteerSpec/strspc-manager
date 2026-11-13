@@ -12,7 +12,9 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+	"time"
 
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 	"github.com/SteerSpec/strspc-manager/src/schema"
 )
 
@@ -71,7 +73,7 @@ func TestAccessors_FetchTheirOwnSchema(t *testing.T) {
 func TestWithClient_SendsRequestsThroughTheClient(t *testing.T) {
 	var requested string
 	f := schema.New(
-		schema.WithBaseURL("http://schemas.invalid/schemas"),
+		schema.WithBaseURL("https://schemas.invalid/schemas"),
 		schema.WithCacheDir(t.TempDir()),
 		schema.WithClient(clientReturning(`"stubbed"`, &requested)),
 	)
@@ -83,7 +85,7 @@ func TestWithClient_SendsRequestsThroughTheClient(t *testing.T) {
 	if string(got) != `"stubbed"` {
 		t.Errorf("got %s", got)
 	}
-	if want := "http://schemas.invalid/schemas/entity/v1.json"; requested != want {
+	if want := "https://schemas.invalid/schemas/entity/v1.json"; requested != want {
 		t.Errorf("requested %s, want %s", requested, want)
 	}
 }
@@ -259,7 +261,7 @@ func TestFetch_ReportsAReadFailure(t *testing.T) {
 		}, nil
 	})}
 	f := schema.New(
-		schema.WithBaseURL("http://schemas.invalid"),
+		schema.WithBaseURL("https://schemas.invalid"),
 		schema.WithCacheDir(t.TempDir()),
 		schema.WithClient(client),
 	)
@@ -268,7 +270,7 @@ func TestFetch_ReportsAReadFailure(t *testing.T) {
 	if !errors.Is(err, boom) {
 		t.Fatalf("error %v does not wrap the read failure", err)
 	}
-	if want := "reading schema http://schemas.invalid/entity/v1.json: boom"; err.Error() != want {
+	if want := "reading schema https://schemas.invalid/entity/v1.json: boom"; err.Error() != want {
 		t.Errorf("error = %q, want %q", err, want)
 	}
 }
@@ -382,5 +384,53 @@ func TestFetch_HTTP404(t *testing.T) {
 	_, err := f.Fetch(context.Background(), "nonexistent.json")
 	if err == nil {
 		t.Error("expected error for 404 response")
+	}
+}
+
+func TestFetch_RefusesAnInsecureBaseURL(t *testing.T) {
+	var requested string
+	f := schema.New(
+		schema.WithBaseURL("http://schemas.example/schemas"),
+		schema.WithCacheDir(t.TempDir()),
+		schema.WithClient(clientReturning(`"stubbed"`, &requested)),
+	)
+	_, err := f.EntityV1(context.Background())
+	if !errors.Is(err, httpsonly.ErrInsecureURL) || requested != "" {
+		t.Fatalf("err = %v (requested %q), want ErrInsecureURL before any request", err, requested)
+	}
+}
+
+// An insecure base URL is a configuration error, so an expired cached copy
+// must not hide it as it hides an outage.
+func TestFetch_InsecureBaseURLSkipsTheExpiredCopy(t *testing.T) {
+	dir := t.TempDir()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"cached": true}`))
+	}))
+	defer srv.Close()
+	if _, err := schema.New(schema.WithBaseURL(srv.URL), schema.WithCacheDir(dir)).Fetch(context.Background(), "entity/v1.json"); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(filepath.Join(dir, "entity", "v1.json"), old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	f := schema.New(schema.WithBaseURL("http://schemas.example"), schema.WithCacheDir(dir))
+	if _, err := f.Fetch(context.Background(), "entity/v1.json"); !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Fatalf("err = %v, want ErrInsecureURL", err)
+	}
+}
+
+func TestFetch_RefusesAnInsecureRedirect(t *testing.T) {
+	srv := httptest.NewTLSServer(http.RedirectHandler("http://schemas.example/entity/v1.json", http.StatusFound))
+	defer srv.Close()
+	f := schema.New(
+		schema.WithBaseURL(srv.URL),
+		schema.WithCacheDir(t.TempDir()),
+		schema.WithClient(srv.Client()),
+	)
+	if _, err := f.Fetch(context.Background(), "entity/v1.json"); !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Fatalf("err = %v, want ErrInsecureURL", err)
 	}
 }
