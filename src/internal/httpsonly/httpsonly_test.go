@@ -77,14 +77,24 @@ func redirectTo(t *testing.T, target string) *http.Request {
 
 func TestCheckRedirect(t *testing.T) {
 	via := []*http.Request{redirectTo(t, "https://api.github.com/x")}
-	if err := httpsonly.CheckRedirect(redirectTo(t, "https://codeload.github.com/y"), via); err != nil {
-		t.Errorf("https redirect refused: %v", err)
+	tests := []struct {
+		target string
+		secure bool
+	}{
+		{"https://codeload.github.com/y", true},
+		{"http://127.0.0.1/y", true},
+		{"http://codeload.github.com/y", false},
 	}
-	if err := httpsonly.CheckRedirect(redirectTo(t, "http://127.0.0.1/y"), via); err != nil {
-		t.Errorf("loopback http redirect refused: %v", err)
-	}
-	if err := httpsonly.CheckRedirect(redirectTo(t, "http://codeload.github.com/y"), via); !errors.Is(err, httpsonly.ErrInsecureURL) {
-		t.Errorf("http redirect = %v, want ErrInsecureURL", err)
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			err := httpsonly.CheckRedirect(redirectTo(t, tt.target), via)
+			if tt.secure && err != nil {
+				t.Errorf("redirect to %s refused: %v", tt.target, err)
+			}
+			if !tt.secure && !errors.Is(err, httpsonly.ErrInsecureURL) {
+				t.Errorf("redirect to %s = %v, want ErrInsecureURL", tt.target, err)
+			}
+		})
 	}
 }
 
@@ -143,9 +153,13 @@ type noJar struct{}
 func (*noJar) SetCookies(*url.URL, []*http.Cookie) {}
 func (*noJar) Cookies(*url.URL) []*http.Cookie     { return nil }
 
-func get(t *testing.T, c *http.Client, target string) (string, error) {
-	t.Helper()
-	resp, err := c.Do(redirectTo(t, target))
+// get sends a GET for target through c and returns the body.
+func get(ctx context.Context, c *http.Client, target string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -160,7 +174,7 @@ func TestClient_RefusesAnHTTPSToHTTPRedirect(t *testing.T) {
 	srv := httptest.NewTLSServer(http.RedirectHandler("http://example.invalid/tarball", http.StatusFound))
 	defer srv.Close()
 
-	_, err := get(t, httpsonly.Client(srv.Client(), 0), srv.URL)
+	_, err := get(context.Background(), httpsonly.Client(srv.Client(), 0), srv.URL)
 	if !errors.Is(err, httpsonly.ErrInsecureURL) {
 		t.Fatalf("err = %v, want ErrInsecureURL", err)
 	}
@@ -175,7 +189,7 @@ func TestClient_FollowsAnHTTPSToHTTPSRedirect(t *testing.T) {
 	defer srv.Close()
 
 	// Both servers share httptest's certificate, so either client trusts both.
-	body, err := get(t, httpsonly.Client(srv.Client(), 0), srv.URL)
+	body, err := get(context.Background(), httpsonly.Client(srv.Client(), 0), srv.URL)
 	if err != nil || body != "arrived" {
 		t.Fatalf("got %q, %v; want the redirect followed", body, err)
 	}
@@ -189,7 +203,7 @@ func TestClient_FollowsALoopbackHTTPRedirect(t *testing.T) {
 	srv := httptest.NewServer(http.RedirectHandler(target.URL+"/x", http.StatusFound))
 	defer srv.Close()
 
-	body, err := get(t, httpsonly.Client(nil, time.Minute), srv.URL)
+	body, err := get(context.Background(), httpsonly.Client(nil, time.Minute), srv.URL)
 	if err != nil || body != "arrived" {
 		t.Fatalf("got %q, %v; want the redirect followed", body, err)
 	}
