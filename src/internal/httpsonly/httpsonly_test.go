@@ -102,17 +102,28 @@ func TestCheckRedirect(t *testing.T) {
 
 func TestCheckRedirect_KeepsTheDefaultLimit(t *testing.T) {
 	tests := []struct {
+		target  string
 		hops    int // requests already made
 		refused bool
+		want    error // ErrInsecureURL, or nil for the limit error
 	}{
-		{9, false},
-		{10, true},
+		{"https://example.com/", 9, false, nil},
+		{"https://example.com/", 10, true, nil},
+		// An insecure target past the limit still reports ErrInsecureURL,
+		// which the cache fallbacks rely on.
+		{"http://example.com/", 10, true, httpsonly.ErrInsecureURL},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprint(tt.hops), func(t *testing.T) {
-			err := httpsonly.CheckRedirect(redirectTo(t, "https://example.com/"), make([]*http.Request, tt.hops))
-			if refused := err != nil && strings.Contains(err.Error(), "10 redirects"); refused != tt.refused {
-				t.Errorf("after %d requests: err = %v, want refused = %v", tt.hops, err, tt.refused)
+		t.Run(fmt.Sprint(tt.target, tt.hops), func(t *testing.T) {
+			err := httpsonly.CheckRedirect(redirectTo(t, tt.target), make([]*http.Request, tt.hops))
+			if (err != nil) != tt.refused {
+				t.Fatalf("after %d requests: err = %v, want refused = %v", tt.hops, err, tt.refused)
+			}
+			if tt.want != nil && !errors.Is(err, tt.want) {
+				t.Errorf("err = %v, want %v", err, tt.want)
+			}
+			if tt.refused && tt.want == nil && !strings.Contains(err.Error(), "10 redirects") {
+				t.Errorf("err = %v, want the 10-redirect limit", err)
 			}
 		})
 	}

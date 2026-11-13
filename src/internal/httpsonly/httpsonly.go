@@ -59,12 +59,14 @@ func IsLoopback(host string) bool {
 
 // CheckRedirect is an http.Client.CheckRedirect that refuses a redirect to an
 // insecure URL and, like net/http's default, stops after 10 redirects.
+// The HTTPS check runs first, so an insecure target is always reported as
+// ErrInsecureURL, even past the limit.
 func CheckRedirect(req *http.Request, via []*http.Request) error {
-	if len(via) >= maxRedirects {
-		return fmt.Errorf("stopped after %d redirects", maxRedirects)
-	}
 	if err := Check(req.URL); err != nil {
 		return fmt.Errorf("refusing redirect: %w", err)
+	}
+	if len(via) >= maxRedirects {
+		return fmt.Errorf("stopped after %d redirects", maxRedirects)
 	}
 	return nil
 }
