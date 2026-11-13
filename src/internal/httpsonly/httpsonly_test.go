@@ -185,6 +185,18 @@ func get(ctx context.Context, c *http.Client, target string) (string, error) {
 	return string(b), err
 }
 
+// A caller's CheckRedirect that rewrites the target to an insecure URL must
+// not get past the check.
+func TestClient_RechecksAURLTheCallerRewrites(t *testing.T) {
+	c := httpsonly.Client(&http.Client{CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+		req.URL.Scheme = "http"
+		return nil
+	}}, 0)
+	if err := c.CheckRedirect(redirectTo(t, "https://example.com/"), nil); !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Errorf("err = %v, want ErrInsecureURL", err)
+	}
+}
+
 func TestClient_RefusesAnHTTPSToHTTPRedirect(t *testing.T) {
 	// httptest servers are all on loopback, so the insecure target must be
 	// a non-loopback name. CheckRedirect refuses it before any dial.

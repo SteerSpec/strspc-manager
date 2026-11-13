@@ -73,7 +73,7 @@ func CheckRedirect(req *http.Request, via []*http.Request) error {
 // new client with the given timeout. A non-nil c is copied, never modified:
 // the copy keeps c's Transport, Jar and Timeout (timeout is ignored), and runs
 // c's own CheckRedirect, or the default 10-redirect limit when it has none,
-// after the HTTPS check.
+// after the HTTPS check, and checks the URL again in case that func rewrote it.
 func Client(c *http.Client, timeout time.Duration) *http.Client {
 	if c == nil {
 		return &http.Client{Timeout: timeout, CheckRedirect: CheckRedirect}
@@ -88,7 +88,15 @@ func Client(c *http.Client, timeout time.Duration) *http.Client {
 		if err := Check(req.URL); err != nil {
 			return fmt.Errorf("refusing redirect: %w", err)
 		}
-		return inner(req, via)
+		if err := inner(req, via); err != nil {
+			return err
+		}
+		// The caller's func may have rewritten req.URL, and the client
+		// follows whatever it holds now.
+		if err := Check(req.URL); err != nil {
+			return fmt.Errorf("refusing redirect: %w", err)
+		}
+		return nil
 	}
 	return &cp
 }
