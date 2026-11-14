@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.52.1](https://github.com/SteerSpec/strspc-manager/compare/v1.52.0...v1.52.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **http:** connect over HTTPS only, except to loopback hosts ([9bf3194](https://github.com/SteerSpec/strspc-manager/commit/9bf31944dd3bb40ccc488c484ffec374c14a72a8))
+* **http:** connect over HTTPS only, except to loopback hosts ([b3e505c](https://github.com/SteerSpec/strspc-manager/commit/b3e505c426fcdd481aaed2064a43f9888e607ab4))
+* **httpsonly:** check the redirect target before the redirect limit ([cccf91a](https://github.com/SteerSpec/strspc-manager/commit/cccf91ad0611921c4424c303fa6c3fa5682573c6))
+* **httpsonly:** recheck a redirect URL after the caller's CheckRedirect ([456204b](https://github.com/SteerSpec/strspc-manager/commit/456204b0f0ef61d5795b542e445c9125a16dfdf5))
+
 ## [1.52.0](https://github.com/SteerSpec/strspc-manager/compare/v1.51.0...v1.52.0) (2026-11-10)
 
 
