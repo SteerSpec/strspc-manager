@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.53.0](https://github.com/SteerSpec/strspc-manager/compare/v1.52.1...v1.53.0) (2026-11-22)
+
+
+### Features
+
+* **ruleeval:** skip Standard Realm rules and block relabeled ones ([#373](https://github.com/SteerSpec/strspc-manager/issues/373)) ([603beb0](https://github.com/SteerSpec/strspc-manager/commit/603beb0663ba20693284a2eca7bda9f49a65c58f))
+
 ## [1.52.1](https://github.com/SteerSpec/strspc-manager/compare/v1.52.0...v1.52.1) (2026-11-14)
 
 
