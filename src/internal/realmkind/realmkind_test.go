@@ -15,6 +15,7 @@ func TestKindOf(t *testing.T) {
 		code     = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0"}}`
 		standard = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"}}`
 		withSub  = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0"},"sub_realms":["sub"]}`
+		stdMeta  = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"},"sub_realms":`
 	)
 	tests := []struct {
 		name      string
@@ -30,6 +31,13 @@ func TestKindOf(t *testing.T) {
 		{"unreadable under standard", map[string]string{".": standard, "a": "{"}, "a/A.json", ""},
 		{"standard under code", map[string]string{".": code, "a": standard}, "a/A.json", ""},
 		{"standard below the root", map[string]string{"a": standard}, "a/A.json", entity.KindStandard},
+		{"undeclared standard under standard", map[string]string{".": standard, "a": standard}, "a/A.json", ""},
+		{"sub-realm declaring one without a manifest", map[string]string{".": withSub, "sub": stdMeta + `["nested"]}`}, "sub/nested/A.json", ""},
+		{"sub-realm declaring sub-realms", map[string]string{".": withSub, "sub": stdMeta + `["nested"]}`}, "sub/A.json", ""},
+		{"declared path, not a name", map[string]string{".": stdMeta + `["a/b"]}`}, "a/b/A.json", ""},
+		{"declared current directory", map[string]string{".": stdMeta + `["."]}`}, "A.json", ""},
+		{"declared in another case", map[string]string{".": stdMeta + `["Sub"]}`}, "sub/A.json", ""},
+		{"root of a standard with sub-realms", map[string]string{".": stdMeta + `["sub"]}`}, "a/A.json", entity.KindStandard},
 		{"outside the root", map[string]string{".": standard}, "../A.json", ""},
 	}
 	for _, tc := range tests {
@@ -50,5 +58,23 @@ func TestKindOf(t *testing.T) {
 				t.Errorf("KindOf = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// A manifest that is there and can't be read is in doubt, also a dangling link.
+func TestKindOfDanglingManifest(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "realm.json"),
+		[]byte(`{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "a"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "gone.json"), filepath.Join(root, "a", "realm.json")); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	if got := New(root).KindOf(filepath.Join(root, "a", "A.json")); got != "" {
+		t.Errorf("KindOf = %q, want a code Realm", got)
 	}
 }

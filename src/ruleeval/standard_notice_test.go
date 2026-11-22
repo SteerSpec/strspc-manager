@@ -2,6 +2,7 @@ package ruleeval_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -111,5 +112,21 @@ func TestStandardRealmSkipsAreLoud(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// The message fits a real standard too: rule verify puts every state in
+// fail_on, so it must not say only that the rules were relabelled.
+func TestUnsafeSkipMessageFitsARealStandard(t *testing.T) {
+	e, err := ruleeval.New(auditMock{&mockProvider{}}, ruleeval.WithFailOn([]string{"P"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.Audit(t.Context(), []ruleeval.RuleInput{standardInput("STD-001", "P")}, auditFiles)
+	if err != nil || len(res.Diagnostics) != 1 {
+		t.Fatalf("Audit = %v, %v, want one RE006", res, err)
+	}
+	if msg := res.Diagnostics[0].Message; !strings.Contains(msg, "a transcription can't be judged against code") {
+		t.Errorf("message %q doesn't say what to do with a real standard", msg)
 	}
 }

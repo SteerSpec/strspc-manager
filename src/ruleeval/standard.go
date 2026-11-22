@@ -37,7 +37,8 @@ func (e *Evaluator) reportStandardRules(res *result.Result, inputs []RuleInput) 
 					Code:     CodeUnsafeSkip,
 					Severity: result.Error,
 					Message: fmt.Sprintf("rule %s was not evaluated, as its Realm declares the kind %q (STDRLM-011), but %s; "+
-						"if these are the project's own rules, remove the kind from realm.json", id, entity.KindStandard, reason),
+						"if these are the project's own rules, remove the kind from realm.json, "+
+						"and if not, a transcription can't be judged against code, so don't enforce or verify it", id, entity.KindStandard, reason),
 				})
 			}
 			continue
@@ -74,7 +75,7 @@ func (e *Evaluator) unsafeSkip(r *entity.Rule) string {
 	}
 	switch {
 	case e.cfg.FailOn[r.State]:
-		return fmt.Sprintf("its state %s is in fail_on, so skipping it would switch off a blocking rule", r.State)
+		return fmt.Sprintf("a violation of a rule in state %s blocks here (fail_on), and a skipped rule gets no verdict", r.State)
 	case r.Overrides != nil && *r.Overrides != "":
 		return fmt.Sprintf("it overrides %s, which would then be enforced by neither rule", *r.Overrides)
 	case strings.TrimSpace(r.Clause) == "" && entity.IsLiveStandardRule(*r):

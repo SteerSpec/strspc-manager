@@ -61,7 +61,7 @@ func TestResolve_RealmKind(t *testing.T) {
 		{"code manifest deep under a standard one", map[string]string{"realm.json": standard, "a/b/realm.json": code}, "a/b/c/A.json", ""},
 		{"unreadable manifest under a standard one", map[string]string{"realm.json": standard, "sub/realm.json": "{"}, "sub/A.json", ""},
 		{"code manifest under a standard sub-realm", map[string]string{"realm.json": codeWithSub, "sub/realm.json": subStandard, "sub/a/realm.json": code}, "sub/a/A.json", ""},
-		{"standard manifest under a standard one", map[string]string{"realm.json": standard, "sub/realm.json": subStandard}, "sub/A.json", entity.KindStandard},
+		{"undeclared standard manifest under a standard one", map[string]string{"realm.json": standard, "sub/realm.json": subStandard}, "sub/A.json", ""},
 		{"source holding a Standard Realm", map[string]string{"asvs/realm.json": standard}, "asvs/A.json", entity.KindStandard},
 		{"beside a Standard Realm", map[string]string{"asvs/realm.json": standard}, "local/A.json", ""},
 	}
