@@ -38,10 +38,12 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
@@ -75,6 +77,15 @@ const (
 	// empty.
 	EnvAPIKey = "ANTHROPIC_API_KEY"
 
+	// EnvBaseURL is the environment variable the SDK reads for the endpoint
+	// when Config.BaseURL is empty.
+	EnvBaseURL = "ANTHROPIC_BASE_URL"
+
+	// sdkResponseHeaderTimeout mirrors the response-header timeout of the
+	// SDK's own default client, which is replaced by one that refuses
+	// insecure redirects.
+	sdkResponseHeaderTimeout = 10 * time.Minute
+
 	// requestOverheadTokens reserves room for message framing and the
 	// response schema when computing the diff budget.
 	requestOverheadTokens = 256
@@ -106,7 +117,8 @@ type Config struct {
 	APIKey string
 	// Model is the Claude model ID to call.
 	Model string
-	// BaseURL is a custom endpoint; empty for the Anthropic API.
+	// BaseURL is a custom endpoint; empty for $ANTHROPIC_BASE_URL, then the
+	// Anthropic API. It must be https, or http to a loopback host.
 	BaseURL string
 	// Effort is one of low | medium | high | xhigh | max.
 	Effort string
@@ -122,7 +134,9 @@ type Config struct {
 	// MaxRetries is the number of SDK retries for 429/5xx.
 	MaxRetries int
 
-	// HTTPClient overrides the transport (tests use a record/replay one).
+	// HTTPClient overrides the transport (tests use a record/replay one). The
+	// provider uses a copy that refuses redirects to a non-https, non-loopback
+	// URL; see httpsonly.Client.
 	HTTPClient *http.Client
 }
 
@@ -182,17 +196,48 @@ func New(cfg Config) (*Provider, error) {
 		return nil, fmt.Errorf("claude: invalid effort %q (want low, medium, high, xhigh or max)", cfg.Effort)
 	}
 
+	// The SDK reads $ANTHROPIC_BASE_URL itself when no base URL is given, so
+	// the effective endpoint is checked, not just the configured one.
+	if base := effectiveBaseURL(cfg.BaseURL); base != "" {
+		if err := httpsonly.Validate(base); err != nil {
+			return nil, fmt.Errorf("claude: base URL: %w", err)
+		}
+	}
+
 	opts := []option.RequestOption{
 		option.WithAPIKey(cfg.APIKey),
 		option.WithMaxRetries(cfg.MaxRetries),
+		option.WithHTTPClient(httpsonly.Client(httpClient(cfg.HTTPClient), 0)),
 	}
 	if cfg.BaseURL != "" {
 		opts = append(opts, option.WithBaseURL(cfg.BaseURL))
 	}
-	if cfg.HTTPClient != nil {
-		opts = append(opts, option.WithHTTPClient(cfg.HTTPClient))
-	}
 	return &Provider{cfg: cfg, client: anthropic.NewClient(opts...)}, nil
+}
+
+// effectiveBaseURL returns the endpoint the SDK will call: base, else
+// $ANTHROPIC_BASE_URL, else "" for the SDK's built-in https default.
+func effectiveBaseURL(base string) string {
+	if base != "" {
+		return base
+	}
+	return os.Getenv(EnvBaseURL)
+}
+
+// httpClient returns c, or when c is nil a client like the SDK's own default:
+// a clone of http.DefaultTransport whose response headers must arrive within
+// sdkResponseHeaderTimeout. It has no overall timeout, so long responses are
+// not cut off.
+func httpClient(c *http.Client) *http.Client {
+	if c != nil {
+		return c
+	}
+	if t, ok := http.DefaultTransport.(*http.Transport); ok {
+		t = t.Clone()
+		t.ResponseHeaderTimeout = sdkResponseHeaderTimeout
+		return &http.Client{Transport: t}
+	}
+	return &http.Client{Transport: http.DefaultTransport}
 }
 
 // Model returns the configured model id.

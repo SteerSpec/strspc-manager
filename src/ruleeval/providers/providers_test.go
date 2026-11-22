@@ -2,6 +2,7 @@ package providers_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
@@ -53,5 +54,16 @@ func TestNew_Claude(t *testing.T) {
 
 	if _, err := providers.New("claude", providers.Options{APIKey: "k", Effort: "ultra"}); err == nil {
 		t.Error("invalid effort should be rejected")
+	}
+}
+
+func TestNew_ClaudeRequiresHTTPS(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+	_, err := providers.New("claude", providers.Options{APIKey: "k", Endpoint: "http://llm.example"})
+	if err == nil || !strings.Contains(err.Error(), "HTTPS is required") {
+		t.Errorf("http endpoint: err = %v, want an HTTPS error", err)
+	}
+	if _, err := providers.New("claude", providers.Options{APIKey: "k", Endpoint: "http://127.0.0.1:4000"}); err != nil {
+		t.Errorf("loopback http endpoint rejected: %v", err)
 	}
 }

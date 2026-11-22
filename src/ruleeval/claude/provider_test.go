@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
 	"github.com/SteerSpec/strspc-manager/src/internal/replay"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/claude"
@@ -1436,5 +1437,48 @@ func TestSingleRuleRequest_CarriesMetadata(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("single-rule request lost metadata %q", want)
 		}
+	}
+}
+
+func TestNew_RequiresHTTPS(t *testing.T) {
+	t.Setenv(claude.EnvBaseURL, "")
+	for _, base := range []string{"https://llm.example", "http://127.0.0.1:8080", "http://localhost:4000/v1"} {
+		if _, err := claude.New(claude.Config{APIKey: "k", BaseURL: base}); err != nil {
+			t.Errorf("BaseURL %q rejected: %v", base, err)
+		}
+	}
+	if _, err := claude.New(claude.Config{APIKey: "k", BaseURL: "http://llm.example"}); !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Errorf("http BaseURL: err = %v, want ErrInsecureURL", err)
+	}
+
+	// The SDK reads the variable itself when BaseURL is empty.
+	t.Setenv(claude.EnvBaseURL, "http://llm.example")
+	if _, err := claude.New(claude.Config{APIKey: "k"}); !errors.Is(err, httpsonly.ErrInsecureURL) {
+		t.Errorf("http %s: err = %v, want ErrInsecureURL", claude.EnvBaseURL, err)
+	}
+	if _, err := claude.New(claude.Config{APIKey: "k", BaseURL: "https://llm.example"}); err != nil {
+		t.Errorf("an https BaseURL overrides %s: %v", claude.EnvBaseURL, err)
+	}
+}
+
+func TestEvaluateBatch_RefusesAnInsecureRedirect(t *testing.T) {
+	t.Setenv(claude.EnvBaseURL, "")
+	srv := httptest.NewTLSServer(http.RedirectHandler("http://llm.example/v1/messages", http.StatusTemporaryRedirect))
+	defer srv.Close()
+	p, err := claude.New(claude.Config{APIKey: "k", BaseURL: srv.URL, HTTPClient: srv.Client(), MaxRetries: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{
+		EntityID: "CMD", Inputs: []ruleeval.RuleInput{rule("CMD-002", "every command must have a test")}, Diff: "x",
+	})
+	got := err
+	if got == nil {
+		for _, e := range resp.Errors {
+			got = e
+		}
+	}
+	if !errors.Is(got, httpsonly.ErrInsecureURL) {
+		t.Fatalf("err = %v, errors = %v; want ErrInsecureURL", err, resp.Errors)
 	}
 }
