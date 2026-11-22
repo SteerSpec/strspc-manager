@@ -5,6 +5,8 @@ package rulediff
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -215,7 +217,12 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // Files present in both are compared with Compare, unless their bytes are the
 // same: SPEC §7.2 validates each changed entity file. Files only in headDir are
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
-// realm.json is a manifest, not an entity file, and is left out.
+// realm.json is a manifest, not an entity file: it and the kind of each file
+// below the directories are compared as CompareRealms does, except that a
+// baseDir that doesn't exist is an empty one, so a mistyped one passes for a
+// new tree: CompareRealms refuses it. A headDir that doesn't exist is RD000, as
+// is an empty path or a dangling link for either.
+// Entity files are compared only directly inside the directories.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
@@ -259,6 +266,16 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 
+	realms := CompareRealms
+	if isAbsent(baseDir, os.Lstat) {
+		realms = func(_, head string, opts ...Option) *result.Result {
+			return compareRealms("", head, opts...) // Nothing to compare with.
+		}
+	}
+	for _, d := range realms(baseDir, headDir, opts...).Diagnostics {
+		res.Add(d)
+	}
+
 	for name := range baseFiles {
 		if _, ok := headFiles[name]; !ok {
 			res.Add(result.Diagnostic{
@@ -271,6 +288,25 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 	return res
+}
+
+// isAbsent reports whether nothing is at path. A dangling link is something, at
+// path or above it, and an empty path names nothing to look for.
+func isAbsent(path string, lstat func(string) (fs.FileInfo, error)) bool {
+	if path == "" {
+		return false
+	}
+	if _, err := lstat(path); !errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	parent := filepath.Dir(path)
+	if parent == path {
+		return true
+	}
+	if info, err := os.Stat(parent); err == nil {
+		return info.IsDir() // Windows says not found below a file too.
+	}
+	return isAbsent(parent, lstat)
 }
 
 // scanJSONFiles returns a map of filename → full path for all *.json files
