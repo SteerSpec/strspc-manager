@@ -52,6 +52,7 @@ func (l layout) write(t *testing.T, dir string) (tree, app string) {
 		"code":     head + `,"id":"dev.x"}` + subs + `}`,
 		"standard": head + `,"id":"dev.x"` + kind + `}` + subs + `}`,
 		"no id":    head + kind + `}` + subs + `}`,
+		"bad kind": head + `,"id":"dev.x","kind":"code"}` + subs + `}`,
 		"broken":   "{",
 	}
 	children := map[string]string{
@@ -100,7 +101,7 @@ func (l layout) write(t *testing.T, dir string) (tree, app string) {
 // drift apart and a malformed tree can't switch evaluation off (STDRLM-011).
 func TestRealmKindLayouts(t *testing.T) {
 	var layouts []layout
-	for _, root := range []string{"code", "standard", "no id", "broken"} {
+	for _, root := range []string{"code", "standard", "no id", "bad kind", "broken"} {
 		for _, subs := range []string{"none", "sub", "case", "dot", "parent", "path", "twice"} {
 			for _, sub := range []string{"none", "code", "standard", "wrong id", "nesting", "broken"} {
 				for _, deep := range []string{"none", "code", "standard"} {

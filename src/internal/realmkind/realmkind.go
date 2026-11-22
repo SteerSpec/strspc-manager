@@ -44,8 +44,9 @@ func New(root string) *Finder {
 //     by that exact name, which is standard, has the ID <parent>.<name>
 //     (RR009) and declares no sub-realm of its own (RR010).
 //
-// Each manifest is a regular file that loads and has an ID, and each
-// sub_realms entry is a directory name, listed once in any case. The root is
+// Each manifest is a regular file that loads, has an ID and declares a valid
+// kind or none (RLMMNFST-008), and each sub_realms entry is a directory name,
+// listed once in any case. The root is
 // the top of the tree being resolved, so every caller sees the same manifests.
 func (f *Finder) KindOf(path string) string {
 	if f.standard(path) {
@@ -107,10 +108,14 @@ func (f *Finder) standard(path string) bool {
 	return false
 }
 
-// validManifest reports whether a manifest loaded, has an ID and lists its
-// sub-realms as directory names, each once in any case.
+// validManifest reports whether a manifest loaded, has an ID, declares the
+// standard kind or none, and lists its sub-realms as directory names, each
+// once in any case.
 func validManifest(rf *entity.RealmFile) bool {
 	if rf == nil || rf.Realm.ID == "" {
+		return false
+	}
+	if k := rf.Realm.Kind; k != "" && k != entity.KindStandard {
 		return false
 	}
 	for i, s := range rf.SubRealms {
