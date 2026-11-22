@@ -219,7 +219,10 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
 // realm.json is a manifest, not an entity file: it and the kind of each file
 // below the directories are compared as CompareRealms does, except that a
-// baseDir that doesn't exist is an empty one. A headDir that doesn't is RD000.
+// baseDir that doesn't exist is an empty one, so a mistyped one passes for a
+// new tree: CompareRealms refuses it. A headDir that doesn't exist is RD000, as
+// is an empty path or a dangling link for either.
+// Entity files are compared only directly inside the directories.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
@@ -263,11 +266,13 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 
-	base := baseDir
-	if _, err := os.Stat(baseDir); errors.Is(err, fs.ErrNotExist) {
-		base = "" // Nothing to compare with. A head that can't be read is RD000.
+	realms := CompareRealms
+	if isAbsent(baseDir) {
+		realms = func(_, head string, opts ...Option) *result.Result {
+			return compareRealms("", head, opts...) // Nothing to compare with.
+		}
 	}
-	for _, d := range compareRealms(base, headDir, opts...).Diagnostics {
+	for _, d := range realms(baseDir, headDir, opts...).Diagnostics {
 		res.Add(d)
 	}
 
@@ -283,6 +288,25 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 	return res
+}
+
+// isAbsent reports whether nothing is at path. A dangling link is something, at
+// path or above it, and an empty path names nothing to look for.
+func isAbsent(path string) bool {
+	if path == "" {
+		return false
+	}
+	if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	parent := filepath.Dir(path)
+	if parent == path {
+		return true
+	}
+	if _, err := os.Stat(parent); err == nil {
+		return true
+	}
+	return isAbsent(parent)
 }
 
 // scanJSONFiles returns a map of filename → full path for all *.json files

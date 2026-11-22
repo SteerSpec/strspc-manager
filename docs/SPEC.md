@@ -601,7 +601,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `Compare` and `CompareNew` read no manifest.
 
-RD028 to RD030 need both versions of the whole tree, as an entity file needn't change for them: `CompareRealms` takes the two directories, manifests included, and also reports RD011, RD013, RD014 and RD015 on Realm Notes. `CompareDir` runs it, with a missing base as an empty one; a head that is missing or not a directory is RD000 in both. A caller that uses only `Compare` gets RD026 and RD027 and none of those. A file's kind is found as the evaluator finds it (§8.3), from each directory at or above the file, as a source may be rooted at any of them.
+RD028 to RD030 need both versions of the whole tree, as an entity file needn't change for them: `CompareRealms` takes the two directories, manifests included, and also reports RD011, RD013, RD014 and RD015 on Realm Notes. `CompareDir` runs it, with a missing base as an empty one (a dangling link or an empty path isn't missing: RD000); a head that is missing or not a directory is RD000 in both. `CompareDir` compares entity files only directly inside the two directories, so a caller with sub-realm directories compares those files itself. A caller that uses only `Compare` gets RD026 and RD027 and none of those. A file's kind is found as the evaluator finds it (§8.3), from each directory at or above the file, as a source may be rooted at any of them.
 
 #### `realm-lint` (RM)
 

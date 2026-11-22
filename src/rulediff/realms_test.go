@@ -305,3 +305,26 @@ func TestCompareDir_HeadMustBeADirectory(t *testing.T) {
 		})
 	}
 }
+
+// Only a base that is absent is an empty one, not a broken path to one.
+func TestCompareDir_BrokenBaseIsNotEmpty(t *testing.T) {
+	head := tree{"realm.json": stdRealm}.write(t)
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(filepath.Join(t.TempDir(), "gone"), link); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	for name, base := range map[string]string{
+		"dangling link":         link,
+		"below a dangling link": filepath.Join(link, "a", "rules"),
+		"empty path":            "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			assertCodeSeverity(t, CompareDir(base, head), "RD000", result.Error)
+		})
+	}
+
+	absent := filepath.Join(t.TempDir(), "a", "rules")
+	if res := CompareDir(absent, head); len(res.Diagnostics) != 0 {
+		t.Errorf("a new directory below new ones drew %v", res.Diagnostics)
+	}
+}
