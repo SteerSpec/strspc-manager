@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -48,7 +49,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 	}
 
 	var files []SourceFile
-	kinds := newRealmKinds(abs)
+	kinds := realmkind.New(abs)
 
 	walkErr := entity.WalkEntityFiles(abs, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
@@ -115,7 +116,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 			}
 		}
 
-		files = append(files, SourceFile{File: ef, Path: path, RealmKind: kinds.kindOf(path)})
+		files = append(files, SourceFile{File: ef, Path: path, RealmKind: kinds.KindOf(path)})
 		return nil
 	})
 

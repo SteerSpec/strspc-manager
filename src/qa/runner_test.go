@@ -292,7 +292,9 @@ func (m *modules) ruleResolve() []*ruleresolve.ResolvedFile {
 func (m *modules) ruleEval(files []*ruleresolve.ResolvedFile) {
 	var inputs []ruleeval.RuleInput
 	for _, f := range files {
-		inputs = append(inputs, ruleeval.RuleInputsFromFile(f.File)...)
+		in := ruleeval.RuleInputsFromFile(f.File)
+		ruleeval.AnnotateRealmKind(in, f.RealmKind)
+		inputs = append(inputs, in...)
 	}
 	runs := m.sc.Eval
 	if len(runs) == 0 {

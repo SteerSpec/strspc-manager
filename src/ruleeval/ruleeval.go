@@ -36,6 +36,12 @@ const (
 	// CodeNoDiff (RE004) reports that the diff, or the file set of an audit,
 	// is empty and there is nothing to evaluate.
 	CodeNoDiff = "RE004"
+	// CodeStandardSkipped (RE005) warns that rules were not evaluated because
+	// their Realm's kind is standard (STDRLM-011).
+	CodeStandardSkipped = "RE005"
+	// CodeUnsafeSkip (RE006) reports, as an Error, a rule not evaluated for that
+	// kind that can block or can't be a transcription: a relabel of code rules.
+	CodeUnsafeSkip = "RE006"
 )
 
 // Verdict represents the evaluation outcome for a single rule.
@@ -445,13 +451,16 @@ type group struct {
 // If the context is cancelled, partial results collected so far are returned.
 //
 // Rules of a Standard Realm (RuleInput.RealmKind, STDRLM-011) and rules whose
-// state is not in the evaluate set are skipped, with no verdict. Rules are
+// state is not in the evaluate set are skipped, with no verdict. The first
+// are reported, as RE005 or as a blocking RE006, also in static-only mode and
+// for an empty diff. Rules are
 // grouped by EntityID; when the provider implements BatchProvider each
 // group is sent as one request, otherwise rules are evaluated one by one.
 // Groups run concurrently up to the configured concurrency; diagnostics are
 // always emitted in input order.
 func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff string) *result.Result {
 	res := &result.Result{}
+	e.reportStandardRules(res, inputs)
 
 	if e.cfg.StaticOnly {
 		res.Add(result.Diagnostic{
@@ -488,9 +497,9 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // meets is reported missing. A caller that narrows the set asserts that
 // nothing outside it bears on the rules.
 //
-// A rule of a Standard Realm is not audited (STDRLM-011): it gets no verdict
-// and no diagnostic, only an EventStandardRule, so a caller must never read
-// the absence of a violation as compliance.
+// A rule of a Standard Realm is not audited (STDRLM-011): it gets no verdict,
+// and RE005 or RE006 reports it whatever else happens. A caller must never
+// read the absence of a violation as compliance.
 //
 // In static-only mode Audit reports RE003, and for an empty file set RE004,
 // whatever the provider. Otherwise the provider must implement Auditor with
@@ -499,6 +508,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // judge an empty diff and pass every rule.
 func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File) (*result.Result, error) {
 	res := &result.Result{}
+	e.reportStandardRules(res, inputs)
 	if e.cfg.StaticOnly {
 		res.Add(result.Diagnostic{
 			Module:   module,

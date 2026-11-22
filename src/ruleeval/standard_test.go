@@ -15,6 +15,7 @@ func standardInput(id, state string) ruleeval.RuleInput {
 	in := makeInput(id, state)
 	in.EntityID = "STD"
 	in.RealmKind = entity.KindStandard
+	in.Rule.Clause = "V1.1.1"
 	return in
 }
 
@@ -98,8 +99,10 @@ func TestStandardRealmRulesIgnoreCachedVerdicts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res := e.Evaluate(t.Context(), []ruleeval.RuleInput{in}, diff); len(res.Diagnostics) != 0 {
-		t.Errorf("got %v, want no diagnostic", res.Diagnostics)
+	for _, d := range e.Evaluate(t.Context(), []ruleeval.RuleInput{in}, diff).Diagnostics {
+		if d.Code == ruleeval.CodeViolated {
+			t.Errorf("got %v, want no verdict from the cache", d)
+		}
 	}
 }
 

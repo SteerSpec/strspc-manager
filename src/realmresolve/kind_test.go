@@ -43,6 +43,25 @@ func TestResolveInheritance_RealmKind(t *testing.T) {
 			"dep/realm.json":     manifest("dev.dep", std, `,"sub_realms":["sub"]`),
 			"dep/sub/realm.json": manifest("dev.dep.sub", "", ""), "dep/sub/PAR.json": depEntity,
 		}, "", ""},
+		{"sub-realm without a manifest in a Standard Realm dependency", map[string]string{
+			"app/realm.json": manifest("dev.app", "", deps), "app/CHD.json": childEntity,
+			"dep/realm.json": manifest("dev.dep", std, `,"sub_realms":["sub"]`), "dep/sub/PAR.json": depEntity,
+		}, "", ""},
+		{"unreadable sub-realm manifest in a Standard Realm dependency", map[string]string{
+			"app/realm.json": manifest("dev.app", "", deps), "app/CHD.json": childEntity,
+			"dep/realm.json":     manifest("dev.dep", std, `,"sub_realms":["sub"]`),
+			"dep/sub/realm.json": "{", "dep/sub/PAR.json": depEntity,
+		}, "", ""},
+		{"undeclared code manifest in a Standard Realm dependency", map[string]string{
+			"app/realm.json": manifest("dev.app", "", deps), "app/CHD.json": childEntity,
+			"dep/realm.json":     manifest("dev.dep", std, ""),
+			"dep/sub/realm.json": manifest("dev.dep.sub", "", ""), "dep/sub/PAR.json": depEntity,
+		}, "", ""},
+		{"undeclared code manifest in the Standard Realm resolved", map[string]string{
+			"app/realm.json":     manifest("dev.app", std, deps),
+			"app/sub/realm.json": manifest("dev.app.sub", "", ""), "app/sub/CHD.json": childEntity,
+			"dep/realm.json": manifest("dev.dep", "", ""), "dep/PAR.json": depEntity,
+		}, "", ""},
 		{"standard sub-realm inherits from code", map[string]string{
 			"app/realm.json":     manifest("dev.app", "", deps+`,"sub_realms":["sub"]`),
 			"app/sub/realm.json": manifest("dev.app.sub", std, ""), "app/sub/CHD.json": childEntity,
@@ -82,5 +101,36 @@ func TestResolveInheritance_RealmKind(t *testing.T) {
 				t.Errorf("rule kinds = %q, want CHD-001 %q and PAR-001 %q", kinds, tc.child, tc.parent)
 			}
 		})
+	}
+}
+
+// The kind is found too when the Realm is resolved from a relative directory.
+func TestResolveInheritance_RealmKindRelativeDir(t *testing.T) {
+	root := t.TempDir()
+	files := map[string]string{
+		"std/realm.json": `{"realm":{"id":"dev.std","title":"S","version":"1.0.0","kind":"standard"}}`,
+		"std/A.json":     `{"entity":{"id":"AAA","title":"A","inherits":"BBB"},"rule_set":{"version":"0.1.0","hash":null},"rules":[],"notes":[]}`,
+		"std/B.json":     `{"entity":{"id":"BBB","title":"B"},"rule_set":{"version":"0.1.0","hash":null},"rules":[],"notes":[]}`,
+	}
+	for name, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(root)
+	rf, err := entity.LoadRealm(filepath.Join("std", "realm.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, res := New().Resolve(t.Context(), rf, "std")
+	if len(got.Inheritance) != 1 {
+		t.Fatalf("got %d chains, want 1: %v", len(got.Inheritance), res.Diagnostics)
+	}
+	if c := got.Inheritance[0]; c.Entity.RealmKind != entity.KindStandard || c.Ancestors[0].RealmKind != entity.KindStandard {
+		t.Errorf("hop kinds = %q and %q, want standard", c.Entity.RealmKind, c.Ancestors[0].RealmKind)
 	}
 }

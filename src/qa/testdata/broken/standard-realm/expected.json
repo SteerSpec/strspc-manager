@@ -54,6 +54,30 @@
     "path": "realm/realm.json"
   },
   {
+    "module": "rule-eval",
+    "code": "RE001",
+    "severity": "error",
+    "path": "app.go:1"
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE005",
+    "severity": "warning",
+    "path": ""
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE006",
+    "severity": "error",
+    "path": ""
+  },
+  {
+    "module": "rule-eval",
+    "code": "RE006",
+    "severity": "error",
+    "path": ""
+  },
+  {
     "module": "rule-lint",
     "code": "RL033",
     "severity": "error",

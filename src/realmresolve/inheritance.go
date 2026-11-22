@@ -10,6 +10,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -53,12 +54,21 @@ type node struct {
 	// subManifests holds the manifests of a dependency's sub-realms by the
 	// directory of each, for entities its flat index doesn't tell apart.
 	subManifests map[string]*entity.RealmFile
+	// kinds finds the kind of the Realm holding each entity; made on first use.
+	// Unlike the manifests above, which fall back on the dependency's for
+	// Standard References, it never falls back on a standard kind.
+	kinds *realmkind.Finder
 }
 
 // hop returns e as a hop of this node.
 func (n *node) hop(e *entity.File) inherit.Hop {
 	realm, parent := n.realm.Realm, n.parent
+	var kind string
 	if path, ok := n.realm.EUIDs[e.Entity.ID]; ok {
+		if n.kinds == nil {
+			n.kinds = realmkind.New(n.realm.Dir)
+		}
+		kind = n.kinds.KindOf(path)
 		for dir, sub := range n.subManifests {
 			if strings.HasPrefix(path, dir+string(filepath.Separator)) {
 				realm, parent = sub, n.realm.Realm
@@ -67,7 +77,7 @@ func (n *node) hop(e *entity.File) inherit.Hop {
 		}
 	}
 	return inherit.Hop{
-		RealmID: n.ns, RealmKind: realm.Realm.Kind, SubRealmIDs: n.subRealmIDs, Entity: e,
+		RealmID: n.ns, RealmKind: kind, SubRealmIDs: n.subRealmIDs, Entity: e,
 		Scopes: standardScopes(e, n.entities, realm, parent),
 	}
 }
