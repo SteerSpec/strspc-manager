@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// errRealmKey is Parse's error for a file that is both manifest and entity.
+// errRealmKey is Parse's error for a file that claims to be a manifest.
 var errRealmKey = errors.New(`an entity file can't have a top-level "realm" key`)
 
 // Parse decodes raw JSON into a File. Use this when the data is already in
@@ -18,7 +18,7 @@ func Parse(data []byte) (*File, error) {
 	if err := json.Unmarshal(data, &f); err != nil {
 		return nil, fmt.Errorf("parsing entity JSON: %w", err)
 	}
-	if hasRealmKey(data) && !IsRealmJSON(data) {
+	if IsRealmJSON(data) && hasEntityContent(data) {
 		return nil, fmt.Errorf("parsing entity JSON: %w", errRealmKey)
 	}
 	return &f, nil
@@ -42,14 +42,22 @@ func ParseRealm(data []byte) (*RealmFile, error) {
 	return &r, nil
 }
 
-// IsRealmJSON reports whether data is a Realm manifest, or a published index
-// of one: it has a top-level "realm" key and no entity content. Entity content
-// is an "entity", "rule_set" or "sub_entities" key, or "rules" that aren't a
-// list of objects free of "id", "state" and "body".
+// IsRealmJSON detects Realm manifest files by checking for a "realm" top-level key.
 func IsRealmJSON(data []byte) bool {
-	if !hasRealmKey(data) {
+	var probe struct {
+		// Realm is present (non-nil) only in a Realm manifest.
+		Realm *json.RawMessage `json:"realm"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
 		return false
 	}
+	return probe.Realm != nil
+}
+
+// hasEntityContent reports whether data has an "entity", "rule_set" or
+// "sub_entities" key, or "rules" that aren't a list of objects free of "id",
+// "state" and "body".
+func hasEntityContent(data []byte) bool {
 	var content struct {
 		// Entity, RuleSet and SubEntities are non-empty when the key is present,
 		// even as null.
@@ -64,29 +72,41 @@ func IsRealmJSON(data []byte) bool {
 		} `json:"rules"`
 	}
 	if err := json.Unmarshal(data, &content); err != nil {
-		return false // Not provably a manifest, so not to be skipped.
+		return true // Not provably free of it.
 	}
 	if content.Entity != nil || content.RuleSet != nil || content.SubEntities != nil {
-		return false
+		return true
 	}
 	for _, r := range content.Rules {
 		if r.ID != nil || r.State != nil || r.Body != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// isPublishedIndex reports whether data has the shape of the index.json
+// published with a Realm: a "realm" key, "rules" that each name a file, and no
+// entity content.
+func isPublishedIndex(data []byte) bool {
+	if !IsRealmJSON(data) || hasEntityContent(data) {
+		return false
+	}
+	var index struct {
+		// Rules lists the published files.
+		Rules []struct {
+			File string `json:"file"`
+		} `json:"rules"`
+	}
+	if err := json.Unmarshal(data, &index); err != nil || len(index.Rules) == 0 {
+		return false // Not provably an index, so not to be skipped.
+	}
+	for _, r := range index.Rules {
+		if r.File == "" {
 			return false
 		}
 	}
 	return true
-}
-
-// hasRealmKey reports whether data has a non-null top-level "realm" key.
-func hasRealmKey(data []byte) bool {
-	var probe struct {
-		// Realm is present (non-nil) only in a Realm manifest.
-		Realm *json.RawMessage `json:"realm"`
-	}
-	if err := json.Unmarshal(data, &probe); err != nil {
-		return false
-	}
-	return probe.Realm != nil
 }
 
 // LoadRealm reads and parses a realm.json file from the given path.

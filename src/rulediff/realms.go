@@ -292,13 +292,13 @@ func (c *realmComparison) checkSupersession(rel string, existed bool) {
 			return
 		}
 	}
-	head, err := entity.Parse(headData)
+	head, err := decodeEntity(headData)
 	if err != nil {
 		return
 	}
 	var base *entity.File
 	if existed {
-		if parsed, err := parseBase(baseData); err == nil {
+		if parsed, err := decodeEntity(baseData); err == nil {
 			base = parsed
 		}
 	}

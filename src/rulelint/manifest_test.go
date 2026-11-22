@@ -22,3 +22,12 @@ func TestLintDirReportsEntityWithRealmKey(t *testing.T) {
 	}
 	t.Fatal("LintDir reported no RL001")
 }
+
+func TestLintBytesReportsManifestAsEntity(t *testing.T) {
+	for _, d := range rulelint.New().LintBytes(context.Background(), []byte(`{"realm":{}}`)).Diagnostics {
+		if d.Code == "RL001" {
+			return
+		}
+	}
+	t.Fatal("LintBytes reported no RL001")
+}

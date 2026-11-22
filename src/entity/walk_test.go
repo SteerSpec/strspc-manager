@@ -308,7 +308,7 @@ func TestWalkEntityFiles_CallbackResultControlsWalk(t *testing.T) {
 	}
 }
 
-func TestWalkEntityFiles_SkipsRealmManifestUnderAnotherName(t *testing.T) {
+func TestWalkEntityFiles_ReportsRealmManifestUnderAnotherName(t *testing.T) {
 	for _, mode := range walkModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -323,8 +323,8 @@ func TestWalkEntityFiles_SkipsRealmManifestUnderAnotherName(t *testing.T) {
 			if err != nil {
 				t.Fatalf("WalkEntityFiles: %v", err)
 			}
-			if len(seen) != 1 || seen[0] != "ENT.json" {
-				t.Errorf("visited %v, want only ENT.json", seen)
+			if len(seen) != 2 || seen[0] != "ENT.json" || seen[1] != "manifest.json" {
+				t.Errorf("visited %v, want ENT.json and manifest.json", seen)
 			}
 		})
 	}

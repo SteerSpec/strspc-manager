@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -224,6 +225,9 @@ func (l *Linter) LintRealmFiles(ctx context.Context, kind string, files []FileIn
 func (l *Linter) parseAndValidate(data []byte) (*entity.File, *result.Result) {
 	res := &result.Result{}
 	f, err := entity.Parse(data)
+	if err == nil && entity.IsRealmJSON(data) {
+		err = errors.New(`parsing entity JSON: an entity file can't have a top-level "realm" key`)
+	}
 	if err != nil {
 		res.Add(parseDiagnostic(err))
 		return nil, res

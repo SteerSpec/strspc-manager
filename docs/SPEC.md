@@ -403,7 +403,7 @@ rules/core/
     └── realm.v1.schema.json      ← Realm manifest schema (hand-maintained axiom)
 ```
 
-Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file. Under another name, a file is skipped as a manifest only if it has a `realm` key and no entity content, as the published `index.json` does. Entity content is an `entity`, `rule_set` or `sub_entities` key, or `rules` that aren't a list of objects free of `id`, `state` and `body`. A file with both doesn't parse as an entity file (RL001, RSV003, RR002, and RD000 as the head of a comparison). As the base, it is compared, so that it can be repaired.
+Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file. The only other file skipped for its content is a published `index.json`: one with a `realm` key, `rules` that each name a `file`, and no entity content (`entity`, `rule_set`, `sub_entities`, or a rule's `id`, `state` or `body`). Any other file with a `realm` key is reported where entity files are read (RL001, RSV003, RR002). With entity content it doesn't parse either, so it is RD000 as the head of a comparison. As the base, or in history, it is still decoded, so that it can be repaired.
 
 ### 5.2 Entity File Structure
 

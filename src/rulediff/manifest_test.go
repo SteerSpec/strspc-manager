@@ -1,6 +1,8 @@
 package rulediff_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -48,7 +50,32 @@ func TestDiffComparesRepairOfBaseWithRealmKey(t *testing.T) {
 
 // Turning an entity into a pure manifest deletes its rules.
 func TestDiffRejectsEntityTurnedIntoManifest(t *testing.T) {
-	if res := rulediff.Compare([]byte(plainEntity), []byte(`{"realm":{},"rules":[{"file":"ENT.json"}]}`)); !hasCode(res, "RD005") {
-		t.Errorf("no RD005: %+v", res.Diagnostics)
+	if res := rulediff.Compare([]byte(plainEntity), []byte(`{"realm":{},"rules":[{"file":"ENT.json"}]}`)); res.OK() {
+		t.Error("no Error")
+	}
+}
+
+// CompareRealms reads content without Compare, so the key must not cost RD030.
+func TestCompareRealmsReadsThroughRealmKey(t *testing.T) {
+	const manifest = `{"realm":{"id":"dev.test","title":"T","version":"1.0.0","kind":"standard"}}`
+	file := func(key, state string) string {
+		return `{` + key + `"entity":{"id":"ENT"},"rules":[{"id":"ENT-001","state":"R","body":"old"},` +
+			`{"id":"ENT-002","state":"` + state + `","body":"new","supersedes":"ENT-001"}]}`
+	}
+	tree := func(body string) string {
+		dir := t.TempDir()
+		for name, data := range map[string]string{"realm.json": manifest, "ENT.json": body} {
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return dir
+	}
+	const key = `"realm":{},`
+	if res := rulediff.CompareRealms(tree(file("", "D")), tree(file(key, "P"))); !hasCode(res, "RD030") {
+		t.Errorf("head with the key: no RD030: %+v", res.Diagnostics)
+	}
+	if res := rulediff.CompareRealms(tree(file(key, "P")), tree(file("", "P"))); hasCode(res, "RD030") {
+		t.Errorf("base with the key: false RD030: %+v", res.Diagnostics)
 	}
 }

@@ -2,6 +2,7 @@ package entity
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -63,9 +64,9 @@ func isCleanRelDir(d string) bool {
 }
 
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
-// directories and realm manifests: realm.json, and a file IsRealmJSON
-// accepts. For each other JSON file found, it reads and parses the file, then
-// calls fn with the results.
+// directories, realm.json and a published index.json. For each other JSON file
+// found, it reads and parses the file, then calls fn with the results: a
+// manifest under another name is a parse failure.
 //
 // By default the walk is recursive. Use WithRecursive(false) for
 // single-directory scanning.
@@ -150,7 +151,10 @@ func processEntry(path, name string, fn WalkFunc) error {
 	}
 
 	if IsRealmJSON(data) {
-		return nil
+		if name == "index.json" && isPublishedIndex(data) {
+			return nil
+		}
+		return fn(path, data, nil, fmt.Errorf("parsing entity JSON: %w", errRealmKey))
 	}
 
 	ef, parseErr := Parse(data)

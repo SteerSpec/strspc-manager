@@ -56,7 +56,7 @@ func New(opts ...Option) *Differ {
 func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 	res := &result.Result{}
 
-	baseEnt, err := parseBase(baseData)
+	baseEnt, err := decodeEntity(baseData)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -111,9 +111,10 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	return res
 }
 
-// parseBase decodes the version before a change. It skips the content check of
-// entity.Parse, so that the change repairing such a file is compared.
-func parseBase(data []byte) (*entity.File, error) {
+// decodeEntity decodes without entity.Parse's content check. A base needs that,
+// so that the change repairing it is compared, and so does CompareRealms, as
+// only Compare reports that check.
+func decodeEntity(data []byte) (*entity.File, error) {
 	var f entity.File
 	if err := json.Unmarshal(data, &f); err != nil {
 		return nil, fmt.Errorf("parsing entity JSON: %w", err)

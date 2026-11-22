@@ -28,3 +28,15 @@ func TestLocalSourceFailsOnEntityWithRealmKey(t *testing.T) {
 	}
 	t.Fatalf("no RSV003 on BBB.json: %+v", res.Diagnostics)
 }
+
+func TestLocalSourceFailsOnEntityTurnedIntoManifest(t *testing.T) {
+	dir := t.TempDir()
+	for name, body := range map[string]string{"AAA.json": `{"entity":{"id":"AAA"}}`, "BBB.json": `{"realm":{}}`} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, res := (&LocalSource{}).Fetch(context.Background(), dir); res.OK() {
+		t.Fatal("Fetch skipped a manifest under an entity's name without an Error")
+	}
+}
