@@ -15,6 +15,7 @@ func TestKindOf(t *testing.T) {
 		code     = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0"}}`
 		standard = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"}}`
 		withSub  = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0"},"sub_realms":["sub"]}`
+		subMeta  = `{"realm":{"id":"dev.x.sub","title":"X","version":"1.0.0","kind":"standard"}}`
 		stdMeta  = `{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"},"sub_realms":`
 	)
 	tests := []struct {
@@ -25,7 +26,7 @@ func TestKindOf(t *testing.T) {
 	}{
 		{"none", nil, "A.json", ""},
 		{"standard", map[string]string{".": standard}, "A.json", entity.KindStandard},
-		{"declared standard sub-realm", map[string]string{".": withSub, "sub": standard}, "sub/A.json", entity.KindStandard},
+		{"declared standard sub-realm", map[string]string{".": withSub, "sub": subMeta}, "sub/A.json", entity.KindStandard},
 		{"declared sub-realm without a manifest", map[string]string{".": withSub}, "sub/A.json", ""},
 		{"code under standard", map[string]string{".": standard, "a": code}, "a/b/A.json", ""},
 		{"unreadable under standard", map[string]string{".": standard, "a": "{"}, "a/A.json", ""},
@@ -38,6 +39,7 @@ func TestKindOf(t *testing.T) {
 		{"declared current directory", map[string]string{".": stdMeta + `["."]}`}, "A.json", ""},
 		{"declared in another case", map[string]string{".": stdMeta + `["Sub"]}`}, "sub/A.json", ""},
 		{"root of a standard with sub-realms", map[string]string{".": stdMeta + `["sub"]}`}, "a/A.json", entity.KindStandard},
+		{"sub-realm with another Realm's ID", map[string]string{".": withSub, "sub": standard}, "sub/A.json", ""},
 		{"outside the root", map[string]string{".": standard}, "../A.json", ""},
 	}
 	for _, tc := range tests {
@@ -75,6 +77,21 @@ func TestKindOfDanglingManifest(t *testing.T) {
 		t.Skipf("no symlinks here: %v", err)
 	}
 	if got := New(root).KindOf(filepath.Join(root, "a", "A.json")); got != "" {
+		t.Errorf("KindOf = %q, want a code Realm", got)
+	}
+}
+
+// A linked manifest is in doubt too: a review of the link doesn't show the kind.
+func TestKindOfLinkedManifest(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(t.TempDir(), "standard.json")
+	if err := os.WriteFile(target, []byte(`{"realm":{"id":"dev.x","title":"X","version":"1.0.0","kind":"standard"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "realm.json")); err != nil {
+		t.Skipf("no symlinks here: %v", err)
+	}
+	if got := New(root).KindOf(filepath.Join(root, "A.json")); got != "" {
 		t.Errorf("KindOf = %q, want a code Realm", got)
 	}
 }

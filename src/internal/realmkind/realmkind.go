@@ -34,75 +34,94 @@ func New(root string) *Finder {
 	return &Finder{root: root, manifests: make(map[string]manifest)}
 }
 
-// KindOf returns entity.KindStandard for a file that is, without doubt, a
-// Standard Realm's, and the empty kind of a code Realm for any other.
+// KindOf returns entity.KindStandard for a file in one of the two layouts
+// that make it a Standard Realm's, and the empty kind of a code Realm for any
+// other. It is a whitelist, so a layout nobody thought of is evaluated. Of the
+// manifests on the way from the root down to the file there is either
 //
-// The Realm is that of the first manifest from the root down to the file, or
-// of the sub-realm it declares that holds the file, and has to declare the
-// standard kind. Each of these is a doubt:
-//   - the file is outside the root or in no Realm;
-//   - a manifest on the way can't be loaded, or a declared sub-realm has none;
-//   - any other manifest lies below the Realm's, whatever its kind, so a
-//     manifest above a Realm can't relabel it;
-//   - the layout is invalid: a sub_realms entry that is no directory name or
-//     differs only in case from the file's, or a sub-realm declaring its own.
+//   - one, a standard one, with no sub-realm it declares holding the file; or
+//   - two, a Realm's and, directly below it, that of the sub-realm it declares
+//     by that exact name, which is standard, has the ID <parent>.<name>
+//     (RR009) and declares no sub-realm of its own (RR010).
+//
+// Each manifest is a regular file that loads and has an ID, and each
+// sub_realms entry is a directory name, listed once in any case. The root is
+// the top of the tree being resolved, so every caller sees the same manifests.
 func (f *Finder) KindOf(path string) string {
+	if f.standard(path) {
+		return entity.KindStandard
+	}
+	return ""
+}
+
+// standard reports whether the file at path is in one of KindOf's two layouts.
+func (f *Finder) standard(path string) bool {
 	root, err := filepath.Abs(f.root)
 	if err != nil {
-		return ""
+		return false
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return ""
+		return false
 	}
 	rel, err := filepath.Rel(root, filepath.Dir(abs))
 	if err != nil || !filepath.IsLocal(rel) {
-		return ""
+		return false
 	}
-
-	dirs := []string{root}
 	var names []string
 	if rel != "." {
 		names = strings.Split(rel, string(filepath.Separator))
-		for _, name := range names {
-			dirs = append(dirs, filepath.Join(dirs[len(dirs)-1], name))
-		}
 	}
-	first := slices.IndexFunc(dirs, func(dir string) bool { return f.load(dir).found })
-	if first < 0 {
-		return ""
-	}
-	realm := f.load(dirs[first]).file
-	if realm == nil || slices.ContainsFunc(realm.SubRealms, notDirName) {
-		return ""
-	}
-	if first < len(names) {
-		name := names[first]
-		switch {
-		case slices.Contains(realm.SubRealms, name):
-			first++
-			realm = f.load(dirs[first]).file
-			// Nesting is one level deep (RR010).
-			if realm == nil || len(realm.SubRealms) > 0 {
-				return ""
+
+	// at holds how far below the root each manifest on the way is.
+	var at []int
+	var realms []*entity.RealmFile
+	dir := root
+	for depth := 0; ; depth++ {
+		if m := f.load(dir); m.found {
+			if !validManifest(m.file) {
+				return false
 			}
-		case slices.ContainsFunc(realm.SubRealms, func(s string) bool { return strings.EqualFold(s, name) }):
-			return ""
+			at = append(at, depth)
+			realms = append(realms, m.file)
 		}
+		if depth == len(names) {
+			break
+		}
+		dir = filepath.Join(dir, names[depth])
 	}
-	if realm.Realm.Kind != entity.KindStandard {
-		return ""
+
+	switch len(realms) {
+	case 1:
+		realm, below := realms[0], names[at[0]:]
+		return realm.Realm.Kind == entity.KindStandard &&
+			(len(below) == 0 || !slices.ContainsFunc(realm.SubRealms, func(s string) bool { return strings.EqualFold(s, below[0]) }))
+	case 2:
+		parent, child, name := realms[0], realms[1], names[at[0]]
+		return child.Realm.Kind == entity.KindStandard &&
+			at[1] == at[0]+1 &&
+			slices.Contains(parent.SubRealms, name) &&
+			child.Realm.ID == parent.Realm.ID+"."+name &&
+			len(child.SubRealms) == 0
 	}
-	if slices.ContainsFunc(dirs[first+1:], func(dir string) bool { return f.load(dir).found }) {
-		return ""
-	}
-	return entity.KindStandard
+	return false
 }
 
-// notDirName reports whether a sub_realms entry is not the name of a directory
-// directly inside its Realm.
-func notDirName(s string) bool {
-	return s == "." || !filepath.IsLocal(s) || strings.ContainsAny(s, `/\`)
+// validManifest reports whether a manifest loaded, has an ID and lists its
+// sub-realms as directory names, each once in any case.
+func validManifest(rf *entity.RealmFile) bool {
+	if rf == nil || rf.Realm.ID == "" {
+		return false
+	}
+	for i, s := range rf.SubRealms {
+		if s == "." || !filepath.IsLocal(s) || strings.ContainsAny(s, `/\`) {
+			return false
+		}
+		if slices.ContainsFunc(rf.SubRealms[:i], func(prev string) bool { return strings.EqualFold(prev, s) }) {
+			return false
+		}
+	}
+	return true
 }
 
 // load returns the manifest of dir.
@@ -112,9 +131,10 @@ func (f *Finder) load(dir string) manifest {
 	}
 	var m manifest
 	path := filepath.Join(dir, "realm.json")
-	// Lstat, so that a dangling link is a manifest that can't be loaded.
-	if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
-		m.found = true
+	// Lstat, so that a link, dangling or not, is a manifest in doubt.
+	info, err := os.Lstat(path)
+	m.found = !errors.Is(err, fs.ErrNotExist)
+	if err == nil && info.Mode().IsRegular() {
 		if rf, err := entity.LoadRealm(path); err == nil {
 			m.file = rf
 		}
