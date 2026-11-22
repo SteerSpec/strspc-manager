@@ -5,6 +5,8 @@ package rulediff
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -215,7 +217,9 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // Files present in both are compared with Compare, unless their bytes are the
 // same: SPEC §7.2 validates each changed entity file. Files only in headDir are
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
-// realm.json is a manifest, not an entity file, and is left out.
+// realm.json is a manifest, not an entity file: it and the kind of each file
+// below the directories are compared as CompareRealms does, except that a
+// baseDir that doesn't exist is an empty one.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
@@ -256,6 +260,16 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			for _, d := range CompareNew(headData, opts...).Diagnostics {
 				res.Add(d)
 			}
+		}
+	}
+
+	if _, err := os.Stat(headDir); err == nil {
+		base := baseDir
+		if _, err := os.Stat(baseDir); errors.Is(err, fs.ErrNotExist) {
+			base = "" // Nothing to compare with.
+		}
+		for _, d := range compareRealms(base, headDir, opts...).Diagnostics {
+			res.Add(d)
 		}
 	}
 

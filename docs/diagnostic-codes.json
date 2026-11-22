@@ -13,7 +13,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Entity file unavailable for comparison",
-    "summary": "The base or head entity file is nil, cannot be read, or cannot be parsed.",
+    "summary": "The base or head entity file is nil, cannot be read, or cannot be parsed, or a Realm comparison cannot read a directory or manifest it compares.",
     "fix": "Check that the file exists and parses at both versions, and that both git refs are available.",
     "retired": false
   },
@@ -202,7 +202,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Revision moved without a body change",
-    "summary": "A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018).",
+    "summary": "A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one revision (NTE-018).",
     "fix": "Restore the revision. It counts edits to the rule, and a note never moves it.",
     "retired": false
   },
@@ -240,6 +240,51 @@
     "title": "Structured note changed after Draft",
     "summary": "A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041).",
     "fix": "Restore the note. To change the structured form, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
+    "code": "RD026",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Clause changed after Draft",
+    "summary": "`clause` was added, removed or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `clause`. To change it, add a new rule; in a Standard Realm a fix keeps the clause of the rule it supersedes (STDRLM-012).",
+    "retired": false
+  },
+  {
+    "code": "RD027",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Profiles changed after Draft",
+    "summary": "`profiles` was added, removed, reordered or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `profiles`. To change them, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
+    "code": "RD028",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Realm kind changed",
+    "summary": "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it. A Standard Realm's rules aren't evaluated (STDRLM-011).",
+    "fix": "Restore the manifests. A Realm keeps its kind: create a Standard Realm as a new Realm, with new files.",
+    "retired": false
+  },
+  {
+    "code": "RD029",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Realm Note retyped or retargeted",
+    "summary": "A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035).",
+    "fix": "Restore the note. Withdraw an exclusion by changing only its type to `reference`, with a revision bump; to exclude another clause, add a new exclusion.",
+    "retired": false
+  },
+  {
+    "code": "RD030",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Supersedes a rule that was not live",
+    "summary": "A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017).",
+    "fix": "Supersede the live rule of the clause instead, or abandon the fix.",
     "retired": false
   },
   {
