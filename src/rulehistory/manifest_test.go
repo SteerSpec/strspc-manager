@@ -14,3 +14,11 @@ func TestBuildReadsCommitWithRealmKey(t *testing.T) {
 		t.Fatalf("events = %+v, warnings = %+v", h.Events, h.Warnings)
 	}
 }
+
+func TestBuildComparesWithBeforeThatHasRealmKey(t *testing.T) {
+	before := []byte(`{"realm":{},"entity":{"id":"ENT"},"rule_set":{"version":"1.0.0"},"rules":[{"id":"ENT-001","state":"D","body":"MUST hold"}]}`)
+	after := []byte(`{"entity":{"id":"ENT"},"rule_set":{"version":"1.1.0"},"rules":[{"id":"ENT-001","state":"P","body":"MUST hold"}]}`)
+	if h := rulehistory.Build([]rulehistory.Commit{{SHA: "c1", Before: before, After: after}}); len(h.Warnings) != 0 || len(h.Events) == 0 {
+		t.Fatalf("events = %+v, warnings = %+v", h.Events, h.Warnings)
+	}
+}

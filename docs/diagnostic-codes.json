@@ -419,7 +419,7 @@
     "severity": "Error",
     "title": "Invalid entity JSON",
     "summary": "The file is not valid JSON or does not parse into the entity structure.",
-    "fix": "Fix the JSON syntax, or the field whose type does not match the entity structure.",
+    "fix": "Fix the JSON syntax, or the field whose type does not match the entity structure. An entity file has no top-level `realm` key and is not named `index.json`.",
     "retired": false
   },
   {
@@ -841,8 +841,8 @@
     "module": "realm-lint",
     "severity": "Info / Error",
     "title": "Entity files not linted",
-    "summary": "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails.",
-    "fix": "Check that the reported path exists and is readable. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
+    "summary": "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name.",
+    "fix": "Check that the reported path exists and is readable, and that only a published index is named `index.json`. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
     "retired": false
   },
   {
@@ -1319,7 +1319,7 @@
     "severity": "Error",
     "title": "Invalid entity file in a source",
     "summary": "An entity file cannot be parsed, or its `entity.id` is empty.",
-    "fix": "Fix the JSON in the file, and make sure `entity.id` is set.",
+    "fix": "Fix the JSON in the file, and make sure `entity.id` is set. An entity file has no top-level `realm` key and is not named `index.json`.",
     "retired": false
   },
   {

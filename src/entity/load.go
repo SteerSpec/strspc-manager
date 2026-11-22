@@ -10,6 +10,9 @@ import (
 // errRealmKey is Parse's error for a file that claims to be a manifest.
 var errRealmKey = errors.New(`an entity file can't have a top-level "realm" key`)
 
+// errReservedIndex is the walker's error for an index.json of another shape.
+var errReservedIndex = errors.New("index.json is reserved for a published index of the Realm")
+
 // Parse decodes raw JSON into a File. Use this when the data is already in
 // memory (e.g. received over HTTP in strspc-cloud). Entity content beside a
 // top-level "realm" key is an error.

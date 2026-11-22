@@ -59,6 +59,7 @@ func TestOnlyAPublishedIndexIsSkippedByContent(t *testing.T) {
 		{"index listing nothing", "index.json", `{"realm":{},"rules":[]}`, false},
 		{"index entry without a file", "index.json", `{"realm":{},"rules":[{"entity_id":"ENT"}]}`, false},
 		{"entity named index", "index.json", `{"realm":{},"entity":{},"rules":[{"file":"A.json"}]}`, false},
+		{"entity without the key named index", "index.json", `{"entity":{"id":"INDEX"},"rules":[]}`, false},
 		{"rule among index entries", "index.json", `{"realm":{},"rules":[{"file":"A.json","state":"I"}]}`, false},
 	}
 	for _, tt := range tests {

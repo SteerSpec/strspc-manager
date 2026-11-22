@@ -66,7 +66,7 @@ func isCleanRelDir(d string) bool {
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
 // directories, realm.json and a published index.json. For each other JSON file
 // found, it reads and parses the file, then calls fn with the results: a
-// manifest under another name is a parse failure.
+// manifest under another name, or any other index.json, is a parse failure.
 //
 // By default the walk is recursive. Use WithRecursive(false) for
 // single-directory scanning.
@@ -150,10 +150,14 @@ func processEntry(path, name string, fn WalkFunc) error {
 		return fn(path, nil, nil, err)
 	}
 
-	if IsRealmJSON(data) {
-		if name == "index.json" && isPublishedIndex(data) {
+	if name == "index.json" {
+		if isPublishedIndex(data) {
 			return nil
 		}
+		// Reserved, so that nothing enforced can be swapped for an index.
+		return fn(path, data, nil, errReservedIndex)
+	}
+	if IsRealmJSON(data) {
 		return fn(path, data, nil, fmt.Errorf("parsing entity JSON: %w", errRealmKey))
 	}
 

@@ -21,7 +21,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid entity JSON",
 		Summary:  "The file is not valid JSON or does not parse into the entity structure.",
-		Fix:      "Fix the JSON syntax, or the field whose type does not match the entity structure.",
+		Fix:      "Fix the JSON syntax, or the field whose type does not match the entity structure. An entity file has no top-level `realm` key and is not named `index.json`.",
 	},
 	{
 		Code:     "RL002",
@@ -645,8 +645,8 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Info / Error",
 		Title:    "Entity files not linted",
-		Summary:  "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails.",
-		Fix:      "Check that the reported path exists and is readable. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
+		Summary:  "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name.",
+		Fix:      "Check that the reported path exists and is readable, and that only a published index is named `index.json`. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
 	},
 	{
 		Code:     "RM006",
@@ -1070,7 +1070,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid entity file in a source",
 		Summary:  "An entity file cannot be parsed, or its `entity.id` is empty.",
-		Fix:      "Fix the JSON in the file, and make sure `entity.id` is set.",
+		Fix:      "Fix the JSON in the file, and make sure `entity.id` is set. An entity file has no top-level `realm` key and is not named `index.json`.",
 	},
 	{
 		Code:     "RSV004",

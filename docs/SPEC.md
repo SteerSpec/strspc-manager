@@ -403,7 +403,7 @@ rules/core/
     └── realm.v1.schema.json      ← Realm manifest schema (hand-maintained axiom)
 ```
 
-Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file. The only other file skipped for its content is a published `index.json`: one with a `realm` key, `rules` that each name a `file`, and no entity content (`entity`, `rule_set`, `sub_entities`, or a rule's `id`, `state` or `body`). Any other file with a `realm` key is reported where entity files are read (RL001, RSV003, RR002). With entity content it doesn't parse either, so it is RD000 as the head of a comparison. As the base, or in history, it is still decoded, so that it can be repaired.
+Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file. The only other file skipped for its content is a published `index.json`: one with a `realm` key, `rules` that each name a `file`, and no entity content (`entity`, `rule_set`, `sub_entities`, or a rule's `id`, `state` or `body`). The name is reserved: any other `index.json` is an Error. Any other file with a `realm` key is reported where entity files are read (RL001, RSV003, RR002). With entity content it doesn't parse either, so it is RD000 as the head of a comparison. As the base, or in history, it is still decoded, so that it can be repaired.
 
 ### 5.2 Entity File Structure
 
@@ -618,7 +618,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM002 | Info / Error | Info if no schema fetcher is set; Error if the schema fails to load or validation fails. |
 | RM003 | Error | `_schema/` is missing, inaccessible, or not a directory. |
 | RM004 | Error | `_schema/entity.v1.schema.json` is missing or inaccessible. |
-| RM005 | Info / Error | Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails. |
+| RM005 | Info / Error | Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name. |
 | RM006 | Error | The same EUID appears in more than one entity or sub-entity of the realm. |
 | RM007 | Error | `realm.id` is missing or not reverse-domain notation, or `realm.version` is missing or not semver. |
 | RM008 | Error | A `sub_realms` entry is not a clean directory name, or its directory does not exist. |

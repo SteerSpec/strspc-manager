@@ -602,6 +602,16 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir, kind string, exc
 			if l.cfg.RuleLinter != nil {
 				fileRes := l.cfg.RuleLinter.LintBytes(ctx, data)
 				copyDiagnostics(fileRes, path, res)
+				if fileRes.OK() {
+					// The walker rejected the file for more than its bytes.
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RM005",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("reading entity file: %s", parseErr),
+						Path:     path,
+					})
+				}
 			}
 			return nil
 		}
