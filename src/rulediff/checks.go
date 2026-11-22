@@ -120,23 +120,33 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 	}
 
 	// RD026 and RD027: clause and profiles are immutable once a rule has left
-	// Draft (RUL-007), whatever its Realm's kind: a clause added later is what
-	// would let a relabel pass as a transcription.
-	if b.State != entity.StateDraft && h.Clause != b.Clause {
+	// Draft (RUL-007), and don't change as it leaves, as for the body (RD001).
+	// That holds whatever its Realm's kind: a clause added later is what would
+	// let a relabel pass as a transcription.
+	frozen := b.State != entity.StateDraft || h.State != entity.StateDraft
+	if frozen && h.Clause != b.Clause {
+		msg := fmt.Sprintf("rule clause is immutable in state %q: changed from %q to %q; supersede the rule to change it", b.State, b.Clause, h.Clause)
+		if b.State == entity.StateDraft {
+			msg = fmt.Sprintf("rule clause changed from %q to %q with the move to state %q: edit it and change the state in separate changes", b.Clause, h.Clause, h.State)
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD026",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule clause is immutable in state %q: changed from %q to %q; supersede the rule to change it", b.State, b.Clause, h.Clause),
+			Message:  msg,
 			Path:     path,
 		})
 	}
-	if b.State != entity.StateDraft && !slices.Equal(b.Profiles, h.Profiles) {
+	if frozen && !slices.Equal(b.Profiles, h.Profiles) {
+		msg := fmt.Sprintf("rule profiles are immutable in state %q: changed from %q to %q; supersede the rule to change them", b.State, b.Profiles, h.Profiles)
+		if b.State == entity.StateDraft {
+			msg = fmt.Sprintf("rule profiles changed from %q to %q with the move to state %q: edit them and change the state in separate changes", b.Profiles, h.Profiles, h.State)
+		}
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD027",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule profiles are immutable in state %q: changed from %q to %q; supersede the rule to change them", b.State, b.Profiles, h.Profiles),
+			Message:  msg,
 			Path:     path,
 		})
 	}

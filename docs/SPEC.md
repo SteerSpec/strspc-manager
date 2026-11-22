@@ -593,8 +593,8 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
 | RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 | RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
-| RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007). |
-| RD027 | Error | `profiles` was added, removed, reordered or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007). |
+| RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
+| RD027 | Error | `profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
 | RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it. A Standard Realm's rules aren't evaluated (STDRLM-011). |
 | RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
 | RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
@@ -828,7 +828,7 @@ For each changed entity file, the validator compares the before and after states
 17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one. A `standard` note never moves it.
 18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
-20. **Clause and profiles are immutable:** Once a rule has left Draft, its `clause` and its `profiles` may not change, in a code Realm or a Standard Realm (RD026, RD027).
+20. **Clause and profiles are immutable:** Once a rule has left Draft, and in the change that moves it out, its `clause` and its `profiles` may not change, in a code Realm or a Standard Realm (RD026, RD027).
 21. **A Realm keeps its kind:** Neither a `kind` field nor a change to the manifests around existing files may move rules between a code Realm and a Standard Realm (RD028). Relabeling is how evaluation would be switched off (STDRLM-011).
 22. **Realm Notes keep their history:** None is removed, each change moves the revision by one, and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
 23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).

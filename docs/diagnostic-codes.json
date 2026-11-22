@@ -246,18 +246,18 @@
     "code": "RD026",
     "module": "rule-diff",
     "severity": "Error",
-    "title": "Clause changed after Draft",
-    "summary": "`clause` was added, removed or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007).",
-    "fix": "Restore `clause`. To change it, add a new rule; in a Standard Realm a fix keeps the clause of the rule it supersedes (STDRLM-012).",
+    "title": "Clause changed on or after leaving Draft",
+    "summary": "`clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `clause`. On a Draft, change it and the state in separate changes. After Draft, add a new rule; in a Standard Realm a fix keeps the clause of the rule it supersedes (STDRLM-012).",
     "retired": false
   },
   {
     "code": "RD027",
     "module": "rule-diff",
     "severity": "Error",
-    "title": "Profiles changed after Draft",
-    "summary": "`profiles` was added, removed, reordered or changed on a rule that has left Draft, whatever the kind of its Realm (RUL-007).",
-    "fix": "Restore `profiles`. To change them, supersede the rule with a new one.",
+    "title": "Profiles changed on or after leaving Draft",
+    "summary": "`profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `profiles`. On a Draft, change them and the state in separate changes. After Draft, supersede the rule with a new one.",
     "retired": false
   },
   {

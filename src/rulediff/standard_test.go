@@ -1,6 +1,7 @@
 package rulediff
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 
@@ -86,5 +87,54 @@ func TestDiff_DraftClauseAndProfilesEditMovesRevision(t *testing.T) {
 				t.Errorf("an edit of a Draft rule drew %v", res.Diagnostics)
 			}
 		})
+	}
+}
+
+// An edit and the move out of Draft are separate changes, as for the body
+// (RD001): otherwise the text that gets frozen was never a Draft.
+func TestDiff_ClauseAndProfilesEditWithLeavingDraft(t *testing.T) {
+	for _, tc := range []struct {
+		name, code string
+		base, head entity.Rule
+	}{
+		{"clause added", "RD026", entity.Rule{}, entity.Rule{Clause: "1.1"}},
+		{"clause removed", "RD026", entity.Rule{Clause: "1.1"}, entity.Rule{}},
+		{"clause changed", "RD026", entity.Rule{Clause: "1.1"}, entity.Rule{Clause: "1.2"}},
+		{"profiles added", "RD027", entity.Rule{}, entity.Rule{Profiles: []string{"L1"}}},
+		{"profiles removed", "RD027", entity.Rule{Profiles: []string{"L1"}}, entity.Rule{}},
+		{"profiles reordered", "RD027", entity.Rule{Profiles: []string{"L1", "L2"}}, entity.Rule{Profiles: []string{"L2", "L1"}}},
+	} {
+		for _, state := range []string{"P", "A"} {
+			for _, revision := range []int{0, 1} {
+				t.Run(fmt.Sprintf("%s/D to %s/revision %d", tc.name, state, revision), func(t *testing.T) {
+					base := makeBase()
+					base.Rules[0].Clause, base.Rules[0].Profiles = tc.base.Clause, tc.base.Profiles
+					head := makeHead(base)
+					head.Rules[0].Clause, head.Rules[0].Profiles = tc.head.Clause, tc.head.Profiles
+					head.Rules[0].State, head.Rules[0].Revision = state, revision
+					assertCodeSeverity(t, New().Diff(base, head), tc.code, result.Error)
+				})
+			}
+		}
+	}
+}
+
+func TestDiff_PromotionKeepsClauseAndProfiles(t *testing.T) {
+	base := makeBase()
+	base.Rules[0].Clause, base.Rules[0].Profiles = "1.1", []string{"L1"}
+	head := makeHead(base)
+	head.Rules[0].State = "P"
+	res := New().Diff(base, head)
+	assertNoCode(t, res, "RD026")
+	assertNoCode(t, res, "RD027")
+}
+
+// The bump is allowed on a Draft edit of either, not required.
+func TestDiff_DraftClauseAndProfilesEditMayKeepRevision(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.Rules[0].Clause, head.Rules[0].Profiles = "1.1", []string{"L1"}
+	if res := New().Diff(base, head); len(res.Diagnostics) != 0 {
+		t.Errorf("an edit of a Draft rule drew %v", res.Diagnostics)
 	}
 }
