@@ -1,5 +1,7 @@
 {
   "claims": [
+    "RE005",
+    "RE006",
     "RL033",
     "RL034",
     "RL035",
@@ -15,5 +17,18 @@
     "RM024",
     "RM025",
     "RM026"
+  ],
+  "eval": [
+    {
+      "diff": "diff --git a/app.go b/app.go\n+// a change the rules judge\n",
+      "violated": [
+        "STD-001",
+        "STD-003",
+        "APP-001"
+      ],
+      "fail_on": [
+        "I"
+      ]
+    }
   ]
 }

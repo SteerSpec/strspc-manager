@@ -151,6 +151,8 @@ RE001 active rule-violated
 RE002 active ai-provider-failed
 RE003 active ai-evaluation-skipped
 RE004 active diff-empty
+RE005 active standard-rules-not-evaluated
+RE006 active enforced-rule-labelled-standard
 EC001 active cache-recreated
 RF001 active citation-unknown
 RF002 active citation-abandoned

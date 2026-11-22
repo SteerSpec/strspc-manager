@@ -10,6 +10,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -53,12 +54,25 @@ type node struct {
 	// subManifests holds the manifests of a dependency's sub-realms by the
 	// directory of each, for entities its flat index doesn't tell apart.
 	subManifests map[string]*entity.RealmFile
+	// kinds finds the kind of the Realm holding each entity; made on first use.
+	// Unlike the manifests above, which fall back on the dependency's for
+	// Standard References, it never falls back on a standard kind.
+	kinds *realmkind.Finder
+	// kindRoot is the top of the tree the node is in, which kinds reads from:
+	// the resolved Realm's directory, also for its sub-realms, or a
+	// dependency's. A sub-realm's own would hide its parent's manifest.
+	kindRoot string
 }
 
 // hop returns e as a hop of this node.
 func (n *node) hop(e *entity.File) inherit.Hop {
 	realm, parent := n.realm.Realm, n.parent
+	var kind string
 	if path, ok := n.realm.EUIDs[e.Entity.ID]; ok {
+		if n.kinds == nil {
+			n.kinds = realmkind.New(n.kindRoot)
+		}
+		kind = n.kinds.KindOf(path)
 		for dir, sub := range n.subManifests {
 			if strings.HasPrefix(path, dir+string(filepath.Separator)) {
 				realm, parent = sub, n.realm.Realm
@@ -67,7 +81,7 @@ func (n *node) hop(e *entity.File) inherit.Hop {
 		}
 	}
 	return inherit.Hop{
-		RealmID: n.ns, SubRealmIDs: n.subRealmIDs, Entity: e,
+		RealmID: n.ns, RealmKind: kind, SubRealmIDs: n.subRealmIDs, Entity: e,
 		Scopes: standardScopes(e, n.entities, realm, parent),
 	}
 }
@@ -137,7 +151,7 @@ func treeChains(root *ResolvedRealm, subs []*ResolvedRealm, chains []*Inheritanc
 	rootSubs := subRealmIDs(root.Realm)
 	nodes := make(map[string]*node, len(entities))
 	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, parent: parentOf(rr, root)}
+		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, parent: parentOf(rr, root), kindRoot: root.Dir}
 		for id := range rr.Entities {
 			nodes[id] = n
 		}
@@ -261,7 +275,7 @@ func (r *RealmResolver) newChainState(ctx context.Context, root *ResolvedRealm, 
 	}
 	rootSubs := subRealmIDs(root.Realm)
 	for _, rr := range append([]*ResolvedRealm{root}, subs...) {
-		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm)}
+		n := &node{realm: rr, ns: root.Realm.Realm.ID, subRealmIDs: rootSubs, entities: entities, deps: make(map[string]*ResolvedRealm), kindRoot: root.Dir}
 		n.parent = parentOf(rr, root)
 		for _, d := range rr.Dependencies {
 			n.deps[d.Realm.Realm.ID] = d
@@ -564,6 +578,7 @@ func (s *chainState) depNode(dep *ResolvedRealm) *node {
 	n := &node{
 		realm: dep, ns: dep.Realm.Realm.ID, subRealmIDs: subRealmIDs(dep.Realm), entities: dep.Entities,
 		parent: entity.ParentRealm(dep.Dir, dep.Realm.Realm.ID), subManifests: dependencySubManifests(dep),
+		kindRoot: dep.Dir,
 	}
 	s.nodes[dep] = n
 	return n

@@ -228,6 +228,10 @@ const (
 	// EventSkipped reports a rule left unevaluated because its state is not in
 	// the evaluate set; RuleID is set.
 	EventSkipped
+	// EventStandardRule reports a rule left unevaluated because it is a rule
+	// of a Standard Realm (STDRLM-011), whatever its state; EntityID and RuleID
+	// are set.
+	EventStandardRule
 )
 
 // Event describes something the Evaluator did.
