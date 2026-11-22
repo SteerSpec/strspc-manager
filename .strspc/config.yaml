@@ -24,7 +24,7 @@ evaluator:
   # as claude-sonnet-5-5 on the labelled cases at medium effort, about 18x
   # cheaper per run; high effort added false violations and xhigh hit the
   # output cap.
-  # model: claude-haiku-5-5    # model override (the default)
+  # model: claude-haiku-5-5    # uncomment to pin a model; unset follows the provider default
   # effort: medium             # low | medium | high
 
 # Local cache settings
