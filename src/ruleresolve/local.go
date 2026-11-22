@@ -14,7 +14,8 @@ import (
 // LocalSource implements Source for local filesystem paths.
 type LocalSource struct{}
 
-// Fetch walks a local directory recursively and returns all entity files found.
+// Fetch walks a local directory recursively and returns all entity files
+// found, each with the kind of the Realm holding it.
 func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *result.Result) {
 	res := &result.Result{}
 
@@ -47,6 +48,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 	}
 
 	var files []SourceFile
+	kinds := newRealmKinds(abs)
 
 	walkErr := entity.WalkEntityFiles(abs, func(path string, data []byte, ef *entity.File, parseErr error) error {
 		if ctx.Err() != nil {
@@ -113,7 +115,7 @@ func (s *LocalSource) Fetch(ctx context.Context, ref string) ([]SourceFile, *res
 			}
 		}
 
-		files = append(files, SourceFile{File: ef, Path: path})
+		files = append(files, SourceFile{File: ef, Path: path, RealmKind: kinds.kindOf(path)})
 		return nil
 	})
 

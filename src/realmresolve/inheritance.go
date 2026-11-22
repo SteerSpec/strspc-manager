@@ -67,7 +67,7 @@ func (n *node) hop(e *entity.File) inherit.Hop {
 		}
 	}
 	return inherit.Hop{
-		RealmID: n.ns, SubRealmIDs: n.subRealmIDs, Entity: e,
+		RealmID: n.ns, RealmKind: realm.Realm.Kind, SubRealmIDs: n.subRealmIDs, Entity: e,
 		Scopes: standardScopes(e, n.entities, realm, parent),
 	}
 }

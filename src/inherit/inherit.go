@@ -25,6 +25,10 @@ type Hop struct {
 	// tree holding it. Entities of a realm and of its sub-realms share the
 	// realm's ID, since EUIDs are unique across both (RLM-013).
 	RealmID string
+	// RealmKind is the kind the manifest of the Realm holding the entity
+	// declares, its own for an entity of a sub-realm: entity.KindStandard, or
+	// empty for a code Realm (RLMMNFST-009).
+	RealmKind string
 	// SubRealmIDs are the IDs of the sub-realms the realm's manifest
 	// declares. A rule qualified with one of them belongs to RealmID.
 	SubRealmIDs []string
@@ -54,6 +58,9 @@ type Rule struct {
 	Notes []entity.Note
 	// OwnerRealm is the namespace of the owning entity.
 	OwnerRealm string
+	// RealmKind is the kind of the Realm holding the owning entity, as in
+	// Hop.RealmKind.
+	RealmKind string
 	// Owner is the EUID of the entity whose rules array holds the rule.
 	Owner string
 	// OwnerTitle is the title of that entity.
@@ -223,7 +230,7 @@ func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 			continue
 		}
 		e := Rule{
-			Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title,
+			Rule: r, Notes: notes[r.ID], OwnerRealm: h.RealmID, RealmKind: h.RealmKind, Owner: h.Entity.Entity.ID, OwnerTitle: h.Entity.Entity.Title,
 			Standards: append([][]entity.StandardRef{h.Entity.Entity.Standards}, h.Scopes...),
 		}
 		if r.Overrides != nil && *r.Overrides != "" {
