@@ -36,6 +36,12 @@ const (
 	// CodeNoDiff (RE004) reports that the diff, or the file set of an audit,
 	// is empty and there is nothing to evaluate.
 	CodeNoDiff = "RE004"
+	// CodeStandardSkipped (RE005) warns that rules were not evaluated because
+	// their Realm's kind is standard (STDRLM-011).
+	CodeStandardSkipped = "RE005"
+	// CodeUnsafeSkip (RE006) reports, as an Error, a rule not evaluated for that
+	// kind that can block or can't be a transcription: a relabel of code rules.
+	CodeUnsafeSkip = "RE006"
 )
 
 // Verdict represents the evaluation outcome for a single rule.
@@ -90,11 +96,16 @@ type RuleInput struct {
 	// Extended lists the live rules named by Rule's `extends` notes, read
 	// alongside Rule and not judged themselves.
 	Extended []inherit.Extended
+	// RealmKind is the kind of the Realm that Rule is a rule of, an inherited
+	// rule's being its owner's. The Evaluator never sends a rule of kind
+	// entity.KindStandard to the provider (STDRLM-011). Empty is a code Realm.
+	RealmKind string
 }
 
 // RuleInputsFromEffective builds RuleInputs from the effective rule set of
 // the entity entityID, as computed by inherit.Effective. Every input
-// carries entityID; inherited rules also carry their owner and inheritor.
+// carries entityID and the kind of the Realm owning its rule; inherited rules
+// also carry their owner and inheritor.
 // An inherited rule whose ID is already used in the set (two Realms of the
 // chain reuse an EUID) is grouped apart, under "<entityID> via <owner>",
 // because verdicts are keyed by rule ID within a group.
@@ -107,7 +118,7 @@ func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput 
 	}
 	inputs := make([]RuleInput, 0, len(rules))
 	for _, r := range rules {
-		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides}
+		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides, RealmKind: r.RealmKind}
 		if r.InheritedBy != "" {
 			in.Owner = r.OwnerRealm + ":" + r.Owner
 			in.InheritedBy = r.InheritedBy
@@ -133,6 +144,18 @@ func AnnotateOverriddenBy(inputs []RuleInput, realmID string, overriddenBy map[s
 		}
 		if by := overriddenBy[realmID+":"+inputs[i].Rule.ID]; len(by) > 0 {
 			inputs[i].OverriddenBy = by
+		}
+	}
+}
+
+// AnnotateRealmKind sets RealmKind on the inputs that are their entity's own
+// rules (not inherited) to kind, that of the Realm holding them, such as
+// ruleresolve.ResolvedFile.RealmKind. An inherited rule keeps its owner's,
+// which RuleInputsFromEffective sets.
+func AnnotateRealmKind(inputs []RuleInput, kind string) {
+	for i := range inputs {
+		if inputs[i].InheritedBy == "" {
+			inputs[i].RealmKind = kind
 		}
 	}
 }
@@ -427,13 +450,17 @@ type group struct {
 // Provider errors are non-fatal: they emit a warning and evaluation continues.
 // If the context is cancelled, partial results collected so far are returned.
 //
-// Rules whose state is not in the evaluate set are skipped. Rules are
+// Rules of a Standard Realm (RuleInput.RealmKind, STDRLM-011) and rules whose
+// state is not in the evaluate set are skipped, with no verdict. The first
+// are reported, as RE005 or as a blocking RE006, also in static-only mode and
+// for an empty diff. Rules are
 // grouped by EntityID; when the provider implements BatchProvider each
 // group is sent as one request, otherwise rules are evaluated one by one.
 // Groups run concurrently up to the configured concurrency; diagnostics are
 // always emitted in input order.
 func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff string) *result.Result {
 	res := &result.Result{}
+	e.reportStandardRules(res, inputs)
 
 	if e.cfg.StaticOnly {
 		res.Add(result.Diagnostic{
@@ -470,6 +497,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // meets is reported missing. A caller that narrows the set asserts that
 // nothing outside it bears on the rules.
 //
+// A rule of a Standard Realm is not audited (STDRLM-011): it gets no verdict,
+// and RE005 or RE006 reports it whatever else happens. A caller must never
+// read the absence of a violation as compliance.
+//
 // In static-only mode Audit reports RE003, and for an empty file set RE004,
 // whatever the provider. Otherwise the provider must implement Auditor with
 // a non-empty audit prompt version, or Audit returns ErrAuditUnsupported
@@ -477,6 +508,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, inputs []RuleInput, diff strin
 // judge an empty diff and pass every rule.
 func (e *Evaluator) Audit(ctx context.Context, inputs []RuleInput, files []File) (*result.Result, error) {
 	res := &result.Result{}
+	e.reportStandardRules(res, inputs)
 	if e.cfg.StaticOnly {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -601,6 +633,11 @@ func (e *Evaluator) plan(inputs []RuleInput, sub subject, outcomes []outcome, ke
 	var groups []group
 	byEntity := map[string]int{}
 	for i, in := range inputs {
+		// Before the cache, which may hold a verdict from before the kind was known.
+		if in.RealmKind == entity.KindStandard {
+			e.observe(Event{Kind: EventStandardRule, EntityID: in.EntityID, RuleID: in.Rule.ID})
+			continue
+		}
 		if !e.cfg.EvaluateStates[in.Rule.State] {
 			e.observe(Event{Kind: EventSkipped, EntityID: in.EntityID, RuleID: in.Rule.ID})
 			continue

@@ -279,6 +279,24 @@
     "retired": false
   },
   {
+    "code": "RE005",
+    "module": "rule-eval",
+    "severity": "Warning",
+    "title": "Standard rules not evaluated",
+    "summary": "Rules were not evaluated because their Realm declares `kind` `standard` (STDRLM-011). Reported also in static-only mode and when there is nothing to evaluate.",
+    "fix": "Confirm that the Realm transcribes an external standard. If it holds the project's own rules, remove `kind` from its `realm.json`: until then they are not enforced.",
+    "retired": false
+  },
+  {
+    "code": "RE006",
+    "module": "rule-eval",
+    "severity": "Error",
+    "title": "Enforced rule labelled as a standard",
+    "summary": "A rule not evaluated because its Realm declares `kind` `standard` is Implemented, or is in a state of `evaluate_on` and is in a state of `fail_on`, has `overrides` or is live without a `clause`: skipping it would switch off enforcement, so it blocks. Reported also in static-only mode and when there is nothing to evaluate.",
+    "fix": "If these are the project's own rules, remove `kind` from the Realm's `realm.json`. In a real Standard Realm give each rule its `clause`, override nothing, leave rules Published and keep their state out of `fail_on`.",
+    "retired": false
+  },
+  {
     "code": "RF001",
     "module": "rule-refs",
     "severity": "Error",

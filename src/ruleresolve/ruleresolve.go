@@ -49,6 +49,9 @@ type ResolvedFile struct {
 	Path string
 	// ResolvedSource is the absolute path or normalized URI of the source.
 	ResolvedSource string
+	// RealmKind is the kind of the Realm holding the file, as in
+	// SourceFile.RealmKind.
+	RealmKind string
 }
 
 // SourceFile pairs a parsed entity file with the path it was loaded from.
@@ -57,6 +60,10 @@ type SourceFile struct {
 	File *entity.File
 	// Path is the filesystem path or URL.
 	Path string
+	// RealmKind is the kind declared by the manifest of the Realm holding the
+	// file: entity.KindStandard, or empty for a code Realm (RLMMNFST-009) and
+	// for a file in no Realm.
+	RealmKind string
 }
 
 // Source represents a location rules can be fetched from.
@@ -207,6 +214,7 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 				Origin:         b.entry,
 				Path:           sf.Path,
 				ResolvedSource: ref,
+				RealmKind:      sf.RealmKind,
 			})
 		}
 	}
