@@ -267,7 +267,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	}
 
 	realms := CompareRealms
-	if isAbsent(baseDir) {
+	if isAbsent(baseDir, os.Lstat) {
 		realms = func(_, head string, opts ...Option) *result.Result {
 			return compareRealms("", head, opts...) // Nothing to compare with.
 		}
@@ -292,21 +292,21 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 
 // isAbsent reports whether nothing is at path. A dangling link is something, at
 // path or above it, and an empty path names nothing to look for.
-func isAbsent(path string) bool {
+func isAbsent(path string, lstat func(string) (fs.FileInfo, error)) bool {
 	if path == "" {
 		return false
 	}
-	if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := lstat(path); !errors.Is(err, fs.ErrNotExist) {
 		return false
 	}
 	parent := filepath.Dir(path)
 	if parent == path {
 		return true
 	}
-	if _, err := os.Stat(parent); err == nil {
-		return true
+	if info, err := os.Stat(parent); err == nil {
+		return info.IsDir() // Windows says not found below a file too.
 	}
-	return isAbsent(parent)
+	return isAbsent(parent, lstat)
 }
 
 // scanJSONFiles returns a map of filename → full path for all *.json files

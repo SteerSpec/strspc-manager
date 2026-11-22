@@ -2,6 +2,7 @@ package rulediff
 
 import (
 	"encoding/json"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -326,5 +327,23 @@ func TestCompareDir_BrokenBaseIsNotEmpty(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "a", "rules")
 	if res := CompareDir(absent, head); len(res.Diagnostics) != 0 {
 		t.Errorf("a new directory below new ones drew %v", res.Diagnostics)
+	}
+}
+
+// Windows reports a path below a file as not found, where Unix says it isn't a
+// directory, so the parent has to be looked at.
+func TestIsAbsent_BelowAFileIsNotAbsent(t *testing.T) {
+	file := filepath.Join(tree{"realm.json": stdRealm}.write(t), "realm.json")
+	windows := func(path string) (fs.FileInfo, error) {
+		info, err := os.Lstat(path)
+		if err != nil {
+			err = &fs.PathError{Op: "lstat", Path: path, Err: fs.ErrNotExist}
+		}
+		return info, err
+	}
+	for _, path := range []string{filepath.Join(file, "rules"), filepath.Join(file, "a", "rules")} {
+		if isAbsent(path, windows) {
+			t.Errorf("%s is below a file, yet absent", path)
+		}
 	}
 }
