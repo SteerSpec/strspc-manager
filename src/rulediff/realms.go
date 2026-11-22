@@ -298,7 +298,7 @@ func (c *realmComparison) checkSupersession(rel string, existed bool) {
 	}
 	var base *entity.File
 	if existed {
-		if parsed, err := entity.Parse(baseData); err == nil {
+		if parsed, err := parseBase(baseData); err == nil {
 			base = parsed
 		}
 	}

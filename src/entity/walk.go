@@ -63,8 +63,9 @@ func isCleanRelDir(d string) bool {
 }
 
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
-// directories and realm manifests. For each entity JSON file found, it
-// reads and parses the file, then calls fn with the results.
+// directories and realm manifests: realm.json, and a file IsRealmJSON
+// accepts. For each other JSON file found, it reads and parses the file, then
+// calls fn with the results.
 //
 // By default the walk is recursive. Use WithRecursive(false) for
 // single-directory scanning.

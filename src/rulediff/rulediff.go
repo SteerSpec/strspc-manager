@@ -5,7 +5,9 @@ package rulediff
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -54,7 +56,7 @@ func New(opts ...Option) *Differ {
 func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 	res := &result.Result{}
 
-	baseEnt, err := entity.Parse(baseData)
+	baseEnt, err := parseBase(baseData)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -107,6 +109,16 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 		promoteWarnings(res)
 	}
 	return res
+}
+
+// parseBase decodes the version before a change. It skips the content check of
+// entity.Parse, so that the change repairing such a file is compared.
+func parseBase(data []byte) (*entity.File, error) {
+	var f entity.File
+	if err := json.Unmarshal(data, &f); err != nil {
+		return nil, fmt.Errorf("parsing entity JSON: %w", err)
+	}
+	return &f, nil
 }
 
 // DiffNewBytes parses a brand-new entity file and validates it like DiffNew,
