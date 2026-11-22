@@ -289,3 +289,19 @@ func TestCompareDir_ComparesRealms(t *testing.T) {
 		t.Errorf("a new directory drew %v", res.Diagnostics)
 	}
 }
+
+// A head that can't be read never passes as nothing to compare.
+func TestCompareDir_HeadMustBeADirectory(t *testing.T) {
+	file := filepath.Join(tree{"realm.json": stdRealm}.write(t), "realm.json")
+	for name, head := range map[string]string{
+		"missing":         filepath.Join(t.TempDir(), "missing"),
+		"not a directory": file,
+		"empty path":      "",
+	} {
+		t.Run(name, func(t *testing.T) {
+			assertCodeSeverity(t, CompareDir(tree{"realm.json": stdRealm}.write(t), head), "RD000", result.Error)
+			assertCodeSeverity(t, CompareDir(filepath.Join(t.TempDir(), "no-base"), head), "RD000", result.Error)
+			assertCodeSeverity(t, CompareRealms(tree{"realm.json": stdRealm}.write(t), head), "RD000", result.Error)
+		})
+	}
+}

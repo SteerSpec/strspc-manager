@@ -98,8 +98,12 @@ func (c *realmComparison) run(baseDir, headDir string) {
 	}
 }
 
-// resolveDir follows dir when it is a link, as a walk wouldn't.
+// resolveDir follows dir when it is a link, as a walk wouldn't. An empty dir
+// is refused: it would resolve to the working directory.
 func resolveDir(dir string) (string, error) {
+	if dir == "" {
+		return "", errors.New("no directory")
+	}
 	resolved, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		return "", err

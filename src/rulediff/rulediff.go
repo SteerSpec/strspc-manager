@@ -219,7 +219,7 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
 // realm.json is a manifest, not an entity file: it and the kind of each file
 // below the directories are compared as CompareRealms does, except that a
-// baseDir that doesn't exist is an empty one.
+// baseDir that doesn't exist is an empty one. A headDir that doesn't is RD000.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
@@ -263,14 +263,12 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 
-	if _, err := os.Stat(headDir); err == nil {
-		base := baseDir
-		if _, err := os.Stat(baseDir); errors.Is(err, fs.ErrNotExist) {
-			base = "" // Nothing to compare with.
-		}
-		for _, d := range compareRealms(base, headDir, opts...).Diagnostics {
-			res.Add(d)
-		}
+	base := baseDir
+	if _, err := os.Stat(baseDir); errors.Is(err, fs.ErrNotExist) {
+		base = "" // Nothing to compare with. A head that can't be read is RD000.
+	}
+	for _, d := range compareRealms(base, headDir, opts...).Diagnostics {
+		res.Add(d)
 	}
 
 	for name := range baseFiles {
