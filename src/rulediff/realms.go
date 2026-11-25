@@ -539,25 +539,21 @@ func refChange(was []string, now string) string {
 	return ""
 }
 
-// versionRef matches a ref that may name a version, which bounds a move: 1,
-// v2.0, 2.0.0, with or without v, a pre-release or build metadata. A ref
-// that only might be one, such as a branch named 2024-hotfix, counts too, so
-// that a move from it fails closed. Digits alone with no v and no dot are
-// taken for a commit, and name none.
+// commitRef matches a ref taken for a commit, which names no version: hex
+// digits only, 7 to 40 of them. Any other ref with a digit may name a version
+// (v1, 2.0.0, V9, release-9, rules-v9.0.0), so it bounds a move, failing
+// closed when it doesn't parse as one; a ref with no digit, such as main or
+// latest, names none.
 var (
-	versionRef = regexp.MustCompile(`^v?\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`)
-	digitsOnly = regexp.MustCompile(`^\d+$`)
-	// dottedNumber finds a version in a ref of another shape, such as V9.0.0,
-	// v9.0.0.1 or rules-v9.0.0: it bounds a move, failing closed when it
-	// doesn't parse.
-	dottedNumber = regexp.MustCompile(`\d+\.\d+`)
+	commitRef = regexp.MustCompile(`^[0-9a-fA-F]{7,40}$`)
+	anyDigit  = regexp.MustCompile(`\d`)
 )
 
 // refBound returns the version the ref of the github source src names, when
 // it names one.
 func refBound(src string) (*semver.Version, bool) {
 	ref, err := remote.ParseGitHub(src)
-	if err != nil || digitsOnly.MatchString(ref.Ref) || (!versionRef.MatchString(ref.Ref) && !dottedNumber.MatchString(ref.Ref)) {
+	if err != nil || commitRef.MatchString(ref.Ref) || !anyDigit.MatchString(ref.Ref) {
 		return nil, false
 	}
 	v, err := semver.NewVersion(ref.Ref)

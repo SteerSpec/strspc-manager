@@ -183,7 +183,7 @@ func TestCompareRealms_DependencyRefOtherShapes(t *testing.T) {
 	dep := func(ref string) entity.RealmDep {
 		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@" + ref + "/rules"}
 	}
-	for _, ref := range []string{"V9.0.0", "v9.0.0.1", "rules-v9.0.0", "v9.0.0-", "v9.0.0+"} {
+	for _, ref := range []string{"V9.0.0", "v9.0.0.1", "rules-v9.0.0", "v9.0.0-", "v9.0.0+", "release-9", "V9"} {
 		base := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(ref))}
 		head := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep("v1.0.0"))}
 		if !hasDiag(compareTrees(t, base, head), "RD031") {
