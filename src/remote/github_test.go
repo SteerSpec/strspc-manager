@@ -210,8 +210,8 @@ func rulesTarball(t *testing.T, prefix string) []byte {
 		{name: "rules/core/ENT.json", body: `{"entity":{"id":"ENT"}}`},
 		{name: "rules/core/sub/SUB.json", body: `{"entity":{"id":"SUB"}}`},
 		{name: "rules/other/OTH.json", body: "nope"},
-		{name: "rules/other/link.json", link: "../../README.md"},   // outside the fetched path
-		{name: "rules/core/NOTES", link: "../../README.md"}, // not JSON: skipped
+		{name: "rules/other/link.json", link: "../../README.md"}, // outside the fetched path
+		{name: "rules/core/NOTES", link: "../../README.md"},      // not JSON: skipped
 	})
 }
 
