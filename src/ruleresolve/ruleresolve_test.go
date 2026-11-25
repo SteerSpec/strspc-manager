@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -224,4 +225,18 @@ func TestResolve_ContextCancelled(t *testing.T) {
 		t.Error("expected error from cancelled context")
 	}
 	assertHasCode(t, res, "RSV000")
+}
+
+func TestResolve_RefusesNonLocalPath(t *testing.T) {
+	orig := isLocalPath
+	t.Cleanup(func() { isLocalPath = orig })
+	isLocalPath = func(p string) bool { return p != `\\host\share\rules` }
+
+	_, err := New([]SourceEntry{{Source: `\\host\share\rules`, Scope: ScopeGlobal}})
+	if err == nil || !strings.Contains(err.Error(), "must be a local directory") {
+		t.Fatalf("New() error = %v, want a local directory error", err)
+	}
+	if _, err := New([]SourceEntry{{Source: "rules", Scope: ScopeGlobal}}); err != nil {
+		t.Fatalf("New() with a relative source: %v", err)
+	}
 }
