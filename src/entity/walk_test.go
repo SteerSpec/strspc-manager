@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const walkTestDir = "testdata/walk"
@@ -356,8 +357,9 @@ func TestWalkEntityFiles_ReportsUnreadableFileAndContinues(t *testing.T) {
 			if err != nil {
 				t.Fatalf("WalkEntityFiles: %v", err)
 			}
-			if !errors.Is(readErr, fs.ErrNotExist) {
-				t.Errorf("parseErr = %v, want it to wrap fs.ErrNotExist", readErr)
+			// A dangling link is refused as a link, before any read.
+			if !errors.Is(readErr, realmfs.ErrNotRegular) {
+				t.Errorf("parseErr = %v, want it to wrap realmfs.ErrNotRegular", readErr)
 			}
 			if len(ids) != 1 || ids[0] != "ENT" {
 				t.Errorf("parsed %v, want the walk to reach ENT", ids)

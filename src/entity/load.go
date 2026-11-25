@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 // errRealmKey is Parse's error for a file that claims to be a manifest.
@@ -29,7 +30,7 @@ func Parse(data []byte) (*File, error) {
 
 // Load reads and parses an entity JSON file from the given path.
 func Load(path string) (*File, error) {
-	data, err := os.ReadFile(path)
+	data, err := realmfs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading entity file %q: %w", path, err)
 	}
@@ -120,7 +121,7 @@ func isPublishedIndex(data []byte) bool {
 
 // LoadRealm reads and parses a realm.json file from the given path.
 func LoadRealm(path string) (*RealmFile, error) {
-	data, err := os.ReadFile(path)
+	data, err := realmfs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading realm file %q: %w", path, err)
 	}
