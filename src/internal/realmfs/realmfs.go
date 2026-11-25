@@ -31,6 +31,10 @@ var (
 // special file.
 var ErrNotRegular = errors.New("links and special files are not allowed in a Realm tree")
 
+// ErrNotDirOnPath reports that a directory on the way to a file is not a real
+// one: a link, or a file. It wraps ErrNotRegular.
+var ErrNotDirOnPath = fmt.Errorf("not a directory on the way: %w", ErrNotRegular)
+
 // Root resolves dir, the root of a Realm tree, to the physical directory it
 // names. A relative dir is taken against the physical working directory, and
 // links are resolved before any ".." is applied. The result must be a real
@@ -138,7 +142,7 @@ func ReadUnder(root, rel string) ([]byte, error) {
 			return nil, err
 		}
 		if !info.IsDir() {
-			return nil, fmt.Errorf("%s: %w", cur, ErrNotRegular)
+			return nil, fmt.Errorf("%s: %w", cur, ErrNotDirOnPath)
 		}
 	}
 	return ReadFile(filepath.Join(cur, parts[len(parts)-1]))
@@ -153,7 +157,7 @@ func DirFrom(dir, rel string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == '\\' }) {
+	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == filepath.Separator }) {
 		switch part {
 		case ".":
 			continue

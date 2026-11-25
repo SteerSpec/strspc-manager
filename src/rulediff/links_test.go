@@ -182,3 +182,8 @@ func TestCompareRealms_BaseDirectoryLinkNotFollowed(t *testing.T) {
 		t.Errorf("kind read through a base directory link: %v", res.Diagnostics)
 	}
 }
+
+// A JSON file name in another case is RD000 in rule-diff too.
+func TestCompareRealms_JSONNameInAnotherCase(t *testing.T) {
+	assertHasCode(t, compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "NEW.JSON": someEntity}), "RD000")
+}

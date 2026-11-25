@@ -869,7 +869,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-resolve",
 		Severity: "Error",
 		Title:    "Invalid dependency source",
-		Summary:  "A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin.",
+		Summary:  "A dependency `source` is empty, absolute, holds a backslash in a local path (a separator on Windows only, so the directory named would depend on the OS), or escapes the repository root of the realm's origin.",
 		Fix:      "Use a relative path that stays inside the repository, or a `github://<owner>/<repo>@<ref>[/<path>]` reference.",
 	},
 	{

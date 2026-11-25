@@ -169,3 +169,15 @@ func TestCompareRealms_RealmNoteContributorBrokenBase(t *testing.T) {
 	head := tree{"a/realm.json": string(data), "b/realm.json": `{"realm":{"id":"x.b","contributors":[{"id":"github:mallory"}]}}`}
 	assertHasCode(t, compareTrees(t, base, head, WithContributors([]entity.Contributor{{ID: "github:alice"}})), "RD023")
 }
+
+// A manifest where base had a file or link on its way is new, and its notes
+// are checked as new ones.
+func TestCompareRealms_ManifestWhereBaseHadAFile(t *testing.T) {
+	note := `{"id":"REALM/001","type":"rationale","content":"Because.","added_by":"github:mallory","revision":7}`
+	base := tree{"realm.json": `{"realm":{"id":"a","contributors":[{"id":"github:alice"}]}}`, "README.md": "x"}
+	head := tree{"realm.json": `{"realm":{"id":"a","contributors":[{"id":"github:alice"}]}}`, "README.md/realm.json": `{"realm":{"id":"a.b"},"notes":[` + note + `]}`}
+	res := compareTrees(t, base, head)
+	if !hasDiag(res, "RD023") || !hasDiag(res, "RD015") {
+		t.Errorf("want RD023 and RD015: %v", res.Diagnostics)
+	}
+}

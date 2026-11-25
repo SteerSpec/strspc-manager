@@ -529,3 +529,16 @@ func TestResolve_LocalDependencyMissingThenUpThenLink(t *testing.T) {
 		t.Errorf("expected RR002 and nothing resolved, got %v", res.Diagnostics)
 	}
 }
+
+// A backslash in a local source is RR001: it names another directory on
+// Windows than elsewhere, so checks and resolution could disagree.
+func TestResolve_LocalDependencyWithBackslashIsRR001(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm:        entity.RealmMeta{ID: "dev.steerspec.consumer", Title: "C", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{{RealmID: "dev.steerspec.test", Version: "0.1.0", Source: `../q/x\../../y`}},
+	}
+	_, res := New().Resolve(context.Background(), rf, t.TempDir())
+	if !hasDiagCode(res, "RR001") {
+		t.Errorf("expected RR001, got: %v", res.Diagnostics)
+	}
+}

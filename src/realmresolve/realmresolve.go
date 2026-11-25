@@ -502,6 +502,20 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		return nil
 	}
 
+	// RR001: a backslash is a separator on Windows and a plain character
+	// elsewhere, so the directory a source with one names would depend on the
+	// OS, and the checks comparing sources would disagree with resolution.
+	if strings.Contains(dep.Source, "\\") && !strings.Contains(dep.Source, "://") {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has source %q with a backslash; write local paths with / only", dep.RealmID, dep.Source),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
 	// RR001: absolute paths not allowed.
 	if filepath.IsAbs(dep.Source) {
 		res.Add(result.Diagnostic{

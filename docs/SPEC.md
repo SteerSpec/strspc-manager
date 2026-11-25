@@ -653,7 +653,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RR000 | Error | The context was cancelled or timed out during resolution. |
-| RR001 | Error | A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin. |
+| RR001 | Error | A dependency `source` is empty, absolute, holds a backslash in a local path (a separator on Windows only, so the directory named would depend on the OS), or escapes the repository root of the realm's origin. |
 | RR002 | Error | Dependency directory or `realm.json` cannot be loaded, or an entity file is unreadable or invalid. |
 | RR003 | Error | A dependency's `realm.id` differs from the declared `realm_id`. |
 | RR004 | Error | A dependency's `realm.version` differs from the declared `version`. |

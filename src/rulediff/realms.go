@@ -177,6 +177,10 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 				addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("a manifest must be named %s exactly", manifestName))
 				return nil
 			}
+			if !d.IsDir() && realmfs.IsJSONName(name) && !strings.HasSuffix(name, ".json") {
+				addReadError(c.res, filepath.ToSlash(rel), errors.New("a JSON file name must end in .json in lower case"))
+				return nil
+			}
 		} else if realmfs.CheckEntry(d) != nil {
 			// Never read. A JSON one, deleted or replaced, fails closed: what
 			// it held can't be compared.
@@ -241,6 +245,10 @@ func (c *realmComparison) readIn(root, rel string) ([]byte, error) {
 	data, err := realmfs.ReadUnder(root, rel)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
+		return nil, nil
+	case errors.Is(err, realmfs.ErrNotDirOnPath) && root != c.head:
+		// The file can't be there in base: a link or a file stands where a
+		// directory on its way would be, so a manifest at rel in head is new.
 		return nil, nil
 	case errors.Is(err, realmfs.ErrNotRegular) && root != c.head:
 		return nil, errUnreadableBase
@@ -539,13 +547,17 @@ func refChange(was []string, now string) string {
 var (
 	versionRef = regexp.MustCompile(`^v?\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`)
 	digitsOnly = regexp.MustCompile(`^\d+$`)
+	// dottedNumber finds a version in a ref of another shape, such as V9.0.0,
+	// v9.0.0.1 or rules-v9.0.0: it bounds a move, failing closed when it
+	// doesn't parse.
+	dottedNumber = regexp.MustCompile(`\d+\.\d+`)
 )
 
 // refBound returns the version the ref of the github source src names, when
 // it names one.
 func refBound(src string) (*semver.Version, bool) {
 	ref, err := remote.ParseGitHub(src)
-	if err != nil || !versionRef.MatchString(ref.Ref) || digitsOnly.MatchString(ref.Ref) {
+	if err != nil || digitsOnly.MatchString(ref.Ref) || (!versionRef.MatchString(ref.Ref) && !dottedNumber.MatchString(ref.Ref)) {
 		return nil, false
 	}
 	v, err := semver.NewVersion(ref.Ref)
