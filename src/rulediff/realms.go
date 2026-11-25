@@ -560,12 +560,19 @@ func refBound(src string) (*semver.Version, bool) {
 	if v, err := semver.NewVersion(ref.Ref); err == nil {
 		return v, true
 	}
-	// Another shape, such as release-1.2, V9 or 1.x: the first version in it
-	// bounds the move; one too large to parse bounds every move.
-	if v, err := semver.NewVersion(firstVersion.FindString(ref.Ref)); err == nil {
-		return v, true
+	// Another shape, such as release-1.2, V9 or py3-v9.0.0: the highest
+	// version in it bounds the move; one too large to parse bounds every move.
+	var bound *semver.Version
+	for _, m := range firstVersion.FindAllString(ref.Ref, -1) {
+		v, err := semver.NewVersion(m)
+		if err != nil {
+			return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
+		}
+		if bound == nil || v.GreaterThan(bound) {
+			bound = v
+		}
 	}
-	return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
+	return bound, true
 }
 
 // sameSource reports whether two dependency sources name the same tree, but
