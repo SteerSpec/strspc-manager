@@ -36,7 +36,7 @@ func TestRoot(t *testing.T) {
 	real := filepath.Join(dir, "real")
 	for _, tc := range []struct{ in, want string }{
 		{real, real},
-		{filepath.Join(dir, "link"), real},             // a link naming the root is resolved
+		{filepath.Join(dir, "link"), real},               // a link naming the root is resolved
 		{filepath.Join(dir, "link", "..", "real"), real}, // resolved before any lexical clean
 	} {
 		got, err := Root(tc.in)

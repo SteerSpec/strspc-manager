@@ -548,8 +548,12 @@ func extractTarball(r io.Reader, sub, dest string) (int, error) {
 				return files, err
 			}
 			files++
+		case tar.TypeSymlink, tar.TypeLink, tar.TypeChar, tar.TypeBlock, tar.TypeFifo:
+			// Never materialised. Links are not allowed in a Realm tree, so the
+			// fetch fails rather than drop a file the Realm holds.
+			return files, fmt.Errorf("tar: entry %q is a link or special file, which a Realm tree may not hold", hdr.Name)
 		default:
-			// Symlinks, hard links, devices and friends are never materialised.
+			// Headers and other metadata entries.
 			continue
 		}
 	}

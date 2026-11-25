@@ -1,0 +1,128 @@
+package rulediff
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/SteerSpec/strspc-manager/src/result"
+)
+
+func hasDiag(res *result.Result, code string) bool {
+	for _, d := range res.Diagnostics {
+		if d.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+// link makes a link at rel below dir pointing to target.
+func link(t *testing.T, dir, rel, target string) {
+	t.Helper()
+	path := filepath.Join(dir, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, path); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+}
+
+// Finding 1: a working directory reached through a link must not blind the
+// comparison, with "." or with "..".
+func TestCompareRealms_LinkedWorkingDirectory(t *testing.T) {
+	// The review's case: a code child undeclared and deleted, seen only by
+	// scanning the files below the root.
+	base := tree{"realm.json": stdParent, childManifest: codeChild, entityInApp: someEntity}.write(t)
+	real := tree{"realm.json": stdRealm, entityInApp: someEntity}.write(t)
+	outer := t.TempDir()
+	link(t, outer, "rules", real)
+	// A shell leaves the logical path in PWD, which os.Getwd prefers.
+	for _, tc := range []struct{ dir, head string }{
+		{filepath.Join(outer, "rules"), "."},
+		{filepath.Join(outer, "rules", "app"), ".."},
+	} {
+		t.Chdir(tc.dir)
+		t.Setenv("PWD", tc.dir)
+		if wd, _ := os.Getwd(); wd != tc.dir {
+			t.Fatalf("Getwd = %q, want the logical %q", wd, tc.dir)
+		}
+		assertHasCode(t, CompareRealms(base, tc.head), "RD028")
+	}
+}
+
+// Findings 3, 5, 13: a link anywhere in head is RD000, whatever it names.
+func TestCompareRealms_LinkInHeadIsRefused(t *testing.T) {
+	base := tree{"realm.json": codeParent, childManifest: codeChild, entityInApp: someEntity}
+	outside := tree{"realm.json": codeChild, "APP.json": someEntity}.write(t)
+	for _, tc := range []struct{ name, rel, target string }{
+		{"linked sub-realm directory", "app", outside},
+		{"absolute manifest link", "realm.json", filepath.Join(outside, "realm.json")},
+		{"linked entity file", "app/APP.json", filepath.Join(outside, "APP.json")},
+		{"link to a device", "app/dev.json", os.DevNull},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			head := base.write(t)
+			path := filepath.Join(head, filepath.FromSlash(tc.rel))
+			if tc.rel == "app" {
+				if err := os.RemoveAll(path); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			link(t, head, tc.rel, tc.target)
+			assertHasCode(t, CompareRealms(base.write(t), head), "RD000")
+		})
+	}
+}
+
+// A link in base is never followed, and the change that removes it passes.
+func TestCompareRealms_RemovingABaseLinkPasses(t *testing.T) {
+	head := tree{"realm.json": codeRealm}
+	baseDir := t.TempDir()
+	link(t, baseDir, "realm.json", filepath.Join(head.write(t), "realm.json"))
+	if res := CompareRealms(baseDir, head.write(t)); hasDiag(res, "RD000") {
+		t.Errorf("removing a base link: %v", res.Diagnostics)
+	}
+}
+
+// Finding 4: a manifest name that differs from realm.json only by case is
+// RD000 on every system, as are two names that collide when case is ignored.
+func TestCompareRealms_ManifestNameCase(t *testing.T) {
+	base := tree{"realm.json": codeRealm}
+	for _, name := range []string{"realm.JSON", "REALM.JSON", "Realm.json", "realm.jſon", "app/Realm.json"} {
+		t.Run(name, func(t *testing.T) {
+			assertHasCode(t, compareTrees(t, base, tree{name: stdRealm}), "RD000")
+		})
+	}
+	t.Run("colliding names", func(t *testing.T) {
+		head := t.TempDir()
+		if err := os.WriteFile(filepath.Join(head, "APP.json"), []byte(someEntity), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(head, "app.json"), []byte(someEntity), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		entries, _ := os.ReadDir(head)
+		if len(entries) < 2 {
+			t.Skip("case-insensitive file system")
+		}
+		assertHasCode(t, CompareRealms(base.write(t), head), "RD000")
+	})
+}
+
+// CompareDir refuses a link in head and lets a change remove one from base.
+func TestCompareDir_Links(t *testing.T) {
+	outside := tree{"OUT.json": someEntity}.write(t)
+	head := t.TempDir()
+	link(t, head, "APP.json", filepath.Join(outside, "OUT.json"))
+	assertHasCode(t, CompareDir(t.TempDir(), head), "RD000")
+
+	base := t.TempDir()
+	link(t, base, "APP.json", filepath.Join(outside, "OUT.json"))
+	if res := CompareDir(base, t.TempDir()); hasDiag(res, "RD005") || hasDiag(res, "RD000") {
+		t.Errorf("removing a base link: %v", res.Diagnostics)
+	}
+}

@@ -2,6 +2,7 @@ package realmresolve
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -475,5 +476,20 @@ func TestResolve_SubRealm_OwnDepVsInheritedDepIsRR005(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("expected exactly 1 RR005, got %d: %v", count, res.Diagnostics)
+	}
+}
+
+// A sub-realm reached through a link is refused: links are not followed in a
+// Realm tree.
+func TestResolve_SubRealm_LinkedDirIsRefused(t *testing.T) {
+	src := absTestdata(t, "parent-with-sub")
+	base := t.TempDir()
+	if err := os.Symlink(filepath.Join(src, "sync"), filepath.Join(base, "sync")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rf := loadTestRealm(t, "parent-with-sub")
+	_, res := New().Resolve(context.Background(), rf, base)
+	if !hasDiagCode(res, "RR007") {
+		t.Errorf("expected RR007 for a linked sub-realm, got: %v", res.Diagnostics)
 	}
 }

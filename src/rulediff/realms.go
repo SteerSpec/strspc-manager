@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
@@ -98,46 +99,61 @@ func (c *realmComparison) run(baseDir, headDir string) {
 	}
 }
 
-// resolveDir follows dir when it is a link, as a walk wouldn't. An empty dir
-// is refused: it would resolve to the working directory.
+// resolveDir resolves a tree's root, links in the path naming it included, to
+// the real directory it names (realmfs.Root). An empty dir is refused: it
+// would resolve to the working directory.
 func resolveDir(dir string) (string, error) {
-	if dir == "" {
-		return "", errors.New("no directory")
-	}
-	resolved, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return "", err
-	}
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", err
-	}
-	if !info.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", dir)
-	}
-	return filepath.Abs(resolved)
+	return realmfs.Root(dir)
 }
 
 // scan lists the manifests and the other JSON files below root, outside
-// _schema directories.
+// _schema directories. In head, an entry that is a link or a special file is
+// RD000, as is a name that is realm.json but for case, or two names in one
+// directory that differ only by case: a reader on another system would see
+// other files. In base, such entries are skipped, never followed, so that the
+// change removing them passes.
 func (c *realmComparison) scan(root string) (manifests, files []string) {
+	head := root == c.head
+	names := map[string][]string{} // directory → names seen, for case collisions
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			addReadError(c.res, path, err)
 			return nil
 		}
+		if path == root {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if head {
+			dir, name := filepath.Dir(rel), d.Name()
+			for _, seen := range names[dir] {
+				if strings.EqualFold(seen, name) {
+					addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("%q and %q differ only by case", seen, name))
+				}
+			}
+			names[dir] = append(names[dir], name)
+			if err := realmfs.CheckEntry(d); err != nil {
+				addReadError(c.res, filepath.ToSlash(rel), err)
+				return nil
+			}
+			if name != manifestName && strings.EqualFold(name, manifestName) {
+				addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("a manifest must be named %s exactly", manifestName))
+				return nil
+			}
+		} else if realmfs.CheckEntry(d) != nil {
+			return nil
+		}
 		if d.IsDir() {
-			if path != root && d.Name() == "_schema" {
+			if d.Name() == "_schema" {
 				return fs.SkipDir
 			}
 			return nil
 		}
 		if !strings.HasSuffix(d.Name(), ".json") {
 			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
 		}
 		if d.Name() == manifestName {
 			manifests = append(manifests, filepath.ToSlash(rel))
@@ -152,23 +168,28 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 	return manifests, files
 }
 
-// readIn returns the file at rel below root, or nil when there is none. A link
-// to nowhere is an error.
-func readIn(root, rel string) ([]byte, error) {
+// readIn returns the file at rel below root, or nil when there is none. In
+// head, a link there is an error; in base, it is never followed and reads as
+// no file, so that the change replacing it passes.
+func (c *realmComparison) readIn(root, rel string) ([]byte, error) {
 	if root == "" {
 		return nil, nil
 	}
 	path := filepath.Join(root, filepath.FromSlash(rel))
-	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+	data, err := realmfs.ReadFile(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, nil
+	case errors.Is(err, realmfs.ErrNotRegular) && root != c.head:
 		return nil, nil
 	}
-	return os.ReadFile(path)
+	return data, err
 }
 
 // compareManifest runs the checks on one realm.json.
 func (c *realmComparison) compareManifest(rel string) {
 	parse := func(root string) (*entity.RealmFile, []byte, bool) {
-		data, err := readIn(root, rel)
+		data, err := c.readIn(root, rel)
 		if err != nil {
 			addReadError(c.res, rel, err)
 			return nil, nil, false
@@ -277,14 +298,14 @@ func kindName(kind string) string {
 // checkSupersession runs RD030 on a file of a Standard Realm. A file that
 // doesn't parse is left to Compare's RD000.
 func (c *realmComparison) checkSupersession(rel string, existed bool) {
-	headData, err := readIn(c.head, rel)
+	headData, err := c.readIn(c.head, rel)
 	if err != nil {
 		addReadError(c.res, rel, err)
 		return
 	}
 	var baseData []byte
 	if existed {
-		if baseData, err = readIn(c.base, rel); err != nil {
+		if baseData, err = c.readIn(c.base, rel); err != nil {
 			addReadError(c.res, rel, err)
 			return
 		}

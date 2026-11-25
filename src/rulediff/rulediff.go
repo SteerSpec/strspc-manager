@@ -15,6 +15,8 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const module = "rule-diff"
@@ -239,11 +241,23 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
-	baseFiles := scanJSONFiles(baseDir)
-	headFiles := scanJSONFiles(headDir)
+	// A link in base is never read, so the change removing it passes; one in
+	// head is refused.
+	baseFiles, _ := scanJSONFiles(baseDir)
+	headFiles, headLinks := scanJSONFiles(headDir)
+	for _, name := range headLinks {
+		path := filepath.Join(headDir, name)
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD000",
+			Severity: result.Error,
+			Message:  "failed to read " + path + ": " + realmfs.ErrNotRegular.Error(),
+			Path:     path,
+		})
+	}
 
 	for name, headPath := range headFiles {
-		headData, err := os.ReadFile(headPath)
+		headData, err := realmfs.ReadFile(headPath)
 		if err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -255,7 +269,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			continue
 		}
 		if basePath, ok := baseFiles[name]; ok {
-			baseData, err := os.ReadFile(basePath)
+			baseData, err := realmfs.ReadFile(basePath)
 			if err != nil {
 				res.Add(result.Diagnostic{
 					Module:   module,
@@ -291,7 +305,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 
 	for name, basePath := range baseFiles {
 		if _, ok := headFiles[name]; !ok {
-			if data, err := os.ReadFile(basePath); err == nil && DeletionAllowed(data) {
+			if data, err := realmfs.ReadFile(basePath); err == nil && DeletionAllowed(data) {
 				continue
 			}
 			res.Add(result.Diagnostic{
@@ -333,18 +347,24 @@ func isAbsent(path string, lstat func(string) (fs.FileInfo, error)) bool {
 }
 
 // scanJSONFiles returns a map of filename → full path for all *.json files
-// directly inside dir, except the realm.json manifest. Non-JSON files and I/O
-// errors are silently skipped.
-func scanJSONFiles(dir string) map[string]string {
+// directly inside dir, except the realm.json manifest, and the names of the
+// ones that are links or special files, which are never read. Non-JSON files
+// and I/O errors are silently skipped.
+func scanJSONFiles(dir string) (files map[string]string, links []string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	files := make(map[string]string, len(entries))
+	files = make(map[string]string, len(entries))
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && e.Name() != "realm.json" {
-			files[e.Name()] = filepath.Join(dir, e.Name())
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" {
+			continue
 		}
+		if realmfs.CheckEntry(e) != nil {
+			links = append(links, e.Name())
+			continue
+		}
+		files[e.Name()] = filepath.Join(dir, e.Name())
 	}
-	return files
+	return files, links
 }

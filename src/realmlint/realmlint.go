@@ -23,6 +23,8 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/rulelint"
 	"github.com/SteerSpec/strspc-manager/src/schema"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const (
@@ -134,7 +136,7 @@ func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 
 	// RM001: Read and parse realm.json.
 	realmPath := filepath.Join(dir, "realm.json")
-	data, err := os.ReadFile(realmPath)
+	data, err := realmfs.ReadFile(realmPath)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -721,8 +723,8 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		srDir := filepath.Join(dir, srName)
 
-		// RM008: Sub-realm directory must exist.
-		info, err := os.Stat(srDir)
+		// RM008: Sub-realm directory must exist, and not as a link.
+		info, err := os.Lstat(srDir)
 		if err != nil {
 			msg := fmt.Sprintf("sub_realms entry %q: directory does not exist", srName)
 			if !os.IsNotExist(err) {
@@ -742,7 +744,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Module:   module,
 				Code:     "RM008",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub_realms entry %q: path is not a directory", srName),
+				Message:  fmt.Sprintf("sub_realms entry %q: path is not a directory, or is a link", srName),
 				Path:     realmPath,
 			})
 			continue
@@ -750,7 +752,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		// RM009: Sub-realm must have realm.json.
 		srRealmPath := filepath.Join(srDir, "realm.json")
-		srData, err := os.ReadFile(srRealmPath)
+		srData, err := realmfs.ReadFile(srRealmPath)
 		if err != nil {
 			msg := fmt.Sprintf("sub-realm %q: error reading realm.json: %v", srName, err)
 			if os.IsNotExist(err) {

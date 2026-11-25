@@ -11,7 +11,6 @@ package realmresolve
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
@@ -287,14 +287,14 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			continue
 		}
 
-		// RR007: sub-realm directory must exist and be a directory.
-		info, err := os.Stat(subDir)
-		if err != nil || !info.IsDir() {
+		// RR007: sub-realm directory must exist and be a directory, not a
+		// link to one.
+		if err := realmfs.Dir(subDir); err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RR007",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub-realm %q: directory %q does not exist or is not a directory", subRealmName, subDir),
+				Message:  fmt.Sprintf("sub-realm %q: directory %q does not exist, is not a directory or is a link", subRealmName, subDir),
 				Path:     subDir,
 			})
 			continue
