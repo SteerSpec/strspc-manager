@@ -8,11 +8,26 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
+// ErrNotEntityFile marks a file the entity walker refuses for its name or a
+// top-level "realm" key, rather than for bytes that don't parse: a reserved
+// index.json of another shape, or a manifest under another name.
+var ErrNotEntityFile = errors.New("not an entity file")
+
+// rejection is an error that is ErrNotEntityFile.
+type rejection string
+
+func (r rejection) Error() string        { return string(r) }
+func (r rejection) Is(target error) bool { return target == ErrNotEntityFile }
+
 // errRealmKey is Parse's error for a file that claims to be a manifest.
-var errRealmKey = errors.New(`an entity file can't have a top-level "realm" key`)
+var errRealmKey error = rejection(`an entity file can't have a top-level "realm" key`)
 
 // errReservedIndex is the walker's error for an index.json of another shape.
-var errReservedIndex = errors.New("index.json is reserved for a published index of the Realm")
+var errReservedIndex error = rejection("index.json is reserved for a published index of the Realm")
+
+// IsPublishedIndex reports whether data has the shape of the index.json
+// published with a Realm, the only index.json the walker skips.
+func IsPublishedIndex(data []byte) bool { return isPublishedIndex(data) }
 
 // Parse decodes raw JSON into a File. Use this when the data is already in
 // memory (e.g. received over HTTP in strspc-cloud). Entity content beside a

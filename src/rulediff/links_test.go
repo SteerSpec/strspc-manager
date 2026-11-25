@@ -187,3 +187,17 @@ func TestCompareRealms_BaseDirectoryLinkNotFollowed(t *testing.T) {
 func TestCompareRealms_JSONNameInAnotherCase(t *testing.T) {
 	assertHasCode(t, compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "NEW.JSON": someEntity}), "RD000")
 }
+
+// Copilot #378: a *.json link in base _schema/ fails closed, and index.json
+// is reserved for a published index.
+func TestCompareRealms_BaseSchemaLinkAndIndex(t *testing.T) {
+	base := tree{"realm.json": codeRealm, "_schema/realm.v1.schema.json": "{}"}.write(t)
+	link(t, base, "_schema/entity.v1.schema.json", os.DevNull)
+	assertHasCode(t, CompareRealms(base, tree{"realm.json": codeRealm}.write(t)), "RD000")
+
+	assertHasCode(t, compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "index.json": someEntity}), "RD000")
+	published := `{"realm":{"id":"a.b"},"rules":[{"file":"APP.json"}]}`
+	if res := compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "index.json": published}); hasDiag(res, "RD000") {
+		t.Errorf("published index: %v", res.Diagnostics)
+	}
+}

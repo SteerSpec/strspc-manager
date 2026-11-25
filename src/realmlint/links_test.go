@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
 // copyValidSubRealm copies testdata/valid_sub_realm to a temporary directory.
@@ -54,5 +56,22 @@ func TestSchemaLinksAreRefused(t *testing.T) {
 			moveAndLink(t, filepath.Join(dir, filepath.FromSlash(rel)))
 			assertHasCode(t, New().Lint(context.Background(), dir), "RM003")
 		})
+	}
+}
+
+// Copilot #378: a file the walker refuses for a "realm" key is RM005 even
+// without a rule linter.
+func TestWalkerRejectionWithoutRuleLinter(t *testing.T) {
+	dir := copyValidSubRealm(t)
+	if err := os.WriteFile(filepath.Join(dir, "LOOK.json"), []byte(`{"realm":{"id":"x"},"entity":{"id":"LOOK"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res := New().Lint(context.Background(), dir)
+	found := false
+	for _, d := range res.Diagnostics {
+		found = found || (d.Code == "RM005" && d.Severity == result.Error)
+	}
+	if !found {
+		t.Errorf("no RM005 error: %v", res.Diagnostics)
 	}
 }

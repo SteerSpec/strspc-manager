@@ -181,3 +181,20 @@ func TestCompareRealms_ManifestWhereBaseHadAFile(t *testing.T) {
 		t.Errorf("want RD023 and RD015: %v", res.Diagnostics)
 	}
 }
+
+// Copilot #378: a sub-realm chain of any depth reaches its top Realm's list.
+func TestCompareRealms_RealmNoteContributorDeepChain(t *testing.T) {
+	base := tree{}
+	id, dir := "r", ""
+	for i := 0; i < 70; i++ {
+		data, _ := json.Marshal(map[string]any{"realm": map[string]any{"id": id}, "sub_realms": []string{"s"}})
+		if i == 0 {
+			data, _ = json.Marshal(map[string]any{"realm": map[string]any{"id": id, "contributors": []map[string]string{{"id": "github:alice"}}}, "sub_realms": []string{"s"}})
+		}
+		base[dir+"realm.json"] = string(data)
+		id, dir = id+".s", dir+"s/"
+	}
+	data, _ := json.Marshal(map[string]any{"realm": map[string]any{"id": id}, "notes": []entity.RealmNote{{ID: "REALM/001", Type: "rationale", Content: "x", AddedBy: "github:mallory"}}})
+	head := base.with(tree{dir + "realm.json": string(data)})
+	assertHasCode(t, compareTrees(t, base, head), "RD023")
+}

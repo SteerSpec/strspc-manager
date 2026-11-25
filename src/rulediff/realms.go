@@ -177,6 +177,12 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 				addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("a manifest must be named %s exactly", manifestName))
 				return nil
 			}
+			if name == "index.json" && !d.IsDir() {
+				if data, err := realmfs.ReadFile(path); err != nil || !entity.IsPublishedIndex(data) {
+					addReadError(c.res, filepath.ToSlash(rel), errors.New("index.json is reserved for a published index of the Realm"))
+					return nil
+				}
+			}
 			if !d.IsDir() && realmfs.IsJSONName(name) && !strings.HasSuffix(name, ".json") {
 				addReadError(c.res, filepath.ToSlash(rel), errors.New("a JSON file name must end in .json in lower case"))
 				return nil
@@ -197,9 +203,7 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 		}
 		if d.IsDir() {
 			if d.Name() == "_schema" {
-				if head {
-					c.checkNoLinks(path, root)
-				}
+				c.checkNoLinks(path, root, head)
 				return fs.SkipDir
 			}
 			return nil
@@ -220,16 +224,21 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 	return manifests, files
 }
 
-// checkNoLinks reports RD000 for each link or special file below dir, a
-// directory of head whose files aren't compared, such as _schema.
-func (c *realmComparison) checkNoLinks(dir, root string) {
+// checkNoLinks reports RD000 for each link or special file named *.json
+// below dir, a directory whose files aren't compared, such as _schema: in
+// head it is refused, and in base it fails closed as elsewhere.
+func (c *realmComparison) checkNoLinks(dir, root string, head bool) {
 	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || path == dir {
 			return nil
 		}
 		if _, cerr := realmfs.CheckWalked(path, d); cerr != nil {
 			rel, _ := filepath.Rel(root, path)
-			addReadError(c.res, filepath.ToSlash(rel), cerr)
+			if head {
+				addReadError(c.res, filepath.ToSlash(rel), cerr)
+			} else {
+				c.res.Add(result.Diagnostic{Module: module, Code: "RD000", Severity: result.Error, Message: baseLinkMessage(filepath.ToSlash(rel)), Path: filepath.ToSlash(rel)})
+			}
 		}
 		return nil
 	})
@@ -339,7 +348,7 @@ func (c *realmComparison) compareManifest(rel string) {
 // A Realm that declares none, or one base doesn't hold under no parent there,
 // uses the WithContributors list.
 func (c *realmComparison) realmContributors(id string) []entity.Contributor {
-	for depth := 0; depth < 64; depth++ {
+	for {
 		rf := c.baseRealms[id]
 		if k := strings.LastIndex(id, "."); k > 0 {
 			// A sub-realm as CTRB-006 has it, listed by its parent in base, or

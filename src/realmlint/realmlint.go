@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -509,6 +510,9 @@ func checkSchemaDrift(dir, coreDir string, res *result.Result) {
 		return
 	}
 	schemaDir := filepath.Join(dir, "_schema")
+	if realmfs.Dir(schemaDir) != nil {
+		return // RM003 already reports it, and a linked _schema/ isn't followed.
+	}
 	entries, err := os.ReadDir(schemaDir)
 	if err != nil {
 		return // RM003 already reports it
@@ -618,6 +622,18 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir, kind string, exc
 					Code:     "RM005",
 					Severity: result.Error,
 					Message:  fmt.Sprintf("accessing path: %s", parseErr),
+					Path:     path,
+				})
+				return nil
+			}
+			// A file the walker refuses for its name or a "realm" key is an
+			// error even when entity files aren't linted.
+			if l.cfg.RuleLinter == nil && errors.Is(parseErr, entity.ErrNotEntityFile) {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RM005",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("reading entity file: %s", parseErr),
 					Path:     path,
 				})
 				return nil

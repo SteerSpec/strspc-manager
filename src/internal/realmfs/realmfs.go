@@ -9,6 +9,7 @@ package realmfs
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -144,7 +145,17 @@ func ReadFile(path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
 	}
-	return os.ReadFile(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	// The file opened must be the one checked: a link swapped in between
+	// would otherwise be followed.
+	if opened, err := f.Stat(); err != nil || !os.SameFile(info, opened) {
+		return nil, fmt.Errorf("%s changed while being read: %w", path, ErrNotRegular)
+	}
+	return io.ReadAll(f)
 }
 
 // ReadUnder reads the regular file at the slash path rel below root, through
