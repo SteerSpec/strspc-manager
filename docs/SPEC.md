@@ -289,7 +289,7 @@ The Configuration lists its rule sources (SPCFG-004), each one in the `rules` ar
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `source` | string | Where rules are fetched from (remote URL or local path). |
+| `source` | string | Where rules are fetched from (remote URL or local path). A local path must name a local directory: a Windows network share or device path (`\\host\share`, `\\?\…`, `\\.\…`) is refused when the resolver is built. |
 | `scope` | string | Applicability: `global` (all files) or `local` (source's own directory tree). |
 
 Source formats include remote references (`github://SteerSpec/strspc-rules@v1/rules/core`) and local Realm directories (`./rules/`).
