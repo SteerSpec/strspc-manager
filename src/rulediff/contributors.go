@@ -54,7 +54,7 @@ func checkContributors(base, head *entity.File, list []entity.Contributor, res *
 }
 
 func checkContributor(kind, addedBy string, list []entity.Contributor, res *result.Result, path string) {
-	if !entity.IsContributorID(addedBy) || entity.FindContributor(list, addedBy) != nil {
+	if len(list) == 0 || !entity.IsContributorID(addedBy) || entity.FindContributor(list, addedBy) != nil {
 		return
 	}
 	res.Add(result.Diagnostic{

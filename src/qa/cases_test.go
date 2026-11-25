@@ -278,6 +278,16 @@ var goCases = []goCase{
 		},
 	},
 	{
+		name: "rule-diff reports a dependency fetched from another repository",
+		want: []string{"RD031 error"},
+		run: func(t *testing.T) *result.Result {
+			const manifest = `{"realm":{"id":"dev.qa.r"},"dependencies":[{"realm_id":"dev.qa.core","version":"1.0.0","source":"github://%s/core@v1/rules"}]}`
+			return compareRealms(t,
+				map[string]string{"realm.json": fmt.Sprintf(manifest, "qa")},
+				map[string]string{"realm.json": fmt.Sprintf(manifest, "fork")})
+		},
+	},
+	{
 		name: "rule-diff reports a fix of a rule that was not live",
 		want: []string{"RD030 error"},
 		run: func(t *testing.T) *result.Result {

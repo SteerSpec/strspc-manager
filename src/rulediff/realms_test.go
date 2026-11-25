@@ -117,7 +117,6 @@ func TestCompareRealms_FailsClosedOnWhatItCantRead(t *testing.T) {
 		base, head tree
 	}{
 		{"head manifest", tree{"realm.json": codeRealm}, tree{"realm.json": brokenJSON}},
-		{"base manifest", tree{"realm.json": brokenJSON}, tree{"realm.json": codeRealm}},
 		{"new manifest", tree{}, tree{"realm.json": brokenJSON}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

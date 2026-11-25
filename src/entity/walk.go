@@ -2,10 +2,13 @@ package entity
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 // WalkFunc is the callback invoked by WalkEntityFiles.
@@ -63,8 +66,9 @@ func isCleanRelDir(d string) bool {
 }
 
 // WalkEntityFiles walks dir for .json entity files, skipping _schema/
-// directories and realm manifests. For each entity JSON file found, it
-// reads and parses the file, then calls fn with the results.
+// directories, realm.json and a published index.json. For each other JSON file
+// found, it reads and parses the file, then calls fn with the results: a
+// manifest under another name, or any other index.json, is a parse failure.
 //
 // By default the walk is recursive. Use WithRecursive(false) for
 // single-directory scanning.
@@ -80,6 +84,42 @@ func WalkEntityFiles(dir string, fn WalkFunc, opts ...WalkOption) error {
 	return walkShallow(dir, fn, &cfg)
 }
 
+// walkRoot returns the directory to walk for dir: dir itself when it is a
+// file, which is then the only entry, or else the physical directory it names.
+func walkRoot(dir string) (string, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	if err := realmfs.CheckLocal(abs); err != nil {
+		return "", err
+	}
+	if info, err := os.Lstat(dir); err == nil && info.Mode().IsRegular() {
+		return dir, nil
+	}
+	return realmfs.Root(dir)
+}
+
+// under maps path, below root, to the same entry below dir as given.
+func under(dir, root, path string) string {
+	if dir == root {
+		return path
+	}
+	if path == root {
+		return dir
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return filepath.Join(dir, rel)
+}
+
+// refused reports an entry that is neither a regular file nor a directory.
+func refused(path string, fn WalkFunc) error {
+	return fn(path, nil, nil, fmt.Errorf("%s: %w", path, realmfs.ErrNotRegular))
+}
+
 // walkRecursive walks the full directory tree.
 func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 	// filepath.WalkDir compares the error with fs.SkipAll using ==, so a
@@ -92,9 +132,14 @@ func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 		}
 		return err
 	}
-	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	root, err := walkRoot(dir)
+	if err != nil {
+		return err
+	}
+	return filepath.WalkDir(root, func(physical string, d fs.DirEntry, err error) error {
+		path := under(dir, root, physical)
 		if err != nil {
-			if path == dir {
+			if physical == root {
 				// Root directory error (e.g. not found) — abort the walk.
 				return err
 			}
@@ -107,10 +152,15 @@ func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 				return fs.SkipDir
 			}
 			if cfg.excludeDirs != nil {
-				if rel, err := filepath.Rel(dir, path); err == nil && cfg.excludeDirs[filepath.ToSlash(rel)] {
+				if rel, err := filepath.Rel(root, physical); err == nil && cfg.excludeDirs[filepath.ToSlash(rel)] {
 					return fs.SkipDir
 				}
 			}
+			return nil
+		}
+		if skip, err := realmfs.CheckWalked(physical, d); err != nil {
+			return refused(path, fn)
+		} else if skip {
 			return nil
 		}
 		return processEntry(path, d.Name(), fn)
@@ -119,15 +169,35 @@ func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 
 // walkShallow processes only the immediate children of dir.
 func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
-	entries, err := os.ReadDir(dir)
+	root, err := walkRoot(dir)
+	if err != nil {
+		return err
+	}
+	if root == dir {
+		if info, err := os.Lstat(dir); err == nil && info.Mode().IsRegular() {
+			if err := processEntry(dir, filepath.Base(dir), fn); err != nil && !errors.Is(err, fs.SkipAll) {
+				return err
+			}
+			return nil
+		}
+	}
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
-		if entry.IsDir() {
+		path := filepath.Join(dir, entry.Name())
+		var err error
+		skip, linkErr := realmfs.CheckWalked(filepath.Join(root, entry.Name()), entry)
+		switch {
+		case linkErr != nil:
+			err = refused(path, fn)
+		case skip, entry.IsDir():
 			continue
+		default:
+			err = processEntry(path, entry.Name(), fn)
 		}
-		if err := processEntry(filepath.Join(dir, entry.Name()), entry.Name(), fn); err != nil {
+		if err != nil {
 			if errors.Is(err, fs.SkipAll) {
 				return nil
 			}
@@ -139,17 +209,29 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 
 // processEntry handles a single file: filters, reads, parses, and calls fn.
 func processEntry(path, name string, fn WalkFunc) error {
-	if !strings.HasSuffix(name, ".json") || name == "realm.json" {
+	if !realmfs.IsJSONName(name) || name == "realm.json" {
 		return nil
 	}
+	if !strings.HasSuffix(name, ".json") {
+		// A case-insensitive file system opens realm.JSON as the manifest,
+		// so a JSON name in another case is never skipped silently.
+		return fn(path, nil, nil, fmt.Errorf("%s: a JSON file name must end in .json in lower case", path))
+	}
 
-	data, err := os.ReadFile(path)
+	data, err := realmfs.ReadFile(path)
 	if err != nil {
 		return fn(path, nil, nil, err)
 	}
 
+	if name == "index.json" {
+		if isPublishedIndex(data) {
+			return nil
+		}
+		// Reserved, so that nothing enforced can be swapped for an index.
+		return fn(path, data, nil, errReservedIndex)
+	}
 	if IsRealmJSON(data) {
-		return nil
+		return fn(path, data, nil, fmt.Errorf("parsing entity JSON: %w", errRealmKey))
 	}
 
 	ef, parseErr := Parse(data)

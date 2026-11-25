@@ -13,7 +13,7 @@ import (
 )
 
 // manifestCodes are the codes checkManifestNotesAndHash emits.
-var manifestCodes = []string{"RM021", "RM022", "RM023", "RM024", "RM025"}
+var manifestCodes = []string{"RM021", "RM022", "RM023", "RM024", "RM025", "RM030"}
 
 // countCodes counts the diagnostics of res with one of the given codes.
 func countCodes(res *result.Result, codes ...string) map[string]int {
@@ -134,6 +134,12 @@ func TestManifest_EachCode(t *testing.T) {
 		{"ref on a clarification", func(rf *entity.RealmFile) {
 			rf.Notes[2].Type, rf.Notes[2].Ref = "clarification", "owasp.asvs:V1.1.1"
 		}, map[string]int{"RM024": 1}},
+		{"added_by not a contributor identifier", func(rf *entity.RealmFile) {
+			rf.Notes[2].AddedBy = "not an identifier"
+		}, map[string]int{"RM030": 1}},
+		{"added_by an @handle", func(rf *entity.RealmFile) {
+			rf.Notes[2].AddedBy = "@alice"
+		}, map[string]int{"RM030": 1}},
 		{"ref on an unknown type is the schema's", func(rf *entity.RealmFile) {
 			rf.Notes[2].Type, rf.Notes[2].Ref = "other", "owasp.asvs:V1.1.1"
 		}, map[string]int{}},

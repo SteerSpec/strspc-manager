@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/internal/httpsonly"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 // BaseURL is the default base URL for schema fetches.
@@ -126,7 +128,11 @@ func WithLocalDir(dir string) Option {
 // leaving the latest schemas in use; reporting a broken manifest is the linters'
 // job.
 func ForRealm(dir string) []Option {
-	data, err := os.ReadFile(filepath.Join(dir, "realm.json"))
+	// A regular file only: a link is never read, and a FIFO would block.
+	if realmfs.CheckRoot(dir) != nil {
+		return nil
+	}
+	data, err := realmfs.ReadFile(filepath.Join(dir, "realm.json"))
 	if err != nil {
 		return nil
 	}

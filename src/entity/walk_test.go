@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const walkTestDir = "testdata/walk"
@@ -308,7 +309,7 @@ func TestWalkEntityFiles_CallbackResultControlsWalk(t *testing.T) {
 	}
 }
 
-func TestWalkEntityFiles_SkipsRealmManifestUnderAnotherName(t *testing.T) {
+func TestWalkEntityFiles_ReportsRealmManifestUnderAnotherName(t *testing.T) {
 	for _, mode := range walkModes {
 		t.Run(mode.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -323,8 +324,8 @@ func TestWalkEntityFiles_SkipsRealmManifestUnderAnotherName(t *testing.T) {
 			if err != nil {
 				t.Fatalf("WalkEntityFiles: %v", err)
 			}
-			if len(seen) != 1 || seen[0] != "ENT.json" {
-				t.Errorf("visited %v, want only ENT.json", seen)
+			if len(seen) != 2 || seen[0] != "ENT.json" || seen[1] != "manifest.json" {
+				t.Errorf("visited %v, want ENT.json and manifest.json", seen)
 			}
 		})
 	}
@@ -356,8 +357,9 @@ func TestWalkEntityFiles_ReportsUnreadableFileAndContinues(t *testing.T) {
 			if err != nil {
 				t.Fatalf("WalkEntityFiles: %v", err)
 			}
-			if !errors.Is(readErr, fs.ErrNotExist) {
-				t.Errorf("parseErr = %v, want it to wrap fs.ErrNotExist", readErr)
+			// A dangling link is refused as a link, before any read.
+			if !errors.Is(readErr, realmfs.ErrNotRegular) {
+				t.Errorf("parseErr = %v, want it to wrap realmfs.ErrNotRegular", readErr)
 			}
 			if len(ids) != 1 || ids[0] != "ENT" {
 				t.Errorf("parsed %v, want the walk to reach ENT", ids)

@@ -8,7 +8,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -23,6 +25,8 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/rulelint"
 	"github.com/SteerSpec/strspc-manager/src/schema"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const (
@@ -132,9 +136,14 @@ func New(opts ...Option) *RealmLinter {
 func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	res := &result.Result{}
 
+	if err := realmfs.CheckRoot(dir); err != nil {
+		res.Add(result.Diagnostic{Module: module, Code: "RM001", Severity: result.Error, Message: fmt.Sprintf("realm directory: %v", err), Path: dir})
+		return res
+	}
+
 	// RM001: Read and parse realm.json.
 	realmPath := filepath.Join(dir, "realm.json")
-	data, err := os.ReadFile(realmPath)
+	data, err := realmfs.ReadFile(realmPath)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -347,7 +356,7 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 // RM003 + RM004: Validate _schema/ directory structure.
 func checkSchemaDir(dir string, res *result.Result) {
 	schemaDir := filepath.Join(dir, "_schema")
-	info, err := os.Stat(schemaDir)
+	info, err := os.Lstat(schemaDir)
 	if err != nil {
 		msg := fmt.Sprintf("failed to access _schema/ directory: %v", err)
 		if os.IsNotExist(err) {
@@ -367,14 +376,30 @@ func checkSchemaDir(dir string, res *result.Result) {
 			Module:   module,
 			Code:     "RM003",
 			Severity: result.Error,
-			Message:  "_schema/ exists but is not a directory",
+			Message:  "_schema/ exists but is not a directory, or is a link",
 			Path:     schemaDir,
 		})
 		return
 	}
+	// Links and special files are not allowed in a Realm tree, _schema/ included.
+	_ = filepath.WalkDir(schemaDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || path == schemaDir {
+			return nil
+		}
+		if _, cerr := realmfs.CheckWalked(path, d); cerr != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM003",
+				Severity: result.Error,
+				Message:  "_schema/ holds a link or special file: " + realmfs.ErrNotRegular.Error(),
+				Path:     path,
+			})
+		}
+		return nil
+	})
 
 	entitySchemaPath := filepath.Join(schemaDir, "entity.v1.schema.json")
-	if _, err := os.Stat(entitySchemaPath); err != nil {
+	if _, err := os.Lstat(entitySchemaPath); err != nil { // A link is RM003 above.
 		msg := "entity.v1.schema.json missing in _schema/"
 		if !os.IsNotExist(err) {
 			msg = fmt.Sprintf("unable to access entity.v1.schema.json in _schema/: %v", err)
@@ -485,6 +510,9 @@ func checkSchemaDrift(dir, coreDir string, res *result.Result) {
 		return
 	}
 	schemaDir := filepath.Join(dir, "_schema")
+	if realmfs.Dir(schemaDir) != nil {
+		return // RM003 already reports it, and a linked _schema/ isn't followed.
+	}
 	entries, err := os.ReadDir(schemaDir)
 	if err != nil {
 		return // RM003 already reports it
@@ -536,7 +564,7 @@ func sameJSON(a, b string) (bool, error) {
 
 // readJSON reads and decodes a JSON file.
 func readJSON(path string) (any, error) {
-	data, err := os.ReadFile(path)
+	data, err := realmfs.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -598,10 +626,32 @@ func (l *RealmLinter) scanEntityFiles(ctx context.Context, dir, kind string, exc
 				})
 				return nil
 			}
+			// A file the walker refuses for its name or a "realm" key is an
+			// error even when entity files aren't linted.
+			if l.cfg.RuleLinter == nil && errors.Is(parseErr, entity.ErrNotEntityFile) {
+				res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RM005",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("reading entity file: %s", parseErr),
+					Path:     path,
+				})
+				return nil
+			}
 			// Parse error — delegate to rulelint if configured.
 			if l.cfg.RuleLinter != nil {
 				fileRes := l.cfg.RuleLinter.LintBytes(ctx, data)
 				copyDiagnostics(fileRes, path, res)
+				if fileRes.OK() {
+					// The walker rejected the file for more than its bytes.
+					res.Add(result.Diagnostic{
+						Module:   module,
+						Code:     "RM005",
+						Severity: result.Error,
+						Message:  fmt.Sprintf("reading entity file: %s", parseErr),
+						Path:     path,
+					})
+				}
 			}
 			return nil
 		}
@@ -711,8 +761,8 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		srDir := filepath.Join(dir, srName)
 
-		// RM008: Sub-realm directory must exist.
-		info, err := os.Stat(srDir)
+		// RM008: Sub-realm directory must exist, and not as a link.
+		info, err := os.Lstat(srDir)
 		if err != nil {
 			msg := fmt.Sprintf("sub_realms entry %q: directory does not exist", srName)
 			if !os.IsNotExist(err) {
@@ -732,7 +782,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 				Module:   module,
 				Code:     "RM008",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub_realms entry %q: path is not a directory", srName),
+				Message:  fmt.Sprintf("sub_realms entry %q: path is not a directory, or is a link", srName),
 				Path:     realmPath,
 			})
 			continue
@@ -740,7 +790,7 @@ func (l *RealmLinter) checkSubRealms(ctx context.Context, dir string, rf *entity
 
 		// RM009: Sub-realm must have realm.json.
 		srRealmPath := filepath.Join(srDir, "realm.json")
-		srData, err := os.ReadFile(srRealmPath)
+		srData, err := realmfs.ReadFile(srRealmPath)
 		if err != nil {
 			msg := fmt.Sprintf("sub-realm %q: error reading realm.json: %v", srName, err)
 			if os.IsNotExist(err) {

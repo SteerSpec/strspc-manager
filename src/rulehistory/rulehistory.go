@@ -8,6 +8,7 @@
 package rulehistory
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -137,11 +138,11 @@ func Build(commits []Commit) *History {
 		var before *entity.File
 		var beforeErr error
 		if c.Before != nil {
-			before, beforeErr = entity.Parse(c.Before)
+			before, beforeErr = decode(c.Before)
 		}
 		var after *entity.File
 		if c.After != nil {
-			f, err := entity.Parse(c.After)
+			f, err := decode(c.After)
 			if err != nil {
 				h.Warnings = append(h.Warnings, Warning{Commit: c.SHA, Message: "skipped: the file does not parse after the commit: " + err.Error()})
 				if before != nil {
@@ -163,6 +164,16 @@ func Build(commits []Commit) *History {
 		}
 	}
 	return h
+}
+
+// decode reads a version as it was committed, without entity.Parse's content
+// check: history records also what is no longer accepted.
+func decode(data []byte) (*entity.File, error) {
+	var f entity.File
+	if err := json.Unmarshal(data, &f); err != nil {
+		return nil, fmt.Errorf("parsing entity JSON: %w", err)
+	}
+	return &f, nil
 }
 
 // ruleAt is a rule with the entity path holding it and that entity's rule

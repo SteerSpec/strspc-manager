@@ -56,6 +56,14 @@
       "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0
+    },
+    {
+      "id": "REALM/005",
+      "type": "rationale",
+      "content": "Attributed to a handle, not a contributor identifier.",
+      "added_by": "@qa",
+      "added_at": "2026-01-15",
+      "revision": 0
     }
   ],
   "hash": "blake3:0000000000000000000000000000000000000000000000000000000000000000"

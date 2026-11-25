@@ -120,7 +120,7 @@ func TestLocalSource_ReportsAnUnreadableFileAndKeepsTheRest(t *testing.T) {
 
 	files, res := (&LocalSource{}).Fetch(context.Background(), dir)
 	d := diagnostic(t, res, "RSV002")
-	if !strings.HasPrefix(d.Message, "accessing path: ") || !strings.Contains(d.Message, "no such file") {
+	if !strings.HasPrefix(d.Message, "accessing path: ") || !strings.Contains(d.Message, "links and special files are not allowed") {
 		t.Errorf("message = %q", d.Message)
 	}
 	if d.Path != link {

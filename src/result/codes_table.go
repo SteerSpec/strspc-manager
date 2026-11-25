@@ -21,7 +21,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid entity JSON",
 		Summary:  "The file is not valid JSON or does not parse into the entity structure.",
-		Fix:      "Fix the JSON syntax, or the field whose type does not match the entity structure.",
+		Fix:      "Fix the JSON syntax, or the field whose type does not match the entity structure. An entity file has no top-level `realm` key and is not named `index.json`.",
 	},
 	{
 		Code:     "RL002",
@@ -404,7 +404,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Deleted content",
-		Summary:  "A rule, sub-entity or entity file present in the base version was deleted.",
+		Summary:  "A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005.",
 		Fix:      "Restore what was deleted. To end a rule, abandon it from Draft with `strspc rule abandon` or take it to `T` with `strspc rule retire`.",
 	},
 	{
@@ -549,7 +549,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "added_by not a listed contributor",
-		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
+		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030. For Realm Notes, `CompareRealms` takes the lists from base only, by realm ID: the ID base declares at the manifest's path, or head's for a new manifest; a sub-realm is one its parent lists in base, or a Realm base doesn't hold under a parent it does; a Realm that declares none, or whose base manifest doesn't parse, uses the `WithContributors` list; when the change sets another ID, the author must be listed for both Realms.",
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
 	},
 	{
@@ -589,7 +589,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Realm kind changed",
-		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it. A Standard Realm's rules aren't evaluated (STDRLM-011).",
+		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it within the compared tree, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011).",
 		Fix:      "Restore the manifests. A Realm keeps its kind: create a Standard Realm as a new Realm, with new files.",
 	},
 	{
@@ -607,6 +607,14 @@ var codeTable = []CodeInfo{
 		Title:    "Supersedes a rule that was not live",
 		Summary:  "A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017).",
 		Fix:      "Supersede the live rule of the clause instead, or abandon the fix.",
+	},
+	{
+		Code:     "RD031",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Dependency source changed",
+		Summary:  "A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged.",
+		Fix:      "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
 	},
 	{
 		Code:     "RM001",
@@ -645,8 +653,8 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Info / Error",
 		Title:    "Entity files not linted",
-		Summary:  "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails.",
-		Fix:      "Check that the reported path exists and is readable. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
+		Summary:  "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name.",
+		Fix:      "Check that the reported path exists and is readable, and that only a published index is named `index.json`. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
 	},
 	{
 		Code:     "RM006",
@@ -841,6 +849,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Correct the clause to one the linked Standard Realm transcribes. A clause whose rules are all Terminated or Retired has left the list: map the clause of the rule that superseded it.",
 	},
 	{
+		Code:     "RM030",
+		Module:   "realm-lint",
+		Severity: "Error",
+		Title:    "Realm Note attribution",
+		Summary:  "The `added_by` of a Realm Note is not a contributor identifier `<idp>:<subject>` (CTRB-003).",
+		Fix:      "Write the contributor identifier, such as `github:<login>`.",
+	},
+	{
 		Code:     "RR000",
 		Module:   "realm-resolve",
 		Severity: "Error",
@@ -853,7 +869,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-resolve",
 		Severity: "Error",
 		Title:    "Invalid dependency source",
-		Summary:  "A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin.",
+		Summary:  "A dependency `source` is empty, absolute, holds a backslash in a local path (a separator on Windows only, so the directory named would depend on the OS), or escapes the repository root of the realm's origin.",
 		Fix:      "Use a relative path that stays inside the repository, or a `github://<owner>/<repo>@<ref>[/<path>]` reference.",
 	},
 	{
@@ -1070,7 +1086,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid entity file in a source",
 		Summary:  "An entity file cannot be parsed, or its `entity.id` is empty.",
-		Fix:      "Fix the JSON in the file, and make sure `entity.id` is set.",
+		Fix:      "Fix the JSON in the file, and make sure `entity.id` is set. An entity file has no top-level `realm` key and is not named `index.json`.",
 	},
 	{
 		Code:     "RSV004",

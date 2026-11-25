@@ -23,7 +23,7 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 	headMap := buildRuleMap(head.Rules)
 
 	// RD005: rule removal — rules must never be deleted.
-	for id := range baseMap {
+	for _, id := range slices.Sorted(maps.Keys(baseMap)) {
 		if _, ok := headMap[id]; !ok {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -37,7 +37,8 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 
 	// Single pass: RD001-RD004, RD006, RD010-RD011 per rule.
 	var newRuleNums []int
-	for id, h := range headMap {
+	for _, id := range slices.Sorted(maps.Keys(headMap)) {
+		h := headMap[id]
 		if b, exists := baseMap[id]; exists {
 			checkExistingRule(b, h, headMap, res, path+"/"+id)
 		} else {
