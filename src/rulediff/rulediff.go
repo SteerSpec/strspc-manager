@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -194,7 +196,7 @@ func (d *Differ) diffEntityTree(base, head *entity.File, baseVisibility, headVis
 		}
 	}
 	// Any sub-entities remaining in baseSubMap were deleted in head — reject.
-	for id := range baseSubMap {
+	for _, id := range slices.Sorted(maps.Keys(baseSubMap)) {
 		subPath := path + " > " + id
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -256,7 +258,8 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		})
 	}
 
-	for name, headPath := range headFiles {
+	for _, name := range slices.Sorted(maps.Keys(headFiles)) {
+		headPath := headFiles[name]
 		headData, err := realmfs.ReadFile(headPath)
 		if err != nil {
 			res.Add(result.Diagnostic{
@@ -303,7 +306,8 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		res.Add(d)
 	}
 
-	for name, basePath := range baseFiles {
+	for _, name := range slices.Sorted(maps.Keys(baseFiles)) {
+		basePath := baseFiles[name]
 		if _, ok := headFiles[name]; !ok {
 			if data, err := realmfs.ReadFile(basePath); err == nil && DeletionAllowed(data) {
 				continue

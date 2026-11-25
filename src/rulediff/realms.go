@@ -56,6 +56,8 @@ func compareRealms(baseDir, headDir string, opts ...Option) *result.Result {
 		contributors: cfg.Contributors,
 		baseIDs:      map[string]map[string]string{},
 		headIDs:      map[string]map[string]string{},
+		baseDeps:     map[string][]depSource{},
+		headDeps:     map[string][]depSource{},
 	}
 	c.run(baseDir, headDir)
 	if cfg.Strict {
@@ -75,7 +77,12 @@ type realmComparison struct {
 	contributors []entity.Contributor
 	// kinds records, by realm ID, the kinds and manifests seen in each tree.
 	baseIDs, headIDs map[string]map[string]string
+	// deps records, by dependency realm ID, the sources each tree declares.
+	baseDeps, headDeps map[string][]depSource
 }
+
+// depSource is a dependency source declared by the manifest at rel.
+type depSource struct{ source, rel string }
 
 func (c *realmComparison) run(baseDir, headDir string) {
 	var err error
@@ -106,6 +113,7 @@ func (c *realmComparison) run(baseDir, headDir string) {
 		c.compareManifest(rel)
 	}
 	c.compareKindsByID()
+	c.compareDependencySources()
 	for _, rel := range headFiles {
 		c.compareFile(rel)
 	}
@@ -211,6 +219,11 @@ func (c *realmComparison) compareManifest(rel string) {
 		}
 		rf, err := entity.ParseRealm(data)
 		if err != nil {
+			if root != c.head {
+				// A broken base holds nothing to keep: the change repairing or
+				// deleting it is judged by its head alone.
+				return nil, data, true
+			}
 			addReadError(c.res, rel, err)
 			return nil, data, false
 		}
@@ -220,6 +233,8 @@ func (c *realmComparison) compareManifest(rel string) {
 	head, headData, headOK := parse(c.head)
 	record(c.baseIDs, base, rel)
 	record(c.headIDs, head, rel)
+	recordDeps(c.baseDeps, base, rel)
+	recordDeps(c.headDeps, head, rel)
 	if !baseOK || !headOK || bytes.Equal(baseData, headData) {
 		return
 	}
@@ -231,7 +246,7 @@ func (c *realmComparison) compareManifest(rel string) {
 	if head != nil {
 		headNotes = head.Notes
 	}
-	if base != nil && head != nil && base.Realm.Kind != head.Realm.Kind {
+	if base != nil && head != nil && kindChanged(base.Realm.Kind, head.Realm.Kind) {
 		c.res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD028",
@@ -241,9 +256,27 @@ func (c *realmComparison) compareManifest(rel string) {
 		})
 	}
 	checkRealmNotes(baseNotes, headNotes, c.contributors, c.res, rel)
-	if base != nil && head != nil {
-		checkDependencySources(base.Dependencies, head.Dependencies, c.res, rel)
+}
+
+// recordDeps notes the dependency sources rf declares, at rel, in deps.
+func recordDeps(deps map[string][]depSource, rf *entity.RealmFile, rel string) {
+	if rf == nil {
+		return
 	}
+	for _, d := range rf.Dependencies {
+		deps[d.RealmID] = append(deps[d.RealmID], depSource{source: d.Source, rel: rel})
+	}
+}
+
+// kindChanged reports whether a manifest's kind changed from was to now in a
+// way RD028 forbids: what it evaluates as changed, or a valid kind became
+// another value. Repairing an invalid kind to the one it evaluates as passes.
+func kindChanged(was, now string) bool {
+	standard := func(k string) bool { return k == entity.KindStandard }
+	if standard(was) != standard(now) {
+		return true
+	}
+	return was != now && (was == "" || standard(was))
 }
 
 // record notes the kind the Realm rf declares evaluates as, at rel, in ids.
@@ -292,41 +325,48 @@ func (c *realmComparison) compareKindsByID() {
 	}
 }
 
-// checkDependencySources runs RD031: a dependency keeps its realm ID, so its
-// source may change only its ref. Another repository, path or local
-// directory would fetch another tree under the same ID.
-func checkDependencySources(base, head []entity.RealmDep, res *result.Result, path string) {
-	before := make(map[string]string, len(base))
-	for _, d := range base {
-		before[d.RealmID] = d.Source
-	}
-	for _, d := range head {
-		old, ok := before[d.RealmID]
-		if !ok || sameSource(old, d.Source) {
+// compareDependencySources runs RD031: a dependency keeps its realm ID, so the
+// source it is fetched from may change only its ref, wherever it is declared.
+// A head source for a realm ID that base depends on must name a tree a base
+// source for that ID names: a sub-realm overriding the dependency, or a
+// manifest at a new path, can't fetch another tree under the same ID.
+func (c *realmComparison) compareDependencySources() {
+	for _, id := range slices.Sorted(maps.Keys(c.headDeps)) {
+		was, ok := c.baseDeps[id]
+		if !ok {
 			continue
 		}
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RD031",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("dependency %s: source changed from %q to %q; only the ref of a github source may change, so add a dependency with a new realm ID instead", d.RealmID, old, d.Source),
-			Path:     path,
-		})
+		for _, h := range c.headDeps[id] {
+			if slices.ContainsFunc(was, func(b depSource) bool { return sameSource(b, h) }) {
+				continue
+			}
+			c.res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD031",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("dependency %s: source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", id, h.source, was[0].source),
+				Path:     h.rel,
+			})
+		}
 	}
 }
 
 // sameSource reports whether two dependency sources name the same tree, but
-// for the ref of a github source.
-func sameSource(a, b string) bool {
-	ra, errA := remote.ParseGitHub(a)
-	rb, errB := remote.ParseGitHub(b)
+// for the ref of a github source. A local source is relative to the directory
+// of the manifest declaring it.
+func sameSource(a, b depSource) bool {
+	ra, errA := remote.ParseGitHub(a.source)
+	rb, errB := remote.ParseGitHub(b.source)
 	switch {
 	case errA == nil && errB == nil:
 		return strings.EqualFold(ra.Owner, rb.Owner) && strings.EqualFold(ra.Repo, rb.Repo) && ra.Path == rb.Path
-	case errA == nil || errB == nil || strings.Contains(a, "://") || strings.Contains(b, "://"):
+	case errA == nil || errB == nil || strings.Contains(a.source, "://") || strings.Contains(b.source, "://"):
 		return false
 	}
-	return path.Clean(filepath.ToSlash(a)) == path.Clean(filepath.ToSlash(b))
+	local := func(d depSource) string {
+		return path.Join(path.Dir(d.rel), filepath.ToSlash(d.source))
+	}
+	return local(a) == local(b)
 }
 
 // compareFile runs the checks that need the kind of the Realm holding a file.

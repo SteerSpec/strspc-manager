@@ -67,3 +67,34 @@ func TestCompareRealms_KindByRealmID(t *testing.T) {
 		t.Error("RD028 for a copy of the same kind")
 	}
 }
+
+// The source of a dependency is kept by its realm ID across the tree: a
+// sub-realm overriding it, or a manifest at a new path, can't repoint it.
+func TestCompareRealms_DependencySourceAcrossTheTree(t *testing.T) {
+	core := entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@v1/rules"}
+	fork := core
+	fork.Source = "github://fork/core@v1/rules"
+	bump := core
+	bump.Source = "github://org/core@v2/rules"
+	parent := func(deps ...entity.RealmDep) string {
+		rf := map[string]any{"realm": map[string]string{"id": "a.b"}, "sub_realms": []string{"app"}, "dependencies": deps}
+		data, _ := json.Marshal(rf)
+		return string(data)
+	}
+	base := tree{"realm.json": parent(core), childManifest: manifestWithDeps(t, "a.b.app", "")}
+	for _, tc := range []struct {
+		name  string
+		head  tree
+		rd031 bool
+	}{
+		{"sub-realm overrides with another repository", tree{"realm.json": parent(core), childManifest: manifestWithDeps(t, "a.b.app", "", fork)}, true},
+		{"sub-realm overrides with a ref bump", tree{"realm.json": parent(core), childManifest: manifestWithDeps(t, "a.b.app", "", bump)}, false},
+		{"manifest moved, source changed", tree{"realm.json": parent(), "app2/realm.json": manifestWithDeps(t, "a.b.app", "", fork)}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := hasDiag(compareTrees(t, base, tc.head), "RD031"); got != tc.rd031 {
+				t.Errorf("RD031 = %v, want %v", got, tc.rd031)
+			}
+		})
+	}
+}
