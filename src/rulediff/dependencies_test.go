@@ -48,6 +48,8 @@ func TestCompareRealms_DependencySource(t *testing.T) {
 		{"down from a release candidate", "github://org/core@v2.0.0-rc1/rules", "github://org/core@v1.0.0/rules", true},
 		{"up from a short tag", "github://org/core@v1/rules", "github://org/core@v1.2.0/rules", false},
 		{"tag beyond semver", "github://org/core@v2.0.0/rules", "github://org/core@v1.0.99999999999999999999/rules", true},
+		{"from an all-digit short commit", "github://org/core@1234567/rules", "github://org/core@v1.0.0/rules", false},
+		{"from a branch named like a date", "github://org/core@2024-hotfix/rules", "github://org/core@v1.0.0/rules", false},
 		{"from a commit to a tag", "github://org/core@0123456789abcdef0123456789abcdef01234567/rules", "github://org/core@v1.0.0/rules", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -130,6 +132,7 @@ func TestCompareRealms_DependencyRefBoundAcrossTheTree(t *testing.T) {
 		{"parent lowered to the sub-realm's old tag", tree{"realm.json": parent(dep("v1.1.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
 		{"parent set to exactly the sub-realm's old source", tree{"realm.json": parent(dep("v1.0.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
 		{"sub-realm unchanged", base, false},
+		{"sub-realm's own branch pin lowered below the tree", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v0.0.1"))}, true},
 		{"sub-realm raised, still below the parent", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.5.0"))}, false},
 		{"sub-realm raised to the parent's tag", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.25.0"))}, false},
 	} {
@@ -138,5 +141,22 @@ func TestCompareRealms_DependencyRefBoundAcrossTheTree(t *testing.T) {
 				t.Errorf("RD031 = %v, want %v", got, tc.rd031)
 			}
 		})
+	}
+}
+
+// Re-review F2: a declaration whose own base refs name no version is bounded
+// by the tree's.
+func TestCompareRealms_DependencyRefOwnPinNotAVersion(t *testing.T) {
+	dep := func(ref string) entity.RealmDep {
+		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@" + ref + "/rules"}
+	}
+	parent := func(deps ...entity.RealmDep) string {
+		data, _ := json.Marshal(map[string]any{"realm": map[string]string{"id": "a.b"}, "sub_realms": []string{"app"}, "dependencies": deps})
+		return string(data)
+	}
+	for _, own := range []string{"main", "0123456789abcdef0123456789abcdef01234567"} {
+		base := tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep(own))}
+		head := tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v0.0.1"))}
+		assertHasCode(t, compareTrees(t, base, head), "RD031")
 	}
 }

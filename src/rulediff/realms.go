@@ -60,6 +60,7 @@ func compareRealms(baseDir, headDir string, opts ...Option) *result.Result {
 		baseIDs:      map[string]map[string]string{},
 		headIDs:      map[string]map[string]string{},
 		baseDeps:     map[string][]depSource{},
+		baseRealms:   map[string]*entity.RealmFile{},
 		headDeps:     map[string][]depSource{},
 	}
 	c.run(baseDir, headDir)
@@ -80,6 +81,8 @@ type realmComparison struct {
 	contributors []entity.Contributor
 	// kinds records, by realm ID, the kinds and manifests seen in each tree.
 	baseIDs, headIDs map[string]map[string]string
+	// baseRealms holds base's manifests by realm ID, for RD023's lists.
+	baseRealms map[string]*entity.RealmFile
 	// deps records, by dependency realm ID, the sources each tree declares.
 	baseDeps, headDeps map[string][]depSource
 }
@@ -112,6 +115,13 @@ func (c *realmComparison) run(baseDir, headDir string) {
 		manifests[rel] = true
 	}
 
+	for _, rel := range slices.Sorted(maps.Keys(manifests)) {
+		if rf := c.manifestIn(c.base, rel); rf != nil && rf.Realm.ID != "" {
+			if _, seen := c.baseRealms[rf.Realm.ID]; !seen {
+				c.baseRealms[rf.Realm.ID] = rf
+			}
+		}
+	}
 	for _, rel := range slices.Sorted(maps.Keys(manifests)) {
 		c.compareManifest(rel)
 	}
@@ -158,7 +168,7 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 			} else {
 				names[key] = name
 			}
-			if skip, err := realmfs.CheckWalked(root, path, d); err != nil {
+			if skip, err := realmfs.CheckWalked(path, d); err != nil {
 				addReadError(c.res, filepath.ToSlash(rel), err)
 				return nil
 			} else if skip {
@@ -169,10 +179,18 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 				return nil
 			}
 		} else if realmfs.CheckEntry(d) != nil {
-			// Read only when it leads to a file inside the base tree.
-			if !strings.HasSuffix(d.Name(), ".json") || !readable(root, path) {
-				return nil
+			// Never read. A JSON one, deleted or replaced, fails closed: what
+			// it held can't be compared.
+			if realmfs.IsJSONName(d.Name()) {
+				c.res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RD000",
+					Severity: result.Error,
+					Message:  baseLinkMessage(filepath.ToSlash(rel)),
+					Path:     filepath.ToSlash(rel),
+				})
 			}
+			return nil
 		}
 		if d.IsDir() {
 			if d.Name() == "_schema" {
@@ -206,7 +224,7 @@ func (c *realmComparison) checkNoLinks(dir, root string) {
 		if err != nil || path == dir {
 			return nil
 		}
-		if _, cerr := realmfs.CheckWalked(root, path, d); cerr != nil {
+		if _, cerr := realmfs.CheckWalked(path, d); cerr != nil {
 			rel, _ := filepath.Rel(root, path)
 			addReadError(c.res, filepath.ToSlash(rel), cerr)
 		}
@@ -214,20 +232,14 @@ func (c *realmComparison) checkNoLinks(dir, root string) {
 	})
 }
 
-// readIn returns the file at rel below root, or nil when there is none. In
-// head, a link there is an error; in base, a link is followed only to a file
-// inside the base tree, and otherwise reads as no file, so that the change
-// replacing it passes.
+// readIn returns the file at rel below root, or nil when there is none. A
+// link there, or in a directory on the way, is never read: in head it is an
+// error, and in base errUnreadableBase.
 func (c *realmComparison) readIn(root, rel string) ([]byte, error) {
 	if root == "" {
 		return nil, nil
 	}
-	path := filepath.Join(root, filepath.FromSlash(rel))
-	read := realmfs.ReadFile
-	if root != c.head {
-		read = func(p string) ([]byte, error) { return realmfs.ReadInTree(root, p) }
-	}
-	data, err := read(path)
+	data, err := realmfs.ReadUnder(root, rel)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return nil, nil
@@ -243,18 +255,10 @@ var errUnreadableBase = errors.New("a link the comparison can't read")
 
 // compareManifest runs the checks on one realm.json.
 func (c *realmComparison) compareManifest(rel string) {
-	headPresent := false
-	if data, err := c.readIn(c.head, rel); err == nil && data != nil {
-		headPresent = true
-	}
 	parse := func(root string) (*entity.RealmFile, []byte, bool) {
 		data, err := c.readIn(root, rel)
 		if errors.Is(err, errUnreadableBase) {
-			if !headPresent {
-				return nil, nil, true // Deleting the link passes.
-			}
-			addReadError(c.res, rel, fmt.Errorf("base manifest: %w; replace the link with a regular file before upgrading, or review the change by hand", err))
-			return nil, nil, false
+			return nil, nil, false // scan reported it.
 		}
 		if err != nil {
 			addReadError(c.res, rel, err)
@@ -301,43 +305,33 @@ func (c *realmComparison) compareManifest(rel string) {
 			Path:     rel,
 		})
 	}
-	checkRealmNotes(baseNotes, headNotes, c.realmContributors(rel, base != nil), c.res, rel)
+	id := ""
+	if head != nil {
+		id = head.Realm.ID
+	}
+	checkRealmNotes(baseNotes, headNotes, c.realmContributors(id), c.res, rel)
 }
 
-// realmContributors returns the contributors new Realm Notes of the manifest
-// at rel are checked against (RD023): those its Realm declares in base, or in
-// head when the manifest is new, so a change can't list the author of its own
-// note; a sub-realm uses its parent's (CTRB-006). For the manifest at the
-// root of the tree, which may be a sub-realm of a Realm outside it, the
-// WithContributors list applies when the tree declares none.
-func (c *realmComparison) realmContributors(rel string, inBase bool) []entity.Contributor {
-	root := c.head
-	if inBase {
-		root = c.base
+// realmContributors returns the contributors new Realm Notes of the Realm id
+// are checked against (RD023). They come from base only, by realm ID, so a
+// change can't widen them, move the Realm or give it a new parent to list the
+// author of its own note: a sub-realm, by its ID, uses its parent's
+// (CTRB-006), and a Realm base doesn't hold, or that declares none, uses the
+// WithContributors list.
+func (c *realmComparison) realmContributors(id string) []entity.Contributor {
+	for depth := 0; depth < 64; depth++ {
+		if k := strings.LastIndex(id, "."); k > 0 {
+			if _, inBase := c.baseRealms[id[:k]]; inBase {
+				id = id[:k]
+				continue
+			}
+		}
+		if rf := c.baseRealms[id]; rf != nil && len(rf.Realm.Contributors) > 0 {
+			return rf.Realm.Contributors
+		}
+		break
 	}
-	if list := c.declaredContributors(root, rel); len(list) > 0 || rel != manifestName {
-		return list
-	}
-	return c.contributors // The tree's root Realm may take them from outside the tree.
-}
-
-// declaredContributors returns the contributors of the Realm whose manifest is
-// at rel below root, following sub-realms up to the Realm that declares them.
-func (c *realmComparison) declaredContributors(root, rel string) []entity.Contributor {
-	rf := c.manifestIn(root, rel)
-	if rf == nil {
-		return nil
-	}
-	dir := path.Dir(rel)
-	if dir == "." {
-		return rf.Realm.Contributors
-	}
-	parentRel := path.Join(path.Dir(dir), manifestName)
-	parent := c.manifestIn(root, parentRel)
-	if name := path.Base(dir); parent != nil && slices.Contains(parent.SubRealms, name) && parent.Realm.ID+"."+name == rf.Realm.ID {
-		return c.declaredContributors(root, parentRel)
-	}
-	return rf.Realm.Contributors
+	return c.contributors
 }
 
 // manifestIn parses the manifest at rel below root, or returns nil.
@@ -445,8 +439,8 @@ func (c *realmComparison) compareDependencySources() {
 					}
 				}
 			}
-			if len(own) > 0 {
-				same = own
+			if slices.ContainsFunc(own, func(src string) bool { _, ok := refBound(src); return ok }) {
+				same = own // Its own versions bound it; otherwise the tree's do.
 			}
 			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
 			switch {
@@ -492,16 +486,28 @@ func refChange(was []string, now string) string {
 		return fmt.Sprintf("ref %q is not a version: %v", after.Ref, err)
 	}
 	for _, w := range was {
-		before, err := remote.ParseGitHub(w)
-		if err != nil {
-			continue
-		}
-		bound, err := semver.NewVersion(before.Ref) // Lenient: v1, v2.0, rc tags.
-		if err == nil && head.LessThan(bound) {
+		if bound, ok := refBound(w); ok && head.LessThan(bound) {
+			before, _ := remote.ParseGitHub(w)
 			return fmt.Sprintf("ref %s is lower than %s, which base declares: a dependency may not move back to an older release", after.Ref, before.Ref)
 		}
 	}
 	return ""
+}
+
+// versionRef matches a ref that names a version, which bounds a move: v1,
+// v2.0, v2.0.0 and their pre-releases. A commit, even one in digits only, or a
+// branch names none.
+var versionRef = regexp.MustCompile(`^v\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?$`)
+
+// refBound returns the version the ref of the github source src names, when
+// it names one.
+func refBound(src string) (*semver.Version, bool) {
+	ref, err := remote.ParseGitHub(src)
+	if err != nil || !versionRef.MatchString(ref.Ref) {
+		return nil, false
+	}
+	v, err := semver.NewVersion(ref.Ref)
+	return v, err == nil
 }
 
 // sameSource reports whether two dependency sources name the same tree, but

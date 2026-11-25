@@ -13,8 +13,9 @@ import (
 
 const linkEntity = `{"entity": {"id": "ENT"}}`
 
-// A link inside a Realm tree, to a file or to a directory, is reported to the
-// callback as ErrNotRegular with no data, and the rest of the tree is walked.
+// A link with a JSON name inside a Realm tree is reported to the callback as
+// ErrNotRegular with no data, a link to a directory is skipped, and the rest
+// of the tree is walked.
 func TestWalkEntityFiles_ReportsLinksInTheTree(t *testing.T) {
 	for _, mode := range walkModes {
 		t.Run(mode.name, func(t *testing.T) {
@@ -48,8 +49,9 @@ func TestWalkEntityFiles_ReportsLinksInTheTree(t *testing.T) {
 			if err != nil {
 				t.Fatalf("WalkEntityFiles: %v", err)
 			}
+			// A directory link is never followed, so it holds nothing.
 			slices.Sort(refused)
-			if want := []string{fileLink, dirLink}; !slices.Equal(refused, want) {
+			if want := []string{fileLink}; !slices.Equal(refused, want) {
 				t.Errorf("refused %v, want %v", refused, want)
 			}
 			if !slices.Equal(parsed, []string{"ENT"}) {
@@ -105,8 +107,8 @@ func TestLoadRefusesALink(t *testing.T) {
 	}
 }
 
-// F8: a link that names no JSON file and leads to no directory holds no
-// entity file, so it is left alone, as other non-JSON files are.
+// A link without a JSON name, to a file or a directory, is never followed and
+// holds no entity file, so it is left alone, as other non-JSON files are.
 func TestWalkEntityFiles_IgnoresNonJSONFileLinks(t *testing.T) {
 	dir := t.TempDir()
 	writeWalkFile(t, dir, "ENT.json", linkEntity)
@@ -127,7 +129,7 @@ func TestWalkEntityFiles_IgnoresNonJSONFileLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(refused, []string{"bin"}) {
-		t.Errorf("refused %v, want only the directory link bin", refused)
+	if len(refused) != 0 {
+		t.Errorf("refused %v, want none", refused)
 	}
 }

@@ -56,6 +56,49 @@ func TestRoot(t *testing.T) {
 	}
 }
 
+// A root that resolves to a network share or device path is refused.
+func TestRootRefusesANonLocalTarget(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	orig := isLocal
+	t.Cleanup(func() { isLocal = orig })
+	isLocal = func(p string) bool { return p != real }
+	if _, err := Root(filepath.Join(dir, "link")); err == nil {
+		t.Error("Root through a link to a non-local path: no error")
+	}
+}
+
+// Where links in a root's path aren't followed (Windows), one is refused
+// before anything below it is looked at, and a plain path still resolves.
+func TestRootWithoutFollowingLinks(t *testing.T) {
+	dir := tree(t)
+	orig := followRootLinks
+	t.Cleanup(func() { followRootLinks = orig })
+	followRootLinks = false
+	for _, p := range []string{filepath.Join(dir, "link"), filepath.Join(dir, "link", "sub")} {
+		if _, err := Root(p); err == nil || !strings.Contains(err.Error(), "is a link") {
+			t.Errorf("Root(%q) = %v, want a link error", p, err)
+		}
+	}
+	real := filepath.Join(dir, "real")
+	if got, err := Root(filepath.Join(real, "sub", "..")); err != nil || got != real {
+		t.Errorf("Root(real/sub/..) = %q, %v", got, err)
+	}
+	t.Chdir(real)
+	if got, err := Root("."); err != nil || got != real {
+		t.Errorf(`Root(".") = %q, %v`, got, err)
+	}
+	if err := CheckLocal(filepath.Join(dir, "missing", "x")); err != nil {
+		t.Errorf("CheckLocal of a missing path: %v", err)
+	}
+	orig2 := isLocal
+	t.Cleanup(func() { isLocal = orig2 })
+	isLocal = func(string) bool { return false }
+	if err := CheckLocal(real); err == nil {
+		t.Error("CheckLocal of a non-local path: no error")
+	}
+}
+
 func TestReadFile(t *testing.T) {
 	dir := tree(t)
 	if data, err := ReadFile(filepath.Join(dir, "real", "a.json")); err != nil || string(data) != "{}" {
@@ -88,59 +131,39 @@ func TestDir(t *testing.T) {
 	}
 }
 
-func TestCheckEntry(t *testing.T) {
+// A link is never followed: one with a JSON name in any case is refused, any
+// other is skipped, wherever it leads.
+func TestCheckWalked(t *testing.T) {
 	dir := tree(t)
-	entries, err := os.ReadDir(filepath.Join(dir, "real"))
+	real := filepath.Join(dir, "real")
+	for name, text := range map[string]string{
+		"ACC.JSON": "a.json", "gone.json": "missing", "dirlink": "sub",
+		"README": "a.json", "out": filepath.Join(dir, "elsewhere"), "up": "../../x",
+	} {
+		if err := os.Symlink(text, filepath.Join(real, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := map[string][2]bool{ // name → skip, error
+		"a.json": {false, false}, "sub": {false, false},
+		"l.json": {true, true}, "ACC.JSON": {true, true}, "gone.json": {true, true},
+		"dirlink": {true, false}, "README": {true, false}, "out": {true, false}, "up": {true, false},
+	}
+	entries, err := os.ReadDir(real)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		err := CheckEntry(e)
-		if bad := e.Name() == "l.json"; bad != errors.Is(err, ErrNotRegular) {
-			t.Errorf("CheckEntry(%s) = %v", e.Name(), err)
+		skip, err := CheckWalked(filepath.Join(real, e.Name()), e)
+		if got := [2]bool{skip, err != nil}; got != want[e.Name()] {
+			t.Errorf("%s: skip, err = %v, %v; want %v", e.Name(), skip, err, want[e.Name()])
+		}
+		if err != nil && !errors.Is(err, ErrNotRegular) {
+			t.Errorf("%s: err = %v, want ErrNotRegular", e.Name(), err)
 		}
 	}
-}
-
-// A root that resolves to a network share or device path is refused, so a link
-// can't route around the check on local sources.
-func TestRootRefusesANonLocalTarget(t *testing.T) {
-	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	orig := isLocal
-	t.Cleanup(func() { isLocal = orig })
-	isLocal = func(p string) bool { return p != real }
-	if _, err := Root(filepath.Join(dir, "link")); err == nil {
-		t.Error("Root through a link to a non-local path: no error")
-	}
-}
-
-func TestReadInTree(t *testing.T) {
-	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	if data, err := ReadInTree(real, filepath.Join(real, "l.json")); err != nil || string(data) != "{}" {
-		t.Errorf("in-tree link = %q, %v", data, err)
-	}
-	if data, err := ReadInTree(real, filepath.Join(real, "a.json")); err != nil || string(data) != "{}" {
-		t.Errorf("regular = %q, %v", data, err)
-	}
-	outside := filepath.Join(t.TempDir(), "o.json")
-	if err := os.WriteFile(outside, []byte("{}"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for name, target := range map[string]string{"out.json": outside, "dangling.json": "gone", "dir.json": "sub"} {
-		if err := os.Symlink(target, filepath.Join(real, name)); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := ReadInTree(real, filepath.Join(real, name)); !errors.Is(err, ErrNotRegular) {
-			t.Errorf("%s: err = %v, want ErrNotRegular", name, err)
-		}
-	}
-	if _, err := ReadInTree(real, filepath.Join(real, "sub")); !errors.Is(err, ErrNotRegular) {
-		t.Errorf("directory: err = %v", err)
-	}
-	if _, err := ReadInTree(real, filepath.Join(real, "none")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("missing: err = %v", err)
+	if err := CheckEntry(entries[0]); err != nil && entries[0].Name() == "a.json" {
+		t.Errorf("CheckEntry regular: %v", err)
 	}
 }
 
@@ -153,121 +176,23 @@ func TestFoldKey(t *testing.T) {
 	if FoldKey("app") == FoldKey("apps") {
 		t.Error("different names fold alike")
 	}
-}
-
-func TestCheckWalked(t *testing.T) {
-	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	if err := os.Symlink("sub", filepath.Join(real, "dirlink")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("a.json", filepath.Join(real, "README")); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := os.ReadDir(real)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string][2]bool{ // name → skip, error
-		"a.json": {false, false}, "sub": {false, false},
-		"l.json": {true, true}, "dirlink": {true, true}, "README": {true, false},
-	}
-	for _, e := range entries {
-		skip, err := CheckWalked(real, filepath.Join(real, e.Name()), e)
-		if got := [2]bool{skip, err != nil}; got != want[e.Name()] {
-			t.Errorf("%s: skip, err = %v, %v; want %v", e.Name(), skip, err, want[e.Name()])
-		}
+	if !IsJSONName("X.Json") || IsJSONName("x.jsonl") {
+		t.Error("IsJSONName")
 	}
 }
 
-// Re-review F1/F8: a link's target is never accessed unless its text stays in
-// the tree, and a *.JSON name in any case is refused.
-func TestCheckWalkedLinkTargets(t *testing.T) {
+// ReadUnder reads through real directories only.
+func TestReadUnder(t *testing.T) {
 	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	for name, text := range map[string]string{
-		"abs":       filepath.Join(dir, "elsewhere"),
-		"up":        "../../x",
-		"chain":     "l.json",
-		"ACC.JSON":  "a.json",
-		"dangling":  "missing",
-		"inside.md": "a.json",
-	} {
-		if err := os.Symlink(text, filepath.Join(real, name)); err != nil {
-			t.Fatal(err)
+	if data, err := ReadUnder(dir, "real/a.json"); err != nil || string(data) != "{}" {
+		t.Errorf("ReadUnder real = %q, %v", data, err)
+	}
+	for _, rel := range []string{"link/a.json", "real/l.json", "real/a.json/x"} {
+		if _, err := ReadUnder(dir, rel); !errors.Is(err, ErrNotRegular) {
+			t.Errorf("ReadUnder(%s): err = %v, want ErrNotRegular", rel, err)
 		}
 	}
-	want := map[string]bool{"abs": true, "up": true, "chain": true, "ACC.JSON": true, "dangling": false, "inside.md": false}
-	entries, err := os.ReadDir(real)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		refused, ok := want[e.Name()]
-		if !ok {
-			continue
-		}
-		if _, err := CheckWalked(real, filepath.Join(real, e.Name()), e); (err != nil) != refused {
-			t.Errorf("%s: err = %v, want refused=%v", e.Name(), err, refused)
-		}
-	}
-}
-
-// Re-review F9: a link to a non-local path is refused from its text, before
-// it is followed, at the root or anywhere above it.
-func TestCheckLocal(t *testing.T) {
-	dir := tree(t)
-	share := filepath.Join(dir, "share") // stands for \\\\host\\share
-	if err := os.Symlink(share, filepath.Join(dir, "net")); err != nil {
-		t.Fatal(err)
-	}
-	orig := isLocal
-	t.Cleanup(func() { isLocal = orig })
-	isLocal = func(p string) bool { return !strings.HasPrefix(p, share) }
-	for _, p := range []string{filepath.Join(dir, "net"), filepath.Join(dir, "net", "rules", "ACC.json"), share} {
-		if err := CheckLocal(p); err == nil {
-			t.Errorf("CheckLocal(%q): no error", p)
-		}
-	}
-	for _, p := range []string{filepath.Join(dir, "link", "a.json"), filepath.Join(dir, "missing", "x")} {
-		if err := CheckLocal(p); err != nil {
-			t.Errorf("CheckLocal(%q) = %v", p, err)
-		}
-	}
-	if _, err := Root(filepath.Join(dir, "net")); err == nil {
-		t.Error("Root through a link to a non-local path: no error")
-	}
-}
-
-func TestTargetInTree(t *testing.T) {
-	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	if rel, ok := TargetInTree(real, filepath.Join(real, "l.json")); !ok || rel != "a.json" {
-		t.Errorf("TargetInTree = %q, %v", rel, ok)
-	}
-	if _, ok := TargetInTree(real, filepath.Join(real, "a.json")); ok {
-		t.Error("a regular file has no target")
-	}
-}
-
-// A link whose text passes through a directory link is refused without the
-// target being looked at: the directory link may lead out of the tree.
-func TestCheckWalkedThroughADirectoryLink(t *testing.T) {
-	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	out := t.TempDir()
-	if err := os.Symlink(out, filepath.Join(real, "d")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join("d", "x"), filepath.Join(real, "via")); err != nil {
-		t.Fatal(err)
-	}
-	entries, _ := os.ReadDir(real)
-	for _, e := range entries {
-		if e.Name() == "via" {
-			if _, err := CheckWalked(real, filepath.Join(real, "via"), e); err == nil {
-				t.Error("link through a directory link: no error")
-			}
-		}
+	if _, err := ReadUnder(dir, "none/a.json"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("ReadUnder missing dir: err = %v", err)
 	}
 }

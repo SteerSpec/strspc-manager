@@ -244,28 +244,10 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
-	// A link in base is read only to a file inside the base tree, so that the
-	// change replacing it is compared with what it held; one in head is refused.
-	baseFiles, baseLinks := scanJSONFiles(baseDir)
+	// A link is never read. One in head is refused; one in base, deleted or
+	// replaced, fails closed in the CompareRealms run below.
+	baseFiles, _ := scanJSONFiles(baseDir)
 	headFiles, headLinks := scanJSONFiles(headDir)
-	for _, name := range baseLinks {
-		// Compared when it leads to a file inside the base tree. Otherwise
-		// what it held can't be compared, so a head file in its place fails
-		// closed; deleting it passes.
-		path := filepath.Join(baseDir, name)
-		switch _, inHead := headFiles[name]; {
-		case readable(baseDir, path):
-			baseFiles[name] = path
-		case inHead:
-			res.Add(result.Diagnostic{
-				Module:   module,
-				Code:     "RD000",
-				Severity: result.Error,
-				Message:  "base " + path + " is a link the comparison can't read, so the file replacing it can't be compared: replace the link with a regular file before upgrading, or review the change by hand",
-				Path:     path,
-			})
-		}
-	}
 	for _, name := range headLinks {
 		path := filepath.Join(headDir, name)
 		res.Add(result.Diagnostic{
@@ -291,7 +273,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			continue
 		}
 		if basePath, ok := baseFiles[name]; ok {
-			baseData, err := realmfs.ReadInTree(baseDir, basePath)
+			baseData, err := realmfs.ReadFile(basePath)
 			if err != nil {
 				res.Add(result.Diagnostic{
 					Module:   module,
@@ -328,15 +310,8 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	for _, name := range slices.Sorted(maps.Keys(baseFiles)) {
 		basePath := baseFiles[name]
 		if _, ok := headFiles[name]; !ok {
-			if data, err := realmfs.ReadInTree(baseDir, basePath); err == nil && DeletionAllowed(data) {
+			if data, err := realmfs.ReadFile(basePath); err == nil && DeletionAllowed(data) {
 				continue
-			}
-			if rel, ok := realmfs.TargetInTree(baseDir, basePath); ok && !strings.Contains(rel, "/") {
-				if _, compared := headFiles[rel]; compared && baseFiles[rel] != "" {
-					// A link to a file both versions hold, compared above: no
-					// rule is deleted.
-					continue
-				}
 			}
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -350,10 +325,9 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	return res
 }
 
-// readable reports whether the base file at path, below root, can be read.
-func readable(root, path string) bool {
-	_, err := realmfs.ReadInTree(root, path)
-	return err == nil
+// baseLinkMessage explains RD000 for a link in base at path.
+func baseLinkMessage(path string) string {
+	return "base " + path + " is a link, which the comparison doesn't read, so the change can't be compared with what it held: replace links with regular files, with the CLI you use now, before upgrading"
 }
 
 // DeletionAllowed reports whether deleting an entity file with the base content
@@ -393,11 +367,13 @@ func scanJSONFiles(dir string) (files map[string]string, links []string) {
 	}
 	files = make(map[string]string, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" {
+		if realmfs.CheckEntry(e) != nil {
+			if realmfs.IsJSONName(e.Name()) {
+				links = append(links, e.Name())
+			}
 			continue
 		}
-		if realmfs.CheckEntry(e) != nil {
-			links = append(links, e.Name())
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" {
 			continue
 		}
 		files[e.Name()] = filepath.Join(dir, e.Name())

@@ -380,7 +380,7 @@ func checkSchemaDir(dir string, res *result.Result) {
 		if err != nil || path == schemaDir {
 			return nil
 		}
-		if _, cerr := realmfs.CheckWalked(dir, path, d); cerr != nil {
+		if _, cerr := realmfs.CheckWalked(path, d); cerr != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM003",

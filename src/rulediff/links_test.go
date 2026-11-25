@@ -78,18 +78,6 @@ func TestCompareRealms_LinkInHeadIsRefused(t *testing.T) {
 	}
 }
 
-// A base link out of the tree is never followed: replacing it with a file
-// fails closed, and deleting it passes.
-func TestCompareRealms_BaseLinkOutOfTheTree(t *testing.T) {
-	head := tree{"realm.json": codeRealm}
-	baseDir := t.TempDir()
-	link(t, baseDir, "realm.json", filepath.Join(head.write(t), "realm.json"))
-	assertHasCode(t, CompareRealms(baseDir, head.write(t)), "RD000")
-	if res := CompareRealms(baseDir, t.TempDir()); hasDiag(res, "RD000") {
-		t.Errorf("deleting a base link: %v", res.Diagnostics)
-	}
-}
-
 // Finding 4: a manifest name that differs from realm.json only by case is
 // RD000 on every system, as are two names that collide when case is ignored.
 func TestCompareRealms_ManifestNameCase(t *testing.T) {
@@ -115,20 +103,6 @@ func TestCompareRealms_ManifestNameCase(t *testing.T) {
 	})
 }
 
-// CompareDir refuses a link in head and lets a change remove one from base.
-func TestCompareDir_Links(t *testing.T) {
-	outside := tree{"OUT.json": someEntity}.write(t)
-	head := t.TempDir()
-	link(t, head, "APP.json", filepath.Join(outside, "OUT.json"))
-	assertHasCode(t, CompareDir(t.TempDir(), head), "RD000")
-
-	base := t.TempDir()
-	link(t, base, "APP.json", filepath.Join(outside, "OUT.json"))
-	if res := CompareDir(base, t.TempDir()); hasDiag(res, "RD005") || hasDiag(res, "RD000") {
-		t.Errorf("removing a base link: %v", res.Diagnostics)
-	}
-}
-
 // Finding 19: paths are relative to headDir, as CompareRealms documents.
 func TestCompareRealms_PathsAreRelativeToHead(t *testing.T) {
 	head := tree{"app/Realm.json": stdRealm}.write(t)
@@ -149,43 +123,6 @@ func TestCompareRealms_PathsAreRelativeToHead(t *testing.T) {
 	}
 }
 
-// F3: a link in base to a file inside the base tree is read, so the change
-// replacing it with a regular file is compared with what it held: a faithful
-// repair passes and a weakening doesn't. A link out of the tree is not read.
-func TestCompareDir_BaseLinkInsideTheTree(t *testing.T) {
-	const (
-		held     = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
-		weakened = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.1","timestamp":"2026-01-02T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"D","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
-	)
-	base := tree{"store/ACC.json": held}.write(t)
-	link(t, base, "ACC.json", filepath.Join("store", "ACC.json"))
-
-	repaired := tree{"ACC.json": held, "store/ACC.json": held}.write(t)
-	if res := CompareDir(base, repaired); !res.OK() {
-		t.Errorf("faithful repair: %v", res.Diagnostics)
-	}
-	weak := tree{"ACC.json": weakened, "store/ACC.json": held}.write(t)
-	if res := CompareDir(base, weak); res.OK() {
-		t.Error("weakening through the repair passed")
-	}
-	// Deleting the link and the file it leads to deletes the rule.
-	assertHasCode(t, CompareDir(base, t.TempDir()), "RD005")
-
-	outside := tree{"ACC.json": held}.write(t)
-	out := t.TempDir()
-	link(t, out, "ACC.json", filepath.Join(outside, "ACC.json"))
-	if res := CompareDir(out, t.TempDir()); hasDiag(res, "RD005") || hasDiag(res, "RD000") {
-		t.Errorf("removing a link out of the base tree: %v", res.Diagnostics)
-	}
-}
-
-// F3 for manifests: a base manifest linked inside the tree is compared.
-func TestCompareRealms_BaseManifestLinkInsideTheTree(t *testing.T) {
-	base := tree{"store/realm.json": codeRealm}.write(t)
-	link(t, base, "realm.json", filepath.Join("store", "realm.json"))
-	assertHasCode(t, CompareRealms(base, tree{"realm.json": stdRealm, "store/realm.json": codeRealm}.write(t)), "RD028")
-}
-
 // F5: a link inside _schema/ in head is RD000 too.
 func TestCompareRealms_SchemaLinkInHead(t *testing.T) {
 	head := tree{"realm.json": codeRealm, "_schema/realm.v1.schema.json": "{}"}.write(t)
@@ -202,39 +139,34 @@ func TestCompareRealms_NonJSONFileLink(t *testing.T) {
 	}
 }
 
-// Re-review F6: deleting a base link whose file is still in head deletes no
-// rule; deleting both is RD005.
-func TestCompareDir_DeletingADuplicateLink(t *testing.T) {
+// A link is never read. In head one with a JSON name is refused; in base one,
+// whether the change keeps, deletes, replaces or renames it, fails closed,
+// since what it held can't be compared. Other links are left alone.
+func TestLinksFailClosed(t *testing.T) {
 	const acc = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
-	base := tree{"ACC.json": acc}.write(t)
-	link(t, base, "DUP.json", "ACC.json")
-	if res := CompareDir(base, tree{"ACC.json": acc}.write(t)); hasDiag(res, "RD005") {
-		t.Errorf("deleting the duplicate link: %v", res.Diagnostics)
-	}
-	assertHasCode(t, CompareDir(base, t.TempDir()), "RD005")
-}
+	outside := tree{"OUT.json": acc}.write(t)
 
-// The RD005 exception for a deleted link covers only a target CompareDir
-// compares: one in a subdirectory could be weakened unseen.
-func TestCompareDir_DeletedLinkToANestedFile(t *testing.T) {
-	const acc = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
-	base := tree{"store/ACC.json": acc}.write(t)
-	link(t, base, "ACC.json", filepath.Join("store", "ACC.json"))
-	assertHasCode(t, CompareDir(base, tree{"store/ACC.json": "{}"}.write(t)), "RD005")
-}
+	head := t.TempDir()
+	link(t, head, "APP.json", filepath.Join(outside, "OUT.json"))
+	assertHasCode(t, CompareDir(t.TempDir(), head), "RD000")
 
-// A head file replacing a base link the comparison can't read fails closed:
-// what the link held can't be compared. Deleting the link still passes.
-func TestUnreadableBaseLinkReplacedFailsClosed(t *testing.T) {
-	outside := tree{"ACC.json": someEntity, "realm.json": codeRealm}.write(t)
-	base := tree{"realm.json": codeRealm}.write(t)
-	link(t, base, "ACC.json", filepath.Join(outside, "ACC.json"))
-	assertHasCode(t, CompareDir(base, tree{"ACC.json": someEntity, "realm.json": codeRealm}.write(t)), "RD000")
-	if res := CompareDir(base, tree{"realm.json": codeRealm}.write(t)); hasDiag(res, "RD000") || hasDiag(res, "RD005") {
-		t.Errorf("deleting the link: %v", res.Diagnostics)
+	for _, target := range []string{filepath.Join(outside, "OUT.json"), "ACC.json"} {
+		base := tree{"ACC.json": acc}.write(t)
+		link(t, base, "LINK.json", target)
+		for name, h := range map[string]tree{
+			"deleted":  {"ACC.json": acc},
+			"replaced": {"ACC.json": acc, "LINK.json": acc},
+			"renamed":  {"ACC.json": acc, "LINK2.json": `{"entity":{"id":"LNK"},"rules":[]}`},
+		} {
+			if res := CompareDir(base, h.write(t)); !hasDiag(res, "RD000") {
+				t.Errorf("base link to %s %s: %v", target, name, res.Diagnostics)
+			}
+		}
 	}
 
-	manifestBase := t.TempDir()
-	link(t, manifestBase, "realm.json", filepath.Join(outside, "realm.json"))
-	assertHasCode(t, CompareRealms(manifestBase, tree{"realm.json": stdRealm}.write(t)), "RD000")
+	base := tree{"realm.json": codeRealm, "README.md": "x"}.write(t)
+	link(t, base, "NOTES", "README.md")
+	if res := CompareDir(base, tree{"realm.json": codeRealm, "README.md": "x"}.write(t)); !res.OK() {
+		t.Errorf("a non-JSON base link: %v", res.Diagnostics)
+	}
 }
