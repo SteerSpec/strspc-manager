@@ -10,6 +10,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/SteerSpec/strspc-manager/src/internal/localpath"
 )
@@ -131,4 +133,35 @@ func ReadInTree(root, path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
 	}
 	return os.ReadFile(target)
+}
+
+// CheckWalked reports ErrNotRegular for a walked entry at path that could
+// hold or hide an entity file without being one: a link or special file named
+// *.json, or a link to a directory. Skip reports another entry that is neither
+// a regular file nor a directory, which holds no entity file and is left alone
+// like any non-JSON file.
+func CheckWalked(path string, d fs.DirEntry) (skip bool, err error) {
+	if CheckEntry(d) == nil {
+		return false, nil
+	}
+	if strings.HasSuffix(d.Name(), ".json") {
+		return true, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	}
+	if info, statErr := os.Stat(path); statErr == nil && info.IsDir() {
+		return true, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	}
+	return true, nil
+}
+
+// FoldKey returns a key equal for two names that differ only by case, as a
+// case-insensitive file system would match them: each rune is mapped to the
+// smallest rune of its simple case folding orbit.
+func FoldKey(name string) string {
+	return strings.Map(func(r rune) rune {
+		lowest := r
+		for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+			lowest = min(lowest, f)
+		}
+		return lowest
+	}, name)
 }

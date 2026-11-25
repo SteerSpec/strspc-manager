@@ -104,3 +104,30 @@ func TestLoadRefusesALink(t *testing.T) {
 		t.Errorf("LoadRealm link: %v", err)
 	}
 }
+
+// F8: a link that names no JSON file and leads to no directory holds no
+// entity file, so it is left alone, as other non-JSON files are.
+func TestWalkEntityFiles_IgnoresNonJSONFileLinks(t *testing.T) {
+	dir := t.TempDir()
+	writeWalkFile(t, dir, "ENT.json", linkEntity)
+	writeWalkFile(t, dir, "README.md", "x")
+	if err := os.Symlink("README.md", filepath.Join(dir, "README")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(dir, "bin")); err != nil {
+		t.Fatal(err)
+	}
+	var refused []string
+	err := entity.WalkEntityFiles(dir, func(path string, _ []byte, _ *entity.File, parseErr error) error {
+		if errors.Is(parseErr, realmfs.ErrNotRegular) {
+			refused = append(refused, filepath.Base(path))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(refused, []string{"bin"}) {
+		t.Errorf("refused %v, want only the directory link bin", refused)
+	}
+}

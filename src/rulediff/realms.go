@@ -135,7 +135,7 @@ func resolveDir(dir string) (string, error) {
 // change removing them passes.
 func (c *realmComparison) scan(root string) (manifests, files []string) {
 	head := root == c.head
-	names := map[string][]string{} // directory → names seen, for case collisions
+	names := map[string]string{} // directory and folded name → name seen, for case collisions
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		rel, relErr := filepath.Rel(root, path)
 		if relErr != nil {
@@ -150,14 +150,16 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 		}
 		if head {
 			dir, name := filepath.Dir(rel), d.Name()
-			for _, seen := range names[dir] {
-				if strings.EqualFold(seen, name) {
-					addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("%q and %q differ only by case", seen, name))
-				}
+			key := dir + "/" + realmfs.FoldKey(name)
+			if seen, ok := names[key]; ok {
+				addReadError(c.res, filepath.ToSlash(rel), fmt.Errorf("%q and %q differ only by case", seen, name))
+			} else {
+				names[key] = name
 			}
-			names[dir] = append(names[dir], name)
-			if err := realmfs.CheckEntry(d); err != nil {
+			if skip, err := realmfs.CheckWalked(path, d); err != nil {
 				addReadError(c.res, filepath.ToSlash(rel), err)
+				return nil
+			} else if skip {
 				return nil
 			}
 			if name != manifestName && strings.EqualFold(name, manifestName) {
@@ -365,13 +367,18 @@ func (c *realmComparison) compareDependencySources() {
 		}
 		for _, h := range c.headDeps[id] {
 			var same []string
+			kept := false
 			for _, b := range was {
 				if sameSource(b, h) {
 					same = append(same, b.source)
+					kept = kept || (b.rel == h.rel && b.source == h.source)
 				}
 			}
 			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
-			if len(same) > 0 {
+			switch {
+			case kept:
+				msg = "" // The manifest declared this source already.
+			case len(same) > 0:
 				msg = refChange(same, h.source)
 			}
 			if msg == "" {
@@ -391,16 +398,13 @@ func (c *realmComparison) compareDependencySources() {
 // releaseTag matches the ref a changed github source may name: a release tag.
 var releaseTag = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
-// refChange explains why a dependency may not move to source now from the
-// base sources was, all naming the same tree, or returns "". A source base
-// already declares passes. Otherwise a github ref must be a release tag
-// vX.Y.Z, no lower than the highest release tag base declares for the tree: a
-// commit or a branch may come from a fork of the repository, which GitHub
-// serves through it, and an older release may hold weaker rules.
+// refChange explains why a dependency declaration may move to source now, from
+// the base sources was that name the same tree, or returns "". A github ref
+// must be a release tag vX.Y.Z, no lower than any release tag base declares
+// for the tree: a commit or a branch may come from a fork of the repository,
+// which GitHub serves through it, and an older release may hold weaker rules.
+// A local source naming the same directory passes.
 func refChange(was []string, now string) string {
-	if slices.Contains(was, now) {
-		return ""
-	}
 	after, err := remote.ParseGitHub(now)
 	if err != nil {
 		return "" // Local sources naming the same directory.

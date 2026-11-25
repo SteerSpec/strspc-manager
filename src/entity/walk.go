@@ -151,8 +151,10 @@ func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 			}
 			return nil
 		}
-		if realmfs.CheckEntry(d) != nil {
+		if skip, err := realmfs.CheckWalked(physical, d); err != nil {
 			return refused(path, fn)
+		} else if skip {
+			return nil
 		}
 		return processEntry(path, d.Name(), fn)
 	})
@@ -179,10 +181,11 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 	for _, entry := range entries {
 		path := filepath.Join(dir, entry.Name())
 		var err error
+		skip, linkErr := realmfs.CheckWalked(filepath.Join(root, entry.Name()), entry)
 		switch {
-		case realmfs.CheckEntry(entry) != nil:
+		case linkErr != nil:
 			err = refused(path, fn)
-		case entry.IsDir():
+		case skip, entry.IsDir():
 			continue
 		default:
 			err = processEntry(path, entry.Name(), fn)

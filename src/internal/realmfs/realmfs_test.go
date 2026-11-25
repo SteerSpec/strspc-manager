@@ -142,3 +142,39 @@ func TestReadInTree(t *testing.T) {
 		t.Errorf("missing: err = %v", err)
 	}
 }
+
+func TestFoldKey(t *testing.T) {
+	for _, pair := range [][2]string{{"realm.json", "REALM.JSON"}, {"realm.json", "realm.jſon"}, {"k", "K"}, {"App", "aPP"}} {
+		if FoldKey(pair[0]) != FoldKey(pair[1]) {
+			t.Errorf("FoldKey(%q) != FoldKey(%q)", pair[0], pair[1])
+		}
+	}
+	if FoldKey("app") == FoldKey("apps") {
+		t.Error("different names fold alike")
+	}
+}
+
+func TestCheckWalked(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	if err := os.Symlink("sub", filepath.Join(real, "dirlink")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("a.json", filepath.Join(real, "README")); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][2]bool{ // name → skip, error
+		"a.json": {false, false}, "sub": {false, false},
+		"l.json": {true, true}, "dirlink": {true, true}, "README": {true, false},
+	}
+	for _, e := range entries {
+		skip, err := CheckWalked(filepath.Join(real, e.Name()), e)
+		if got := [2]bool{skip, err != nil}; got != want[e.Name()] {
+			t.Errorf("%s: skip, err = %v, %v; want %v", e.Name(), skip, err, want[e.Name()])
+		}
+	}
+}

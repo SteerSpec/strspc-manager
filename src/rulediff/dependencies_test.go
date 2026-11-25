@@ -123,6 +123,7 @@ func TestCompareRealms_DependencyRefBoundAcrossTheTree(t *testing.T) {
 		rd031 bool
 	}{
 		{"parent lowered to the sub-realm's old tag", tree{"realm.json": parent(dep("v1.1.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
+		{"parent set to exactly the sub-realm's old source", tree{"realm.json": parent(dep("v1.0.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
 		{"sub-realm unchanged", base, false},
 		{"sub-realm raised to the parent's tag", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.25.0"))}, false},
 	} {

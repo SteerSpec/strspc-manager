@@ -190,3 +190,12 @@ func TestCompareRealms_SchemaLinkInHead(t *testing.T) {
 	link(t, head, "_schema/entity.v1.schema.json", os.DevNull)
 	assertHasCode(t, CompareRealms(tree{"realm.json": codeRealm}.write(t), head), "RD000")
 }
+
+// F8: a non-JSON link to a file is left alone in head too.
+func TestCompareRealms_NonJSONFileLink(t *testing.T) {
+	head := tree{"realm.json": codeRealm, "README.md": "x"}.write(t)
+	link(t, head, "README", "README.md")
+	if res := CompareRealms(tree{"realm.json": codeRealm}.write(t), head); !res.OK() {
+		t.Errorf("%v", res.Diagnostics)
+	}
+}
