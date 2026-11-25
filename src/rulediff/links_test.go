@@ -211,3 +211,14 @@ func TestCompareDir_ManifestLookAlikeAndIndex(t *testing.T) {
 		t.Errorf("published index: %v", res.Diagnostics)
 	}
 }
+
+// A base index.json holding rules is still compared, so deleting it is RD005;
+// a published index in base holds none.
+func TestCompareDir_BaseIndexHoldingRules(t *testing.T) {
+	const acc = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
+	assertHasCode(t, CompareDir(tree{"realm.json": codeRealm, "index.json": acc}.write(t), tree{"realm.json": codeRealm}.write(t)), "RD005")
+	published := `{"realm":{"id":"a.b"},"rules":[{"file":"APP.json"}]}`
+	if res := CompareDir(tree{"realm.json": codeRealm, "index.json": published}.write(t), tree{"realm.json": codeRealm}.write(t)); !res.OK() {
+		t.Errorf("deleting a published index: %v", res.Diagnostics)
+	}
+}

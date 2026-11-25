@@ -257,6 +257,13 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	// replaced, fails closed in the CompareRealms run below.
 	baseFiles, _ := scanJSONFiles(baseDir)
 	headFiles, headLinks := scanJSONFiles(headDir)
+	// A base index.json that is no published index held rules, so it is
+	// compared like any entity file: deleting it is RD005.
+	if path := filepath.Join(baseDir, "index.json"); baseDir != "" {
+		if data, err := realmfs.ReadFile(path); err == nil && !entity.IsPublishedIndex(data) {
+			baseFiles["index.json"] = path
+		}
+	}
 	for _, name := range headLinks {
 		path := filepath.Join(headDir, name)
 		res.Add(result.Diagnostic{
