@@ -46,13 +46,15 @@ func CompareRealms(baseDir, headDir string, opts ...Option) *result.Result {
 
 // compareRealms is CompareRealms, with an empty baseDir for no base.
 func compareRealms(baseDir, headDir string, opts ...Option) *result.Result {
+	cfg := New(opts...).cfg
 	c := &realmComparison{
-		res:       &result.Result{},
-		baseKinds: map[string]*realmkind.Finder{},
-		headKinds: map[string]*realmkind.Finder{},
+		res:          &result.Result{},
+		baseKinds:    map[string]*realmkind.Finder{},
+		headKinds:    map[string]*realmkind.Finder{},
+		contributors: cfg.Contributors,
 	}
 	c.run(baseDir, headDir)
-	if New(opts...).cfg.Strict {
+	if cfg.Strict {
 		promoteWarnings(c.res)
 	}
 	return c.res
@@ -64,6 +66,9 @@ type realmComparison struct {
 	base, head string // resolved roots; base is empty when there is none.
 	// A Finder for each root a source could have, by slash path below the tree.
 	baseKinds, headKinds map[string]*realmkind.Finder
+	// contributors is the Realm's list (WithContributors), for RD023 on new
+	// Realm Notes. A sub-realm uses its parent's (CTRB-006).
+	contributors []entity.Contributor
 }
 
 func (c *realmComparison) run(baseDir, headDir string) {
@@ -226,7 +231,7 @@ func (c *realmComparison) compareManifest(rel string) {
 			Path:     rel,
 		})
 	}
-	checkRealmNotes(baseNotes, headNotes, c.res, rel)
+	checkRealmNotes(baseNotes, headNotes, c.contributors, c.res, rel)
 }
 
 // compareFile runs the checks that need the kind of the Realm holding a file.
@@ -377,7 +382,7 @@ func checkSupersedesLive(base, head *entity.File, res *result.Result, path strin
 // one starts at 0 with an author (RD015, RD011), and the only change of type or
 // ref is an exclusion's withdrawal to reference, which keeps ref and content
 // (RD029, NTE-035).
-func checkRealmNotes(baseNotes, headNotes []entity.RealmNote, res *result.Result, path string) {
+func checkRealmNotes(baseNotes, headNotes []entity.RealmNote, contributors []entity.Contributor, res *result.Result, path string) {
 	before := make(map[string]entity.RealmNote, len(baseNotes))
 	for _, n := range baseNotes {
 		before[n.ID] = n
@@ -401,6 +406,7 @@ func checkRealmNotes(baseNotes, headNotes []entity.RealmNote, res *result.Result
 			}
 		} else {
 			checkNewNote(asNote, res, notePath)
+			checkContributor("Realm Note", h.AddedBy, contributors, res, notePath)
 			if h.Type == entity.NoteTypeReference && h.Ref != "" {
 				msg = "a new reference has a ref: only a withdrawn exclusion is a reference with a ref"
 			}

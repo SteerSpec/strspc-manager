@@ -549,7 +549,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "added_by not a listed contributor",
-		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
+		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030.",
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
 	},
 	{
@@ -839,6 +839,14 @@ var codeTable = []CodeInfo{
 		Title:    "Clause not in the linked realm",
 		Summary:  "With a dependency fetcher: a `standard` note whose Standard Reference has a `realm` maps a clause that is not in that Realm's clause list, the distinct `clause` values of its live rules, matched exactly (STDREF-021).",
 		Fix:      "Correct the clause to one the linked Standard Realm transcribes. A clause whose rules are all Terminated or Retired has left the list: map the clause of the rule that superseded it.",
+	},
+	{
+		Code:     "RM030",
+		Module:   "realm-lint",
+		Severity: "Error",
+		Title:    "Realm Note attribution",
+		Summary:  "The `added_by` of a Realm Note is not a contributor identifier `<idp>:<subject>` (CTRB-003).",
+		Fix:      "Write the contributor identifier, such as `github:<login>`.",
 	},
 	{
 		Code:     "RR000",

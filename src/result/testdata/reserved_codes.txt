@@ -166,3 +166,4 @@ RF004 active citation-superseded
 RF005 active citation-superseder-published
 RF006 active citation-draft
 RF007 active copied-rule-body
+RM030 active realm-note-added-by-format

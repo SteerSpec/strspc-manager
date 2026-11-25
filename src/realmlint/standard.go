@@ -15,7 +15,8 @@ var realmNoteIDRe = regexp.MustCompile(`^REALM/(\d{3})$`)
 
 // checkManifestNotesAndHash runs the manifest checks core 1.21.0 adds that the
 // schema can't express: RM021 (STDRLM-002, STDRLM-003, STDRLM-015), RM022
-// (NTE-030), RM023 (NTE-034), RM024 (NTE-035) and RM025 (RLMMNFST-013). data
+// (NTE-030), RM023 (NTE-034), RM024 (NTE-035), RM025 (RLMMNFST-013) and RM030
+// (CTRB-003). data
 // is the manifest as read, which RM025 hashes. The schema (RM002) already
 // checks the kind, the shape of attribution and profiles, the form of a note
 // id, the note types and the form of a hash. It checks the form of a ref too,
@@ -25,6 +26,7 @@ func checkManifestNotesAndHash(rf *entity.RealmFile, data []byte, realmPath stri
 	checkStandardRealmFields(&rf.Realm, realmPath, res)
 	checkRealmNoteIDs(rf.Notes, realmPath, res)
 	checkRealmNoteRefs(rf, realmPath, res)
+	checkRealmNoteAddedBy(rf.Notes, realmPath, res)
 	checkManifestHash(rf, data, realmPath, res)
 }
 
@@ -53,6 +55,26 @@ func checkStandardRealmFields(meta *entity.RealmMeta, realmPath string, res *res
 	}
 	if meta.Attribution == nil {
 		missing("attribution", "STDRLM-015")
+	}
+}
+
+// checkRealmNoteAddedBy runs RM030: the added_by of a Realm Note is a
+// contributor identifier (CTRB-003), as RL032 checks for rules and notes. An
+// empty one is left to the schema.
+func checkRealmNoteAddedBy(notes []entity.RealmNote, realmPath string, res *result.Result) {
+	for _, n := range notes {
+		if n.AddedBy == "" {
+			continue
+		}
+		if _, _, err := entity.ParseContributorID(n.AddedBy); err != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM030",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("Realm Note %s: added_by %q is not a contributor identifier (CTRB-003): %v", n.ID, n.AddedBy, err),
+				Path:     realmPath,
+			})
+		}
 	}
 }
 
