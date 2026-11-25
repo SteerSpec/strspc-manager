@@ -382,7 +382,9 @@ func scanJSONFiles(dir string) (files map[string]string, links []string) {
 			}
 			continue
 		}
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" {
+		// realm.json is a manifest and index.json a published index or an
+		// error, both judged by CompareRealms: neither is an entity file.
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" || e.Name() == "index.json" {
 			continue
 		}
 		files[e.Name()] = filepath.Join(dir, e.Name())

@@ -65,10 +65,10 @@ func TestWalkEntityFiles_ReportsLinksInTheTree(t *testing.T) {
 func TestWalkEntityFiles_ResolvesALinkedRoot(t *testing.T) {
 	for _, mode := range walkModes {
 		t.Run(mode.name, func(t *testing.T) {
-			real := t.TempDir()
-			writeWalkFile(t, real, "ENT.json", linkEntity)
+			realDir := t.TempDir()
+			writeWalkFile(t, realDir, "ENT.json", linkEntity)
 			root := filepath.Join(t.TempDir(), "rules")
-			if err := os.Symlink(real, root); err != nil {
+			if err := os.Symlink(realDir, root); err != nil {
 				t.Skipf("symlinks unavailable: %v", err)
 			}
 			var paths []string

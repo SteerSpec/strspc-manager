@@ -180,7 +180,15 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 			if name == "index.json" && !d.IsDir() {
 				if data, err := realmfs.ReadFile(path); err != nil || !entity.IsPublishedIndex(data) {
 					addReadError(c.res, filepath.ToSlash(rel), errors.New("index.json is reserved for a published index of the Realm"))
-					return nil
+				}
+				return nil // A published index is no entity file.
+			}
+			if name != manifestName && !d.IsDir() && strings.HasSuffix(name, ".json") {
+				// A manifest under another name is refused, as the walker does,
+				// even when it decodes as an empty entity.
+				if data, err := realmfs.ReadFile(path); err == nil && entity.IsRealmJSON(data) {
+					// Still compared below, so the key costs no other check.
+					addReadError(c.res, filepath.ToSlash(rel), errors.New(`a file with a top-level "realm" key must be named realm.json`))
 				}
 			}
 			if !d.IsDir() && realmfs.IsJSONName(name) && !strings.HasSuffix(name, ".json") {

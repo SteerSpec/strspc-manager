@@ -8,25 +8,25 @@ import (
 	"testing"
 )
 
-// tree makes dir/real/a.json, dir/real/sub/, a link dir/link -> real and a
-// file link dir/real/l.json -> a.json, and returns the physical dir.
+// tree makes dir/realDir/a.json, dir/realDir/sub/, a link dir/link -> realDir and a
+// file link dir/realDir/l.json -> a.json, and returns the physical dir.
 func tree(t *testing.T) string {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	real := filepath.Join(dir, "real")
-	if err := os.MkdirAll(filepath.Join(real, "sub"), 0o755); err != nil {
+	realDir := filepath.Join(dir, "real")
+	if err := os.MkdirAll(filepath.Join(realDir, "sub"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(real, "a.json"), []byte("{}"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(realDir, "a.json"), []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink("real", filepath.Join(dir, "link")); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
-	if err := os.Symlink("a.json", filepath.Join(real, "l.json")); err != nil {
+	if err := os.Symlink("a.json", filepath.Join(realDir, "l.json")); err != nil {
 		t.Fatal(err)
 	}
 	return dir
@@ -34,11 +34,11 @@ func tree(t *testing.T) string {
 
 func TestRoot(t *testing.T) {
 	dir := tree(t)
-	real := filepath.Join(dir, "real")
+	realDir := filepath.Join(dir, "real")
 	for _, tc := range []struct{ in, want string }{
-		{real, real},
-		{filepath.Join(dir, "link"), real},               // a link naming the root is resolved
-		{filepath.Join(dir, "link", "..", "real"), real}, // resolved before any lexical clean
+		{realDir, realDir},
+		{filepath.Join(dir, "link"), realDir},               // a link naming the root is resolved
+		{filepath.Join(dir, "link", "..", "real"), realDir}, // resolved before any lexical clean
 	} {
 		got, err := Root(tc.in)
 		if err != nil || got != tc.want {
@@ -46,10 +46,10 @@ func TestRoot(t *testing.T) {
 		}
 	}
 	t.Chdir(filepath.Join(dir, "link"))
-	if got, err := Root("."); err != nil || got != real {
-		t.Errorf(`Root(".") through a linked working directory = %q, %v; want %q`, got, err, real)
+	if got, err := Root("."); err != nil || got != realDir {
+		t.Errorf(`Root(".") through a linked working directory = %q, %v; want %q`, got, err, realDir)
 	}
-	for _, bad := range []string{"", filepath.Join(real, "a.json"), filepath.Join(dir, "missing")} {
+	for _, bad := range []string{"", filepath.Join(realDir, "a.json"), filepath.Join(dir, "missing")} {
 		if _, err := Root(bad); err == nil {
 			t.Errorf("Root(%q): no error", bad)
 		}
@@ -59,10 +59,10 @@ func TestRoot(t *testing.T) {
 // A root that resolves to a network share or device path is refused.
 func TestRootRefusesANonLocalTarget(t *testing.T) {
 	dir := tree(t)
-	real := filepath.Join(dir, "real")
+	realDir := filepath.Join(dir, "real")
 	orig := isLocal
 	t.Cleanup(func() { isLocal = orig })
-	isLocal = func(p string) bool { return p != real }
+	isLocal = func(p string) bool { return p != realDir }
 	if _, err := Root(filepath.Join(dir, "link")); err == nil {
 		t.Error("Root through a link to a non-local path: no error")
 	}
@@ -80,12 +80,12 @@ func TestRootWithoutFollowingLinks(t *testing.T) {
 			t.Errorf("Root(%q) = %v, want a link error", p, err)
 		}
 	}
-	real := filepath.Join(dir, "real")
-	if got, err := Root(filepath.Join(real, "sub", "..")); err != nil || got != real {
+	realDir := filepath.Join(dir, "real")
+	if got, err := Root(filepath.Join(realDir, "sub", "..")); err != nil || got != realDir {
 		t.Errorf("Root(real/sub/..) = %q, %v", got, err)
 	}
-	t.Chdir(real)
-	if got, err := Root("."); err != nil || got != real {
+	t.Chdir(realDir)
+	if got, err := Root("."); err != nil || got != realDir {
 		t.Errorf(`Root(".") = %q, %v`, got, err)
 	}
 	if err := CheckLocal(filepath.Join(dir, "missing", "x")); err != nil {
@@ -94,7 +94,7 @@ func TestRootWithoutFollowingLinks(t *testing.T) {
 	orig2 := isLocal
 	t.Cleanup(func() { isLocal = orig2 })
 	isLocal = func(string) bool { return false }
-	if err := CheckLocal(real); err == nil {
+	if err := CheckLocal(realDir); err == nil {
 		t.Error("CheckLocal of a non-local path: no error")
 	}
 }
@@ -135,12 +135,12 @@ func TestDir(t *testing.T) {
 // other is skipped, wherever it leads.
 func TestCheckWalked(t *testing.T) {
 	dir := tree(t)
-	real := filepath.Join(dir, "real")
+	realDir := filepath.Join(dir, "real")
 	for name, text := range map[string]string{
 		"ACC.JSON": "a.json", "gone.json": "missing", "dirlink": "sub",
 		"README": "a.json", "out": filepath.Join(dir, "elsewhere"), "up": "../../x",
 	} {
-		if err := os.Symlink(text, filepath.Join(real, name)); err != nil {
+		if err := os.Symlink(text, filepath.Join(realDir, name)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -149,12 +149,12 @@ func TestCheckWalked(t *testing.T) {
 		"l.json": {true, true}, "ACC.JSON": {true, true}, "gone.json": {true, true},
 		"dirlink": {true, false}, "README": {true, false}, "out": {true, false}, "up": {true, false},
 	}
-	entries, err := os.ReadDir(real)
+	entries, err := os.ReadDir(realDir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		skip, err := CheckWalked(filepath.Join(real, e.Name()), e)
+		skip, err := CheckWalked(filepath.Join(realDir, e.Name()), e)
 		if got := [2]bool{skip, err != nil}; got != want[e.Name()] {
 			t.Errorf("%s: skip, err = %v, %v; want %v", e.Name(), skip, err, want[e.Name()])
 		}
@@ -181,7 +181,7 @@ func TestFoldKey(t *testing.T) {
 	}
 }
 
-// ReadUnder reads through real directories only.
+// ReadUnder reads through realDir directories only.
 func TestReadUnder(t *testing.T) {
 	dir := tree(t)
 	if data, err := ReadUnder(dir, "real/a.json"); err != nil || string(data) != "{}" {
@@ -199,8 +199,8 @@ func TestReadUnder(t *testing.T) {
 
 func TestDirFromAndRegularUnder(t *testing.T) {
 	dir := tree(t)
-	real := filepath.Join(dir, "real")
-	if got, err := DirFrom(filepath.Join(real, "sub"), "../sub"); err != nil || got != filepath.Join(real, "sub") {
+	realDir := filepath.Join(dir, "real")
+	if got, err := DirFrom(filepath.Join(realDir, "sub"), "../sub"); err != nil || got != filepath.Join(realDir, "sub") {
 		t.Errorf("DirFrom real = %q, %v", got, err)
 	}
 	if _, err := DirFrom(dir, "link"); !errors.Is(err, ErrNotRegular) {

@@ -35,9 +35,9 @@ func TestCompareRealms_LinkedWorkingDirectory(t *testing.T) {
 	// The review's case: a code child undeclared and deleted, seen only by
 	// scanning the files below the root.
 	base := tree{"realm.json": stdParent, childManifest: codeChild, entityInApp: someEntity}.write(t)
-	real := tree{"realm.json": stdRealm, entityInApp: someEntity}.write(t)
+	realDir := tree{"realm.json": stdRealm, entityInApp: someEntity}.write(t)
 	outer := t.TempDir()
-	link(t, outer, "rules", real)
+	link(t, outer, "rules", realDir)
 	// A shell leaves the logical path in PWD, which os.Getwd prefers.
 	for _, tc := range []struct{ dir, head string }{
 		{filepath.Join(outer, "rules"), "."},
@@ -198,6 +198,16 @@ func TestCompareRealms_BaseSchemaLinkAndIndex(t *testing.T) {
 	assertHasCode(t, compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "index.json": someEntity}), "RD000")
 	published := `{"realm":{"id":"a.b"},"rules":[{"file":"APP.json"}]}`
 	if res := compareTrees(t, tree{"realm.json": codeRealm}, tree{"realm.json": codeRealm, "index.json": published}); hasDiag(res, "RD000") {
+		t.Errorf("published index: %v", res.Diagnostics)
+	}
+}
+
+// Copilot #378: a manifest look-alike in head is refused by rule-diff too,
+// and CompareDir doesn't compare index.json as an entity.
+func TestCompareDir_ManifestLookAlikeAndIndex(t *testing.T) {
+	assertHasCode(t, CompareDir(t.TempDir(), tree{"realm.json": codeRealm, "APP.json": `{"realm":{}}`}.write(t)), "RD000")
+	published := `{"realm":{"id":"a.b"},"rules":[{"file":"APP.json"}]}`
+	if res := CompareDir(t.TempDir(), tree{"realm.json": codeRealm, "index.json": published}.write(t)); !res.OK() {
 		t.Errorf("published index: %v", res.Diagnostics)
 	}
 }
