@@ -196,3 +196,22 @@ func TestReadUnder(t *testing.T) {
 		t.Errorf("ReadUnder missing dir: err = %v", err)
 	}
 }
+
+func TestDirFromAndRegularUnder(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	if got, err := DirFrom(filepath.Join(real, "sub"), "../sub"); err != nil || got != filepath.Join(real, "sub") {
+		t.Errorf("DirFrom real = %q, %v", got, err)
+	}
+	if _, err := DirFrom(dir, "link"); !errors.Is(err, ErrNotRegular) {
+		t.Errorf("DirFrom through a link: %v", err)
+	}
+	if _, err := DirFrom(dir, "missing"); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("DirFrom missing: %v", err)
+	}
+	for rel, want := range map[string]bool{"real/a.json": true, "link/a.json": false, "real/l.json": false, "real/none.json": false, "real/sub": false} {
+		if got, err := RegularUnder(dir, rel); err != nil || got != want {
+			t.Errorf("RegularUnder(%s) = %v, %v; want %v", rel, got, err, want)
+		}
+	}
+}

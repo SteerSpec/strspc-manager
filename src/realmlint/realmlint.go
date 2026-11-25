@@ -393,7 +393,7 @@ func checkSchemaDir(dir string, res *result.Result) {
 	})
 
 	entitySchemaPath := filepath.Join(schemaDir, "entity.v1.schema.json")
-	if _, err := os.Stat(entitySchemaPath); err != nil {
+	if _, err := os.Lstat(entitySchemaPath); err != nil { // A link is RM003 above.
 		msg := "entity.v1.schema.json missing in _schema/"
 		if !os.IsNotExist(err) {
 			msg = fmt.Sprintf("unable to access entity.v1.schema.json in _schema/: %v", err)

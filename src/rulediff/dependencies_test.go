@@ -162,3 +162,18 @@ func TestCompareRealms_DependencyRefOwnPinNotAVersion(t *testing.T) {
 		assertHasCode(t, compareTrees(t, base, head), "RD031")
 	}
 }
+
+// Re-review F7: a ref that looks like a version but doesn't parse bounds every
+// move, so the move fails closed.
+func TestCompareRealms_DependencyRefUnparsableBound(t *testing.T) {
+	dep := func(ref string) entity.RealmDep {
+		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@" + ref + "/rules"}
+	}
+	for _, ref := range []string{"v9.0.0-01", "v9.0.0-rc..1", "v99999999999999999999.0.0"} {
+		base := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(ref))}
+		head := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep("v1.0.0"))}
+		if !hasDiag(compareTrees(t, base, head), "RD031") {
+			t.Errorf("from %s: no RD031", ref)
+		}
+	}
+}

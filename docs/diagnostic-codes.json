@@ -220,7 +220,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "added_by not a listed contributor",
-    "summary": "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). For Realm Notes `CompareRealms` reads each Realm's list from its base manifest, or its head manifest when the Realm is new. A value that is not a contributor identifier is left to RL032 or RM030.",
+    "summary": "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030. For Realm Notes, `CompareRealms` takes the lists from base only, by realm ID: the ID base declares at the manifest's path, or head's for a new manifest; a sub-realm is one its parent lists in base, or a Realm base doesn't hold under a parent it does; a Realm that declares none, or whose base manifest doesn't parse, uses the `WithContributors` list; when the change sets another ID, the author must be listed for both Realms.",
     "fix": "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
     "retired": false
   },
@@ -292,7 +292,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Dependency source changed",
-    "summary": "A dependency's `source` changed other than by the ref of a `github://` source, whose new ref is a release tag `vX.Y.Z` no lower than a tag it replaces: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules.",
+    "summary": "A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; a ref names a version with or without `v`, with a pre-release or build metadata, digits alone being a commit, and one that looks like a version but doesn't parse bounds every move. A source the same manifest declared in base passes unchanged.",
     "fix": "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
     "retired": false
   },

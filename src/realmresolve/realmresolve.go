@@ -10,6 +10,7 @@ package realmresolve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -551,7 +552,18 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		return resolved
 	}
 
-	// Resolve local path.
+	// Resolve local path, through real directories only: a link on the way
+	// could fetch another tree under the same ID, unseen by rule-diff.
+	if _, err := realmfs.DirFrom(baseDir, dep.Source); errors.Is(err, realmfs.ErrNotRegular) {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR002",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, err),
+			Path:     baseDir,
+		})
+		return nil
+	}
 	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
 	if err != nil {
 		res.Add(result.Diagnostic{

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
-	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -314,6 +313,10 @@ func (c *realmComparison) compareManifest(rel string) {
 		list = bothLists(c.realmContributors(base.Realm.ID), c.realmContributors(head.Realm.ID))
 	case base != nil:
 		list = c.realmContributors(base.Realm.ID)
+	case head != nil && baseData != nil && len(c.contributors) > 0:
+		// Base is there but broken, so the ID head sets can't be trusted to
+		// choose: the caller's list decides.
+		list = c.contributors
 	case head != nil:
 		list = c.realmContributors(head.Realm.ID)
 	}
@@ -323,18 +326,22 @@ func (c *realmComparison) compareManifest(rel string) {
 // realmContributors returns the contributors new Realm Notes of the Realm id
 // are checked against (RD023). They come from base only, by realm ID, so a
 // change can't widen them, move the Realm or give it a new parent to list the
-// author of its own note: a sub-realm, by its ID, uses its parent's
-// (CTRB-006), and a Realm base doesn't hold, or that declares none, uses the
-// WithContributors list.
+// author of its own note. A sub-realm uses its parent's (CTRB-006): one its
+// parent lists in base, or a Realm base doesn't hold under a parent it does.
+// A Realm that declares none, or one base doesn't hold under no parent there,
+// uses the WithContributors list.
 func (c *realmComparison) realmContributors(id string) []entity.Contributor {
 	for depth := 0; depth < 64; depth++ {
+		rf := c.baseRealms[id]
 		if k := strings.LastIndex(id, "."); k > 0 {
-			if _, inBase := c.baseRealms[id[:k]]; inBase {
+			// A sub-realm as CTRB-006 has it, listed by its parent in base, or
+			// a Realm base doesn't hold under a parent it does.
+			if parent := c.baseRealms[id[:k]]; parent != nil && (rf == nil || slices.Contains(parent.SubRealms, id[k+1:])) {
 				id = id[:k]
 				continue
 			}
 		}
-		if rf := c.baseRealms[id]; rf != nil && len(rf.Realm.Contributors) > 0 {
+		if rf != nil && len(rf.Realm.Contributors) > 0 {
 			return rf.Realm.Contributors
 		}
 		break
@@ -542,7 +549,12 @@ func refBound(src string) (*semver.Version, bool) {
 		return nil, false
 	}
 	v, err := semver.NewVersion(ref.Ref)
-	return v, err == nil
+	if err != nil {
+		// Looks like a version but doesn't parse as one: bound every move, so
+		// that it fails closed.
+		return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
+	}
+	return v, true
 }
 
 // sameSource reports whether two dependency sources name the same tree, but
@@ -569,12 +581,12 @@ func sameSource(a, b depSource) bool {
 func (c *realmComparison) compareFile(rel string) {
 	existed := false
 	if c.base != "" {
-		info, err := os.Lstat(filepath.Join(c.base, filepath.FromSlash(rel)))
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		// Through real directories only: a link in base is never followed.
+		var err error
+		if existed, err = realmfs.RegularUnder(c.base, rel); err != nil {
 			addReadError(c.res, rel, err)
 			return
 		}
-		existed = err == nil && !info.IsDir()
 	}
 
 	changed, standard := false, false

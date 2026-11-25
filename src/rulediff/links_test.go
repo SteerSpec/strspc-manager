@@ -170,3 +170,15 @@ func TestLinksFailClosed(t *testing.T) {
 		t.Errorf("a non-JSON base link: %v", res.Diagnostics)
 	}
 }
+
+// A directory link in base is never followed, also to judge the kind of a
+// file the change adds where it was.
+func TestCompareRealms_BaseDirectoryLinkNotFollowed(t *testing.T) {
+	outside := tree{"realm.json": stdRealm}.write(t)
+	base := tree{"realm.json": codeRealm}.write(t)
+	link(t, base, "sub", outside)
+	head := tree{"realm.json": codeRealm, "sub/x.json": someEntity}.write(t)
+	if res := CompareRealms(base, head); hasDiag(res, "RD028") {
+		t.Errorf("kind read through a base directory link: %v", res.Diagnostics)
+	}
+}

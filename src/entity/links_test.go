@@ -133,3 +133,23 @@ func TestWalkEntityFiles_IgnoresNonJSONFileLinks(t *testing.T) {
 		t.Errorf("refused %v, want none", refused)
 	}
 }
+
+// Re-review F5: a JSON file name in another case is reported, never skipped.
+func TestWalkEntityFiles_ReportsJSONNameInAnotherCase(t *testing.T) {
+	dir := t.TempDir()
+	writeWalkFile(t, dir, "ENT.json", linkEntity)
+	writeWalkFile(t, dir, "X.Json", linkEntity)
+	var reported []string
+	err := entity.WalkEntityFiles(dir, func(path string, _ []byte, _ *entity.File, parseErr error) error {
+		if parseErr != nil {
+			reported = append(reported, filepath.Base(path))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(reported, []string{"X.Json"}) {
+		t.Errorf("reported %v, want [X.Json]", reported)
+	}
+}

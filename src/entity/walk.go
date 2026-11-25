@@ -209,8 +209,13 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 
 // processEntry handles a single file: filters, reads, parses, and calls fn.
 func processEntry(path, name string, fn WalkFunc) error {
-	if !strings.HasSuffix(name, ".json") || name == "realm.json" {
+	if !realmfs.IsJSONName(name) || name == "realm.json" {
 		return nil
+	}
+	if !strings.HasSuffix(name, ".json") {
+		// A case-insensitive file system opens realm.JSON as the manifest,
+		// so a JSON name in another case is never skipped silently.
+		return fn(path, nil, nil, fmt.Errorf("%s: a JSON file name must end in .json in lower case", path))
 	}
 
 	data, err := realmfs.ReadFile(path)

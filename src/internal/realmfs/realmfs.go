@@ -144,6 +144,54 @@ func ReadUnder(root, rel string) ([]byte, error) {
 	return ReadFile(filepath.Join(cur, parts[len(parts)-1]))
 }
 
+// DirFrom checks that the relative path rel, walked from the directory dir as
+// written, passes through real directories only and ends at one: a link
+// anywhere on the way is ErrNotRegular and is not followed. ".." goes up
+// lexically, as the OS does once no link is followed. It returns the path.
+func DirFrom(dir, rel string) (string, error) {
+	cur := dir
+	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == '\\' }) {
+		switch part {
+		case ".":
+			continue
+		case "..":
+			cur = filepath.Dir(cur)
+			continue
+		}
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if err != nil {
+			return "", err
+		}
+		if !info.IsDir() {
+			return "", fmt.Errorf("%s: %w", cur, ErrNotRegular)
+		}
+	}
+	return cur, nil
+}
+
+// RegularUnder reports whether the slash path rel below root names a regular
+// file reached through real directories only.
+func RegularUnder(root, rel string) (bool, error) {
+	parts := strings.Split(rel, "/")
+	cur := root
+	for _, part := range parts[:len(parts)-1] {
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if err != nil || !info.IsDir() {
+			return false, nil
+		}
+	}
+	info, err := os.Lstat(filepath.Join(cur, parts[len(parts)-1]))
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return info.Mode().IsRegular(), nil
+}
+
 // Dir checks that path is a real directory, not a link to one.
 func Dir(path string) error {
 	info, err := os.Lstat(path)

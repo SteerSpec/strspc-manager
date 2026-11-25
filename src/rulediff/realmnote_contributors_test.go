@@ -131,3 +131,41 @@ func TestCompareRealms_RealmNoteContributorFromBaseOnly(t *testing.T) {
 		})
 	}
 }
+
+// Re-review F3: in base a Realm is a sub-realm only as CTRB-006 has it, listed
+// in its parent's sub_realms; otherwise its own list decides.
+func TestCompareRealms_RealmNoteContributorSubRealmPerSpec(t *testing.T) {
+	realm := func(id string, contributors []string, subRealms []string, notes ...entity.RealmNote) string {
+		var list []map[string]string
+		for _, c := range contributors {
+			list = append(list, map[string]string{"id": c})
+		}
+		data, _ := json.Marshal(map[string]any{"realm": map[string]any{"id": id, "contributors": list}, "sub_realms": subRealms, "notes": notes})
+		return string(data)
+	}
+	by := func(who string) entity.RealmNote {
+		return entity.RealmNote{ID: "REALM/001", Type: "rationale", Content: "Because.", AddedBy: who}
+	}
+	base := tree{"realm.json": realm("org", []string{"github:alice", "github:mallory"}, nil), "secure/realm.json": realm("org.secure", []string{"github:bob"}, nil)}
+	for _, tc := range []struct {
+		name  string
+		by    string
+		rd023 bool
+	}{{"own list, listed", "github:bob", false}, {"own list, only the parent's", "github:mallory", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			head := base.with(tree{"secure/realm.json": realm("org.secure", []string{"github:bob"}, nil, by(tc.by))})
+			if got := hasDiag(compareTrees(t, base, head), "RD023"); got != tc.rd023 {
+				t.Errorf("RD023 = %v, want %v", got, tc.rd023)
+			}
+		})
+	}
+}
+
+// Re-review F8: a broken base manifest can't let head's ID choose the list.
+func TestCompareRealms_RealmNoteContributorBrokenBase(t *testing.T) {
+	data, _ := json.Marshal(map[string]any{"realm": map[string]any{"id": "x.b", "contributors": []map[string]string{{"id": "github:mallory"}}},
+		"notes": []entity.RealmNote{{ID: "REALM/001", Type: "rationale", Content: "Because.", AddedBy: "github:mallory"}}})
+	base := tree{"a/realm.json": brokenJSON, "b/realm.json": `{"realm":{"id":"x.b","contributors":[{"id":"github:mallory"}]}}`}
+	head := tree{"a/realm.json": string(data), "b/realm.json": `{"realm":{"id":"x.b","contributors":[{"id":"github:mallory"}]}}`}
+	assertHasCode(t, compareTrees(t, base, head, WithContributors([]entity.Contributor{{ID: "github:alice"}})), "RD023")
+}
