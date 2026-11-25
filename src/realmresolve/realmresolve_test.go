@@ -511,3 +511,21 @@ func TestResolve_LocalDependencyThroughALinkIsRefused(t *testing.T) {
 		t.Errorf("expected RR002 for a dependency through a link, got: %v", res.Diagnostics)
 	}
 }
+
+// A source that names a missing directory before ".." can't fall back to the
+// lexical path and reach a link.
+func TestResolve_LocalDependencyMissingThenUpThenLink(t *testing.T) {
+	src := absTestdata(t, "parent-with-sub")
+	base := t.TempDir()
+	if err := os.Symlink(src, filepath.Join(base, "deps")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rf := &entity.RealmFile{
+		Realm:        entity.RealmMeta{ID: "dev.steerspec.consumer", Title: "C", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{{RealmID: "dev.steerspec.test", Version: "0.1.0", Source: "nope/../deps"}},
+	}
+	got, res := New().Resolve(context.Background(), rf, base)
+	if !hasDiagCode(res, "RR002") || (got != nil && len(got.Dependencies) != 0) {
+		t.Errorf("expected RR002 and nothing resolved, got %v", res.Diagnostics)
+	}
+}

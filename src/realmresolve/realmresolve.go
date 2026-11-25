@@ -555,29 +555,16 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 
 	// Resolve local path, through real directories only: a link on the way
 	// could fetch another tree under the same ID, unseen by rule-diff.
-	walked, walkErr := realmfs.DirFrom(baseDir, dep.Source)
-	if walkErr != nil && !errors.Is(walkErr, fs.ErrNotExist) {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RR002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, walkErr),
-			Path:     baseDir,
-		})
-		return nil
-	}
-	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
-	if walkErr == nil {
-		resolvedDir = walked // The directory the walk reached, through real ones only.
-	}
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RR002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
-			Path:     baseDir,
-		})
+	// No lexical fallback: "missing/../link" must not reach link.
+	resolvedDir, walkErr := realmfs.DirFrom(baseDir, dep.Source)
+	if walkErr != nil {
+		msg := fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, walkErr)
+		path := baseDir
+		if errors.Is(walkErr, fs.ErrNotExist) {
+			path = filepath.Join(baseDir, dep.Source)
+			msg = fmt.Sprintf("dependency %q: resolved directory %q does not exist or is not a directory", dep.RealmID, path)
+		}
+		res.Add(result.Diagnostic{Module: module, Code: "RR002", Severity: result.Error, Message: msg, Path: path})
 		return nil
 	}
 	resolved := resolveLocalDep(ctx, dep, resolvedDir, res)
