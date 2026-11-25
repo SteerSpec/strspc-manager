@@ -613,8 +613,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Dependency source changed",
-		Summary:  "A dependency's `source` changed other than by the ref of a `github://` source: another repository, path or local directory would fetch another tree under the same realm ID.",
-		Fix:      "Restore the source and bump only its ref, or add a dependency with a new realm ID.",
+		Summary:  "A dependency's `source` changed other than by the ref of a `github://` source, whose new ref is a release tag `vX.Y.Z` no lower than a tag it replaces: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules.",
+		Fix:      "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
 	},
 	{
 		Code:     "RM001",

@@ -10,7 +10,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/localpath"
 )
+
+// isLocal reports whether a resolved root is on a local drive. Tests replace
+// it to exercise the Windows-only refusal.
+var isLocal = localpath.IsLocal
 
 // ErrNotRegular reports an entry in a Realm tree that is a link or another
 // special file.
@@ -38,6 +44,9 @@ func Root(dir string) (string, error) {
 	resolved, err := filepath.EvalSymlinks(p)
 	if err != nil {
 		return "", err
+	}
+	if !isLocal(resolved) {
+		return "", fmt.Errorf("%s resolves to %s, which is not a local directory", dir, resolved)
 	}
 	info, err := os.Lstat(resolved)
 	if err != nil {

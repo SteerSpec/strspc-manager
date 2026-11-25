@@ -292,8 +292,8 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Dependency source changed",
-    "summary": "A dependency's `source` changed other than by the ref of a `github://` source: another repository, path or local directory would fetch another tree under the same realm ID.",
-    "fix": "Restore the source and bump only its ref, or add a dependency with a new realm ID.",
+    "summary": "A dependency's `source` changed other than by the ref of a `github://` source, whose new ref is a release tag `vX.Y.Z` no lower than a tag it replaces: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules.",
+    "fix": "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
     "retired": false
   },
   {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -337,18 +338,53 @@ func (c *realmComparison) compareDependencySources() {
 			continue
 		}
 		for _, h := range c.headDeps[id] {
-			if slices.ContainsFunc(was, func(b depSource) bool { return sameSource(b, h) }) {
+			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
+			for _, b := range was {
+				if !sameSource(b, h) {
+					continue
+				}
+				if msg = refChange(b.source, h.source); msg == "" {
+					break
+				}
+			}
+			if msg == "" {
 				continue
 			}
 			c.res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD031",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("dependency %s: source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", id, h.source, was[0].source),
+				Message:  fmt.Sprintf("dependency %s: %s", id, msg),
 				Path:     h.rel,
 			})
 		}
 	}
+}
+
+// releaseTag matches the ref a changed github source may name: a release tag.
+var releaseTag = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+
+// refChange explains why a dependency may not move from source was to now,
+// two sources naming the same tree, or returns "". An unchanged source passes.
+// A changed github ref must be a release tag vX.Y.Z, never lower than a tag it
+// replaces: a commit or a branch may come from a fork of the repository, which
+// GitHub serves through it, and an older tag may hold weaker rules.
+func refChange(was, now string) string {
+	if was == now {
+		return ""
+	}
+	before, errB := remote.ParseGitHub(was)
+	after, errA := remote.ParseGitHub(now)
+	if errB != nil || errA != nil {
+		return "" // Local sources naming the same directory.
+	}
+	if !releaseTag.MatchString(after.Ref) {
+		return fmt.Sprintf("ref %q is not a release tag vX.Y.Z: a changed github source must pin a release", after.Ref)
+	}
+	if releaseTag.MatchString(before.Ref) && isNewerSemver(after.Ref, before.Ref) {
+		return fmt.Sprintf("ref %s is lower than %s: a dependency may not move back to an older release", after.Ref, before.Ref)
+	}
+	return ""
 }
 
 // sameSource reports whether two dependency sources name the same tree, but

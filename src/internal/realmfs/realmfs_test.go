@@ -100,3 +100,16 @@ func TestCheckEntry(t *testing.T) {
 		}
 	}
 }
+
+// A root that resolves to a network share or device path is refused, so a link
+// can't route around the check on local sources.
+func TestRootRefusesANonLocalTarget(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	orig := isLocal
+	t.Cleanup(func() { isLocal = orig })
+	isLocal = func(p string) bool { return p != real }
+	if _, err := Root(filepath.Join(dir, "link")); err == nil {
+		t.Error("Root through a link to a non-local path: no error")
+	}
+}

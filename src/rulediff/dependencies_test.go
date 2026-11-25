@@ -31,13 +31,19 @@ func TestCompareRealms_DependencySource(t *testing.T) {
 		rd031          bool
 	}{
 		{"github ref bump", "github://org/core@v1.0.0/rules", "github://org/core@v1.1.0/rules", false},
-		{"github owner case", "github://Org/core@v1/rules", "github://org/core@v2/rules", false},
+		{"github owner case", "github://Org/core@v1.0.0/rules", "github://org/core@v2.0.0/rules", false},
 		{"local, same path written differently", "../core", "../core/", false},
 		{"github owner", "github://org/core@v1/rules", "github://fork/core@v1/rules", true},
 		{"github repo", "github://org/core@v1/rules", "github://org/core2@v1/rules", true},
 		{"github path", "github://org/core@v1/rules", "github://org/core@v1/rules2", true},
 		{"local path", "../core", "../core2", true},
 		{"local to github", "../core", "github://org/core@v1/rules", true},
+		{"ref to a commit", "github://org/core@v1.0.0/rules", "github://org/core@" + "0123456789abcdef0123456789abcdef01234567/rules", true},
+		{"ref to a branch", "github://org/core@v1.0.0/rules", "github://org/core@main/rules", true},
+		{"ref to a short tag", "github://org/core@v1.0.0/rules", "github://org/core@v2/rules", true},
+		{"ref to latest", "github://org/core@v1.0.0/rules", "github://org/core@latest/rules", true},
+		{"ref downgraded", "github://org/core@v1.2.0/rules", "github://org/core@v1.1.9/rules", true},
+		{"from a commit to a tag", "github://org/core@0123456789abcdef0123456789abcdef01234567/rules", "github://org/core@v1.0.0/rules", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			base := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(tc.from))}
@@ -71,11 +77,11 @@ func TestCompareRealms_KindByRealmID(t *testing.T) {
 // The source of a dependency is kept by its realm ID across the tree: a
 // sub-realm overriding it, or a manifest at a new path, can't repoint it.
 func TestCompareRealms_DependencySourceAcrossTheTree(t *testing.T) {
-	core := entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@v1/rules"}
+	core := entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@v1.0.0/rules"}
 	fork := core
-	fork.Source = "github://fork/core@v1/rules"
+	fork.Source = "github://fork/core@v1.0.0/rules"
 	bump := core
-	bump.Source = "github://org/core@v2/rules"
+	bump.Source = "github://org/core@v2.0.0/rules"
 	parent := func(deps ...entity.RealmDep) string {
 		rf := map[string]any{"realm": map[string]string{"id": "a.b"}, "sub_realms": []string{"app"}, "dependencies": deps}
 		data, _ := json.Marshal(rf)
