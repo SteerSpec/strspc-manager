@@ -548,6 +548,7 @@ var (
 	commitRef    = regexp.MustCompile(`^([0-9a-fA-F]{7,40}|[0-9a-fA-F]{64})$`)
 	anyDigit     = regexp.MustCompile(`\d`)
 	firstVersion = regexp.MustCompile(`\d+(\.\d+){0,2}`)
+	semverLike   = regexp.MustCompile(`^[vV]?\d+(\.\d+){0,2}[-+]`)
 )
 
 // refBound returns the version the ref of the github source src names, when
@@ -559,6 +560,11 @@ func refBound(src string) (*semver.Version, bool) {
 	}
 	if v, err := semver.NewVersion(ref.Ref); err == nil {
 		return v, true
+	}
+	if semverLike.MatchString(ref.Ref) {
+		// Shaped as a version but invalid, such as v9.0.0-01: no part of it
+		// can be trusted as the bound, so it bounds every move.
+		return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
 	}
 	// Another shape, such as release-1.2, V9 or py3-v9.0.0: the highest
 	// version in it bounds the move; one too large to parse bounds every move.

@@ -154,6 +154,11 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 	res := &result.Result{}
 	out := &ResolveResult{}
 
+	if err := realmfs.CheckRoot(baseDir); err != nil {
+		res.Add(result.Diagnostic{Module: module, Code: "RR002", Severity: result.Error, Message: fmt.Sprintf("realm directory: %v", err), Path: baseDir})
+		return out, res
+	}
+
 	if err := ctx.Err(); err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,

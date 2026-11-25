@@ -203,6 +203,7 @@ func TestCompareRealms_DependencyRefVersionInAnotherShape(t *testing.T) {
 		"V9":          {"v9.1.0": false, "v8.0.0": true},
 		"1.x":         {"v1.0.0": false, "v0.9.0": true},
 		"py3-v9.0.0":  {"v9.0.0": false, "v4.0.0": true},
+		"v9.0.0-01":   {"v9.0.1": true},
 		"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {"v1.0.0": false},
 	} {
 		for to, rd031 := range cases {

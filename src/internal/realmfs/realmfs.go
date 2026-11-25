@@ -99,11 +99,18 @@ func CheckLocal(p string) error {
 	if followRootLinks {
 		return nil
 	}
-	// No link is followed, so cleaning ".." first resolves as the OS would.
-	p = filepath.Clean(p)
+	// Walk the path as written: each component is checked before a later ".."
+	// can take it back, as the OS follows a link before applying "..".
 	vol := filepath.VolumeName(p)
 	cur := vol + string(filepath.Separator)
 	for _, part := range strings.FieldsFunc(p[len(vol):], func(r rune) bool { return r == '/' || r == '\\' }) {
+		switch part {
+		case ".":
+			continue
+		case "..":
+			cur = filepath.Dir(cur)
+			continue
+		}
 		cur = filepath.Join(cur, part)
 		info, err := os.Lstat(cur)
 		if err != nil {
@@ -114,6 +121,17 @@ func CheckLocal(p string) error {
 		}
 	}
 	return nil
+}
+
+// CheckRoot reports an error when dir, made absolute, may not name a Realm
+// tree's root: a network share or device path, or, on Windows, a path holding
+// a link (CheckLocal). Entry points call it before reading anything below dir.
+func CheckRoot(dir string) error {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return err
+	}
+	return CheckLocal(abs)
 }
 
 // ReadFile reads the regular file at path. A link, a directory or a special
@@ -155,6 +173,9 @@ func ReadUnder(root, rel string) ([]byte, error) {
 func DirFrom(dir, rel string) (string, error) {
 	cur, err := filepath.Abs(dir) // So that ".." goes up as the OS goes.
 	if err != nil {
+		return "", err
+	}
+	if err := CheckLocal(cur); err != nil {
 		return "", err
 	}
 	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == filepath.Separator }) {

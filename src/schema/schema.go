@@ -129,6 +129,9 @@ func WithLocalDir(dir string) Option {
 // job.
 func ForRealm(dir string) []Option {
 	// A regular file only: a link is never read, and a FIFO would block.
+	if realmfs.CheckRoot(dir) != nil {
+		return nil
+	}
 	data, err := realmfs.ReadFile(filepath.Join(dir, "realm.json"))
 	if err != nil {
 		return nil

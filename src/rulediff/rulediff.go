@@ -244,6 +244,15 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
+	for _, dir := range []string{baseDir, headDir} {
+		if dir == "" {
+			continue
+		}
+		if err := realmfs.CheckRoot(dir); err != nil {
+			res.Add(result.Diagnostic{Module: module, Code: "RD000", Severity: result.Error, Message: "failed to read " + dir + ": " + err.Error(), Path: dir})
+			return res
+		}
+	}
 	// A link is never read. One in head is refused; one in base, deleted or
 	// replaced, fails closed in the CompareRealms run below.
 	baseFiles, _ := scanJSONFiles(baseDir)

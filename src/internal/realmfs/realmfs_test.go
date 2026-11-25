@@ -226,3 +226,25 @@ func TestDirFromRelativeStart(t *testing.T) {
 		t.Errorf(`DirFrom(".", "..") = %q, %v; want %q`, got, err, dir)
 	}
 }
+
+// Where root links aren't followed, a link that a later ".." takes back is
+// still refused: the path is walked as written.
+func TestCheckLocalLinkThenDotDot(t *testing.T) {
+	dir := tree(t)
+	orig := followRootLinks
+	t.Cleanup(func() { followRootLinks = orig })
+	followRootLinks = false
+	p := dir + string(filepath.Separator) + "link" + string(filepath.Separator) + ".." + string(filepath.Separator) + "real"
+	if err := CheckLocal(p); err == nil {
+		t.Errorf("CheckLocal(%q): no error", p)
+	}
+	if err := CheckRoot(filepath.Join(dir, "link")); err == nil {
+		t.Error("CheckRoot of a linked root: no error")
+	}
+	if err := CheckRoot(filepath.Join(dir, "real")); err != nil {
+		t.Errorf("CheckRoot of a real root: %v", err)
+	}
+	if _, err := DirFrom(filepath.Join(dir, "link"), "sub"); err == nil {
+		t.Error("DirFrom from a linked directory: no error")
+	}
+}

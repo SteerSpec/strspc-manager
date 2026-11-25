@@ -135,6 +135,11 @@ func New(opts ...Option) *RealmLinter {
 func (l *RealmLinter) Lint(ctx context.Context, dir string) *result.Result {
 	res := &result.Result{}
 
+	if err := realmfs.CheckRoot(dir); err != nil {
+		res.Add(result.Diagnostic{Module: module, Code: "RM001", Severity: result.Error, Message: fmt.Sprintf("realm directory: %v", err), Path: dir})
+		return res
+	}
+
 	// RM001: Read and parse realm.json.
 	realmPath := filepath.Join(dir, "realm.json")
 	data, err := realmfs.ReadFile(realmPath)
