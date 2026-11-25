@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.54.0](https://github.com/SteerSpec/strspc-manager/compare/v1.53.0...v1.54.0) (2026-11-25)
+
+
+### Features
+
+* **rulediff:** freeze clause and profiles, flag a change of Realm kind ([#375](https://github.com/SteerSpec/strspc-manager/issues/375)) ([2dc6cb7](https://github.com/SteerSpec/strspc-manager/commit/2dc6cb721c38766ec6a3233a070a39d6119afd7e))
+
+
+### Bug Fixes
+
+* refuse links, manifest look-alikes and dependency repointing in Realm trees ([#378](https://github.com/SteerSpec/strspc-manager/issues/378)) ([472c8ce](https://github.com/SteerSpec/strspc-manager/commit/472c8ce3f457704be0504891390b520bf1835b51))
+* **ruleresolve:** require a local source to be a local directory ([#377](https://github.com/SteerSpec/strspc-manager/issues/377)) ([9fa4792](https://github.com/SteerSpec/strspc-manager/commit/9fa47922b0485b8d876da1aba048b48aa5b6c4d2))
+
 ## [1.53.0](https://github.com/SteerSpec/strspc-manager/compare/v1.52.1...v1.53.0) (2026-11-22)
 
 
