@@ -404,7 +404,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Deleted content",
-		Summary:  "A rule, sub-entity or entity file present in the base version was deleted.",
+		Summary:  "A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005.",
 		Fix:      "Restore what was deleted. To end a rule, abandon it from Draft with `strspc rule abandon` or take it to `T` with `strspc rule retire`.",
 	},
 	{

@@ -79,3 +79,29 @@ func TestCompareRealmsReadsThroughRealmKey(t *testing.T) {
 		t.Errorf("base with the key: false RD030: %+v", res.Diagnostics)
 	}
 }
+
+// A stray file with a realm key and no entity content holds no rules, so the
+// change that removes it is not a rule deletion; a mixed file still is.
+func TestCompareDirAllowsDeletingBareManifest(t *testing.T) {
+	for _, tc := range []struct {
+		name, data string
+		rd005      bool
+	}{
+		{"bare manifest", `{"realm":{"id":"x"}}`, false},
+		{"mixed file", mixedEntity, true},
+		{"entity file", plainEntity, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base, head := t.TempDir(), t.TempDir()
+			if err := os.WriteFile(filepath.Join(base, "STRAY.json"), []byte(tc.data), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if got := hasCode(rulediff.CompareDir(base, head), "RD005"); got != tc.rd005 {
+				t.Errorf("RD005 = %v, want %v", got, tc.rd005)
+			}
+		})
+	}
+	if !rulediff.DeletionAllowed([]byte(`{"realm":{}}`)) || rulediff.DeletionAllowed([]byte(plainEntity)) {
+		t.Error("DeletionAllowed disagrees with CompareDir")
+	}
+}

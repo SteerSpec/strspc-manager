@@ -58,7 +58,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Deleted content",
-    "summary": "A rule, sub-entity or entity file present in the base version was deleted.",
+    "summary": "A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005.",
     "fix": "Restore what was deleted. To end a rule, abandon it from Draft with `strspc rule abandon` or take it to `T` with `strspc rule retire`.",
     "retired": false
   },

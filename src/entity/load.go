@@ -88,11 +88,17 @@ func hasEntityContent(data []byte) bool {
 	return false
 }
 
+// HoldsNoEntity reports whether data has a top-level "realm" key and no entity
+// content: a manifest, wherever it is, which holds no rules.
+func HoldsNoEntity(data []byte) bool {
+	return IsRealmJSON(data) && !hasEntityContent(data)
+}
+
 // isPublishedIndex reports whether data has the shape of the index.json
 // published with a Realm: a "realm" key, "rules" that each name a file, and no
 // entity content.
 func isPublishedIndex(data []byte) bool {
-	if !IsRealmJSON(data) || hasEntityContent(data) {
+	if !HoldsNoEntity(data) {
 		return false
 	}
 	var index struct {

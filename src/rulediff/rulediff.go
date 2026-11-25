@@ -289,8 +289,11 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		res.Add(d)
 	}
 
-	for name := range baseFiles {
+	for name, basePath := range baseFiles {
 		if _, ok := headFiles[name]; !ok {
+			if data, err := os.ReadFile(basePath); err == nil && DeletionAllowed(data) {
+				continue
+			}
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD005",
@@ -301,6 +304,13 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 	return res
+}
+
+// DeletionAllowed reports whether deleting an entity file with the base content
+// data is not a rule deletion (RD005): data has a top-level "realm" key and no
+// entity content, so it holds no rules.
+func DeletionAllowed(data []byte) bool {
+	return entity.HoldsNoEntity(data)
 }
 
 // isAbsent reports whether nothing is at path. A dangling link is something, at

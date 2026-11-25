@@ -572,7 +572,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD002 | Error | The body of a rule that has left Draft was edited. |
 | RD003 | Error | A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012). |
 | RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
-| RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. |
+| RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005. |
 | RD006 | Warning | A superseding rule reached `I` but the superseded rule is missing or in neither state `R` nor `T` (RULST-012 lets a superseded Published rule go to `T`). |
 | RD007 | Error | `rule_set.version` is not valid semver or not strictly higher than the base version. |
 | RD008 | Error | `rule_set.hash` cannot be computed or differs from the Blake3 hash of the head file. |
