@@ -589,7 +589,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Realm kind changed",
-		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it. A Standard Realm's rules aren't evaluated (STDRLM-011).",
+		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011).",
 		Fix:      "Restore the manifests. A Realm keeps its kind: create a Standard Realm as a new Realm, with new files.",
 	},
 	{
@@ -607,6 +607,14 @@ var codeTable = []CodeInfo{
 		Title:    "Supersedes a rule that was not live",
 		Summary:  "A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017).",
 		Fix:      "Supersede the live rule of the clause instead, or abandon the fix.",
+	},
+	{
+		Code:     "RD031",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Dependency source changed",
+		Summary:  "A dependency's `source` changed other than by the ref of a `github://` source: another repository, path or local directory would fetch another tree under the same realm ID.",
+		Fix:      "Restore the source and bump only its ref, or add a dependency with a new realm ID.",
 	},
 	{
 		Code:     "RM001",

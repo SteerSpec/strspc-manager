@@ -595,9 +595,10 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
 | RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
 | RD027 | Error | `profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
-| RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it. A Standard Realm's rules aren't evaluated (STDRLM-011). |
+| RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011). |
 | RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
 | RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
+| RD031 | Error | A dependency's `source` changed other than by the ref of a `github://` source: another repository, path or local directory would fetch another tree under the same realm ID. |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `Compare` and `CompareNew` read no manifest.
 

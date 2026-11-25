@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
+	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
@@ -52,6 +54,8 @@ func compareRealms(baseDir, headDir string, opts ...Option) *result.Result {
 		baseKinds:    map[string]*realmkind.Finder{},
 		headKinds:    map[string]*realmkind.Finder{},
 		contributors: cfg.Contributors,
+		baseIDs:      map[string]map[string]string{},
+		headIDs:      map[string]map[string]string{},
 	}
 	c.run(baseDir, headDir)
 	if cfg.Strict {
@@ -69,6 +73,8 @@ type realmComparison struct {
 	// contributors is the Realm's list (WithContributors), for RD023 on new
 	// Realm Notes. A sub-realm uses its parent's (CTRB-006).
 	contributors []entity.Contributor
+	// kinds records, by realm ID, the kinds and manifests seen in each tree.
+	baseIDs, headIDs map[string]map[string]string
 }
 
 func (c *realmComparison) run(baseDir, headDir string) {
@@ -99,6 +105,7 @@ func (c *realmComparison) run(baseDir, headDir string) {
 	for _, rel := range slices.Sorted(maps.Keys(manifests)) {
 		c.compareManifest(rel)
 	}
+	c.compareKindsByID()
 	for _, rel := range headFiles {
 		c.compareFile(rel)
 	}
@@ -211,6 +218,8 @@ func (c *realmComparison) compareManifest(rel string) {
 	}
 	base, baseData, baseOK := parse(c.base)
 	head, headData, headOK := parse(c.head)
+	record(c.baseIDs, base, rel)
+	record(c.headIDs, head, rel)
 	if !baseOK || !headOK || bytes.Equal(baseData, headData) {
 		return
 	}
@@ -232,6 +241,92 @@ func (c *realmComparison) compareManifest(rel string) {
 		})
 	}
 	checkRealmNotes(baseNotes, headNotes, c.contributors, c.res, rel)
+	if base != nil && head != nil {
+		checkDependencySources(base.Dependencies, head.Dependencies, c.res, rel)
+	}
+}
+
+// record notes the kind the Realm rf declares evaluates as, at rel, in ids.
+func record(ids map[string]map[string]string, rf *entity.RealmFile, rel string) {
+	if rf == nil || rf.Realm.ID == "" {
+		return
+	}
+	if ids[rf.Realm.ID] == nil {
+		ids[rf.Realm.ID] = map[string]string{}
+	}
+	kind := "" // Evaluated as code (STDRLM-011): any kind but standard.
+	if rf.Realm.Kind == entity.KindStandard {
+		kind = entity.KindStandard
+	}
+	if _, ok := ids[rf.Realm.ID][kind]; !ok {
+		ids[rf.Realm.ID][kind] = rel
+	}
+}
+
+// compareKindsByID runs RD028 by realm ID: a Realm keeps its kind wherever its
+// manifest is, so a copy with its ID and another kind, at another path, is a
+// change of kind too.
+func (c *realmComparison) compareKindsByID() {
+	for _, id := range slices.Sorted(maps.Keys(c.headIDs)) {
+		was, ok := c.baseIDs[id]
+		if !ok {
+			continue
+		}
+		for _, kind := range slices.Sorted(maps.Keys(c.headIDs[id])) {
+			if _, same := was[kind]; same {
+				continue
+			}
+			for _, old := range slices.Sorted(maps.Keys(was)) {
+				if was[old] == c.headIDs[id][kind] {
+					continue // The same manifest: its field change is RD028 already.
+				}
+				c.res.Add(result.Diagnostic{
+					Module:   module,
+					Code:     "RD028",
+					Severity: result.Error,
+					Message:  fmt.Sprintf("Realm %s is %s at %s in base and %s at %s: a Realm keeps its kind wherever its manifest is (STDRLM-011); create a new Realm instead", id, kindName(old), was[old], kindName(kind), c.headIDs[id][kind]),
+					Path:     c.headIDs[id][kind],
+				})
+			}
+		}
+	}
+}
+
+// checkDependencySources runs RD031: a dependency keeps its realm ID, so its
+// source may change only its ref. Another repository, path or local
+// directory would fetch another tree under the same ID.
+func checkDependencySources(base, head []entity.RealmDep, res *result.Result, path string) {
+	before := make(map[string]string, len(base))
+	for _, d := range base {
+		before[d.RealmID] = d.Source
+	}
+	for _, d := range head {
+		old, ok := before[d.RealmID]
+		if !ok || sameSource(old, d.Source) {
+			continue
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD031",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %s: source changed from %q to %q; only the ref of a github source may change, so add a dependency with a new realm ID instead", d.RealmID, old, d.Source),
+			Path:     path,
+		})
+	}
+}
+
+// sameSource reports whether two dependency sources name the same tree, but
+// for the ref of a github source.
+func sameSource(a, b string) bool {
+	ra, errA := remote.ParseGitHub(a)
+	rb, errB := remote.ParseGitHub(b)
+	switch {
+	case errA == nil && errB == nil:
+		return strings.EqualFold(ra.Owner, rb.Owner) && strings.EqualFold(ra.Repo, rb.Repo) && ra.Path == rb.Path
+	case errA == nil || errB == nil || strings.Contains(a, "://") || strings.Contains(b, "://"):
+		return false
+	}
+	return path.Clean(filepath.ToSlash(a)) == path.Clean(filepath.ToSlash(b))
 }
 
 // compareFile runs the checks that need the kind of the Realm holding a file.

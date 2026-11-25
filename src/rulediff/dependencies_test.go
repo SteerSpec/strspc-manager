@@ -1,0 +1,69 @@
+package rulediff
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/SteerSpec/strspc-manager/src/entity"
+)
+
+func manifestWithDeps(t *testing.T, id, kind string, deps ...entity.RealmDep) string {
+	t.Helper()
+	realm := map[string]string{"id": id}
+	if kind != "" {
+		realm["kind"] = kind
+	}
+	data, err := json.Marshal(map[string]any{"realm": realm, "dependencies": deps})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+// Finding 6: a dependency keeps its realm ID, so the source it is fetched
+// from may change only its ref.
+func TestCompareRealms_DependencySource(t *testing.T) {
+	dep := func(source string) entity.RealmDep {
+		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: source}
+	}
+	for _, tc := range []struct {
+		name, from, to string
+		rd031          bool
+	}{
+		{"github ref bump", "github://org/core@v1.0.0/rules", "github://org/core@v1.1.0/rules", false},
+		{"github owner case", "github://Org/core@v1/rules", "github://org/core@v2/rules", false},
+		{"local, same path written differently", "../core", "../core/", false},
+		{"github owner", "github://org/core@v1/rules", "github://fork/core@v1/rules", true},
+		{"github repo", "github://org/core@v1/rules", "github://org/core2@v1/rules", true},
+		{"github path", "github://org/core@v1/rules", "github://org/core@v1/rules2", true},
+		{"local path", "../core", "../core2", true},
+		{"local to github", "../core", "github://org/core@v1/rules", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(tc.from))}
+			head := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(tc.to))}
+			if got := hasDiag(compareTrees(t, base, head), "RD031"); got != tc.rd031 {
+				t.Errorf("RD031 = %v, want %v", got, tc.rd031)
+			}
+		})
+	}
+	t.Run("dependency added or removed", func(t *testing.T) {
+		none := tree{"realm.json": manifestWithDeps(t, "a.b", "")}
+		one := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep("../core"))}
+		if hasDiag(compareTrees(t, none, one), "RD031") || hasDiag(compareTrees(t, one, none), "RD031") {
+			t.Error("RD031 for an added or removed dependency")
+		}
+	})
+}
+
+// A Realm keeps its kind wherever its manifest is: a copy of a code Realm
+// with its ID, marked standard elsewhere in the tree, is RD028.
+func TestCompareRealms_KindByRealmID(t *testing.T) {
+	base := tree{"core/realm.json": manifestWithDeps(t, "com.base", "")}
+	head := base.with(tree{"core2/realm.json": manifestWithDeps(t, "com.base", "standard")})
+	assertHasCode(t, compareTrees(t, base, head), "RD028")
+	same := base.with(tree{"core2/realm.json": manifestWithDeps(t, "com.base", "")})
+	if hasDiag(compareTrees(t, base, same), "RD028") {
+		t.Error("RD028 for a copy of the same kind")
+	}
+}
