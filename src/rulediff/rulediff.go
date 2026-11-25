@@ -261,6 +261,9 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	// compared like any entity file: deleting it is RD005.
 	if path := filepath.Join(baseDir, "index.json"); baseDir != "" {
 		if data, err := realmfs.ReadFile(path); err == nil && !entity.IsPublishedIndex(data) {
+			if baseFiles == nil { // A directory that can't be listed but can be read.
+				baseFiles = map[string]string{}
+			}
 			baseFiles["index.json"] = path
 		}
 	}
