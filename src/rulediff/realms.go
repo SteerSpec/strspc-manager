@@ -306,15 +306,18 @@ func (c *realmComparison) compareManifest(rel string) {
 		})
 	}
 	// The Realm base declares at this path decides, as head's ID is the
-	// change's to set; head's only for a manifest that is new.
-	id := ""
+	// change's to set. When the change sets another ID, the notes belong to
+	// that Realm too, so the author must be listed for both.
+	var list []entity.Contributor
 	switch {
+	case base != nil && head != nil && base.Realm.ID != head.Realm.ID:
+		list = bothLists(c.realmContributors(base.Realm.ID), c.realmContributors(head.Realm.ID))
 	case base != nil:
-		id = base.Realm.ID
+		list = c.realmContributors(base.Realm.ID)
 	case head != nil:
-		id = head.Realm.ID
+		list = c.realmContributors(head.Realm.ID)
 	}
-	checkRealmNotes(baseNotes, headNotes, c.realmContributors(id), c.res, rel)
+	checkRealmNotes(baseNotes, headNotes, list, c.res, rel)
 }
 
 // realmContributors returns the contributors new Realm Notes of the Realm id
@@ -337,6 +340,28 @@ func (c *realmComparison) realmContributors(id string) []entity.Contributor {
 		break
 	}
 	return c.contributors
+}
+
+// bothLists returns the contributors in both a and b, an empty list meaning
+// no check. When neither is empty and they share no one, it returns a list
+// no added_by can match, so that every new note fails.
+func bothLists(a, b []entity.Contributor) []entity.Contributor {
+	switch {
+	case len(a) == 0:
+		return b
+	case len(b) == 0:
+		return a
+	}
+	var out []entity.Contributor
+	for _, x := range a {
+		if entity.FindContributor(b, x.ID) != nil {
+			out = append(out, x)
+		}
+	}
+	if len(out) == 0 {
+		out = []entity.Contributor{{ID: "none:"}}
+	}
+	return out
 }
 
 // manifestIn parses the manifest at rel below root, or returns nil.
