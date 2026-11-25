@@ -540,13 +540,14 @@ func refChange(was []string, now string) string {
 }
 
 // commitRef matches a ref taken for a commit, which names no version: hex
-// digits only, 7 to 40 of them. Any other ref with a digit may name a version
+// digits only, 7 to 40 of them, or 64 for SHA-256. Any other ref with a digit may name a version
 // (v1, 2.0.0, V9, release-9, rules-v9.0.0), so it bounds a move, failing
 // closed when it doesn't parse as one; a ref with no digit, such as main or
 // latest, names none.
 var (
-	commitRef = regexp.MustCompile(`^[0-9a-fA-F]{7,40}$`)
-	anyDigit  = regexp.MustCompile(`\d`)
+	commitRef    = regexp.MustCompile(`^([0-9a-fA-F]{7,40}|[0-9a-fA-F]{64})$`)
+	anyDigit     = regexp.MustCompile(`\d`)
+	firstVersion = regexp.MustCompile(`\d+(\.\d+){0,2}`)
 )
 
 // refBound returns the version the ref of the github source src names, when
@@ -556,13 +557,15 @@ func refBound(src string) (*semver.Version, bool) {
 	if err != nil || commitRef.MatchString(ref.Ref) || !anyDigit.MatchString(ref.Ref) {
 		return nil, false
 	}
-	v, err := semver.NewVersion(ref.Ref)
-	if err != nil {
-		// Looks like a version but doesn't parse as one: bound every move, so
-		// that it fails closed.
-		return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
+	if v, err := semver.NewVersion(ref.Ref); err == nil {
+		return v, true
 	}
-	return v, true
+	// Another shape, such as release-1.2, V9 or 1.x: the first version in it
+	// bounds the move; one too large to parse bounds every move.
+	if v, err := semver.NewVersion(firstVersion.FindString(ref.Ref)); err == nil {
+		return v, true
+	}
+	return semver.New(^uint64(0)>>1, 0, 0, "", ""), true
 }
 
 // sameSource reports whether two dependency sources name the same tree, but

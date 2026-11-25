@@ -191,3 +191,25 @@ func TestCompareRealms_DependencyRefOtherShapes(t *testing.T) {
 		}
 	}
 }
+
+// A ref holding a version in another shape bounds a move by that version, so
+// moving up from it passes.
+func TestCompareRealms_DependencyRefVersionInAnotherShape(t *testing.T) {
+	dep := func(ref string) entity.RealmDep {
+		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@" + ref + "/rules"}
+	}
+	for from, cases := range map[string]map[string]bool{
+		"release-1.2": {"v1.3.0": false, "v1.1.0": true},
+		"V9":          {"v9.1.0": false, "v8.0.0": true},
+		"1.x":         {"v1.0.0": false, "v0.9.0": true},
+		"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {"v1.0.0": false},
+	} {
+		for to, rd031 := range cases {
+			base := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(from))}
+			head := tree{"realm.json": manifestWithDeps(t, "a.b", "", dep(to))}
+			if got := hasDiag(compareTrees(t, base, head), "RD031"); got != rd031 {
+				t.Errorf("%s -> %s: RD031 = %v, want %v", from, to, got, rd031)
+			}
+		}
+	}
+}
