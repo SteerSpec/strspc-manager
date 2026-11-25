@@ -13,7 +13,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Entity file unavailable for comparison",
-    "summary": "The base or head entity file is nil, cannot be read, or cannot be parsed.",
+    "summary": "The base or head entity file is nil, cannot be read, or cannot be parsed, or a Realm comparison cannot read a directory or manifest it compares.",
     "fix": "Check that the file exists and parses at both versions, and that both git refs are available.",
     "retired": false
   },
@@ -58,7 +58,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Deleted content",
-    "summary": "A rule, sub-entity or entity file present in the base version was deleted.",
+    "summary": "A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005.",
     "fix": "Restore what was deleted. To end a rule, abandon it from Draft with `strspc rule abandon` or take it to `T` with `strspc rule retire`.",
     "retired": false
   },
@@ -202,7 +202,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Revision moved without a body change",
-    "summary": "A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018).",
+    "summary": "A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one revision (NTE-018).",
     "fix": "Restore the revision. It counts edits to the rule, and a note never moves it.",
     "retired": false
   },
@@ -220,7 +220,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "added_by not a listed contributor",
-    "summary": "The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032.",
+    "summary": "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030. For Realm Notes, `CompareRealms` takes the lists from base only, by realm ID: the ID base declares at the manifest's path, or head's for a new manifest; a sub-realm is one its parent lists in base, or a Realm base doesn't hold under a parent it does; a Realm that declares none, or whose base manifest doesn't parse, uses the `WithContributors` list; when the change sets another ID, the author must be listed for both Realms.",
     "fix": "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
     "retired": false
   },
@@ -240,6 +240,60 @@
     "title": "Structured note changed after Draft",
     "summary": "A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041).",
     "fix": "Restore the note. To change the structured form, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
+    "code": "RD026",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Clause changed on or after leaving Draft",
+    "summary": "`clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `clause`. On a Draft, change it and the state in separate changes. After Draft, add a new rule; in a Standard Realm a fix keeps the clause of the rule it supersedes (STDRLM-012).",
+    "retired": false
+  },
+  {
+    "code": "RD027",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Profiles changed on or after leaving Draft",
+    "summary": "`profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007).",
+    "fix": "Restore `profiles`. On a Draft, change them and the state in separate changes. After Draft, supersede the rule with a new one.",
+    "retired": false
+  },
+  {
+    "code": "RD028",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Realm kind changed",
+    "summary": "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it within the compared tree, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011).",
+    "fix": "Restore the manifests. A Realm keeps its kind: create a Standard Realm as a new Realm, with new files.",
+    "retired": false
+  },
+  {
+    "code": "RD029",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Realm Note retyped or retargeted",
+    "summary": "A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035).",
+    "fix": "Restore the note. Withdraw an exclusion by changing only its type to `reference`, with a revision bump; to exclude another clause, add a new exclusion.",
+    "retired": false
+  },
+  {
+    "code": "RD030",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Supersedes a rule that was not live",
+    "summary": "A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017).",
+    "fix": "Supersede the live rule of the clause instead, or abandon the fix.",
+    "retired": false
+  },
+  {
+    "code": "RD031",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Dependency source changed",
+    "summary": "A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged.",
+    "fix": "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
     "retired": false
   },
   {
@@ -374,7 +428,7 @@
     "severity": "Error",
     "title": "Invalid entity JSON",
     "summary": "The file is not valid JSON or does not parse into the entity structure.",
-    "fix": "Fix the JSON syntax, or the field whose type does not match the entity structure.",
+    "fix": "Fix the JSON syntax, or the field whose type does not match the entity structure. An entity file has no top-level `realm` key and is not named `index.json`.",
     "retired": false
   },
   {
@@ -796,8 +850,8 @@
     "module": "realm-lint",
     "severity": "Info / Error",
     "title": "Entity files not linted",
-    "summary": "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails.",
-    "fix": "Check that the reported path exists and is readable. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
+    "summary": "Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name.",
+    "fix": "Check that the reported path exists and is readable, and that only a published index is named `index.json`. The Info form means the caller set no rule linter and did not say it lints the entity files itself, so they were skipped; a caller that lints them itself is not sent it.",
     "retired": false
   },
   {
@@ -1017,6 +1071,15 @@
     "retired": false
   },
   {
+    "code": "RM030",
+    "module": "realm-lint",
+    "severity": "Error",
+    "title": "Realm Note attribution",
+    "summary": "The `added_by` of a Realm Note is not a contributor identifier `<idp>:<subject>` (CTRB-003).",
+    "fix": "Write the contributor identifier, such as `github:<login>`.",
+    "retired": false
+  },
+  {
     "code": "RR000",
     "module": "realm-resolve",
     "severity": "Error",
@@ -1030,7 +1093,7 @@
     "module": "realm-resolve",
     "severity": "Error",
     "title": "Invalid dependency source",
-    "summary": "A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin.",
+    "summary": "A dependency `source` is empty, absolute, holds a backslash in a local path (a separator on Windows only, so the directory named would depend on the OS), or escapes the repository root of the realm's origin.",
     "fix": "Use a relative path that stays inside the repository, or a `github://<owner>/<repo>@<ref>[/<path>]` reference.",
     "retired": false
   },
@@ -1274,7 +1337,7 @@
     "severity": "Error",
     "title": "Invalid entity file in a source",
     "summary": "An entity file cannot be parsed, or its `entity.id` is empty.",
-    "fix": "Fix the JSON in the file, and make sure `entity.id` is set.",
+    "fix": "Fix the JSON in the file, and make sure `entity.id` is set. An entity file has no top-level `realm` key and is not named `index.json`.",
     "retired": false
   },
   {

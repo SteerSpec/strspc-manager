@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,14 +16,14 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022, RD024 and RD025 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022 and RD024–RD027 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
 	headMap := buildRuleMap(head.Rules)
 
 	// RD005: rule removal — rules must never be deleted.
-	for id := range baseMap {
+	for _, id := range slices.Sorted(maps.Keys(baseMap)) {
 		if _, ok := headMap[id]; !ok {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -36,7 +37,8 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 
 	// Single pass: RD001-RD004, RD006, RD010-RD011 per rule.
 	var newRuleNums []int
-	for id, h := range headMap {
+	for _, id := range slices.Sorted(maps.Keys(headMap)) {
+		h := headMap[id]
 		if b, exists := baseMap[id]; exists {
 			checkExistingRule(b, h, headMap, res, path+"/"+id)
 		} else {
@@ -118,9 +120,41 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		})
 	}
 
+	// RD026 and RD027: clause and profiles are immutable once a rule has left
+	// Draft (RUL-007), and don't change as it leaves, as for the body (RD001).
+	// That holds whatever its Realm's kind: a clause added later is what would
+	// let a relabel pass as a transcription.
+	frozen := b.State != entity.StateDraft || h.State != entity.StateDraft
+	if frozen && h.Clause != b.Clause {
+		msg := fmt.Sprintf("rule clause is immutable in state %q: changed from %q to %q; supersede the rule to change it", b.State, b.Clause, h.Clause)
+		if b.State == entity.StateDraft {
+			msg = fmt.Sprintf("rule clause changed from %q to %q with the move to state %q: edit it and change the state in separate changes", b.Clause, h.Clause, h.State)
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD026",
+			Severity: result.Error,
+			Message:  msg,
+			Path:     path,
+		})
+	}
+	if frozen && !slices.Equal(b.Profiles, h.Profiles) {
+		msg := fmt.Sprintf("rule profiles are immutable in state %q: changed from %q to %q; supersede the rule to change them", b.State, b.Profiles, h.Profiles)
+		if b.State == entity.StateDraft {
+			msg = fmt.Sprintf("rule profiles changed from %q to %q with the move to state %q: edit them and change the state in separate changes", b.Profiles, h.Profiles, h.State)
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD027",
+			Severity: result.Error,
+			Message:  msg,
+			Path:     path,
+		})
+	}
+
 	// RD021: a rule's revision counts edits to the rule, so nothing else may
 	// move it, a mapping to a standard above all (NTE-018).
-	if h.Revision != b.Revision && h.Body == b.Body && !isDraftReferenceEdit(b, h) {
+	if h.Revision != b.Revision && h.Body == b.Body && !isDraftFieldEdit(b, h) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RD021",
@@ -184,10 +218,12 @@ func validateTransition(b, h entity.Rule, headMap map[string]entity.Rule) error 
 	return entity.ValidateTransition(b.State, h.State)
 }
 
-// isDraftReferenceEdit reports whether h is one edit of the Draft rule b's
-// `overrides` or `supersedes`, the only other edits that move a revision.
-func isDraftReferenceEdit(b, h entity.Rule) bool {
-	changed := !sameRef(b.Overrides, h.Overrides) || !sameRef(b.Supersedes, h.Supersedes)
+// isDraftFieldEdit reports whether h is one edit of the Draft rule b's
+// `overrides`, `supersedes`, `clause` or `profiles`, the only edits besides the
+// body that move a revision.
+func isDraftFieldEdit(b, h entity.Rule) bool {
+	changed := !sameRef(b.Overrides, h.Overrides) || !sameRef(b.Supersedes, h.Supersedes) ||
+		h.Clause != b.Clause || !slices.Equal(b.Profiles, h.Profiles)
 	return b.State == entity.StateDraft && h.State == entity.StateDraft && changed && h.Revision == b.Revision+1
 }
 

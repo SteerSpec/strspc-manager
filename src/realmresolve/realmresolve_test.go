@@ -2,6 +2,7 @@ package realmresolve
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -475,5 +476,69 @@ func TestResolve_SubRealm_OwnDepVsInheritedDepIsRR005(t *testing.T) {
 	}
 	if count != 1 {
 		t.Errorf("expected exactly 1 RR005, got %d: %v", count, res.Diagnostics)
+	}
+}
+
+// A sub-realm reached through a link is refused: links are not followed in a
+// Realm tree.
+func TestResolve_SubRealm_LinkedDirIsRefused(t *testing.T) {
+	src := absTestdata(t, "parent-with-sub")
+	base := t.TempDir()
+	if err := os.Symlink(filepath.Join(src, "sync"), filepath.Join(base, "sync")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rf := loadTestRealm(t, "parent-with-sub")
+	_, res := New().Resolve(context.Background(), rf, base)
+	if !hasDiagCode(res, "RR007") {
+		t.Errorf("expected RR007 for a linked sub-realm, got: %v", res.Diagnostics)
+	}
+}
+
+// A local dependency reached through a link is refused: the link could fetch
+// another tree under the same ID, unseen by rule-diff.
+func TestResolve_LocalDependencyThroughALinkIsRefused(t *testing.T) {
+	src := absTestdata(t, "parent-with-sub")
+	base := t.TempDir()
+	if err := os.Symlink(src, filepath.Join(base, "deps")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rf := &entity.RealmFile{
+		Realm:        entity.RealmMeta{ID: "dev.steerspec.consumer", Title: "C", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{{RealmID: "dev.steerspec.test", Version: "0.1.0", Source: "deps"}},
+	}
+	_, res := New().Resolve(context.Background(), rf, base)
+	if !hasDiagCode(res, "RR002") {
+		t.Errorf("expected RR002 for a dependency through a link, got: %v", res.Diagnostics)
+	}
+}
+
+// A source that names a missing directory before ".." can't fall back to the
+// lexical path and reach a link.
+func TestResolve_LocalDependencyMissingThenUpThenLink(t *testing.T) {
+	src := absTestdata(t, "parent-with-sub")
+	base := t.TempDir()
+	if err := os.Symlink(src, filepath.Join(base, "deps")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	rf := &entity.RealmFile{
+		Realm:        entity.RealmMeta{ID: "dev.steerspec.consumer", Title: "C", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{{RealmID: "dev.steerspec.test", Version: "0.1.0", Source: "nope/../deps"}},
+	}
+	got, res := New().Resolve(context.Background(), rf, base)
+	if !hasDiagCode(res, "RR002") || (got != nil && len(got.Dependencies) != 0) {
+		t.Errorf("expected RR002 and nothing resolved, got %v", res.Diagnostics)
+	}
+}
+
+// A backslash in a local source is RR001: it names another directory on
+// Windows than elsewhere, so checks and resolution could disagree.
+func TestResolve_LocalDependencyWithBackslashIsRR001(t *testing.T) {
+	rf := &entity.RealmFile{
+		Realm:        entity.RealmMeta{ID: "dev.steerspec.consumer", Title: "C", Version: "0.1.0"},
+		Dependencies: []entity.RealmDep{{RealmID: "dev.steerspec.test", Version: "0.1.0", Source: `../q/x\../../y`}},
+	}
+	_, res := New().Resolve(context.Background(), rf, t.TempDir())
+	if !hasDiagCode(res, "RR001") {
+		t.Errorf("expected RR001, got: %v", res.Diagnostics)
 	}
 }

@@ -85,6 +85,11 @@ RD022 active standard-note-retyped
 RD023 active added-by-not-listed-contributor
 RD024 active supersedes-changed
 RD025 active structured-note-changed
+RD026 active clause-changed
+RD027 active profiles-changed
+RD028 active realm-kind-changed
+RD029 active realm-note-retyped
+RD030 active supersedes-non-live-rule
 RM001 active realm-manifest-unreadable
 RM002 active realm-schema-validation
 RM003 active schema-dir-missing
@@ -161,3 +166,5 @@ RF004 active citation-superseded
 RF005 active citation-superseder-published
 RF006 active citation-draft
 RF007 active copied-rule-body
+RM030 active realm-note-added-by-format
+RD031 active dependency-source-changed

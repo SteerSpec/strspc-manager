@@ -230,7 +230,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `notes` | array | Realm Notes (RLMMNFST-012, NTE-029), each `{ id, type, ref, content, added_by, added_at, revision }`: `id` is `REALM/NNN` (NTE-030), `type` is `exclusion`, `rationale`, `clarification` or `reference` (NTE-031), and `ref`, the `<id>:<clause>` an exclusion excludes, appears only on an exclusion or on the `reference` it becomes when withdrawn (NTE-034, NTE-035). Omitted when empty. Core 1.21.0 or later. |
 | `hash` | string | Blake3 hash of the manifest without its `hash` field (RLMMNFST-013), recomputed on every change (RLMMNFST-014). Core 1.21.0 or later. |
 
-The core 1.21.0 fields are modeled and kept on every rewrite. The checks their Draft rules describe that need only the Realm itself are in `rule-lint` (RL033 to RL041) and `realm-lint` (RM021 to RM025): Standard Realm fields and rules, Realm Note identifiers and refs, and the manifest hash. The checks that read the Standard Realm a reference links through `realm` are in `realm-lint` (RM026 to RM029, STDREF-017, STDREF-018, STDREF-021, STDREF-027), and `entity.LoadStandardRealm` reads its edition, profiles and clause list. Coverage measures against a linked clause list (STDREF-020, STDREF-022 to STDREF-028, §2 Coverage). `rule-eval` never evaluates a Standard Realm's rules against code (STDRLM-011, §8.3). Still to come: the checks that compare a change with the history (`rule-diff` on clauses, profiles and Realm Notes); and promote in a Standard Realm (`entityops`: STDRLM-010, STDRLM-013). The CLI does not yet recompute the hash on every write (RLMMNFST-014), so a missing `hash` is not reported.
+The core 1.21.0 fields are modeled and kept on every rewrite. The checks their Draft rules describe that need only the Realm itself are in `rule-lint` (RL033 to RL041) and `realm-lint` (RM021 to RM025): Standard Realm fields and rules, Realm Note identifiers and refs, and the manifest hash. The checks that read the Standard Realm a reference links through `realm` are in `realm-lint` (RM026 to RM029, STDREF-017, STDREF-018, STDREF-021, STDREF-027), and `entity.LoadStandardRealm` reads its edition, profiles and clause list. Coverage measures against a linked clause list (STDREF-020, STDREF-022 to STDREF-028, §2 Coverage). `rule-eval` never evaluates a Standard Realm's rules against code (STDRLM-011, §8.3). The checks that compare a change with the history are in `rule-diff` (RD026 to RD030, §7.2). Still to come: promote in a Standard Realm (`entityops`: STDRLM-010, STDRLM-013). The CLI does not yet recompute the hash on every write (RLMMNFST-014), so a missing `hash` is not reported.
 
 `entity.ComputeRealmHash` gives the manifest hash, and `realm-lint` checks a declared one with it (RM025). `entityops.AddRealmNote` and `entityops.UpdateRealmNote` change Realm Notes. They leave the Realm's version and hash to the caller, which recomputes the hash when it writes the manifest.
 - **Add:** a note gets the next `REALM/NNN` (NTE-030) at revision 0. An exclusion has a `ref` that passes `entity.CheckExclusionRef`, the same check as RM023 (NTE-034), and no other note may be given a `ref`. `added_by` must name one of the contributors the caller passes, when it passes any (CTRB-005). Those are the ones `entity.RealmContributors` returns, which for a sub-realm are its parent's (CTRB-006).
@@ -289,7 +289,7 @@ The Configuration lists its rule sources (SPCFG-004), each one in the `rules` ar
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `source` | string | Where rules are fetched from (remote URL or local path). |
+| `source` | string | Where rules are fetched from (remote URL or local path). A local path must name a local directory: a Windows network share or device path (`\\host\share`, `\\?\…`, `\\.\…`) is refused when the resolver is built. |
 | `scope` | string | Applicability: `global` (all files) or `local` (source's own directory tree). |
 
 Source formats include remote references (`github://SteerSpec/strspc-rules@v1/rules/core`) and local Realm directories (`./rules/`).
@@ -403,7 +403,9 @@ rules/core/
     └── realm.v1.schema.json      ← Realm manifest schema (hand-maintained axiom)
 ```
 
-Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file.
+Each `.json` file is one top-level entity with its sub-entities nested. The `_schema/` directory holds the JSON Schemas — which are themselves governed by the Core rules (self-recursive validation). The `realm.json` file is the Realm manifest for the core namespace (`dev.steerspec.core`), not an entity file. The only other file skipped for its content is a published `index.json`: one with a `realm` key, `rules` that each name a `file`, and no entity content (`entity`, `rule_set`, `sub_entities`, or a rule's `id`, `state` or `body`). The name is reserved: any other `index.json` is an Error. Any other file with a `realm` key is reported where entity files are read (RL001, RSV003, RR002). With entity content it doesn't parse either, so it is RD000 as the head of a comparison. As the base, or in history, it is still decoded, so that it can be repaired.
+
+**Links.** No reader follows a link below the root of a Realm tree. A link or special file whose name ends in `.json`, in any case, stands where an entity file or manifest would be read, so it is an Error: RD000 in `rule-diff`, in head and in base whether the change keeps, deletes, replaces or renames it (what it held can't be compared); RL000 or RM codes in the linters (RM001, RM003, RM008, RM009); RSV002 or RR002/RR007 in resolution. Any other link, to a file or a directory, holds nothing a reader follows and is left alone. A sub-realm directory, a local dependency source or a manifest reached through a linked directory is an Error. A JSON file name in another case, such as `x.JSON` or `realm.JSON`, is an Error, as a case-insensitive file system would open it. The path naming a tree's root is resolved, links included, and must name a local directory (no network share or device path); on Windows a link anywhere in that path is an Error instead, as following it could reach a network share. A `github://` fetch fails on a link or special file named `*.json` and skips other links (§6.4).
 
 ### 5.2 Entity File Structure
 
@@ -567,12 +569,12 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 
 | Code | Severity | When it fires |
 |------|----------|---------------|
-| RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed. |
+| RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed, or a Realm comparison cannot read a directory or manifest it compares. |
 | RD001 | Error | A Draft rule body was edited without incrementing the revision, or together with a state change. |
 | RD002 | Error | The body of a rule that has left Draft was edited. |
 | RD003 | Error | A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012). |
 | RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
-| RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. |
+| RD005 | Error | A rule, sub-entity or entity file present in the base version was deleted. A file with a top-level `realm` key and no entity content holds no rules, so deleting it is not RD005. |
 | RD006 | Warning | A superseding rule reached `I` but the superseded rule is missing or in neither state `R` nor `T` (RULST-012 lets a superseded Published rule go to `T`). |
 | RD007 | Error | `rule_set.version` is not valid semver or not strictly higher than the base version. |
 | RD008 | Error | `rule_set.hash` cannot be computed or differs from the Blake3 hash of the head file. |
@@ -588,13 +590,21 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD018 | Error | `overrides` was added, removed or retargeted on a rule that has left Draft. |
 | RD019 | Error | Retired. A new rule or new note had an `added_by` that was not a contributor identifier (`github:<login>`), an email address or an `@handle`. RL032 reports the format now; RD011 still reports a missing `added_by`. |
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
-| RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides` or `supersedes` of a Draft rule, by one revision (NTE-018). |
+| RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
-| RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule or new note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032. |
+| RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030. For Realm Notes, `CompareRealms` takes the lists from base only, by realm ID: the ID base declares at the manifest's path, or head's for a new manifest; a sub-realm is one its parent lists in base, or a Realm base doesn't hold under a parent it does; a Realm that declares none, or whose base manifest doesn't parse, uses the `WithContributors` list; when the change sets another ID, the author must be listed for both Realms. |
 | RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 | RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
+| RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
+| RD027 | Error | `profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
+| RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it within the compared tree, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011). |
+| RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
+| RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
+| RD031 | Error | A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged. |
 
-RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `rule-diff` reads no manifest itself.
+RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `Compare` and `CompareNew` read no manifest.
+
+RD028 to RD030 need both versions of the whole tree, as an entity file needn't change for them: `CompareRealms` takes the two directories, manifests included, and also reports RD011, RD013, RD014 and RD015 on Realm Notes. `CompareDir` runs it, with a missing base as an empty one (a dangling link or an empty path isn't missing: RD000); a head that is missing or not a directory is RD000 in both. `CompareDir` compares entity files only directly inside the two directories, so a caller with sub-realm directories compares those files itself. A caller that uses only `Compare` gets RD026 and RD027 and none of those. A file's kind is found as the evaluator finds it (§8.3), from each directory at or above the file, as a source may be rooted at any of them.
 
 #### `realm-lint` (RM)
 
@@ -611,7 +621,7 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM002 | Info / Error | Info if no schema fetcher is set; Error if the schema fails to load or validation fails. |
 | RM003 | Error | `_schema/` is missing, inaccessible, or not a directory. |
 | RM004 | Error | `_schema/entity.v1.schema.json` is missing or inaccessible. |
-| RM005 | Info / Error | Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed or the walk fails. |
+| RM005 | Info / Error | Info if no rule linter is configured and the caller does not lint the entity files itself; Error if a path cannot be accessed, the walk fails, or a file is not accepted as an entity file under its name. |
 | RM006 | Error | The same EUID appears in more than one entity or sub-entity of the realm. |
 | RM007 | Error | `realm.id` is missing or not reverse-domain notation, or `realm.version` is missing or not semver. |
 | RM008 | Error | A `sub_realms` entry is not a clean directory name, or its directory does not exist. |
@@ -636,13 +646,14 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM027 | Error | A Standard Reference with a `realm` has no `version`, or, with a dependency fetcher, a `version` other than the `edition` of that Realm (STDREF-018). |
 | RM028 | Error | With a dependency fetcher: the `profile` of a Standard Reference names none of the `profiles` of the Standard Realm its `realm` names (STDREF-027). |
 | RM029 | Error | With a dependency fetcher: a `standard` note whose Standard Reference has a `realm` maps a clause that is not in that Realm's clause list, the distinct `clause` values of its live rules, matched exactly (STDREF-021). |
+| RM030 | Error | The `added_by` of a Realm Note is not a contributor identifier `<idp>:<subject>` (CTRB-003). |
 
 #### `realm-resolve` (RR)
 
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RR000 | Error | The context was cancelled or timed out during resolution. |
-| RR001 | Error | A dependency `source` is empty, absolute, or escapes the repository root of the realm's origin. |
+| RR001 | Error | A dependency `source` is empty, absolute, holds a backslash in a local path (a separator on Windows only, so the directory named would depend on the OS), or escapes the repository root of the realm's origin. |
 | RR002 | Error | Dependency directory or `realm.json` cannot be loaded, or an entity file is unreadable or invalid. |
 | RR003 | Error | A dependency's `realm.id` differs from the declared `realm_id`. |
 | RR004 | Error | A dependency's `realm.version` differs from the declared `version`. |
@@ -733,7 +744,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 **Resolution.** Exact tags and SHAs are immutable: once downloaded they are served from the cache indefinitely (a forced sync re-downloads). `@latest` is resolved through the GitHub releases API (`GET /repos/{owner}/{repo}/releases/latest` → `tag_name`), the resolved tag is cached, and it is re-resolved once the configured cache TTL (default 24h) has elapsed. If the releases API is unreachable and a previously resolved tag exists, that tag is used so offline runs keep working.
 
-**Download.** Content is fetched with `GET /repos/{owner}/{repo}/tarball/{ref}`. Only entries under `<path>/` are extracted; symlinks and other special entries are skipped, entries that would escape the target directory are rejected, and extraction stops once 50 MB of file data has been written. The directory is assembled in a temporary location and installed with an atomic rename, so a cache directory either exists completely or not at all.
+**Download.** Content is fetched with `GET /repos/{owner}/{repo}/tarball/{ref}`. Only entries under `<path>/` are extracted; a link or special entry named `*.json`, in any case, fails the fetch, as it would stand where an entity file or manifest is read, and other links and special entries are skipped, entries that would escape the target directory are rejected, and extraction stops once 50 MB of file data has been written. The directory is assembled in a temporary location and installed with an atomic rename, so a cache directory either exists completely or not at all.
 
 **Cache layout.**
 
@@ -818,9 +829,13 @@ For each changed entity file, the validator compares the before and after states
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
 16. **Overrides and supersedes are immutable:** Once a rule has left Draft, its `overrides` and its `supersedes` may not be added, removed or retargeted (RD018, RD024); to change either, add a new rule instead.
-17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides` or `supersedes` of a Draft rule, by one. A `standard` note never moves it.
+17. **Revision moves only with an edit:** A rule's `revision` may not change unless its body does, or the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one. A `standard` note never moves it.
 18. **`standard` notes are retyped through `reference`:** A note changes to or from type `standard` only by way of `reference`, and a withdrawal to `reference` keeps its content.
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
+20. **Clause and profiles are immutable:** Once a rule has left Draft, and in the change that moves it out, its `clause` and its `profiles` may not change, in a code Realm or a Standard Realm (RD026, RD027).
+21. **A Realm keeps its kind:** Neither a `kind` field nor a change to the manifests around existing files may move rules between a code Realm and a Standard Realm (RD028). Relabeling is how evaluation would be switched off (STDRLM-011).
+22. **Realm Notes keep their history:** None is removed, each change to its type, content or `ref` moves the revision by one (its `added_by` and `added_at` may be rewritten, as `strspc realm rewrite-added-by` does), and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
+23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 

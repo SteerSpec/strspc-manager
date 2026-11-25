@@ -10,8 +10,9 @@ package realmresolve
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/inherit"
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
@@ -151,6 +153,11 @@ func New(opts ...Option) *RealmResolver {
 func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseDir string) (*ResolveResult, *result.Result) {
 	res := &result.Result{}
 	out := &ResolveResult{}
+
+	if err := realmfs.CheckRoot(baseDir); err != nil {
+		res.Add(result.Diagnostic{Module: module, Code: "RR002", Severity: result.Error, Message: fmt.Sprintf("realm directory: %v", err), Path: baseDir})
+		return out, res
+	}
 
 	if err := ctx.Err(); err != nil {
 		res.Add(result.Diagnostic{
@@ -287,14 +294,14 @@ func (r *RealmResolver) Resolve(ctx context.Context, rf *entity.RealmFile, baseD
 			continue
 		}
 
-		// RR007: sub-realm directory must exist and be a directory.
-		info, err := os.Stat(subDir)
-		if err != nil || !info.IsDir() {
+		// RR007: sub-realm directory must exist and be a directory, not a
+		// link to one.
+		if err := realmfs.Dir(subDir); err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RR007",
 				Severity: result.Error,
-				Message:  fmt.Sprintf("sub-realm %q: directory %q does not exist or is not a directory", subRealmName, subDir),
+				Message:  fmt.Sprintf("sub-realm %q: directory %q does not exist, is not a directory or is a link", subRealmName, subDir),
 				Path:     subDir,
 			})
 			continue
@@ -500,6 +507,20 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		return nil
 	}
 
+	// RR001: a backslash is a separator on Windows and a plain character
+	// elsewhere, so the directory a source with one names would depend on the
+	// OS, and the checks comparing sources would disagree with resolution.
+	if strings.Contains(dep.Source, "\\") && !strings.Contains(dep.Source, "://") {
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RR001",
+			Severity: result.Error,
+			Message:  fmt.Sprintf("dependency %q has source %q with a backslash; write local paths with / only", dep.RealmID, dep.Source),
+			Path:     baseDir,
+		})
+		return nil
+	}
+
 	// RR001: absolute paths not allowed.
 	if filepath.IsAbs(dep.Source) {
 		res.Add(result.Diagnostic{
@@ -551,16 +572,18 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 		return resolved
 	}
 
-	// Resolve local path.
-	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
-	if err != nil {
-		res.Add(result.Diagnostic{
-			Module:   module,
-			Code:     "RR002",
-			Severity: result.Error,
-			Message:  fmt.Sprintf("cannot resolve path for dependency %q: %v", dep.RealmID, err),
-			Path:     baseDir,
-		})
+	// Resolve local path, through real directories only: a link on the way
+	// could fetch another tree under the same ID, unseen by rule-diff.
+	// No lexical fallback: "missing/../link" must not reach link.
+	resolvedDir, walkErr := realmfs.DirFrom(baseDir, dep.Source)
+	if walkErr != nil {
+		msg := fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, walkErr)
+		path := baseDir
+		if errors.Is(walkErr, fs.ErrNotExist) {
+			path = filepath.Join(baseDir, dep.Source)
+			msg = fmt.Sprintf("dependency %q: resolved directory %q does not exist or is not a directory", dep.RealmID, path)
+		}
+		res.Add(result.Diagnostic{Module: module, Code: "RR002", Severity: result.Error, Message: msg, Path: path})
 		return nil
 	}
 	resolved := resolveLocalDep(ctx, dep, resolvedDir, res)

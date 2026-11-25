@@ -249,6 +249,55 @@ var goCases = []goCase{
 		},
 	},
 	{
+		name: "rule-diff reports clause and profiles changed on a Published rule",
+		want: []string{"RD026 error", "RD027 error"},
+		run: func(*testing.T) *result.Result {
+			base := standardsFile(asvsRef)
+			head := standardsFile(asvsRef)
+			head.RuleSet.Version, head.RuleSet.Timestamp = "0.2.0", "2026-02-01T00:00:00Z"
+			head.Rules[0].Clause, head.Rules[0].Profiles = "1.1", []string{"L1"}
+			return rulediff.New().Diff(base, head)
+		},
+	},
+	{
+		name: "rule-diff reports a Realm relabeled as a standard",
+		want: []string{"RD028 error"},
+		run: func(t *testing.T) *result.Result {
+			return compareRealms(t,
+				map[string]string{"realm.json": `{"realm":{"id":"dev.qa.r"}}`},
+				map[string]string{"realm.json": `{"realm":{"id":"dev.qa.r","kind":"standard"}}`})
+		},
+	},
+	{
+		name: "rule-diff reports a Realm Note given the ref of a withdrawn exclusion",
+		want: []string{"RD029 error"},
+		run: func(t *testing.T) *result.Result {
+			return compareRealms(t,
+				map[string]string{"realm.json": `{"realm":{"id":"dev.qa.r"}}`},
+				map[string]string{"realm.json": `{"realm":{"id":"dev.qa.r"},"notes":[{"id":"REALM/001","type":"reference","ref":"x.y:1","content":"See x.","added_by":"github:qa","revision":0}]}`})
+		},
+	},
+	{
+		name: "rule-diff reports a dependency fetched from another repository",
+		want: []string{"RD031 error"},
+		run: func(t *testing.T) *result.Result {
+			const manifest = `{"realm":{"id":"dev.qa.r"},"dependencies":[{"realm_id":"dev.qa.core","version":"1.0.0","source":"github://%s/core@v1/rules"}]}`
+			return compareRealms(t,
+				map[string]string{"realm.json": fmt.Sprintf(manifest, "qa")},
+				map[string]string{"realm.json": fmt.Sprintf(manifest, "fork")})
+		},
+	},
+	{
+		name: "rule-diff reports a fix of a rule that was not live",
+		want: []string{"RD030 error"},
+		run: func(t *testing.T) *result.Result {
+			const manifest = `{"realm":{"id":"dev.qa.r","kind":"standard"}}`
+			return compareRealms(t,
+				map[string]string{"realm.json": manifest, "STD.json": `{"entity":{"id":"STD"},"rules":[{"id":"STD-001","state":"T"}]}`},
+				map[string]string{"realm.json": manifest, "STD.json": `{"entity":{"id":"STD"},"rules":[{"id":"STD-001","state":"T"},{"id":"STD-002","state":"D","supersedes":"STD-001"}]}`})
+		},
+	},
+	{
 		name: "rule-lint reports a nil file",
 		want: []string{"RL000 error"},
 		run: func(*testing.T) *result.Result {
@@ -684,4 +733,19 @@ func (f batchFunc) Evaluate(context.Context, ruleeval.EvalRequest) (*ruleeval.Ev
 
 func (f batchFunc) EvaluateBatch(context.Context, ruleeval.BatchRequest) (*ruleeval.BatchResponse, error) {
 	return f()
+}
+
+// compareRealms writes both trees, file names to contents, and compares them.
+func compareRealms(t *testing.T, base, head map[string]string) *result.Result {
+	t.Helper()
+	write := func(files map[string]string) string {
+		dir := t.TempDir()
+		for name, data := range files {
+			if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return dir
+	}
+	return rulediff.CompareRealms(write(base), write(head))
 }

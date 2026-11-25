@@ -210,7 +210,8 @@ func rulesTarball(t *testing.T, prefix string) []byte {
 		{name: "rules/core/ENT.json", body: `{"entity":{"id":"ENT"}}`},
 		{name: "rules/core/sub/SUB.json", body: `{"entity":{"id":"SUB"}}`},
 		{name: "rules/other/OTH.json", body: "nope"},
-		{name: "rules/core/link.json", link: "../../README.md"},
+		{name: "rules/other/link.json", link: "../../README.md"}, // outside the fetched path
+		{name: "rules/core/NOTES", link: "../../README.md"},      // not JSON: skipped
 	})
 }
 
@@ -242,7 +243,7 @@ func TestEnsureDir_HappyPath(t *testing.T) {
 		t.Error("OTH.json leaked into cache dir")
 	}
 	if _, err := os.Lstat(filepath.Join(dir, "link.json")); !os.IsNotExist(err) {
-		t.Error("symlink was materialised")
+		t.Error("a link outside the requested path was materialised")
 	}
 	// No temp dirs left behind.
 	entries, _ := os.ReadDir(filepath.Dir(dir))
@@ -257,9 +258,18 @@ func TestEnsureDir_HappyPath(t *testing.T) {
 }
 
 func TestEnsureDir_RootPath(t *testing.T) {
+	// The whole repository is the Realm tree, so a link anywhere in it fails.
 	g := &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": rulesTarball(t, "o-r-1")}}
 	f, _ := newFetcher(t, g)
+	if _, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"}); err == nil {
+		t.Fatal("EnsureDir: no error for a repository holding a link")
+	}
 
+	g = &fakeGitHub{t: t, tarballs: map[string][]byte{"v1": buildTarball(t, "o-r-1", []tarEntry{
+		{name: "README.md", body: "ignored"},
+		{name: "rules/core/ENT.json", body: `{"entity":{"id":"ENT"}}`},
+	})}}
+	f, _ = newFetcher(t, g)
 	dir, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"})
 	if err != nil {
 		t.Fatalf("EnsureDir: %v", err)
@@ -993,34 +1003,30 @@ func TestExtractTarball_RejectsEscapingEntries(t *testing.T) {
 	}
 }
 
-func TestExtractTarball_SkipsSpecialEntries(t *testing.T) {
+func TestExtractTarball_RejectsSpecialEntries(t *testing.T) {
 	tests := []struct {
 		name  string
 		entry rawEntry
 	}{
-		{"absolute symlink", linkEntry("p/rules/evil", tar.TypeSymlink, "/etc/passwd")},
-		{"relative symlink", linkEntry("p/rules/evil", tar.TypeSymlink, "../../../../escape")},
-		{"hard link", linkEntry("p/rules/evil", tar.TypeLink, "/etc/passwd")},
-		{"character device", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeChar, Devmajor: 1, Devminor: 3}}},
-		{"block device", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeBlock, Devmajor: 8}}},
-		{"fifo", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeFifo}}},
+		{"absolute symlink", linkEntry("p/rules/evil.json", tar.TypeSymlink, "/etc/passwd")},
+		{"relative symlink", linkEntry("p/rules/evil.json", tar.TypeSymlink, "../../../../escape")},
+		{"hard link", linkEntry("p/rules/evil.json", tar.TypeLink, "/etc/passwd")},
+		{"character device", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeChar, Devmajor: 1, Devminor: 3}}},
+		{"block device", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeBlock, Devmajor: 8}}},
+		{"fifo", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeFifo}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dest := t.TempDir()
 			archive := rawTarball(t, tt.entry, regEntry("p/rules/ok.json", "{}"))
-			n, err := extractTarball(bytes.NewReader(archive), "rules", dest)
-			if err != nil {
-				t.Fatalf("extractTarball: %v", err)
+			// Links are not allowed in a Realm tree, so the fetch fails rather
+			// than drop a file the Realm holds.
+			_, err := extractTarball(bytes.NewReader(archive), "rules", dest)
+			if err == nil || !strings.Contains(err.Error(), "link or special file") {
+				t.Fatalf("extractTarball err = %v, want a link or special file error", err)
 			}
-			if n != 1 {
-				t.Errorf("files written = %d, want 1", n)
-			}
-			if _, err := os.Lstat(filepath.Join(dest, "evil")); !os.IsNotExist(err) {
+			if _, err := os.Lstat(filepath.Join(dest, "evil.json")); !os.IsNotExist(err) {
 				t.Errorf("special entry was materialised, Lstat err = %v", err)
-			}
-			if got, want := treeOf(t, dest), map[string]string{"ok.json": "{}"}; !maps.Equal(got, want) {
-				t.Errorf("tree = %v, want %v", got, want)
 			}
 		})
 	}
@@ -1049,6 +1055,8 @@ func TestExtractTarball_LinksCannotRedirectWrites(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dest := t.TempDir()
 			archive := rawTarball(t, tt.link, regEntry(tt.fileName, "pwned"))
+			// Not JSON, the link is skipped, so the file is written to a real
+			// directory and nothing outside changes.
 			if _, err := extractTarball(bytes.NewReader(archive), "", dest); err != nil {
 				t.Fatalf("extractTarball: %v", err)
 			}
@@ -2152,5 +2160,33 @@ func TestEnsureDir_RefusesAnInsecureRedirect(t *testing.T) {
 	_, err := f.EnsureDir(context.Background(), Ref{Owner: "o", Repo: "r", Ref: "v1"})
 	if !errors.Is(err, httpsonly.ErrInsecureURL) {
 		t.Fatalf("err = %v, want ErrInsecureURL", err)
+	}
+}
+
+// Entries outside the requested subtree are ignored whatever their type, and
+// the pax global header GitHub archives start with is not a link.
+func TestExtractTarball_IgnoresLinksOutsideTheSubtree(t *testing.T) {
+	dest := t.TempDir()
+	archive := rawTarball(t,
+		rawEntry{hdr: tar.Header{Name: "pax_global_header", Typeflag: tar.TypeXGlobalHeader}},
+		linkEntry("p/docs/evil", tar.TypeSymlink, "/etc/passwd"),
+		regEntry("p/rules/ok.json", "{}"))
+	if _, err := extractTarball(bytes.NewReader(archive), "rules", dest); err != nil {
+		t.Fatalf("extractTarball: %v", err)
+	}
+	if got, want := treeOf(t, dest), map[string]string{"ok.json": "{}"}; !maps.Equal(got, want) {
+		t.Errorf("tree = %v, want %v", got, want)
+	}
+}
+
+// A link without a JSON name holds nothing, so it is skipped, not refused.
+func TestExtractTarball_SkipsNonJSONLinks(t *testing.T) {
+	dest := t.TempDir()
+	archive := rawTarball(t, linkEntry("p/rules/NOTES", tar.TypeSymlink, "/etc/passwd"), regEntry("p/rules/ok.json", "{}"))
+	if _, err := extractTarball(bytes.NewReader(archive), "rules", dest); err != nil {
+		t.Fatalf("extractTarball: %v", err)
+	}
+	if got, want := treeOf(t, dest), map[string]string{"ok.json": "{}"}; !maps.Equal(got, want) {
+		t.Errorf("tree = %v, want %v", got, want)
 	}
 }

@@ -5,12 +5,20 @@ package rulediff
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
+
+	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 )
 
 const module = "rule-diff"
@@ -46,13 +54,13 @@ func New(opts ...Option) *Differ {
 	return &Differ{cfg: cfg}
 }
 
-// DiffBytes parses raw JSON for both versions and runs all 12 checks,
-// including RD008 (hash verification). Use Diff if you already have parsed
+// DiffBytes parses raw JSON for both versions and runs every check Diff runs,
+// plus RD008 (hash verification). Use Diff if you already have parsed
 // structs and do not need hash verification.
 func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 	res := &result.Result{}
 
-	baseEnt, err := entity.Parse(baseData)
+	baseEnt, err := decodeEntity(baseData)
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -85,7 +93,8 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 }
 
 // Diff compares parsed entity files and validates the lifecycle transition.
-// Runs checks RD001–RD007, RD009–RD020. For RD008 (hash verification), use DiffBytes.
+// It runs the checks of one entity file, all but RD008 (hash verification),
+// which DiffBytes adds, and the tree checks CompareRealms runs.
 func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	res := &result.Result{}
 	if base == nil || head == nil {
@@ -105,6 +114,17 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 		promoteWarnings(res)
 	}
 	return res
+}
+
+// decodeEntity decodes without entity.Parse's content check. A base needs that,
+// so that the change repairing it is compared, and so does CompareRealms, as
+// only Compare reports that check.
+func decodeEntity(data []byte) (*entity.File, error) {
+	var f entity.File
+	if err := json.Unmarshal(data, &f); err != nil {
+		return nil, fmt.Errorf("parsing entity JSON: %w", err)
+	}
+	return &f, nil
 }
 
 // DiffNewBytes parses a brand-new entity file and validates it like DiffNew,
@@ -177,7 +197,7 @@ func (d *Differ) diffEntityTree(base, head *entity.File, baseVisibility, headVis
 		}
 	}
 	// Any sub-entities remaining in baseSubMap were deleted in head — reject.
-	for id := range baseSubMap {
+	for _, id := range slices.Sorted(maps.Keys(baseSubMap)) {
 		subPath := path + " > " + id
 		res.Add(result.Diagnostic{
 			Module:   module,
@@ -215,15 +235,52 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // Files present in both are compared with Compare, unless their bytes are the
 // same: SPEC §7.2 validates each changed entity file. Files only in headDir are
 // validated as new with CompareNew; files deleted from baseDir emit RD005.
-// realm.json is a manifest, not an entity file, and is left out.
+// realm.json is a manifest, not an entity file: it and the kind of each file
+// below the directories are compared as CompareRealms does, except that a
+// baseDir that doesn't exist is an empty one, so a mistyped one passes for a
+// new tree: CompareRealms refuses it. A headDir that doesn't exist is RD000, as
+// is an empty path or a dangling link for either.
+// Entity files are compared only directly inside the directories.
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
-	baseFiles := scanJSONFiles(baseDir)
-	headFiles := scanJSONFiles(headDir)
+	for _, dir := range []string{baseDir, headDir} {
+		if dir == "" {
+			continue
+		}
+		if err := realmfs.CheckRoot(dir); err != nil {
+			res.Add(result.Diagnostic{Module: module, Code: "RD000", Severity: result.Error, Message: "failed to read " + dir + ": " + err.Error(), Path: dir})
+			return res
+		}
+	}
+	// A link is never read. One in head is refused; one in base, deleted or
+	// replaced, fails closed in the CompareRealms run below.
+	baseFiles, _ := scanJSONFiles(baseDir)
+	headFiles, headLinks := scanJSONFiles(headDir)
+	// A base index.json that is no published index held rules, so it is
+	// compared like any entity file: deleting it is RD005.
+	if path := filepath.Join(baseDir, "index.json"); baseDir != "" {
+		if data, err := realmfs.ReadFile(path); err == nil && !entity.IsPublishedIndex(data) {
+			if baseFiles == nil { // A directory that can't be listed but can be read.
+				baseFiles = map[string]string{}
+			}
+			baseFiles["index.json"] = path
+		}
+	}
+	for _, name := range headLinks {
+		path := filepath.Join(headDir, name)
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD000",
+			Severity: result.Error,
+			Message:  "failed to read " + path + ": " + realmfs.ErrNotRegular.Error(),
+			Path:     path,
+		})
+	}
 
-	for name, headPath := range headFiles {
-		headData, err := os.ReadFile(headPath)
+	for _, name := range slices.Sorted(maps.Keys(headFiles)) {
+		headPath := headFiles[name]
+		headData, err := realmfs.ReadFile(headPath)
 		if err != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
@@ -235,7 +292,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			continue
 		}
 		if basePath, ok := baseFiles[name]; ok {
-			baseData, err := os.ReadFile(basePath)
+			baseData, err := realmfs.ReadFile(basePath)
 			if err != nil {
 				res.Add(result.Diagnostic{
 					Module:   module,
@@ -259,8 +316,22 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 
-	for name := range baseFiles {
+	realms := CompareRealms
+	if isAbsent(baseDir, os.Lstat) {
+		realms = func(_, head string, opts ...Option) *result.Result {
+			return compareRealms("", head, opts...) // Nothing to compare with.
+		}
+	}
+	for _, d := range realms(baseDir, headDir, opts...).Diagnostics {
+		res.Add(d)
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(baseFiles)) {
+		basePath := baseFiles[name]
 		if _, ok := headFiles[name]; !ok {
+			if data, err := realmfs.ReadFile(basePath); err == nil && DeletionAllowed(data) {
+				continue
+			}
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD005",
@@ -273,19 +344,60 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	return res
 }
 
+// baseLinkMessage explains RD000 for a link in base at path.
+func baseLinkMessage(path string) string {
+	return "base " + path + " is a link, which the comparison doesn't read, so the change can't be compared with what it held: replace links with regular files, with the CLI you use now, before upgrading"
+}
+
+// DeletionAllowed reports whether deleting an entity file with the base content
+// data is not a rule deletion (RD005): data has a top-level "realm" key and no
+// entity content, so it holds no rules.
+func DeletionAllowed(data []byte) bool {
+	return entity.HoldsNoEntity(data)
+}
+
+// isAbsent reports whether nothing is at path. A dangling link is something, at
+// path or above it, and an empty path names nothing to look for.
+func isAbsent(path string, lstat func(string) (fs.FileInfo, error)) bool {
+	if path == "" {
+		return false
+	}
+	if _, err := lstat(path); !errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	parent := filepath.Dir(path)
+	if parent == path {
+		return true
+	}
+	if info, err := os.Stat(parent); err == nil {
+		return info.IsDir() // Windows says not found below a file too.
+	}
+	return isAbsent(parent, lstat)
+}
+
 // scanJSONFiles returns a map of filename → full path for all *.json files
-// directly inside dir, except the realm.json manifest. Non-JSON files and I/O
-// errors are silently skipped.
-func scanJSONFiles(dir string) map[string]string {
+// directly inside dir, except the realm.json manifest, and the names of the
+// ones that are links or special files, which are never read. Non-JSON files
+// and I/O errors are silently skipped.
+func scanJSONFiles(dir string) (files map[string]string, links []string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	files := make(map[string]string, len(entries))
+	files = make(map[string]string, len(entries))
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") && e.Name() != "realm.json" {
-			files[e.Name()] = filepath.Join(dir, e.Name())
+		if realmfs.CheckEntry(e) != nil {
+			if realmfs.IsJSONName(e.Name()) {
+				links = append(links, e.Name())
+			}
+			continue
 		}
+		// realm.json is a manifest and index.json a published index or an
+		// error, both judged by CompareRealms: neither is an entity file.
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") || e.Name() == "realm.json" || e.Name() == "index.json" {
+			continue
+		}
+		files[e.Name()] = filepath.Join(dir, e.Name())
 	}
-	return files
+	return files, links
 }

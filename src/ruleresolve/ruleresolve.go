@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
+	"github.com/SteerSpec/strspc-manager/src/internal/localpath"
 	"github.com/SteerSpec/strspc-manager/src/remote"
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
@@ -223,6 +224,10 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 	return all, res
 }
 
+// isLocalPath reports whether a local source names a location on a local
+// drive. Tests replace it to exercise the Windows-only refusal.
+var isLocalPath = localpath.IsLocal
+
 // parseSource dispatches a SourceEntry to a concrete Source implementation.
 // For github:// sources it lazily builds cfg.Fetcher when none was supplied.
 func parseSource(e SourceEntry, cfg *Config) (Source, error) {
@@ -249,6 +254,9 @@ func parseSource(e SourceEntry, cfg *Config) (Source, error) {
 		return nil, fmt.Errorf("unsupported source scheme: %s", s)
 	default:
 		// Local path (relative or absolute).
+		if !isLocalPath(s) {
+			return nil, fmt.Errorf("local source %s must be a local directory, not a network or device path", s)
+		}
 		return &LocalSource{}, nil
 	}
 }
