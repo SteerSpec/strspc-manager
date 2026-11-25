@@ -224,12 +224,12 @@ func (r *Resolver) Resolve(ctx context.Context) ([]*ResolvedFile, *result.Result
 	return all, res
 }
 
-// parseSource dispatches a SourceEntry to a concrete Source implementation.
-// For github:// sources it lazily builds cfg.Fetcher when none was supplied.
 // isLocalPath reports whether a local source names a location on a local
 // drive. Tests replace it to exercise the Windows-only refusal.
 var isLocalPath = localpath.IsLocal
 
+// parseSource dispatches a SourceEntry to a concrete Source implementation.
+// For github:// sources it lazily builds cfg.Fetcher when none was supplied.
 func parseSource(e SourceEntry, cfg *Config) (Source, error) {
 	s := e.Source
 	switch {

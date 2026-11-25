@@ -43,6 +43,9 @@ func Root(dir string) (string, error) {
 		}
 		p = wd + string(filepath.Separator) + dir
 	}
+	if err := CheckLocal(p); err != nil {
+		return "", err
+	}
 	resolved, err := filepath.EvalSymlinks(p)
 	if err != nil {
 		return "", err
@@ -65,6 +68,52 @@ func Root(dir string) (string, error) {
 		return "", fmt.Errorf("%s does not resolve to the directory it opens", dir)
 	}
 	return resolved, nil
+}
+
+// CheckLocal reports an error when the absolute path p, or the text of a link
+// met along it, names a network share or device path. Each link's text is
+// checked before the link is followed, so that resolving p never reaches such
+// a path, as resolving it to check afterwards would.
+func CheckLocal(p string) error {
+	return checkLocal(p, 0)
+}
+
+func checkLocal(p string, depth int) error {
+	if !isLocal(p) {
+		return fmt.Errorf("%s is not a local path", p)
+	}
+	if depth > 40 {
+		return fmt.Errorf("%s: too many links", p)
+	}
+	vol := filepath.VolumeName(p)
+	cur := vol + string(filepath.Separator)
+	parts := strings.Split(strings.Trim(p[len(vol):], string(filepath.Separator)), string(filepath.Separator))
+	for i, part := range parts {
+		if part == "" || part == "." {
+			continue
+		}
+		next := filepath.Join(cur, part)
+		info, err := os.Lstat(next)
+		if err != nil {
+			return nil // Nothing more to follow; the caller reports it.
+		}
+		if info.Mode()&fs.ModeSymlink == 0 {
+			cur = next
+			continue
+		}
+		text, err := os.Readlink(next)
+		if err != nil {
+			return err
+		}
+		if !isLocal(text) {
+			return fmt.Errorf("%s links to %s, which is not a local path", next, text)
+		}
+		if !filepath.IsAbs(text) {
+			text = filepath.Join(cur, text)
+		}
+		return checkLocal(filepath.Join(append([]string{text}, parts[i+1:]...)...), depth+1)
+	}
+	return nil
 }
 
 // ReadFile reads the regular file at path. A link, a directory or a special
@@ -135,20 +184,43 @@ func ReadInTree(root, path string) ([]byte, error) {
 	return os.ReadFile(target)
 }
 
-// CheckWalked reports ErrNotRegular for a walked entry at path that could
-// hold or hide an entity file without being one: a link or special file named
-// *.json, or a link to a directory. Skip reports another entry that is neither
-// a regular file nor a directory, which holds no entity file and is left alone
-// like any non-JSON file.
-func CheckWalked(path string, d fs.DirEntry) (skip bool, err error) {
+// CheckWalked reports ErrNotRegular for an entry at path, walked below root,
+// that could hold or hide an entity file without being one: a link or
+// special file whose name ends in .json in any case, or a link that leads to
+// a directory, out of the tree, or to another link. Skip reports any other
+// entry that is neither a regular file nor a directory: it holds no entity
+// file and is left alone like any non-JSON file. A link's target is only
+// looked at once its text is known to stay inside the tree, so that a walk
+// never reaches out of it, to a network share for one.
+func CheckWalked(root, path string, d fs.DirEntry) (skip bool, err error) {
 	if CheckEntry(d) == nil {
 		return false, nil
 	}
-	if strings.HasSuffix(d.Name(), ".json") {
-		return true, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	refuse := func(why string) (bool, error) {
+		return true, fmt.Errorf("%s%s: %w", path, why, ErrNotRegular)
 	}
-	if info, statErr := os.Stat(path); statErr == nil && info.IsDir() {
-		return true, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	if strings.EqualFold(filepath.Ext(d.Name()), ".json") {
+		return refuse("")
+	}
+	if d.Type()&fs.ModeSymlink == 0 {
+		return true, nil // A special file, never read.
+	}
+	text, err := os.Readlink(path)
+	if err != nil || filepath.IsAbs(text) || filepath.VolumeName(text) != "" {
+		return refuse(" links out of the tree")
+	}
+	target := filepath.Join(filepath.Dir(path), text)
+	if rel, err := filepath.Rel(root, target); err != nil || !filepath.IsLocal(rel) {
+		return refuse(" links out of the tree")
+	}
+	info, err := os.Lstat(target)
+	switch {
+	case err != nil:
+		return true, nil // Dangling: leads to nothing.
+	case info.IsDir():
+		return refuse(" links to a directory")
+	case info.Mode()&fs.ModeSymlink != 0:
+		return refuse(" links to a link")
 	}
 	return true, nil
 }
@@ -164,4 +236,28 @@ func FoldKey(name string) string {
 		}
 		return lowest
 	}, name)
+}
+
+// TargetInTree returns the slash path, below root, of the regular file the
+// link at path leads to, when it leads to one inside the tree.
+func TargetInTree(root, path string) (string, bool) {
+	if info, err := os.Lstat(path); err != nil || info.Mode()&fs.ModeSymlink == 0 {
+		return "", false
+	}
+	if _, err := ReadInTree(root, path); err != nil {
+		return "", false
+	}
+	physRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", false
+	}
+	target, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", false
+	}
+	rel, err := filepath.Rel(physRoot, target)
+	if err != nil {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
 }

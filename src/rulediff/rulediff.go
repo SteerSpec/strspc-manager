@@ -319,6 +319,9 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			if data, err := realmfs.ReadInTree(baseDir, basePath); err == nil && DeletionAllowed(data) {
 				continue
 			}
+			if rel, ok := realmfs.TargetInTree(baseDir, basePath); ok && stillIn(headDir, rel) {
+				continue // A link to a file head still holds: no rule is deleted.
+			}
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RD005",
@@ -329,6 +332,12 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 	return res
+}
+
+// stillIn reports whether head holds a regular file at the slash path rel.
+func stillIn(head, rel string) bool {
+	info, err := os.Lstat(filepath.Join(head, filepath.FromSlash(rel)))
+	return err == nil && info.Mode().IsRegular()
 }
 
 // readable reports whether the base file at path, below root, can be read.

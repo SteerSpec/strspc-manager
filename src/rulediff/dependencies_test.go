@@ -43,6 +43,11 @@ func TestCompareRealms_DependencySource(t *testing.T) {
 		{"ref to a short tag", "github://org/core@v1.0.0/rules", "github://org/core@v2/rules", true},
 		{"ref to latest", "github://org/core@v1.0.0/rules", "github://org/core@latest/rules", true},
 		{"ref downgraded", "github://org/core@v1.2.0/rules", "github://org/core@v1.1.9/rules", true},
+		{"down from a short tag", "github://org/core@v1/rules", "github://org/core@v0.0.1/rules", true},
+		{"down from a two-part tag", "github://org/core@v2.0/rules", "github://org/core@v1.9.0/rules", true},
+		{"down from a release candidate", "github://org/core@v2.0.0-rc1/rules", "github://org/core@v1.0.0/rules", true},
+		{"up from a short tag", "github://org/core@v1/rules", "github://org/core@v1.2.0/rules", false},
+		{"tag beyond semver", "github://org/core@v2.0.0/rules", "github://org/core@v1.0.99999999999999999999/rules", true},
 		{"from a commit to a tag", "github://org/core@0123456789abcdef0123456789abcdef01234567/rules", "github://org/core@v1.0.0/rules", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -125,6 +130,7 @@ func TestCompareRealms_DependencyRefBoundAcrossTheTree(t *testing.T) {
 		{"parent lowered to the sub-realm's old tag", tree{"realm.json": parent(dep("v1.1.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
 		{"parent set to exactly the sub-realm's old source", tree{"realm.json": parent(dep("v1.0.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
 		{"sub-realm unchanged", base, false},
+		{"sub-realm raised, still below the parent", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.5.0"))}, false},
 		{"sub-realm raised to the parent's tag", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.25.0"))}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

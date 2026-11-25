@@ -166,8 +166,8 @@ func TestCompareDir_BaseLinkInsideTheTree(t *testing.T) {
 	if res := CompareDir(base, weak); res.OK() {
 		t.Error("weakening through the repair passed")
 	}
-	gone := tree{"store/ACC.json": held}.write(t)
-	assertHasCode(t, CompareDir(base, gone), "RD005")
+	// Deleting the link and the file it leads to deletes the rule.
+	assertHasCode(t, CompareDir(base, t.TempDir()), "RD005")
 
 	outside := tree{"ACC.json": held}.write(t)
 	out := t.TempDir()
@@ -198,4 +198,16 @@ func TestCompareRealms_NonJSONFileLink(t *testing.T) {
 	if res := CompareRealms(tree{"realm.json": codeRealm}.write(t), head); !res.OK() {
 		t.Errorf("%v", res.Diagnostics)
 	}
+}
+
+// Re-review F6: deleting a base link whose file is still in head deletes no
+// rule; deleting both is RD005.
+func TestCompareDir_DeletingADuplicateLink(t *testing.T) {
+	const acc = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
+	base := tree{"ACC.json": acc}.write(t)
+	link(t, base, "DUP.json", "ACC.json")
+	if res := CompareDir(base, tree{"ACC.json": acc}.write(t)); hasDiag(res, "RD005") {
+		t.Errorf("deleting the duplicate link: %v", res.Diagnostics)
+	}
+	assertHasCode(t, CompareDir(base, t.TempDir()), "RD005")
 }

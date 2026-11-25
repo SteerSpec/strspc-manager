@@ -87,6 +87,13 @@ func WalkEntityFiles(dir string, fn WalkFunc, opts ...WalkOption) error {
 // walkRoot returns the directory to walk for dir: dir itself when it is a
 // file, which is then the only entry, or else the physical directory it names.
 func walkRoot(dir string) (string, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	if err := realmfs.CheckLocal(abs); err != nil {
+		return "", err
+	}
 	if info, err := os.Lstat(dir); err == nil && info.Mode().IsRegular() {
 		return dir, nil
 	}
@@ -151,7 +158,7 @@ func walkRecursive(dir string, userFn WalkFunc, cfg *walkConfig) error {
 			}
 			return nil
 		}
-		if skip, err := realmfs.CheckWalked(physical, d); err != nil {
+		if skip, err := realmfs.CheckWalked(root, physical, d); err != nil {
 			return refused(path, fn)
 		} else if skip {
 			return nil
@@ -181,7 +188,7 @@ func walkShallow(dir string, fn WalkFunc, cfg *walkConfig) error {
 	for _, entry := range entries {
 		path := filepath.Join(dir, entry.Name())
 		var err error
-		skip, linkErr := realmfs.CheckWalked(filepath.Join(root, entry.Name()), entry)
+		skip, linkErr := realmfs.CheckWalked(root, filepath.Join(root, entry.Name()), entry)
 		switch {
 		case linkErr != nil:
 			err = refused(path, fn)

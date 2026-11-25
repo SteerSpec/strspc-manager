@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 
+	semver "github.com/Masterminds/semver/v3"
+
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/internal/realmfs"
 	"github.com/SteerSpec/strspc-manager/src/internal/realmkind"
@@ -156,7 +158,7 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 			} else {
 				names[key] = name
 			}
-			if skip, err := realmfs.CheckWalked(path, d); err != nil {
+			if skip, err := realmfs.CheckWalked(root, path, d); err != nil {
 				addReadError(c.res, filepath.ToSlash(rel), err)
 				return nil
 			} else if skip {
@@ -204,7 +206,7 @@ func (c *realmComparison) checkNoLinks(dir, root string) {
 		if err != nil || path == dir {
 			return nil
 		}
-		if cerr := realmfs.CheckEntry(d); cerr != nil {
+		if _, cerr := realmfs.CheckWalked(root, path, d); cerr != nil {
 			rel, _ := filepath.Rel(root, path)
 			addReadError(c.res, filepath.ToSlash(rel), cerr)
 		}
@@ -415,13 +417,21 @@ func (c *realmComparison) compareDependencySources() {
 			continue
 		}
 		for _, h := range c.headDeps[id] {
-			var same []string
+			// The tree's declarations in base; those of this manifest bound it
+			// when there are any, so one declaration can't be held to another's.
+			var same, own []string
 			kept := false
 			for _, b := range was {
 				if sameSource(b, h) {
 					same = append(same, b.source)
-					kept = kept || (b.rel == h.rel && b.source == h.source)
+					if b.rel == h.rel {
+						own = append(own, b.source)
+						kept = kept || b.source == h.source
+					}
 				}
+			}
+			if len(own) > 0 {
+				same = own
 			}
 			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
 			switch {
@@ -447,12 +457,13 @@ func (c *realmComparison) compareDependencySources() {
 // releaseTag matches the ref a changed github source may name: a release tag.
 var releaseTag = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
-// refChange explains why a dependency declaration may move to source now, from
-// the base sources was that name the same tree, or returns "". A github ref
-// must be a release tag vX.Y.Z, no lower than any release tag base declares
-// for the tree: a commit or a branch may come from a fork of the repository,
-// which GitHub serves through it, and an older release may hold weaker rules.
-// A local source naming the same directory passes.
+// refChange explains why a dependency declaration may not move to source now,
+// from the base sources was that bound it and name the same tree, or returns
+// "". A github ref must be a release tag vX.Y.Z, no lower than any version a
+// bounding ref names (v1, v2.0 and release candidates included): a commit or
+// a branch may come from a fork of the repository, which GitHub serves
+// through it, and an older release may hold weaker rules. A tag that doesn't
+// parse as a version fails. A local source naming the same directory passes.
 func refChange(was []string, now string) string {
 	after, err := remote.ParseGitHub(now)
 	if err != nil {
@@ -461,8 +472,17 @@ func refChange(was []string, now string) string {
 	if !releaseTag.MatchString(after.Ref) {
 		return fmt.Sprintf("ref %q is not a release tag vX.Y.Z: a changed github source must pin a release", after.Ref)
 	}
+	head, err := semver.StrictNewVersion(strings.TrimPrefix(after.Ref, "v"))
+	if err != nil {
+		return fmt.Sprintf("ref %q is not a version: %v", after.Ref, err)
+	}
 	for _, w := range was {
-		if before, err := remote.ParseGitHub(w); err == nil && releaseTag.MatchString(before.Ref) && isNewerSemver(after.Ref, before.Ref) {
+		before, err := remote.ParseGitHub(w)
+		if err != nil {
+			continue
+		}
+		bound, err := semver.NewVersion(before.Ref) // Lenient: v1, v2.0, rc tags.
+		if err == nil && head.LessThan(bound) {
 			return fmt.Sprintf("ref %s is lower than %s, which base declares: a dependency may not move back to an older release", after.Ref, before.Ref)
 		}
 	}

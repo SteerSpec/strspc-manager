@@ -377,7 +377,10 @@ func checkSchemaDir(dir string, res *result.Result) {
 	}
 	// Links and special files are not allowed in a Realm tree, _schema/ included.
 	_ = filepath.WalkDir(schemaDir, func(path string, d fs.DirEntry, err error) error {
-		if err == nil && path != schemaDir && realmfs.CheckEntry(d) != nil {
+		if err != nil || path == schemaDir {
+			return nil
+		}
+		if _, cerr := realmfs.CheckWalked(dir, path, d); cerr != nil {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RM003",
