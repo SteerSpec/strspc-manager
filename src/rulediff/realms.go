@@ -232,15 +232,30 @@ func (c *realmComparison) readIn(root, rel string) ([]byte, error) {
 	case errors.Is(err, fs.ErrNotExist):
 		return nil, nil
 	case errors.Is(err, realmfs.ErrNotRegular) && root != c.head:
-		return nil, nil
+		return nil, errUnreadableBase
 	}
 	return data, err
 }
 
+// errUnreadableBase reports a base link readIn won't follow: what it held
+// can't be compared.
+var errUnreadableBase = errors.New("a link the comparison can't read")
+
 // compareManifest runs the checks on one realm.json.
 func (c *realmComparison) compareManifest(rel string) {
+	headPresent := false
+	if data, err := c.readIn(c.head, rel); err == nil && data != nil {
+		headPresent = true
+	}
 	parse := func(root string) (*entity.RealmFile, []byte, bool) {
 		data, err := c.readIn(root, rel)
+		if errors.Is(err, errUnreadableBase) {
+			if !headPresent {
+				return nil, nil, true // Deleting the link passes.
+			}
+			addReadError(c.res, rel, fmt.Errorf("base manifest: %w; replace the link with a regular file before upgrading, or review the change by hand", err))
+			return nil, nil, false
+		}
 		if err != nil {
 			addReadError(c.res, rel, err)
 			return nil, nil, false

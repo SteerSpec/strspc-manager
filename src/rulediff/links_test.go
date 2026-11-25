@@ -78,13 +78,15 @@ func TestCompareRealms_LinkInHeadIsRefused(t *testing.T) {
 	}
 }
 
-// A link in base is never followed, and the change that removes it passes.
-func TestCompareRealms_RemovingABaseLinkPasses(t *testing.T) {
+// A base link out of the tree is never followed: replacing it with a file
+// fails closed, and deleting it passes.
+func TestCompareRealms_BaseLinkOutOfTheTree(t *testing.T) {
 	head := tree{"realm.json": codeRealm}
 	baseDir := t.TempDir()
 	link(t, baseDir, "realm.json", filepath.Join(head.write(t), "realm.json"))
-	if res := CompareRealms(baseDir, head.write(t)); hasDiag(res, "RD000") {
-		t.Errorf("removing a base link: %v", res.Diagnostics)
+	assertHasCode(t, CompareRealms(baseDir, head.write(t)), "RD000")
+	if res := CompareRealms(baseDir, t.TempDir()); hasDiag(res, "RD000") {
+		t.Errorf("deleting a base link: %v", res.Diagnostics)
 	}
 }
 
@@ -219,4 +221,20 @@ func TestCompareDir_DeletedLinkToANestedFile(t *testing.T) {
 	base := tree{"store/ACC.json": acc}.write(t)
 	link(t, base, "ACC.json", filepath.Join("store", "ACC.json"))
 	assertHasCode(t, CompareDir(base, tree{"store/ACC.json": "{}"}.write(t)), "RD005")
+}
+
+// A head file replacing a base link the comparison can't read fails closed:
+// what the link held can't be compared. Deleting the link still passes.
+func TestUnreadableBaseLinkReplacedFailsClosed(t *testing.T) {
+	outside := tree{"ACC.json": someEntity, "realm.json": codeRealm}.write(t)
+	base := tree{"realm.json": codeRealm}.write(t)
+	link(t, base, "ACC.json", filepath.Join(outside, "ACC.json"))
+	assertHasCode(t, CompareDir(base, tree{"ACC.json": someEntity, "realm.json": codeRealm}.write(t)), "RD000")
+	if res := CompareDir(base, tree{"realm.json": codeRealm}.write(t)); hasDiag(res, "RD000") || hasDiag(res, "RD005") {
+		t.Errorf("deleting the link: %v", res.Diagnostics)
+	}
+
+	manifestBase := t.TempDir()
+	link(t, manifestBase, "realm.json", filepath.Join(outside, "realm.json"))
+	assertHasCode(t, CompareRealms(manifestBase, tree{"realm.json": stdRealm}.write(t)), "RD000")
 }

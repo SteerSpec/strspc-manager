@@ -247,13 +247,25 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	// A link in base is read only to a file inside the base tree, so that the
 	// change replacing it is compared with what it held; one in head is refused.
 	baseFiles, baseLinks := scanJSONFiles(baseDir)
+	headFiles, headLinks := scanJSONFiles(headDir)
 	for _, name := range baseLinks {
-		// Compared when it leads to a file inside the base tree.
-		if path := filepath.Join(baseDir, name); readable(baseDir, path) {
+		// Compared when it leads to a file inside the base tree. Otherwise
+		// what it held can't be compared, so a head file in its place fails
+		// closed; deleting it passes.
+		path := filepath.Join(baseDir, name)
+		switch _, inHead := headFiles[name]; {
+		case readable(baseDir, path):
 			baseFiles[name] = path
+		case inHead:
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD000",
+				Severity: result.Error,
+				Message:  "base " + path + " is a link the comparison can't read, so the file replacing it can't be compared: replace the link with a regular file before upgrading, or review the change by hand",
+				Path:     path,
+			})
 		}
 	}
-	headFiles, headLinks := scanJSONFiles(headDir)
 	for _, name := range headLinks {
 		path := filepath.Join(headDir, name)
 		res.Add(result.Diagnostic{
