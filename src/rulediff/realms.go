@@ -87,7 +87,7 @@ type depSource struct{ source, rel string }
 func (c *realmComparison) run(baseDir, headDir string) {
 	var err error
 	if c.head, err = resolveDir(headDir); err != nil {
-		addReadError(c.res, headDir, err)
+		addReadError(c.res, ".", fmt.Errorf("%s: %w", headDir, err)) // Paths are relative to headDir.
 		return
 	}
 	if baseDir != "" {
@@ -136,16 +136,16 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 	head := root == c.head
 	names := map[string][]string{} // directory → names seen, for case collisions
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return relErr
+		}
 		if err != nil {
-			addReadError(c.res, path, err)
+			addReadError(c.res, filepath.ToSlash(rel), err)
 			return nil
 		}
 		if path == root {
 			return nil
-		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
 		}
 		if head {
 			dir, name := filepath.Dir(rel), d.Name()
@@ -183,7 +183,7 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 		return nil
 	})
 	if err != nil {
-		addReadError(c.res, root, err)
+		addReadError(c.res, ".", err)
 	}
 	return manifests, files
 }

@@ -595,7 +595,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
 | RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
 | RD027 | Error | `profiles` was added, removed, reordered or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |
-| RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011). |
+| RD028 | Error | A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it within the compared tree, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011). |
 | RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
 | RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
 | RD031 | Error | A dependency's `source` changed other than by the ref of a `github://` source: another repository, path or local directory would fetch another tree under the same realm ID. |
@@ -832,7 +832,7 @@ For each changed entity file, the validator compares the before and after states
 19. **Visibility changes are reported:** A new or changed `visibility` is reported as Info, naming the `realm.version` bump it needs. Removing the key is rejected: set `public` explicitly.
 20. **Clause and profiles are immutable:** Once a rule has left Draft, and in the change that moves it out, its `clause` and its `profiles` may not change, in a code Realm or a Standard Realm (RD026, RD027).
 21. **A Realm keeps its kind:** Neither a `kind` field nor a change to the manifests around existing files may move rules between a code Realm and a Standard Realm (RD028). Relabeling is how evaluation would be switched off (STDRLM-011).
-22. **Realm Notes keep their history:** None is removed, each change moves the revision by one, and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
+22. **Realm Notes keep their history:** None is removed, each change to its type, content or `ref` moves the revision by one (its `added_by` and `added_at` may be rewritten, as `strspc realm rewrite-added-by` does), and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
 23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.

@@ -54,8 +54,8 @@ func New(opts ...Option) *Differ {
 	return &Differ{cfg: cfg}
 }
 
-// DiffBytes parses raw JSON for both versions and runs all 12 checks,
-// including RD008 (hash verification). Use Diff if you already have parsed
+// DiffBytes parses raw JSON for both versions and runs every check Diff runs,
+// plus RD008 (hash verification). Use Diff if you already have parsed
 // structs and do not need hash verification.
 func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 	res := &result.Result{}
@@ -93,7 +93,8 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 }
 
 // Diff compares parsed entity files and validates the lifecycle transition.
-// Runs checks RD001–RD007, RD009–RD020. For RD008 (hash verification), use DiffBytes.
+// It runs the checks of one entity file, all but RD008 (hash verification),
+// which DiffBytes adds, and the tree checks CompareRealms runs.
 func (d *Differ) Diff(base, head *entity.File) *result.Result {
 	res := &result.Result{}
 	if base == nil || head == nil {

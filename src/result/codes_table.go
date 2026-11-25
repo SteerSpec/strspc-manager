@@ -589,7 +589,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Realm kind changed",
-		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011).",
+		Summary:  "A Realm's `kind` changed, or a change to the manifests moved an existing file between a code Realm and a Standard Realm for a source rooted at or above it within the compared tree, or a manifest elsewhere in the tree declares an existing Realm's ID with another kind. A Standard Realm's rules aren't evaluated (STDRLM-011).",
 		Fix:      "Restore the manifests. A Realm keeps its kind: create a Standard Realm as a new Realm, with new files.",
 	},
 	{

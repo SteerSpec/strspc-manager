@@ -126,3 +126,23 @@ func TestCompareDir_Links(t *testing.T) {
 		t.Errorf("removing a base link: %v", res.Diagnostics)
 	}
 }
+
+// Finding 19: paths are relative to headDir, as CompareRealms documents.
+func TestCompareRealms_PathsAreRelativeToHead(t *testing.T) {
+	head := tree{"app/Realm.json": stdRealm}.write(t)
+	res := CompareRealms(tree{"realm.json": codeRealm}.write(t), head)
+	if len(res.Diagnostics) == 0 {
+		t.Fatal("no diagnostics")
+	}
+	for _, d := range res.Diagnostics {
+		if filepath.IsAbs(d.Path) {
+			t.Errorf("absolute path %q in %s", d.Path, d.Code)
+		}
+	}
+	missing := filepath.Join(t.TempDir(), "missing")
+	for _, d := range CompareRealms(head, missing).Diagnostics {
+		if d.Path != "." {
+			t.Errorf("head root error path = %q, want .", d.Path)
+		}
+	}
+}
