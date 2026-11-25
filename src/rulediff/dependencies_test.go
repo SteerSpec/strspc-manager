@@ -49,7 +49,9 @@ func TestCompareRealms_DependencySource(t *testing.T) {
 		{"up from a short tag", "github://org/core@v1/rules", "github://org/core@v1.2.0/rules", false},
 		{"tag beyond semver", "github://org/core@v2.0.0/rules", "github://org/core@v1.0.99999999999999999999/rules", true},
 		{"from an all-digit short commit", "github://org/core@1234567/rules", "github://org/core@v1.0.0/rules", false},
-		{"from a branch named like a date", "github://org/core@2024-hotfix/rules", "github://org/core@v1.0.0/rules", false},
+		{"from a branch named like a version, failing closed", "github://org/core@2024-hotfix/rules", "github://org/core@v1.0.0/rules", true},
+		{"down from a tag without v", "github://org/core@1.2.0/rules", "github://org/core@v1.0.0/rules", true},
+		{"down from a tag with build metadata", "github://org/core@v1.2.0+b1/rules", "github://org/core@v1.0.0/rules", true},
 		{"from a commit to a tag", "github://org/core@0123456789abcdef0123456789abcdef01234567/rules", "github://org/core@v1.0.0/rules", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

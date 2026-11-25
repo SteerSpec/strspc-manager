@@ -305,8 +305,13 @@ func (c *realmComparison) compareManifest(rel string) {
 			Path:     rel,
 		})
 	}
+	// The Realm base declares at this path decides, as head's ID is the
+	// change's to set; head's only for a manifest that is new.
 	id := ""
-	if head != nil {
+	switch {
+	case base != nil:
+		id = base.Realm.ID
+	case head != nil:
 		id = head.Realm.ID
 	}
 	checkRealmNotes(baseNotes, headNotes, c.realmContributors(id), c.res, rel)
@@ -494,16 +499,21 @@ func refChange(was []string, now string) string {
 	return ""
 }
 
-// versionRef matches a ref that names a version, which bounds a move: v1,
-// v2.0, v2.0.0 and their pre-releases. A commit, even one in digits only, or a
-// branch names none.
-var versionRef = regexp.MustCompile(`^v\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?$`)
+// versionRef matches a ref that may name a version, which bounds a move: 1,
+// v2.0, 2.0.0, with or without v, a pre-release or build metadata. A ref
+// that only might be one, such as a branch named 2024-hotfix, counts too, so
+// that a move from it fails closed. Digits alone with no v and no dot are
+// taken for a commit, and name none.
+var (
+	versionRef = regexp.MustCompile(`^v?\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`)
+	digitsOnly = regexp.MustCompile(`^\d+$`)
+)
 
 // refBound returns the version the ref of the github source src names, when
 // it names one.
 func refBound(src string) (*semver.Version, bool) {
 	ref, err := remote.ParseGitHub(src)
-	if err != nil || !versionRef.MatchString(ref.Ref) {
+	if err != nil || !versionRef.MatchString(ref.Ref) || digitsOnly.MatchString(ref.Ref) {
 		return nil, false
 	}
 	v, err := semver.NewVersion(ref.Ref)
