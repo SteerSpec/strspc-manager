@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -349,7 +350,7 @@ func checkRealmFields(rf *entity.RealmFile, realmPath string, res *result.Result
 // RM003 + RM004: Validate _schema/ directory structure.
 func checkSchemaDir(dir string, res *result.Result) {
 	schemaDir := filepath.Join(dir, "_schema")
-	info, err := os.Stat(schemaDir)
+	info, err := os.Lstat(schemaDir)
 	if err != nil {
 		msg := fmt.Sprintf("failed to access _schema/ directory: %v", err)
 		if os.IsNotExist(err) {
@@ -369,11 +370,24 @@ func checkSchemaDir(dir string, res *result.Result) {
 			Module:   module,
 			Code:     "RM003",
 			Severity: result.Error,
-			Message:  "_schema/ exists but is not a directory",
+			Message:  "_schema/ exists but is not a directory, or is a link",
 			Path:     schemaDir,
 		})
 		return
 	}
+	// Links and special files are not allowed in a Realm tree, _schema/ included.
+	_ = filepath.WalkDir(schemaDir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && path != schemaDir && realmfs.CheckEntry(d) != nil {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RM003",
+				Severity: result.Error,
+				Message:  "_schema/ holds a link or special file: " + realmfs.ErrNotRegular.Error(),
+				Path:     path,
+			})
+		}
+		return nil
+	})
 
 	entitySchemaPath := filepath.Join(schemaDir, "entity.v1.schema.json")
 	if _, err := os.Stat(entitySchemaPath); err != nil {
@@ -538,7 +552,7 @@ func sameJSON(a, b string) (bool, error) {
 
 // readJSON reads and decodes a JSON file.
 func readJSON(path string) (any, error) {
-	data, err := os.ReadFile(path)
+	data, err := realmfs.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

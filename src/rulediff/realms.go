@@ -165,10 +165,16 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 				return nil
 			}
 		} else if realmfs.CheckEntry(d) != nil {
-			return nil
+			// Read only when it leads to a file inside the base tree.
+			if !strings.HasSuffix(d.Name(), ".json") || !readable(root, path) {
+				return nil
+			}
 		}
 		if d.IsDir() {
 			if d.Name() == "_schema" {
+				if head {
+					c.checkNoLinks(path, root)
+				}
 				return fs.SkipDir
 			}
 			return nil
@@ -189,15 +195,35 @@ func (c *realmComparison) scan(root string) (manifests, files []string) {
 	return manifests, files
 }
 
+// checkNoLinks reports RD000 for each link or special file below dir, a
+// directory of head whose files aren't compared, such as _schema.
+func (c *realmComparison) checkNoLinks(dir, root string) {
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || path == dir {
+			return nil
+		}
+		if cerr := realmfs.CheckEntry(d); cerr != nil {
+			rel, _ := filepath.Rel(root, path)
+			addReadError(c.res, filepath.ToSlash(rel), cerr)
+		}
+		return nil
+	})
+}
+
 // readIn returns the file at rel below root, or nil when there is none. In
-// head, a link there is an error; in base, it is never followed and reads as
-// no file, so that the change replacing it passes.
+// head, a link there is an error; in base, a link is followed only to a file
+// inside the base tree, and otherwise reads as no file, so that the change
+// replacing it passes.
 func (c *realmComparison) readIn(root, rel string) ([]byte, error) {
 	if root == "" {
 		return nil, nil
 	}
 	path := filepath.Join(root, filepath.FromSlash(rel))
-	data, err := realmfs.ReadFile(path)
+	read := realmfs.ReadFile
+	if root != c.head {
+		read = func(p string) ([]byte, error) { return realmfs.ReadInTree(root, p) }
+	}
+	data, err := read(path)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return nil, nil
@@ -338,14 +364,15 @@ func (c *realmComparison) compareDependencySources() {
 			continue
 		}
 		for _, h := range c.headDeps[id] {
-			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
+			var same []string
 			for _, b := range was {
-				if !sameSource(b, h) {
-					continue
+				if sameSource(b, h) {
+					same = append(same, b.source)
 				}
-				if msg = refChange(b.source, h.source); msg == "" {
-					break
-				}
+			}
+			msg := fmt.Sprintf("source %q names another tree than base declares (%q); only the ref of a github source may change, so add a dependency with a new realm ID instead", h.source, was[0].source)
+			if len(same) > 0 {
+				msg = refChange(same, h.source)
 			}
 			if msg == "" {
 				continue
@@ -364,25 +391,27 @@ func (c *realmComparison) compareDependencySources() {
 // releaseTag matches the ref a changed github source may name: a release tag.
 var releaseTag = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
 
-// refChange explains why a dependency may not move from source was to now,
-// two sources naming the same tree, or returns "". An unchanged source passes.
-// A changed github ref must be a release tag vX.Y.Z, never lower than a tag it
-// replaces: a commit or a branch may come from a fork of the repository, which
-// GitHub serves through it, and an older tag may hold weaker rules.
-func refChange(was, now string) string {
-	if was == now {
+// refChange explains why a dependency may not move to source now from the
+// base sources was, all naming the same tree, or returns "". A source base
+// already declares passes. Otherwise a github ref must be a release tag
+// vX.Y.Z, no lower than the highest release tag base declares for the tree: a
+// commit or a branch may come from a fork of the repository, which GitHub
+// serves through it, and an older release may hold weaker rules.
+func refChange(was []string, now string) string {
+	if slices.Contains(was, now) {
 		return ""
 	}
-	before, errB := remote.ParseGitHub(was)
-	after, errA := remote.ParseGitHub(now)
-	if errB != nil || errA != nil {
+	after, err := remote.ParseGitHub(now)
+	if err != nil {
 		return "" // Local sources naming the same directory.
 	}
 	if !releaseTag.MatchString(after.Ref) {
 		return fmt.Sprintf("ref %q is not a release tag vX.Y.Z: a changed github source must pin a release", after.Ref)
 	}
-	if releaseTag.MatchString(before.Ref) && isNewerSemver(after.Ref, before.Ref) {
-		return fmt.Sprintf("ref %s is lower than %s: a dependency may not move back to an older release", after.Ref, before.Ref)
+	for _, w := range was {
+		if before, err := remote.ParseGitHub(w); err == nil && releaseTag.MatchString(before.Ref) && isNewerSemver(after.Ref, before.Ref) {
+			return fmt.Sprintf("ref %s is lower than %s, which base declares: a dependency may not move back to an older release", after.Ref, before.Ref)
+		}
 	}
 	return ""
 }

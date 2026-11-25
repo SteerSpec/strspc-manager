@@ -146,3 +146,47 @@ func TestCompareRealms_PathsAreRelativeToHead(t *testing.T) {
 		}
 	}
 }
+
+// F3: a link in base to a file inside the base tree is read, so the change
+// replacing it with a regular file is compared with what it held: a faithful
+// repair passes and a weakening doesn't. A link out of the tree is not read.
+func TestCompareDir_BaseLinkInsideTheTree(t *testing.T) {
+	const (
+		held     = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
+		weakened = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.1","timestamp":"2026-01-02T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"D","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
+	)
+	base := tree{"store/ACC.json": held}.write(t)
+	link(t, base, "ACC.json", filepath.Join("store", "ACC.json"))
+
+	repaired := tree{"ACC.json": held, "store/ACC.json": held}.write(t)
+	if res := CompareDir(base, repaired); !res.OK() {
+		t.Errorf("faithful repair: %v", res.Diagnostics)
+	}
+	weak := tree{"ACC.json": weakened, "store/ACC.json": held}.write(t)
+	if res := CompareDir(base, weak); res.OK() {
+		t.Error("weakening through the repair passed")
+	}
+	gone := tree{"store/ACC.json": held}.write(t)
+	assertHasCode(t, CompareDir(base, gone), "RD005")
+
+	outside := tree{"ACC.json": held}.write(t)
+	out := t.TempDir()
+	link(t, out, "ACC.json", filepath.Join(outside, "ACC.json"))
+	if res := CompareDir(out, t.TempDir()); hasDiag(res, "RD005") || hasDiag(res, "RD000") {
+		t.Errorf("removing a link out of the base tree: %v", res.Diagnostics)
+	}
+}
+
+// F3 for manifests: a base manifest linked inside the tree is compared.
+func TestCompareRealms_BaseManifestLinkInsideTheTree(t *testing.T) {
+	base := tree{"store/realm.json": codeRealm}.write(t)
+	link(t, base, "realm.json", filepath.Join("store", "realm.json"))
+	assertHasCode(t, CompareRealms(base, tree{"realm.json": stdRealm, "store/realm.json": codeRealm}.write(t)), "RD028")
+}
+
+// F5: a link inside _schema/ in head is RD000 too.
+func TestCompareRealms_SchemaLinkInHead(t *testing.T) {
+	head := tree{"realm.json": codeRealm, "_schema/realm.v1.schema.json": "{}"}.write(t)
+	link(t, head, "_schema/entity.v1.schema.json", os.DevNull)
+	assertHasCode(t, CompareRealms(tree{"realm.json": codeRealm}.write(t), head), "RD000")
+}

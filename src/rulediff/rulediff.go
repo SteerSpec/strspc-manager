@@ -244,9 +244,15 @@ func CompareNew(head []byte, opts ...Option) *result.Result {
 // File I/O errors are reported as RD000 diagnostics and processing continues.
 func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	res := &result.Result{}
-	// A link in base is never read, so the change removing it passes; one in
-	// head is refused.
-	baseFiles, _ := scanJSONFiles(baseDir)
+	// A link in base is read only to a file inside the base tree, so that the
+	// change replacing it is compared with what it held; one in head is refused.
+	baseFiles, baseLinks := scanJSONFiles(baseDir)
+	for _, name := range baseLinks {
+		// Compared when it leads to a file inside the base tree.
+		if path := filepath.Join(baseDir, name); readable(baseDir, path) {
+			baseFiles[name] = path
+		}
+	}
 	headFiles, headLinks := scanJSONFiles(headDir)
 	for _, name := range headLinks {
 		path := filepath.Join(headDir, name)
@@ -273,7 +279,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 			continue
 		}
 		if basePath, ok := baseFiles[name]; ok {
-			baseData, err := realmfs.ReadFile(basePath)
+			baseData, err := realmfs.ReadInTree(baseDir, basePath)
 			if err != nil {
 				res.Add(result.Diagnostic{
 					Module:   module,
@@ -310,7 +316,7 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 	for _, name := range slices.Sorted(maps.Keys(baseFiles)) {
 		basePath := baseFiles[name]
 		if _, ok := headFiles[name]; !ok {
-			if data, err := realmfs.ReadFile(basePath); err == nil && DeletionAllowed(data) {
+			if data, err := realmfs.ReadInTree(baseDir, basePath); err == nil && DeletionAllowed(data) {
 				continue
 			}
 			res.Add(result.Diagnostic{
@@ -323,6 +329,12 @@ func CompareDir(baseDir, headDir string, opts ...Option) *result.Result {
 		}
 	}
 	return res
+}
+
+// readable reports whether the base file at path, below root, can be read.
+func readable(root, path string) bool {
+	_, err := realmfs.ReadInTree(root, path)
+	return err == nil
 }
 
 // DeletionAllowed reports whether deleting an entity file with the base content

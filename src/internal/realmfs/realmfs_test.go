@@ -113,3 +113,32 @@ func TestRootRefusesANonLocalTarget(t *testing.T) {
 		t.Error("Root through a link to a non-local path: no error")
 	}
 }
+
+func TestReadInTree(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	if data, err := ReadInTree(real, filepath.Join(real, "l.json")); err != nil || string(data) != "{}" {
+		t.Errorf("in-tree link = %q, %v", data, err)
+	}
+	if data, err := ReadInTree(real, filepath.Join(real, "a.json")); err != nil || string(data) != "{}" {
+		t.Errorf("regular = %q, %v", data, err)
+	}
+	outside := filepath.Join(t.TempDir(), "o.json")
+	if err := os.WriteFile(outside, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, target := range map[string]string{"out.json": outside, "dangling.json": "gone", "dir.json": "sub"} {
+		if err := os.Symlink(target, filepath.Join(real, name)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ReadInTree(real, filepath.Join(real, name)); !errors.Is(err, ErrNotRegular) {
+			t.Errorf("%s: err = %v, want ErrNotRegular", name, err)
+		}
+	}
+	if _, err := ReadInTree(real, filepath.Join(real, "sub")); !errors.Is(err, ErrNotRegular) {
+		t.Errorf("directory: err = %v", err)
+	}
+	if _, err := ReadInTree(real, filepath.Join(real, "none")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("missing: err = %v", err)
+	}
+}

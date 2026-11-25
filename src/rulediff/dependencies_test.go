@@ -104,3 +104,32 @@ func TestCompareRealms_DependencySourceAcrossTheTree(t *testing.T) {
 		})
 	}
 }
+
+// A changed ref is bounded by the highest release tag base declares for the
+// dependency, wherever it declares it: a weaker declaration elsewhere in the
+// tree can't lower the bound.
+func TestCompareRealms_DependencyRefBoundAcrossTheTree(t *testing.T) {
+	dep := func(ref string) entity.RealmDep {
+		return entity.RealmDep{RealmID: "com.base", Version: "1.0.0", Source: "github://org/core@" + ref + "/rules"}
+	}
+	parent := func(deps ...entity.RealmDep) string {
+		data, _ := json.Marshal(map[string]any{"realm": map[string]string{"id": "a.b"}, "sub_realms": []string{"app"}, "dependencies": deps})
+		return string(data)
+	}
+	base := tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}
+	for _, tc := range []struct {
+		name  string
+		head  tree
+		rd031 bool
+	}{
+		{"parent lowered to the sub-realm's old tag", tree{"realm.json": parent(dep("v1.1.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.0.0"))}, true},
+		{"sub-realm unchanged", base, false},
+		{"sub-realm raised to the parent's tag", tree{"realm.json": parent(dep("v1.25.0")), childManifest: manifestWithDeps(t, "a.b.app", "", dep("v1.25.0"))}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := hasDiag(compareTrees(t, base, tc.head), "RD031"); got != tc.rd031 {
+				t.Errorf("RD031 = %v, want %v", got, tc.rd031)
+			}
+		})
+	}
+}

@@ -98,3 +98,37 @@ func CheckEntry(d fs.DirEntry) error {
 	}
 	return fmt.Errorf("%s: %w", d.Name(), ErrNotRegular)
 }
+
+// ReadInTree reads the file at path, below the tree rooted at root, following
+// a link only to a regular file inside that tree. It is for a base version,
+// whose links a change may be replacing: what they held must still be
+// compared. A link out of the tree, or to anything but a regular file, is
+// ErrNotRegular.
+func ReadInTree(root, path string) ([]byte, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode().IsRegular() {
+		return os.ReadFile(path)
+	}
+	if info.Mode()&fs.ModeSymlink == 0 {
+		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	}
+	physRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	target, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	}
+	rel, err := filepath.Rel(physRoot, target)
+	if err != nil || !filepath.IsLocal(rel) {
+		return nil, fmt.Errorf("%s: links out of the tree: %w", path, ErrNotRegular)
+	}
+	if t, err := os.Lstat(target); err != nil || !t.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
+	}
+	return os.ReadFile(target)
+}

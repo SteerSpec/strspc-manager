@@ -45,3 +45,14 @@ func TestLinksInTheRealmTreeAreRefused(t *testing.T) {
 		})
 	}
 }
+
+// F5: a link inside _schema/, or _schema/ itself as a link, is RM003.
+func TestSchemaLinksAreRefused(t *testing.T) {
+	for _, rel := range []string{"_schema", "_schema/entity.v1.schema.json"} {
+		t.Run(rel, func(t *testing.T) {
+			dir := copyValidSubRealm(t)
+			moveAndLink(t, filepath.Join(dir, filepath.FromSlash(rel)))
+			assertHasCode(t, New().Lint(context.Background(), dir), "RM003")
+		})
+	}
+}
