@@ -549,7 +549,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "added_by not a listed contributor",
-		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030.",
+		Summary:  "The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). For Realm Notes `CompareRealms` reads each Realm's list from its base manifest, or its head manifest when the Realm is new. A value that is not a contributor identifier is left to RL032 or RM030.",
 		Fix:      "Set `added_by` to a contributor the Realm lists, or add the contributor to `realm.contributors` of the top-level Realm.",
 	},
 	{

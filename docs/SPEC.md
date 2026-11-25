@@ -590,7 +590,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD020 | Info / Error | `visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed. |
 | RD021 | Error | A rule's `revision` changed with no edit to it: an edit is a change to the body, or one to the `overrides`, `supersedes`, `clause` or `profiles` of a Draft rule, by one revision (NTE-018). |
 | RD022 | Error | A note changed to or from type `standard` other than through `reference`, or a withdrawal to `reference` changed its content (NTE-017, NTE-019). |
-| RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). A value that is not a contributor identifier is left to RL032 or RM030. |
+| RD023 | Error | The Realm declares `contributors` and the `added_by` of a new rule, new note or new Realm Note names none of them (CTRB-005). A sub-realm uses its parent's list (CTRB-006). For Realm Notes `CompareRealms` reads each Realm's list from its base manifest, or its head manifest when the Realm is new. A value that is not a contributor identifier is left to RL032 or RM030. |
 | RD024 | Error | `supersedes` was added, removed or retargeted on a rule that has left Draft. |
 | RD025 | Error | A `structured` note was added, changed or retyped on a rule that has left Draft (NTE-041). |
 | RD026 | Error | `clause` was added, removed or changed on a rule that has left Draft or leaves it in the same change, whatever the kind of its Realm (RUL-007). |

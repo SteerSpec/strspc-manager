@@ -73,8 +73,8 @@ type realmComparison struct {
 	base, head string // resolved roots; base is empty when there is none.
 	// A Finder for each root a source could have, by slash path below the tree.
 	baseKinds, headKinds map[string]*realmkind.Finder
-	// contributors is the Realm's list (WithContributors), for RD023 on new
-	// Realm Notes. A sub-realm uses its parent's (CTRB-006).
+	// contributors is the WithContributors list, for RD023 on new Realm Notes
+	// of a Realm that declares no contributors of its own.
 	contributors []entity.Contributor
 	// kinds records, by realm ID, the kinds and manifests seen in each tree.
 	baseIDs, headIDs map[string]map[string]string
@@ -284,7 +284,56 @@ func (c *realmComparison) compareManifest(rel string) {
 			Path:     rel,
 		})
 	}
-	checkRealmNotes(baseNotes, headNotes, c.contributors, c.res, rel)
+	checkRealmNotes(baseNotes, headNotes, c.realmContributors(rel, base != nil), c.res, rel)
+}
+
+// realmContributors returns the contributors new Realm Notes of the manifest
+// at rel are checked against (RD023): those its Realm declares in base, or in
+// head when the manifest is new, so a change can't list the author of its own
+// note; a sub-realm uses its parent's (CTRB-006). For the manifest at the
+// root of the tree, which may be a sub-realm of a Realm outside it, the
+// WithContributors list applies when the tree declares none.
+func (c *realmComparison) realmContributors(rel string, inBase bool) []entity.Contributor {
+	root := c.head
+	if inBase {
+		root = c.base
+	}
+	if list := c.declaredContributors(root, rel); len(list) > 0 || rel != manifestName {
+		return list
+	}
+	return c.contributors // The tree's root Realm may take them from outside the tree.
+}
+
+// declaredContributors returns the contributors of the Realm whose manifest is
+// at rel below root, following sub-realms up to the Realm that declares them.
+func (c *realmComparison) declaredContributors(root, rel string) []entity.Contributor {
+	rf := c.manifestIn(root, rel)
+	if rf == nil {
+		return nil
+	}
+	dir := path.Dir(rel)
+	if dir == "." {
+		return rf.Realm.Contributors
+	}
+	parentRel := path.Join(path.Dir(dir), manifestName)
+	parent := c.manifestIn(root, parentRel)
+	if name := path.Base(dir); parent != nil && slices.Contains(parent.SubRealms, name) && parent.Realm.ID+"."+name == rf.Realm.ID {
+		return c.declaredContributors(root, parentRel)
+	}
+	return rf.Realm.Contributors
+}
+
+// manifestIn parses the manifest at rel below root, or returns nil.
+func (c *realmComparison) manifestIn(root, rel string) *entity.RealmFile {
+	data, err := c.readIn(root, rel)
+	if err != nil || data == nil {
+		return nil
+	}
+	rf, err := entity.ParseRealm(data)
+	if err != nil {
+		return nil
+	}
+	return rf
 }
 
 // recordDeps notes the dependency sources rf declares, at rel, in deps.
