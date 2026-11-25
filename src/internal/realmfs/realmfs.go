@@ -151,7 +151,8 @@ func CheckEntry(d fs.DirEntry) error {
 }
 
 // ReadInTree reads the file at path, below the tree rooted at root, following
-// a link only to a regular file inside that tree. It is for a base version,
+// a link only to a regular file inside that tree, judged from the link's text
+// through real directories, so nothing outside the tree is looked at. It is for a base version,
 // whose links a change may be replacing: what they held must still be
 // compared. A link out of the tree, or to anything but a regular file, is
 // ErrNotRegular.
@@ -166,17 +167,9 @@ func ReadInTree(root, path string) ([]byte, error) {
 	if info.Mode()&fs.ModeSymlink == 0 {
 		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
 	}
-	physRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, err
-	}
-	target, err := filepath.EvalSymlinks(path)
-	if err != nil {
+	target, why := inTreeTarget(root, path)
+	if why != "" {
 		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
-	}
-	rel, err := filepath.Rel(physRoot, target)
-	if err != nil || !filepath.IsLocal(rel) {
-		return nil, fmt.Errorf("%s: links out of the tree: %w", path, ErrNotRegular)
 	}
 	if t, err := os.Lstat(target); err != nil || !t.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s: %w", path, ErrNotRegular)
@@ -205,13 +198,12 @@ func CheckWalked(root, path string, d fs.DirEntry) (skip bool, err error) {
 	if d.Type()&fs.ModeSymlink == 0 {
 		return true, nil // A special file, never read.
 	}
-	text, err := os.Readlink(path)
-	if err != nil || filepath.IsAbs(text) || filepath.VolumeName(text) != "" {
-		return refuse(" links out of the tree")
-	}
-	target := filepath.Join(filepath.Dir(path), text)
-	if rel, err := filepath.Rel(root, target); err != nil || !filepath.IsLocal(rel) {
-		return refuse(" links out of the tree")
+	target, why := inTreeTarget(root, path)
+	if why != "" {
+		if why == "dangling" {
+			return true, nil // Leads to nothing.
+		}
+		return refuse(why)
 	}
 	info, err := os.Lstat(target)
 	switch {
@@ -223,6 +215,37 @@ func CheckWalked(root, path string, d fs.DirEntry) (skip bool, err error) {
 		return refuse(" links to a link")
 	}
 	return true, nil
+}
+
+// inTreeTarget returns the path the link at path names, from its text alone,
+// when that stays inside the tree rooted at root through real directories
+// only, so it can be looked at without leaving the tree. Otherwise it
+// explains why not; "dangling" means a directory on the way is missing.
+func inTreeTarget(root, path string) (string, string) {
+	text, err := os.Readlink(path)
+	if err != nil || filepath.IsAbs(text) || filepath.VolumeName(text) != "" {
+		return "", " links out of the tree"
+	}
+	target := filepath.Join(filepath.Dir(path), text)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || !filepath.IsLocal(rel) {
+		return "", " links out of the tree"
+	}
+	dir := root
+	for _, part := range strings.Split(filepath.Dir(rel), string(filepath.Separator)) {
+		if part == "." {
+			continue
+		}
+		dir = filepath.Join(dir, part)
+		info, err := os.Lstat(dir)
+		if err != nil {
+			return "", "dangling"
+		}
+		if !info.IsDir() {
+			return "", " links through a link"
+		}
+	}
+	return target, ""
 }
 
 // FoldKey returns a key equal for two names that differ only by case, as a
@@ -244,18 +267,14 @@ func TargetInTree(root, path string) (string, bool) {
 	if info, err := os.Lstat(path); err != nil || info.Mode()&fs.ModeSymlink == 0 {
 		return "", false
 	}
-	if _, err := ReadInTree(root, path); err != nil {
+	target, why := inTreeTarget(root, path)
+	if why != "" {
 		return "", false
 	}
-	physRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
+	if t, err := os.Lstat(target); err != nil || !t.Mode().IsRegular() {
 		return "", false
 	}
-	target, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", false
-	}
-	rel, err := filepath.Rel(physRoot, target)
+	rel, err := filepath.Rel(root, target)
 	if err != nil {
 		return "", false
 	}

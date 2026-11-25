@@ -211,3 +211,12 @@ func TestCompareDir_DeletingADuplicateLink(t *testing.T) {
 	}
 	assertHasCode(t, CompareDir(base, t.TempDir()), "RD005")
 }
+
+// The RD005 exception for a deleted link covers only a target CompareDir
+// compares: one in a subdirectory could be weakened unseen.
+func TestCompareDir_DeletedLinkToANestedFile(t *testing.T) {
+	const acc = `{"entity":{"id":"ACC"},"rule_set":{"version":"1.0.0","timestamp":"2026-01-01T00:00:00Z","hash":null},"rules":[{"id":"ACC-001","revision":0,"state":"I","body":"MUST hold","added_by":"github:a","added_at":"2026-01-01"}]}`
+	base := tree{"store/ACC.json": acc}.write(t)
+	link(t, base, "ACC.json", filepath.Join("store", "ACC.json"))
+	assertHasCode(t, CompareDir(base, tree{"store/ACC.json": "{}"}.write(t)), "RD005")
+}

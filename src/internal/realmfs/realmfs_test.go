@@ -249,3 +249,25 @@ func TestTargetInTree(t *testing.T) {
 		t.Error("a regular file has no target")
 	}
 }
+
+// A link whose text passes through a directory link is refused without the
+// target being looked at: the directory link may lead out of the tree.
+func TestCheckWalkedThroughADirectoryLink(t *testing.T) {
+	dir := tree(t)
+	real := filepath.Join(dir, "real")
+	out := t.TempDir()
+	if err := os.Symlink(out, filepath.Join(real, "d")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join("d", "x"), filepath.Join(real, "via")); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := os.ReadDir(real)
+	for _, e := range entries {
+		if e.Name() == "via" {
+			if _, err := CheckWalked(real, filepath.Join(real, "via"), e); err == nil {
+				t.Error("link through a directory link: no error")
+			}
+		}
+	}
+}
