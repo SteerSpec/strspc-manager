@@ -549,9 +549,13 @@ func extractTarball(r io.Reader, sub, dest string) (int, error) {
 			}
 			files++
 		case tar.TypeSymlink, tar.TypeLink, tar.TypeChar, tar.TypeBlock, tar.TypeFifo:
-			// Never materialised. Links are not allowed in a Realm tree, so the
-			// fetch fails rather than drop a file the Realm holds.
-			return files, fmt.Errorf("tar: entry %q is a link or special file, which a Realm tree may not hold", hdr.Name)
+			// Never materialised, as no reader of a Realm tree follows a link.
+			// One named *.json stands where an entity file or manifest would be
+			// read, so the fetch fails rather than drop it; others hold nothing.
+			if strings.EqualFold(path.Ext(rel), ".json") {
+				return files, fmt.Errorf("tar: entry %q is a link or special file named *.json, which a Realm tree may not hold", hdr.Name)
+			}
+			continue
 		default:
 			// Headers and other metadata entries.
 			continue

@@ -210,7 +210,8 @@ func rulesTarball(t *testing.T, prefix string) []byte {
 		{name: "rules/core/ENT.json", body: `{"entity":{"id":"ENT"}}`},
 		{name: "rules/core/sub/SUB.json", body: `{"entity":{"id":"SUB"}}`},
 		{name: "rules/other/OTH.json", body: "nope"},
-		{name: "rules/other/link.json", link: "../../README.md"}, // outside the fetched path
+		{name: "rules/other/link.json", link: "../../README.md"},   // outside the fetched path
+		{name: "rules/core/NOTES", link: "../../README.md"}, // not JSON: skipped
 	})
 }
 
@@ -1007,12 +1008,12 @@ func TestExtractTarball_RejectsSpecialEntries(t *testing.T) {
 		name  string
 		entry rawEntry
 	}{
-		{"absolute symlink", linkEntry("p/rules/evil", tar.TypeSymlink, "/etc/passwd")},
-		{"relative symlink", linkEntry("p/rules/evil", tar.TypeSymlink, "../../../../escape")},
-		{"hard link", linkEntry("p/rules/evil", tar.TypeLink, "/etc/passwd")},
-		{"character device", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeChar, Devmajor: 1, Devminor: 3}}},
-		{"block device", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeBlock, Devmajor: 8}}},
-		{"fifo", rawEntry{hdr: tar.Header{Name: "p/rules/evil", Typeflag: tar.TypeFifo}}},
+		{"absolute symlink", linkEntry("p/rules/evil.json", tar.TypeSymlink, "/etc/passwd")},
+		{"relative symlink", linkEntry("p/rules/evil.json", tar.TypeSymlink, "../../../../escape")},
+		{"hard link", linkEntry("p/rules/evil.json", tar.TypeLink, "/etc/passwd")},
+		{"character device", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeChar, Devmajor: 1, Devminor: 3}}},
+		{"block device", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeBlock, Devmajor: 8}}},
+		{"fifo", rawEntry{hdr: tar.Header{Name: "p/rules/evil.json", Typeflag: tar.TypeFifo}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1024,7 +1025,7 @@ func TestExtractTarball_RejectsSpecialEntries(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "link or special file") {
 				t.Fatalf("extractTarball err = %v, want a link or special file error", err)
 			}
-			if _, err := os.Lstat(filepath.Join(dest, "evil")); !os.IsNotExist(err) {
+			if _, err := os.Lstat(filepath.Join(dest, "evil.json")); !os.IsNotExist(err) {
 				t.Errorf("special entry was materialised, Lstat err = %v", err)
 			}
 		})
@@ -1054,8 +1055,13 @@ func TestExtractTarball_LinksCannotRedirectWrites(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dest := t.TempDir()
 			archive := rawTarball(t, tt.link, regEntry(tt.fileName, "pwned"))
-			if _, err := extractTarball(bytes.NewReader(archive), "", dest); err == nil {
-				t.Fatal("extractTarball: no error for a link entry")
+			// Not JSON, the link is skipped, so the file is written to a real
+			// directory and nothing outside changes.
+			if _, err := extractTarball(bytes.NewReader(archive), "", dest); err != nil {
+				t.Fatalf("extractTarball: %v", err)
+			}
+			if got, want := treeOf(t, dest), map[string]string{tt.wantPath: "pwned"}; !maps.Equal(got, want) {
+				t.Errorf("tree = %v, want %v", got, want)
 			}
 			if got, want := treeOf(t, outside), map[string]string{"secret": "original"}; !maps.Equal(got, want) {
 				t.Errorf("outside dir = %v, want %v", got, want)
@@ -2165,6 +2171,18 @@ func TestExtractTarball_IgnoresLinksOutsideTheSubtree(t *testing.T) {
 		rawEntry{hdr: tar.Header{Name: "pax_global_header", Typeflag: tar.TypeXGlobalHeader}},
 		linkEntry("p/docs/evil", tar.TypeSymlink, "/etc/passwd"),
 		regEntry("p/rules/ok.json", "{}"))
+	if _, err := extractTarball(bytes.NewReader(archive), "rules", dest); err != nil {
+		t.Fatalf("extractTarball: %v", err)
+	}
+	if got, want := treeOf(t, dest), map[string]string{"ok.json": "{}"}; !maps.Equal(got, want) {
+		t.Errorf("tree = %v, want %v", got, want)
+	}
+}
+
+// A link without a JSON name holds nothing, so it is skipped, not refused.
+func TestExtractTarball_SkipsNonJSONLinks(t *testing.T) {
+	dest := t.TempDir()
+	archive := rawTarball(t, linkEntry("p/rules/NOTES", tar.TypeSymlink, "/etc/passwd"), regEntry("p/rules/ok.json", "{}"))
 	if _, err := extractTarball(bytes.NewReader(archive), "rules", dest); err != nil {
 		t.Fatalf("extractTarball: %v", err)
 	}
