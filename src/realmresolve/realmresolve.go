@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"path"
 	"path/filepath"
 	"strings"
@@ -554,17 +555,21 @@ func (r *RealmResolver) resolveDep(ctx context.Context, dep entity.RealmDep, bas
 
 	// Resolve local path, through real directories only: a link on the way
 	// could fetch another tree under the same ID, unseen by rule-diff.
-	if _, err := realmfs.DirFrom(baseDir, dep.Source); errors.Is(err, realmfs.ErrNotRegular) {
+	walked, walkErr := realmfs.DirFrom(baseDir, dep.Source)
+	if walkErr != nil && !errors.Is(walkErr, fs.ErrNotExist) {
 		res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR002",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, err),
+			Message:  fmt.Sprintf("dependency %q: source %q: %v", dep.RealmID, dep.Source, walkErr),
 			Path:     baseDir,
 		})
 		return nil
 	}
 	resolvedDir, err := filepath.Abs(filepath.Join(baseDir, dep.Source))
+	if walkErr == nil {
+		resolvedDir = walked // The directory the walk reached, through real ones only.
+	}
 	if err != nil {
 		res.Add(result.Diagnostic{
 			Module:   module,

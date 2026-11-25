@@ -149,7 +149,10 @@ func ReadUnder(root, rel string) ([]byte, error) {
 // anywhere on the way is ErrNotRegular and is not followed. ".." goes up
 // lexically, as the OS does once no link is followed. It returns the path.
 func DirFrom(dir, rel string) (string, error) {
-	cur := dir
+	cur, err := filepath.Abs(dir) // So that ".." goes up as the OS goes.
+	if err != nil {
+		return "", err
+	}
 	for _, part := range strings.FieldsFunc(rel, func(r rune) bool { return r == '/' || r == '\\' }) {
 		switch part {
 		case ".":

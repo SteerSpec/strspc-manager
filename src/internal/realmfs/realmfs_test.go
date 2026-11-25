@@ -215,3 +215,14 @@ func TestDirFromAndRegularUnder(t *testing.T) {
 		}
 	}
 }
+
+// DirFrom starts from the absolute directory, so ".." from a relative one goes
+// up as the OS goes.
+func TestDirFromRelativeStart(t *testing.T) {
+	dir := tree(t)
+	t.Chdir(filepath.Join(dir, "real"))
+	got, err := DirFrom(".", "..")
+	if err != nil || got != dir {
+		t.Errorf(`DirFrom(".", "..") = %q, %v; want %q`, got, err, dir)
+	}
+}
