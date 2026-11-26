@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.55.0](https://github.com/SteerSpec/strspc-manager/compare/v1.54.0...v1.55.0) (2026-11-26)
+
+
+### Features
+
+* **ruleeval:** split a rule group whose output schema the API refuses as too large ([#384](https://github.com/SteerSpec/strspc-manager/issues/384)) ([09c0c0a](https://github.com/SteerSpec/strspc-manager/commit/09c0c0ae3f5e31c05917e4e1bf5c6a1d24552751))
+
 ## [1.54.0](https://github.com/SteerSpec/strspc-manager/compare/v1.53.0...v1.54.0) (2026-11-25)
 
 
