@@ -1141,7 +1141,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-eval",
 		Severity: "Warning / Error",
 		Title:    "Rule violated",
-		Summary:  "The diff violates a rule; Error when the rule's state is in `fail_on`, Warning otherwise.",
+		Summary:  "The diff violates a rule; Error when the rule's enforced state (SPCFG-010) is in `fail_on`, Warning otherwise.",
 		Fix:      "Change the code to satisfy the rule, or supersede the rule if it no longer holds. The `fail_on` setting decides whether a violation blocks.",
 	},
 	{
@@ -1183,6 +1183,14 @@ var codeTable = []CodeInfo{
 		Title:    "Enforced rule labelled as a standard",
 		Summary:  "A rule not evaluated because its Realm declares `kind` `standard` is Implemented, or is in a state of `evaluate_on` and is in a state of `fail_on`, has `overrides` or is live without a `clause`: skipping it would switch off enforcement, so it blocks. Reported also in static-only mode and when there is nothing to evaluate.",
 		Fix:      "If these are the project's own rules, remove `kind` from the Realm's `realm.json`. In a real Standard Realm give each rule its `clause`, override nothing, leave rules Published and keep their state out of `fail_on`.",
+	},
+	{
+		Code:     "RE007",
+		Module:   "rule-eval",
+		Severity: "Warning",
+		Title:    "Draft override conflicts with the rule it overrides",
+		Summary:  "A Draft rule that overrides an inherited rule conflicts with it: code that follows the Draft would violate the inherited rule, which stays in force until the Draft is Published (RUL-023). The provider judges the two rule texts, and the answer is cached under both. Never an Error, whatever `fail_on` says.",
+		Fix:      "Keep code following the inherited rule until the override is Published, with an `override_ack` note (RUL-022), or change the Draft so that it no longer conflicts.",
 	},
 	{
 		Code:     "RF001",

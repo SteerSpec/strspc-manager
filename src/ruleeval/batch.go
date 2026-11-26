@@ -308,6 +308,10 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 		extended = append(extended, e.ID+"\x1f"+strconv.Itoa(e.Revision)+"\x1f"+e.Body)
 	}
 	sort.Strings(extended)
+	var overridden string
+	if o := rule.Overridden; o != nil {
+		overridden = o.ID + "\x1f" + strconv.Itoa(o.Revision) + "\x1f" + o.Body
+	}
 
 	var b strings.Builder
 	fields := []string{
@@ -323,6 +327,7 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 		rule.Overrides,
 		strings.Join(overriddenBy, "\x1e"),
 		strings.Join(extended, "\x1e"),
+		overridden,
 		diffHash,
 		model,
 		promptVersion,

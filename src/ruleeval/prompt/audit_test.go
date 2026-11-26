@@ -13,8 +13,8 @@ import (
 // TestAuditVersion pins the audit prompt revision, so a change to it is
 // deliberate.
 func TestAuditVersion(t *testing.T) {
-	if prompt.AuditVersion != "a2" {
-		t.Fatalf("AuditVersion = %q, want a2", prompt.AuditVersion)
+	if prompt.AuditVersion != "a3" {
+		t.Fatalf("AuditVersion = %q, want a3", prompt.AuditVersion)
 	}
 }
 
