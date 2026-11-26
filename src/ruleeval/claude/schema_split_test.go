@@ -216,3 +216,46 @@ func TestEvaluateBatch_ReportsASingleRuleWhoseSchemaIsTooLarge(t *testing.T) {
 		}
 	}
 }
+
+// The SDK's error text carries the response's workspace header, so a 400
+// from a workspace-scoped key reads "(Workspace-ID: …)" whatever the API
+// said. Only the API's own message decides how a 400 is classified
+// (strspc-CLI#322 was reported as the provider being unavailable).
+func TestEvaluateBatch_ClassifiesA400ByItsMessage(t *testing.T) {
+	for _, tc := range []struct {
+		name, msg   string
+		unavailable bool
+		tooLarge    bool
+	}{
+		{"grammar", grammarTooLarge, false, true},
+		{"other", "messages.0.content.0.text: text content blocks must be non-empty", false, false},
+		{"workspace key", "This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header.", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(claude.EnvBaseURL, "")
+			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("anthropic-workspace-id", "wrkspc_01synthetic")
+				writeJSON(w, 400, apiError(400, "invalid_request_error", tc.msg))
+			}))
+			defer srv.Close()
+			p, err := claude.New(claude.Config{APIKey: "k", BaseURL: srv.URL, HTTPClient: srv.Client(), MaxRetries: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{EntityID: "CMD", Inputs: manyRules(1), Diff: diffWithLong})
+			got := err
+			if got == nil && len(resp.Errors) > 0 {
+				got = resp.Errors[0]
+			}
+			if got == nil || !strings.Contains(got.Error(), "Workspace-ID") {
+				t.Fatalf("err = %v, want the SDK's text with the workspace header", got)
+			}
+			if errors.Is(got, ruleeval.ErrUnavailable) != tc.unavailable {
+				t.Errorf("err = %v, unavailable = %v, want %v", got, !tc.unavailable, tc.unavailable)
+			}
+			if errors.Is(got, claude.ErrSchemaTooLarge) != tc.tooLarge {
+				t.Errorf("err = %v, schema too large = %v, want %v", got, !tc.tooLarge, tc.tooLarge)
+			}
+		})
+	}
+}

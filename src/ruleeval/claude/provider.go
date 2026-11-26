@@ -828,11 +828,21 @@ func (p *Provider) send(ctx context.Context, system, diffBlock string, blocks []
 	return "", fmt.Errorf("%w: no text block in response (stop_reason %q)", ErrMalformed, msg.StopReason)
 }
 
-// isSchemaTooLarge reports whether a 400 refuses the request's output
-// schema as compiling to too large a grammar.
-func isSchemaTooLarge(err error) bool {
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "grammar") && strings.Contains(msg, "too large")
+// apiMessage returns the message the API gave for e, or the raw body when
+// it has none. A 400 is classified on it alone: e.Error() also carries the
+// request URL, the request ID and a "(Workspace-ID: …)" for a
+// workspace-scoped key, which would make every 400 look like a key the
+// endpoint refuses.
+func apiMessage(e *anthropic.Error) string {
+	var body struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(e.RawJSON()), &body); err == nil && body.Error.Message != "" {
+		return body.Error.Message
+	}
+	return e.RawJSON()
 }
 
 // classify maps SDK errors: credential, permission and model errors become
@@ -845,14 +855,15 @@ func classify(err error) error {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return fmt.Errorf("%w: HTTP %d %s: %w", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
 		case http.StatusBadRequest:
-			if isSchemaTooLarge(err) {
+			msg := strings.ToLower(apiMessage(apierr))
+			if strings.Contains(msg, "grammar") && strings.Contains(msg, "too large") {
 				return fmt.Errorf("%w: HTTP %d %s: %w", ErrSchemaTooLarge, apierr.StatusCode, apierr.Type(), err)
 			}
 			// An organisation-level key without a workspace, or a key the
 			// endpoint does not accept, comes back as 400 invalid_request;
 			// no request will ever succeed, so report the provider as
 			// unavailable instead of failing every rule one by one.
-			if msg := strings.ToLower(err.Error()); strings.Contains(msg, "workspace") || strings.Contains(msg, "api key") {
+			if strings.Contains(msg, "workspace") || strings.Contains(msg, "api key") {
 				return fmt.Errorf("%w: HTTP %d %s: %w", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
 			}
 			return fmt.Errorf("claude: HTTP %d %s: %w", apierr.StatusCode, apierr.Type(), err)
