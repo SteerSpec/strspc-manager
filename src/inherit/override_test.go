@@ -104,3 +104,14 @@ func TestEnforcedState_DefaultsToTheState(t *testing.T) {
 		t.Errorf("EnforcedState = %q, want P", got)
 	}
 }
+
+// TestEffective_StatesBeyondTheDefaults keeps own rules in a state the
+// caller asks for outside D, P and I, and a Retired override replaces
+// nothing.
+func TestEffective_StatesBeyondTheDefaults(t *testing.T) {
+	a := hop("core", "A", rule("A-001", "I", nil))
+	b := hop("lib", "B", rule("B-001", "R", ptr("core:A-001")), rule("B-002", "P", nil))
+	if got, want := ids(Effective(b, []Hop{a}, []string{"R"})), []string{"core:A-001", "lib:B-001"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Effective = %v, want %v", got, want)
+	}
+}

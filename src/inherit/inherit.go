@@ -144,8 +144,10 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 		set[i].InheritedByTitle = child.Entity.Entity.Title
 	}
 	ns := namespaces(append([]Hop{child}, ancestors...))
+	// Published and Implemented rules replace whatever states says; the rest
+	// are kept only when states asks for them, and replace nothing.
 	own := apply(set, ownRules(child, ns, func(r entity.Rule) bool {
-		return slices.Contains(DefaultStates, r.State)
+		return keep[r.State] || r.State == entity.StatePublished || r.State == entity.StateImplemented
 	}))
 	return slices.DeleteFunc(own, func(r Rule) bool { return r.InheritedBy == "" && !keep[r.EnforcedState()] })
 }
