@@ -113,18 +113,29 @@ type InheritedRule struct {
 	// Realm.
 	Owner      string
 	OwnerRealm string
-	// OverriddenBy is the ID of the entity's own rule that replaces this one
-	// (RUL-009), empty when none does.
+	// OverriddenBy is the ID of the entity's own Published or Implemented
+	// rule that replaces this one (RUL-019), empty when none does.
 	OverriddenBy string
+	// ProposedBy lists the IDs of the entity's own Draft rules that override
+	// this one. A Draft override replaces nothing (RUL-018), so the rule
+	// stays in force.
+	ProposedBy []string
 }
 
 // inheritedRows lists what c.Entity inherits from c.Ancestors: every
-// inherited rule, marked with the entity's own rule that overrides it.
+// inherited rule, marked with the entity's own rule that replaces it and the
+// Draft rules that propose to.
 func inheritedRows(c Chain) []InheritedRule {
 	replacedBy := make(map[string]string)
+	proposedBy := make(map[string][]string)
 	for _, r := range inherit.Effective(c.Entity, c.Ancestors, nil) {
-		if r.InheritedBy == "" && r.Overrides != "" {
+		switch {
+		case r.InheritedBy != "":
+		case r.Overrides != "":
 			replacedBy[r.Overrides] = r.Rule.ID
+		case r.Overridden != nil && r.Rule.State == entity.StateDraft:
+			id := r.Overridden.QualifiedID()
+			proposedBy[id] = append(proposedBy[id], r.Rule.ID)
 		}
 	}
 	inherited := inherit.Inherited(c.Ancestors)
@@ -137,6 +148,7 @@ func inheritedRows(c Chain) []InheritedRule {
 			Owner:        r.Owner,
 			OwnerRealm:   r.OwnerRealm,
 			OverriddenBy: replacedBy[r.QualifiedID()],
+			ProposedBy:   proposedBy[r.QualifiedID()],
 		})
 	}
 	return rows
@@ -198,6 +210,7 @@ func (r *MarkdownRenderer) parseTemplate() (*template.Template, error) {
 	var cachedTmpl *template.Template
 
 	funcMap := template.FuncMap{
+		"join": strings.Join,
 		"heading": func(depth int) string {
 			if depth < 1 {
 				depth = 1

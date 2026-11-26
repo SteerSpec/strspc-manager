@@ -71,12 +71,33 @@ type Rule struct {
 	// InheritedByTitle is the title of that inheriting entity.
 	InheritedByTitle string
 	// Overrides is the qualified ID of the inherited rule this rule
-	// replaced, empty when it replaced none.
+	// replaced, empty when it replaced none. Only a Published or Implemented
+	// rule replaces the rule it overrides (RUL-018, RUL-019).
 	Overrides string
+	// Overridden is the inherited rule this rule declares it overrides, as the
+	// set held it before any override of this entity applied, whether or not
+	// this rule replaced it: an evaluation of an overriding rule receives it as
+	// context, for a Draft override too (RUL-020). Nil when the rule overrides
+	// nothing or its target is not in the inherited set.
+	Overridden *Rule
+	// Enforced is the enforced state of the rule when it differs from its
+	// State: Implemented for a Published rule that replaces a rule whose
+	// enforced state is Implemented (RUL-021, RUL-024). Read it through
+	// EnforcedState; it is derived each time and never stored in a file.
+	Enforced string
 	// Standards holds the Standard References a `standard` note on the rule
 	// resolves against, nearest first, from the entity owning the rule
 	// (NTE-016).
 	Standards [][]entity.StandardRef
+}
+
+// EnforcedState returns the state the rule is evaluated and enforced as
+// (RUL-024): Implemented when RUL-021 requires it, the rule's State otherwise.
+func (r Rule) EnforcedState() string {
+	if r.Enforced != "" {
+		return r.Enforced
+	}
+	return r.Rule.State
 }
 
 // QualifiedID returns the rule's ID qualified with its owner's namespace.
@@ -101,11 +122,14 @@ func Inherited(ancestors []Hop) []Rule {
 	return set
 }
 
-// Effective returns the effective rule set of child, whose ancestors are
-// given nearest first. The child's own rules are filtered by states (nil
-// means DefaultStates) before their overrides are applied, so an inherited
-// rule reappears once the rule overriding it leaves the evaluated states.
-// Inherited entries carry InheritedBy = the child's EUID.
+// Effective returns the rule set child is evaluated against, whose ancestors
+// are given nearest first: the inherited set (ENT-020) less the rules that
+// child's own Published and Implemented rules replace (RUL-019), then child's
+// own rules whose enforced state is in states (nil means DefaultStates). A
+// Draft rule replaces nothing (RUL-018), so with the default states a Draft
+// override is evaluated beside the rule it overrides. Which rules are replaced
+// does not depend on states. Inherited entries carry InheritedBy = the child's
+// EUID.
 func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 	if states == nil {
 		states = DefaultStates
@@ -120,14 +144,17 @@ func Effective(child Hop, ancestors []Hop, states []string) []Rule {
 		set[i].InheritedByTitle = child.Entity.Entity.Title
 	}
 	ns := namespaces(append([]Hop{child}, ancestors...))
-	return apply(set, ownRules(child, ns, func(r entity.Rule) bool { return keep[r.State] }))
+	own := apply(set, ownRules(child, ns, func(r entity.Rule) bool {
+		return slices.Contains(DefaultStates, r.State)
+	}))
+	return slices.DeleteFunc(own, func(r Rule) bool { return r.InheritedBy == "" && !keep[r.EnforcedState()] })
 }
 
 // Displaced returns the rules child no longer has that it or an ancestor once
-// held in force: those an override along the chain replaced, a Draft override of
-// child's included, as in Effective with its default states, then those in state
-// Retired or Terminated owned by child or an ancestor. Ancestors are given
-// nearest first. A rule displaced twice appears twice.
+// held in force: those a Published or Implemented override along the chain
+// replaced (RUL-019; a Draft override replaces nothing, STDREF-015), then those
+// in state Retired or Terminated owned by child or an ancestor. Ancestors are
+// given nearest first. A rule displaced twice appears twice.
 func Displaced(child Hop, ancestors []Hop) []Rule {
 	publishedOrImplemented := func(r entity.Rule) bool {
 		return r.State == entity.StatePublished || r.State == entity.StateImplemented
@@ -143,7 +170,7 @@ func Displaced(child Hop, ancestors []Hop) []Rule {
 	}
 	hops := append([]Hop{child}, ancestors...)
 	ns = namespaces(hops)
-	step(ownRules(child, ns, func(r entity.Rule) bool { return slices.Contains(DefaultStates, r.State) }))
+	step(ownRules(child, ns, publishedOrImplemented))
 
 	for _, h := range hops {
 		out = append(out, ownRules(h, ns, func(r entity.Rule) bool {
@@ -153,12 +180,12 @@ func Displaced(child Hop, ancestors []Hop) []Rule {
 	return out
 }
 
-// replaced returns the rules of set that the added rules override.
+// replaced returns the rules of set that the added rules replace.
 func replaced(set, added []Rule) []Rule {
 	var out []Rule
 	for _, r := range set {
 		id := r.QualifiedID()
-		if slices.ContainsFunc(added, func(a Rule) bool { return a.Overrides == id }) {
+		if slices.ContainsFunc(added, func(a Rule) bool { return a.Overrides == id && replaces(a) }) {
 			out = append(out, r)
 		}
 	}
@@ -241,31 +268,41 @@ func ownRules(h Hop, ns map[string]string, keep func(entity.Rule) bool) []Rule {
 	return out
 }
 
-// apply removes from set the targets that the added rules override, then
-// appends the added rules. An added rule keeps Overrides only when its
-// target was actually in the set.
+// replaces reports whether a, which declares an override, replaces its target:
+// only a Published or Implemented rule does (RUL-018, RUL-019).
+func replaces(a Rule) bool {
+	return a.Rule.State == entity.StatePublished || a.Rule.State == entity.StateImplemented
+}
+
+// apply removes from set the targets that the added Published and Implemented
+// rules override, then appends the added rules. Every added rule whose target
+// is in set gets it as Overridden; one that replaced it keeps Overrides, and
+// a Published one is enforced as Implemented when the target's enforced state
+// is Implemented (RUL-021). The others lose Overrides.
 func apply(set, added []Rule) []Rule {
-	remove := make(map[string]bool)
-	for _, a := range added {
-		if a.Overrides != "" {
-			remove[a.Overrides] = true
-		}
-	}
-	present := make(map[string]bool, len(set))
-	kept := set[:0:0]
+	byID := make(map[string]Rule, len(set))
 	for _, r := range set {
-		id := r.QualifiedID()
-		if remove[id] {
-			present[id] = true
+		byID[r.QualifiedID()] = r
+	}
+	remove := make(map[string]bool)
+	for i := range added {
+		a := &added[i]
+		target, ok := byID[a.Overrides]
+		if a.Overrides == "" || !ok {
+			a.Overrides = ""
 			continue
 		}
-		kept = append(kept, r)
-	}
-	for i := range added {
-		if added[i].Overrides != "" && !present[added[i].Overrides] {
-			added[i].Overrides = ""
+		a.Overridden = &target
+		if !replaces(*a) {
+			a.Overrides = ""
+			continue
+		}
+		remove[a.Overrides] = true
+		if a.Rule.State == entity.StatePublished && target.EnforcedState() == entity.StateImplemented {
+			a.Enforced = entity.StateImplemented
 		}
 	}
+	kept := slices.DeleteFunc(slices.Clone(set), func(r Rule) bool { return remove[r.QualifiedID()] })
 	return append(kept, added...)
 }
 

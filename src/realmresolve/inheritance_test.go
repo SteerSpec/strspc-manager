@@ -44,7 +44,8 @@ func TestResolveInheritance_TransitiveChain(t *testing.T) {
 	}
 
 	// The effective set: BASE-001 replaced by ACCT-001, which SAV-001
-	// replaces in turn; BASE-002 replaced by SAV-002.
+	// replaces in turn; BASE-002 replaced by SAV-002. Both are Published, as
+	// a Draft override replaces nothing (RUL-018).
 	var ids []string
 	for _, r := range inherit.Effective(inh.Entity, inh.Ancestors, nil) {
 		ids = append(ids, r.QualifiedID())
