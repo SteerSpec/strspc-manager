@@ -199,3 +199,20 @@ func TestStandardSkip_DraftOverrideFailsClosed(t *testing.T) {
 		t.Fatalf("diagnostics = %v, want one %s saying it would replace once Published", res.Diagnostics, ruleeval.CodeUnsafeSkip)
 	}
 }
+
+// TestStandardSkip_ReplacingOverrideNamesTheEffectiveTarget checks that RE006
+// names the qualified target an input replaces, with no declared pointer.
+func TestStandardSkip_ReplacingOverrideNamesTheEffectiveTarget(t *testing.T) {
+	e, err := ruleeval.New(&batchProvider{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := entityInput("STD", "STD-001", "P")
+	in.Rule.Clause = "1.1"
+	in.Overrides = "core:ACCT-001"
+	in.RealmKind = entity.KindStandard
+	res := e.Evaluate(context.Background(), []ruleeval.RuleInput{in}, "diff")
+	if len(res.Diagnostics) != 1 || !strings.Contains(res.Diagnostics[0].Message, "it overrides core:ACCT-001, which would then be enforced by neither rule") {
+		t.Fatalf("diagnostics = %v", res.Diagnostics)
+	}
+}

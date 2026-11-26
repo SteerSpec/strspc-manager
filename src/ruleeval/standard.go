@@ -82,7 +82,7 @@ func (e *Evaluator) unsafeSkip(in *RuleInput) string {
 	case e.cfg.FailOn[state]:
 		return fmt.Sprintf("a violation of a rule in state %s blocks here (fail_on), and a skipped rule gets no verdict", state)
 	case in.Overrides != "":
-		return fmt.Sprintf("it overrides %s, which would then be enforced by neither rule", *r.Overrides)
+		return fmt.Sprintf("it overrides %s, which would then be enforced by neither rule", in.Overrides)
 	case r.Overrides != nil && *r.Overrides != "":
 		// Fail closed before the override takes effect: once Published it
 		// replaces its target with a rule that is never evaluated.
