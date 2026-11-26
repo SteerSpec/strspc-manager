@@ -57,6 +57,34 @@ func checkRules(base, head *entity.File, res *result.Result, path string) {
 
 	// RD025: structured notes of rules that have left Draft.
 	checkStructuredFreeze(base, head, res, path)
+
+	// RD032: an override entering Published is acknowledged.
+	checkOverrideAcks(baseMap, head, res, path)
+}
+
+// checkOverrideAcks runs RD032: a rule that declares `overrides` and moves from
+// Draft to Published holds an `override_ack` note whose content is its current
+// revision (RUL-022). An override can name only a Published or Implemented
+// inherited rule (RUL-009; realm-resolve reports any other as RR015 or RR016),
+// so every override needs one.
+func checkOverrideAcks(baseMap map[string]entity.Rule, head *entity.File, res *result.Result, path string) {
+	for _, h := range head.Rules {
+		b, existed := baseMap[h.ID]
+		if !existed || b.State != entity.StateDraft || h.State != entity.StatePublished || h.Overrides == nil || *h.Overrides == "" {
+			continue
+		}
+		if entity.HasOverrideAck(head.Notes, h.ID, h.Revision) {
+			continue
+		}
+		res.Add(result.Diagnostic{
+			Module:   module,
+			Code:     "RD032",
+			Severity: result.Error,
+			Message: fmt.Sprintf("rule %s overrides %s and entered Published without an override_ack note acknowledging revision %d (RUL-022)",
+				h.ID, *h.Overrides, h.Revision),
+			Path: path + "/" + h.ID,
+		})
+	}
 }
 
 // checkExistingRule runs RD001, RD002, RD003, RD006 for a rule present in both versions.

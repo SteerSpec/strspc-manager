@@ -153,7 +153,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 Notes are stored in the same entity file as the rules they reference and are edited in place, never deleted:
 
 - A note is never removed once added. A note that no longer applies is revised in place.
-- Notes of type `changelog`, `supersedes`, `extends` and `related` are immutable: neither their content nor their type may change once added.
+- Notes of type `changelog`, `supersedes`, `extends`, `related` and `override_ack` are immutable: neither their content nor their type may change once added.
 - Any other note may be revised; each change to its content or type increments its `revision` by exactly one.
 - A `standard` note changes type only to or from `reference`. A withdrawal to `reference` keeps the content (NTE-017, NTE-019).
 - Note IDs under a rule are sequential from `01`. Since no note is ever removed, an ID is never reused.
@@ -177,6 +177,7 @@ The evaluator receives the note types listed in `ruleeval.PromptNoteTypes`, ever
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
 | `standard` | Maps the rule to one clause of an external standard, as `<id>:<clause>` split at the first colon (NTE-013, NTE-014). Can be added, revised or withdrawn in any rule state, and never moves the rule's revision (NTE-017, NTE-018). | Rules |
 | `structured` | Holds the machine-readable form of the rule as `<format>:<payload>` split at the first colon, the payload being opaque to SteerSpec (NTE-036, NTE-037, NTE-039). At most one per rule, and frozen once the rule leaves Draft (NTE-040, NTE-041). | Rules |
+| `override_ack` | Acknowledges, by a contributor of its Realm, that its rule is to replace the inherited rule it overrides; the content is the revision acknowledged (NTE-042). Only on a rule that declares `overrides`, and append-only (NTE-043, NTE-044). A rule that overrides enters Published only with one acknowledging its current revision (RUL-022): `PromoteRule` refuses otherwise, and rule-diff reports RD032. Core 1.26.0 or later. | Rules |
 | `exclusion` | Declares one clause not applicable to its Realm, with `ref` `<id>:<clause>` and the justification as content (NTE-032 to NTE-034). Withdrawn only by retyping it to `reference` (NTE-035). Core 1.21.0 or later. | Realms (Realm Notes) |
 
 Realm Notes, stored in the `notes` array of `realm.json` (§2.8, Realm Manifest), take only `exclusion`, `rationale`, `clarification` and `reference` (NTE-029, NTE-031).
@@ -564,6 +565,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL041 | Error | A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013). |
 | RL042 | Error | The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037). |
 | RL043 | Error | A rule holds more than one `structured` note (NTE-040). |
+| RL044 | Error | An `override_ack` note is on a rule that declares no `overrides` (NTE-043). |
 
 #### `rule-diff` (RD)
 
@@ -581,7 +583,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD009 | Error | `rule_set.timestamp` is unchanged from the base version. |
 | RD010 | Error | A new rule reuses a rule number present in the base version. |
 | RD011 | Error | A new rule or new note has an empty `added_by`. |
-| RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped. |
+| RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) was removed or retyped. |
 | RD013 | Error | A note's content or type changed without its revision incrementing by exactly 1, or its revision changed without a content or type change. |
 | RD014 | Error | A note that is not append-only and is present in the base version was removed. |
 | RD015 | Error | A new note has revision ≠ 0. |
@@ -601,6 +603,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
 | RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
 | RD031 | Error | A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged. |
+| RD032 | Error | A rule that declares `overrides` moved from Draft to Published without an `override_ack` note whose content is its current revision (RUL-022). |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `Compare` and `CompareNew` read no manifest.
 
@@ -824,7 +827,7 @@ For each changed entity file, the validator compares the before and after states
 9. **Rule Set timestamp:** Must be updated.
 10. **No ID reuse:** New rule numbers must not reuse any previously existing rule number in the entity's history.
 11. **`added_by` present:** Required on new rules and new notes. Must be present; its format is checked by `rule-lint` (RL032).
-12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
+12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
@@ -836,6 +839,7 @@ For each changed entity file, the validator compares the before and after states
 21. **A Realm keeps its kind:** Neither a `kind` field nor a change to the manifests around existing files may move rules between a code Realm and a Standard Realm (RD028). Relabeling is how evaluation would be switched off (STDRLM-011).
 22. **Realm Notes keep their history:** None is removed, each change to its type, content or `ref` moves the revision by one (its `added_by` and `added_at` may be rewritten, as `strspc realm rewrite-added-by` does), and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
 23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).
+24. **An override is acknowledged before it governs:** A rule that declares `overrides` moves from Draft to Published only with an `override_ack` note whose content is its current revision (RD032, RUL-022). A later Draft edit moves the revision, so publishing it needs a new acknowledgement.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 

@@ -52,5 +52,11 @@
     "code": "RL015",
     "severity": "error",
     "path": "realm/NOTES.json: NOTES"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL044",
+    "severity": "error",
+    "path": "realm/NOTES.json: NOTES"
   }
 ]

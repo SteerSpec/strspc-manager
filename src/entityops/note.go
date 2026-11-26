@@ -38,6 +38,11 @@ func AddNote(f *entity.File, ruleID, noteType, content, addedBy string) (string,
 			return "", err
 		}
 	}
+	if noteType == entity.NoteTypeOverrideAck {
+		if err := checkOverrideAck(f, ruleID); err != nil {
+			return "", err
+		}
+	}
 
 	num := nextNoteNumber(f, ruleID)
 	if num > maxNoteNumber {
@@ -260,4 +265,17 @@ func findNote(f *entity.File, noteID string) (*entity.Note, error) {
 		}
 	}
 	return nil, fmt.Errorf("note %q not found", noteID)
+}
+
+// checkOverrideAck refuses an `override_ack` note on ruleID unless the rule
+// declares `overrides` (NTE-043).
+func checkOverrideAck(f *entity.File, ruleID string) error {
+	r, err := findRule(f, ruleID)
+	if err != nil {
+		return err
+	}
+	if r.Overrides == nil || *r.Overrides == "" {
+		return fmt.Errorf("rule %q declares no overrides: an override_ack note goes only on a rule that does (NTE-043)", ruleID)
+	}
+	return nil
 }
