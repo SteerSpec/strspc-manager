@@ -839,6 +839,17 @@ For each changed entity file, the validator compares the before and after states
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 
+### 7.3 Files Outside the Compared Trees
+
+Workflow II compares rule files. Some files decide which rules are enforced without being one, and a change to them passes it:
+
+- `.strspc/config.yaml`: the rule sources, `fail_on`, `evaluate_on` and the evaluator;
+- the Realm manifest (`realm.json`): its dependencies and `inherits`, which rule-diff checks (RD031 and others) but cannot judge;
+- a dependency Realm copied into the repository and used as a local source, when it sits outside the trees `diff` compares;
+- the CI workflows that run the gate.
+
+A repository using strspc should name owners for these paths in `.github/CODEOWNERS` and require code-owner review on its protected branches. The owner must be an approver that does not approve every pull request on its own: a bot that approves once checks pass does not count. This repository's own CODEOWNERS is an example.
+
 ---
 
 ## 8. Enforcement Architecture
