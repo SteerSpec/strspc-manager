@@ -70,9 +70,15 @@ func TestEffective(t *testing.T) {
 	}{
 		{
 			name:  "own rules after inherited, override applied",
-			child: []entity.Rule{rule("SAV-001", "D", ptr("core:ACCT-001")), rule("SAV-002", "P", nil)},
+			child: []entity.Rule{rule("SAV-001", "P", ptr("core:ACCT-001")), rule("SAV-002", "P", nil)},
 			want:  []string{"core:ACCT-002", "prod:SAV-001", "prod:SAV-002"},
 			over:  map[string]string{"prod:SAV-001": "core:ACCT-001"},
+		},
+		{
+			name:  "a Draft override replaces nothing",
+			child: []entity.Rule{rule("SAV-001", "D", ptr("core:ACCT-001"))},
+			want:  []string{"core:ACCT-001", "core:ACCT-002", "prod:SAV-001"},
+			over:  map[string]string{"prod:SAV-001": ""},
 		},
 		{
 			name:  "retired override lets the target reappear",
@@ -120,8 +126,8 @@ func TestEffective_ShortAndSubRealmOverrideForms(t *testing.T) {
 	acct := hop("dev.bank", "ACCT", rule("ACCT-001", "I", nil), rule("ACCT-002", "I", nil))
 	acct.SubRealmIDs = []string{"dev.bank.auth"}
 	child := hop("dev.bank", "SAV",
-		rule("SAV-001", "D", ptr("ACCT-001")),
-		rule("SAV-002", "D", ptr("dev.bank.auth:ACCT-002")))
+		rule("SAV-001", "P", ptr("ACCT-001")),
+		rule("SAV-002", "P", ptr("dev.bank.auth:ACCT-002")))
 	got := ids(Effective(child, []Hop{acct}, nil))
 	if want := []string{"dev.bank:SAV-001", "dev.bank:SAV-002"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("Effective = %v, want %v", got, want)
@@ -161,9 +167,11 @@ func TestEffective_NotesFollowTheirRule(t *testing.T) {
 
 func TestOverriddenBy(t *testing.T) {
 	acct := hop("core", "ACCT", rule("ACCT-001", "I", nil), rule("ACCT-002", "I", nil))
-	sav := Effective(hop("prod", "SAV", rule("SAV-001", "D", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	sav := Effective(hop("prod", "SAV", rule("SAV-001", "I", ptr("core:ACCT-001"))), []Hop{acct}, nil)
 	loan := Effective(hop("prod", "LOAN", rule("LOAN-001", "P", ptr("core:ACCT-001"))), []Hop{acct}, nil)
-	got := OverriddenBy(sav, loan, sav)
+	// A Draft override replaces nothing, so it is not named (RUL-018).
+	draft := Effective(hop("prod", "DRA", rule("DRA-001", "D", ptr("core:ACCT-001"))), []Hop{acct}, nil)
+	got := OverriddenBy(sav, loan, sav, draft)
 	want := map[string][]string{"core:ACCT-001": {"prod:LOAN-001 (LOAN title)", "prod:SAV-001 (SAV title)"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("OverriddenBy = %v, want %v", got, want)
@@ -200,10 +208,10 @@ func TestDisplaced(t *testing.T) {
 			want:      []string{"core:BASE-001"},
 		},
 		{
-			name:      "a Draft override counts",
+			name:      "a Draft override displaces nothing (STDREF-015)",
 			child:     hop("prod", "SAV", rule("SAV-001", "D", ptr("core:BASE-001"))),
 			ancestors: []Hop{base},
-			want:      []string{"core:BASE-001"},
+			want:      []string{},
 		},
 		{
 			name:  "through the chain",

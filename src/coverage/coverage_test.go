@@ -138,6 +138,26 @@ func TestCompute(t *testing.T) {
 			want:      []string{"SAV owasp.asvs@5.0:1 covered"},
 		},
 		{
+			name:      "a Draft override removes no coverage (STDREF-010)",
+			child:     file("SAV", nil, []entity.Rule{overriding("SAV-001", "D", "core:BASE-001")}, nil),
+			ancestors: []inherit.Hop{base(asvs5, "I")},
+			want:      []string{"SAV owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name: "a Published override of an Implemented rule covers (STDREF-012)",
+			child: file("SAV", refs, []entity.Rule{overriding("SAV-001", "P", "core:BASE-001")},
+				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),
+			ancestors: []inherit.Hop{base(asvs5, "I")},
+			want:      []string{"SAV owasp.asvs@5.0:1 covered"},
+		},
+		{
+			name: "a Published override of a Published rule maps",
+			child: file("SAV", refs, []entity.Rule{overriding("SAV-001", "P", "core:BASE-001")},
+				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),
+			ancestors: []inherit.Hop{base(asvs5, "P")},
+			want:      []string{"SAV owasp.asvs@5.0:1 mapped"},
+		},
+		{
 			name: "two editions are two clauses",
 			child: file("SAV", refs, []entity.Rule{overriding("SAV-001", "I", "core:BASE-001")},
 				map[string][]string{"SAV-001": {"owasp.asvs:1"}}),

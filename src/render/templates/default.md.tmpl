@@ -38,6 +38,7 @@ No Published or Implemented rules are inherited yet.
 {{- range .Inherited}}
 - **{{.ID}}** {{.Body}} ({{.State}}, from {{.Owner}} in {{.OwnerRealm}})
 {{- if .OverriddenBy}} *Overridden by {{.OverriddenBy}}.*{{end}}
+{{- if .ProposedBy}} *Draft override proposed by {{join .ProposedBy ", "}}; in force until it is Published.*{{end}}
 {{- end}}
 {{- end}}
 {{- if .SubEntities}}

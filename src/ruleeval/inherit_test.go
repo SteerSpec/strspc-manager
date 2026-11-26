@@ -27,7 +27,7 @@ func TestRuleInputsFromEffective(t *testing.T) {
 	}}
 	sav := inherit.Hop{RealmID: "prod", Entity: &entity.File{
 		Entity: entity.Entity{ID: "SAV"},
-		Rules:  []entity.Rule{effRule("SAV-001", "D", &target)},
+		Rules:  []entity.Rule{effRule("SAV-001", "P", &target)},
 	}}
 	in := RuleInputsFromEffective("SAV", inherit.Effective(sav, []inherit.Hop{acct}, nil))
 	if len(in) != 2 {

@@ -178,12 +178,12 @@ func TestRenderInherited(t *testing.T) {
 		t.Fatalf("rendering: %v", err)
 	}
 	got := buf.String()
-	// SAV overrides ACCT-002 with its Draft SAV-001. SAVJR inherits SAV's
-	// effective rule set, which holds only Published and Implemented rules,
-	// so it gets ACCT-001 and ACCT-002, not overridden for it.
+	// SAV overrides ACCT-002 with its Draft SAV-001, which replaces nothing
+	// yet (RUL-018). SAVJR inherits SAV's effective rule set, which holds only
+	// Published and Implemented rules, so it gets ACCT-001 and ACCT-002.
 	for _, want := range []string{
 		"**Inherits:** dev.bank.core:ACCT",
-		"- **dev.bank.core:ACCT-002** Withdrawals MUST NOT exceed the balance. (P, from ACCT in dev.bank.core) *Overridden by SAV-001.*",
+		"- **dev.bank.core:ACCT-002** Withdrawals MUST NOT exceed the balance. (P, from ACCT in dev.bank.core) *Draft override proposed by SAV-001; in force until it is Published.*",
 		"- **dev.bank.core:ACCT-001** Every account MUST have an owner. (I, from ACCT in dev.bank.core)\n",
 	} {
 		if !strings.Contains(got, want) {
@@ -225,5 +225,31 @@ func TestRenderInherited_EmptyChainKeepsSection(t *testing.T) {
 	}
 	if !strings.Contains(buf.String(), "## Inherited rules\n\nNo Published or Implemented rules are inherited yet.\n") {
 		t.Errorf("empty chain section missing:\n%s", buf.String())
+	}
+}
+
+// TestRenderInherited_PublishedOverrideReplaces checks that a Published
+// override is shown replacing the rule it overrides (RUL-019).
+func TestRenderInherited_PublishedOverrideReplaces(t *testing.T) {
+	ef, err := entity.Load("testdata/inherited.json")
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	ef.Rules[0].State = entity.StatePublished
+	acct := inherit.Hop{RealmID: "dev.bank.core", Entity: &entity.File{
+		Entity: entity.Entity{ID: "ACCT", Title: "Account"},
+		Rules:  []entity.Rule{{ID: "ACCT-002", State: "P", Body: "Withdrawals MUST NOT exceed the balance."}},
+	}}
+	chains := map[string]Chain{"SAV": {Entity: inherit.Hop{RealmID: "dev.bank", Entity: ef}, Ancestors: []inherit.Hop{acct}}}
+	var buf bytes.Buffer
+	if err := NewMarkdownRenderer(WithInheritance(chains)).Render(&buf, ef); err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "(P, from ACCT in dev.bank.core) *Overridden by SAV-001.*") {
+		t.Errorf("Published override not shown replacing ACCT-002:\n%s", got)
+	}
+	if strings.Contains(got, "proposed by") {
+		t.Errorf("Published override shown as a proposal:\n%s", got)
 	}
 }
