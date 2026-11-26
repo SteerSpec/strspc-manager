@@ -80,6 +80,11 @@ type Rule struct {
 	// context, for a Draft override too (RUL-020). Nil when the rule overrides
 	// nothing or its target is not in the inherited set.
 	Overridden *Rule
+	// OverriddenReplaced is true when Overridden is set, this rule does not
+	// replace it, and another rule of the same entity does, as a Published
+	// override does while a Draft successor of it is written. Overridden is
+	// then no longer in force for the entity.
+	OverriddenReplaced bool
 	// Enforced is the enforced state of the rule when it differs from its
 	// State: Implemented for a Published rule that replaces a rule whose
 	// enforced state is Implemented (RUL-021, RUL-024). Read it through
@@ -302,6 +307,11 @@ func apply(set, added []Rule) []Rule {
 		remove[a.Overrides] = true
 		if a.Rule.State == entity.StatePublished && target.EnforcedState() == entity.StateImplemented {
 			a.Enforced = entity.StateImplemented
+		}
+	}
+	for i := range added {
+		if a := &added[i]; a.Overridden != nil && a.Overrides == "" {
+			a.OverriddenReplaced = remove[a.Overridden.QualifiedID()]
 		}
 	}
 	kept := slices.DeleteFunc(slices.Clone(set), func(r Rule) bool { return remove[r.QualifiedID()] })

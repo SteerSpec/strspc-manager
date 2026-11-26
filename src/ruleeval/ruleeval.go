@@ -87,8 +87,22 @@ type RuleInput struct {
 	// inheriting entity's EntityID, so it is judged with that entity's rules.
 	InheritedBy string
 	// Overrides is the qualified ID of the inherited rule that Rule replaces
-	// for its entity (RUL-009), when it replaced one.
+	// for its entity (RUL-009), when it replaced one: only a Published or
+	// Implemented rule does (RUL-019).
 	Overrides string
+	// Overridden is the inherited rule Rule declares it overrides, sent as
+	// context for its evaluation (RUL-020). A Draft override has it with an
+	// empty Overrides: it replaces nothing, and the inherited rule is judged
+	// on its own as well (RUL-018).
+	Overridden *inherit.Extended
+	// OverriddenReplaced is true when another rule of the entity, such as a
+	// Published override that Rule is to supersede, already replaces
+	// Overridden: it is then no longer in force here.
+	OverriddenReplaced bool
+	// Enforced is Rule's enforced state when it differs from its State, as
+	// inherit.Rule.EnforcedState derives it (RUL-024). Read it through
+	// EnforcedState; evaluate_on and fail_on match it (SPCFG-010).
+	Enforced string
 	// OverriddenBy lists the rules that replace Rule in the entities
 	// inheriting it, as `<qualified rule id> (<entity title>)`; Rule does not
 	// apply where those entities' subject applies.
@@ -100,6 +114,21 @@ type RuleInput struct {
 	// rule's being its owner's. The Evaluator never sends a rule of kind
 	// entity.KindStandard to the provider (STDRLM-011). Empty is a code Realm.
 	RealmKind string
+}
+
+// EnforcedState returns the state the rule is evaluated and enforced as:
+// Enforced when set, the rule's State otherwise.
+func (r RuleInput) EnforcedState() string {
+	if r.Enforced != "" {
+		return r.Enforced
+	}
+	return r.Rule.State
+}
+
+// draftOverride reports whether r is a Draft rule that overrides an inherited
+// rule, which it does not replace yet (RUL-018).
+func (r RuleInput) draftOverride() bool {
+	return r.Overridden != nil && r.Overrides == "" && r.Rule.State == entity.StateDraft
 }
 
 // RuleInputsFromEffective builds RuleInputs from the effective rule set of
@@ -118,7 +147,11 @@ func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput 
 	}
 	inputs := make([]RuleInput, 0, len(rules))
 	for _, r := range rules {
-		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides, RealmKind: r.RealmKind}
+		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides, RealmKind: r.RealmKind, Enforced: r.Enforced}
+		if o := r.Overridden; o != nil {
+			in.Overridden = &inherit.Extended{ID: o.QualifiedID(), Revision: o.Rule.Revision, Body: o.Rule.Body}
+			in.OverriddenReplaced = r.OverriddenReplaced
+		}
 		if r.InheritedBy != "" {
 			in.Owner = r.OwnerRealm + ":" + r.Owner
 			in.InheritedBy = r.InheritedBy
@@ -227,6 +260,11 @@ type EvalRequest struct {
 	InheritedBy  string
 	Overrides    string
 	OverriddenBy []string
+	// Overridden, OverriddenReplaced and Enforced carry the override context
+	// (see RuleInput).
+	Overridden         *inherit.Extended
+	OverriddenReplaced bool
+	Enforced           string
 	// Extended lists the rules Rule extends (see RuleInput).
 	Extended []inherit.Extended
 	// Detail says which verdicts the provider details.
@@ -238,6 +276,7 @@ func (r EvalRequest) Input() RuleInput {
 	return RuleInput{
 		Rule: r.Rule, Notes: r.Notes, EntityID: r.EntityID, Source: r.Source, Scope: r.Scope,
 		Owner: r.Owner, InheritedBy: r.InheritedBy, Overrides: r.Overrides, OverriddenBy: r.OverriddenBy, Extended: r.Extended,
+		Overridden: r.Overridden, OverriddenReplaced: r.OverriddenReplaced, Enforced: r.Enforced,
 	}
 }
 
@@ -572,7 +611,7 @@ func (e *Evaluator) evaluate(ctx context.Context, res *result.Result, inputs []R
 			// no diagnostic
 		case Violated:
 			sev := result.Warning
-			if e.cfg.FailOn[input.Rule.State] {
+			if e.cfg.FailOn[input.EnforcedState()] {
 				sev = result.Error
 			}
 			d := result.Diagnostic{
@@ -605,6 +644,7 @@ func (e *Evaluator) evaluate(ctx context.Context, res *result.Result, inputs []R
 			Message:  fmt.Sprintf("evaluation incomplete for entity %s: %v", ge.entityID, ge.err),
 		})
 	}
+	e.reportConflicts(ctx, res, inputs)
 }
 
 // plan filters inputs by state, consults the cache and groups the
@@ -638,7 +678,7 @@ func (e *Evaluator) plan(inputs []RuleInput, sub subject, outcomes []outcome, ke
 			e.observe(Event{Kind: EventStandardRule, EntityID: in.EntityID, RuleID: in.Rule.ID})
 			continue
 		}
-		if !e.cfg.EvaluateStates[in.Rule.State] {
+		if !e.cfg.EvaluateStates[in.EnforcedState()] {
 			e.observe(Event{Kind: EventSkipped, EntityID: in.EntityID, RuleID: in.Rule.ID})
 			continue
 		}
@@ -722,6 +762,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, s
 				Rule: in.Rule, Notes: in.Notes, Diff: sub.diff, Files: sub.files,
 				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
 				Owner: in.Owner, InheritedBy: in.InheritedBy, Overrides: in.Overrides, OverriddenBy: in.OverriddenBy, Extended: in.Extended,
+				Overridden: in.Overridden, OverriddenReplaced: in.OverriddenReplaced, Enforced: in.Enforced,
 				Detail: e.cfg.Detail,
 			})
 			e.observe(Event{Kind: EventProviderCall, EntityID: g.entityID, RuleIDs: []string{in.Rule.ID}, Err: err})
