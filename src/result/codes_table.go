@@ -379,9 +379,9 @@ var codeTable = []CodeInfo{
 		Code:     "RD001",
 		Module:   "rule-diff",
 		Severity: "Error",
-		Title:    "Invalid Draft body edit",
-		Summary:  "A Draft rule body was edited without incrementing the revision, or together with a state change.",
-		Fix:      "Change the body in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+		Title:    "Invalid Draft body or overrides edit",
+		Summary:  "A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it.",
+		Fix:      "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
 	},
 	{
 		Code:     "RD002",

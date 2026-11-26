@@ -111,6 +111,29 @@ func checkExistingRule(b, h entity.Rule, headMap map[string]entity.Rule, res *re
 		}
 	}
 
+	// RD001: `overrides` edited in Draft — the same, so that the revision an
+	// override_ack names fixes the rule it acknowledges replacing (RUL-022).
+	if b.State == entity.StateDraft && !sameRef(b.Overrides, h.Overrides) {
+		if h.Revision != b.Revision+1 {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD001",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("draft overrides changed from %s to %s but revision not incremented: expected %d, got %d", refString(b.Overrides), refString(h.Overrides), b.Revision+1, h.Revision),
+				Path:     path,
+			})
+		}
+		if h.State != entity.StateDraft {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD001",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("draft overrides changed but state changed to %q: overrides edits and state transitions must be separate", h.State),
+				Path:     path,
+			})
+		}
+	}
+
 	// RD002: body is immutable once a rule has left Draft.
 	if b.State != entity.StateDraft && h.Body != b.Body {
 		res.Add(result.Diagnostic{

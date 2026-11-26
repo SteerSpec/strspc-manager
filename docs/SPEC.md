@@ -572,7 +572,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed, or a Realm comparison cannot read a directory or manifest it compares. |
-| RD001 | Error | A Draft rule body was edited without incrementing the revision, or together with a state change. |
+| RD001 | Error | A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it. |
 | RD002 | Error | The body of a rule that has left Draft was edited. |
 | RD003 | Error | A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012). |
 | RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
@@ -816,7 +816,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 For each changed entity file, the validator compares the before and after states:
 
-1. **Draft rule edited:** Revision must equal `previous_revision + 1`. State must remain `D`.
+1. **Draft rule edited:** When the body or `overrides` changes, the revision must equal `previous_revision + 1` and the state must remain `D`.
 2. **Non-draft rule body edited:** Reject. The rule is immutable. The author must supersede it with a new rule.
 3. **State transition:** Must follow the state machine (§3.2). No skipping states, no backward transitions; the one skip is P→T for a superseded Published rule whose successor is Published or later in head (RULST-012).
 4. **New rule added:** Must have `revision: 0`, `state: "D"`, and the next sequential number for that entity.
