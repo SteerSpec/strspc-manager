@@ -3,6 +3,7 @@ package ruleeval_test
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
@@ -177,5 +178,24 @@ func TestRuleInputsFromEffective_DraftSuccessorWithoutItsPredecessor(t *testing.
 	in := ruleeval.RuleInputsFromEffective("SAV", inherit.Effective(sav, []inherit.Hop{acct}, []string{"D"}))
 	if len(in) != 1 || in[0].Rule.ID != "SAV-002" || !in[0].OverriddenReplaced {
 		t.Errorf("inputs = %+v, want SAV-002 with its target marked replaced", in)
+	}
+}
+
+// TestStandardSkip_DraftOverrideFailsClosed checks that a Draft override in a
+// Standard Realm blocks with a message that fits a rule replacing nothing yet.
+func TestStandardSkip_DraftOverrideFailsClosed(t *testing.T) {
+	e, err := ruleeval.New(&batchProvider{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := "core:ACCT-001"
+	in := entityInput("STD", "STD-001", "D")
+	in.Rule.Clause = "1.1"
+	in.Rule.Overrides = &target
+	in.RealmKind = entity.KindStandard
+	res := e.Evaluate(context.Background(), []ruleeval.RuleInput{in}, "diff")
+	if len(res.Diagnostics) != 1 || res.Diagnostics[0].Code != ruleeval.CodeUnsafeSkip ||
+		!strings.Contains(res.Diagnostics[0].Message, "once Published") {
+		t.Fatalf("diagnostics = %v, want one %s saying it would replace once Published", res.Diagnostics, ruleeval.CodeUnsafeSkip)
 	}
 }
