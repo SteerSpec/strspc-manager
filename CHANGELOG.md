@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.56.0](https://github.com/SteerSpec/strspc-manager/compare/v1.55.0...v1.56.0) (2026-11-26)
+
+
+### Features
+
+* **entity:** add the override_ack note type and require it to publish an override ([#390](https://github.com/SteerSpec/strspc-manager/issues/390)) ([d2e2712](https://github.com/SteerSpec/strspc-manager/commit/d2e2712f9d16ca02f6418b2da2ca7dd7825aa0b3))
+* **inherit:** a Draft override replaces nothing, and a Published one is enforced as what it replaces ([#392](https://github.com/SteerSpec/strspc-manager/issues/392)) ([7a716c0](https://github.com/SteerSpec/strspc-manager/commit/7a716c026b0c6c98d7c323ed56bf9e85dffa59a7))
+* **ruleeval:** evaluate overrides by their enforced state, with the inherited rule as context ([#393](https://github.com/SteerSpec/strspc-manager/issues/393)) ([7cfd356](https://github.com/SteerSpec/strspc-manager/commit/7cfd356cd296fbbc22a28ffbf740640d3d45d0cb))
+
 ## [1.55.0](https://github.com/SteerSpec/strspc-manager/compare/v1.54.0...v1.55.0) (2026-11-26)
 
 
