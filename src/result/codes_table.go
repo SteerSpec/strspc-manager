@@ -381,7 +381,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Invalid Draft body or overrides edit",
 		Summary:  "A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it.",
-		Fix:      "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+		Fix:      "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this for the body; the CLI sets `overrides` only on a new rule.",
 	},
 	{
 		Code:     "RD002",

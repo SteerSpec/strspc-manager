@@ -23,7 +23,7 @@
     "severity": "Error",
     "title": "Invalid Draft body or overrides edit",
     "summary": "A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it.",
-    "fix": "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+    "fix": "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this for the body; the CLI sets `overrides` only on a new rule.",
     "retired": false
   },
   {
