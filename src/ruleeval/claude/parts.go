@@ -224,11 +224,14 @@ func (p *Provider) extract(ctx context.Context, block string, group []ruleeval.R
 	text, err := p.send(ctx, prompt.AuditExtractSystem(), block, []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(prompt.RulesBlock(group)),
 	}, prompt.ExtractSchema(ids))
-	if errors.Is(err, ErrTruncated) {
+	if errors.Is(err, ErrTruncated) || errors.Is(err, ErrSchemaTooLarge) {
 		if len(group) == 1 {
-			return extracted{failed: map[string]bool{ids[0]: true}, errs: []error{fmt.Errorf(
-				"the findings for rule %s in part %d of %d of the file set exceed max_tokens (%d), so it was not judged",
-				ids[0], n, total, p.cfg.MaxTokens)}}, nil
+			why := fmt.Errorf("the findings for rule %s in part %d of %d of the file set exceed max_tokens (%d), so it was not judged",
+				ids[0], n, total, p.cfg.MaxTokens)
+			if errors.Is(err, ErrSchemaTooLarge) {
+				why = fmt.Errorf("rule %s was not judged: its findings in part %d of %d of the file set could not be asked for: %w", ids[0], n, total, err)
+			}
+			return extracted{failed: map[string]bool{ids[0]: true}, errs: []error{why}}, nil
 		}
 		half := len(group) / 2
 		a, err := p.extract(ctx, block, group[:half], n, total)
@@ -375,10 +378,13 @@ func (p *Provider) judge(ctx context.Context, scope string, group []ruleeval.Rul
 	text, err := p.send(ctx, prompt.AuditJudgeSystem(), scope+prompt.FindingsBlock(ids, findings), []anthropic.ContentBlockParamUnion{
 		anthropic.NewTextBlock(prompt.RulesBlock(group)),
 	}, prompt.JudgeSchema(ids))
-	if errors.Is(err, ErrTruncated) {
+	if errors.Is(err, ErrTruncated) || errors.Is(err, ErrSchemaTooLarge) {
 		if len(group) == 1 {
-			return judged{errs: []error{fmt.Errorf(
-				"the judgement of rule %s exceeds max_tokens (%d), so it was not judged", ids[0], p.cfg.MaxTokens)}}, nil
+			why := fmt.Errorf("the judgement of rule %s exceeds max_tokens (%d), so it was not judged", ids[0], p.cfg.MaxTokens)
+			if errors.Is(err, ErrSchemaTooLarge) {
+				why = fmt.Errorf("rule %s was not judged: %w", ids[0], err)
+			}
+			return judged{errs: []error{why}}, nil
 		}
 		half := len(group) / 2
 		a, err := p.judge(ctx, scope, group[:half], findings)

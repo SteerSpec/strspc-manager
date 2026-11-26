@@ -107,6 +107,13 @@ var (
 	// ErrContextExceeded is returned when the request did not fit the
 	// model's context window despite chunking.
 	ErrContextExceeded = errors.New("claude: request exceeded the model context window")
+	// ErrSchemaTooLarge is returned when the API refuses the output schema
+	// of a request because its compiled grammar is too large. The schema
+	// grows with the rules sharing the request, so the provider splits the
+	// group and retries; it is reported for a rule only when the schema of
+	// that rule alone is refused. It is not ErrUnavailable: other requests
+	// can succeed.
+	ErrSchemaTooLarge = errors.New("claude: output schema too large for the API")
 )
 
 var validEfforts = map[string]bool{"low": true, "medium": true, "high": true, "xhigh": true, "max": true}
@@ -243,6 +250,10 @@ func httpClient(c *http.Client) *http.Client {
 // Model returns the configured model id.
 func (p *Provider) Model() string { return p.cfg.Model }
 
+// MaxRulesPerRequest returns the effective Config.MaxRulesPerRequest
+// (ruleeval.RuleGrouper).
+func (p *Provider) MaxRulesPerRequest() int { return p.cfg.MaxRulesPerRequest }
+
 // PromptVersion returns the prompt revision qualified by the effort level
 // and the split configuration, e.g. "v8/effort=medium/split=100000,40,2/1".
 // Effort changes how carefully the model judges the same prompt, so it is
@@ -368,7 +379,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	if err := p.runAll(ctx, len(items), func(ctx context.Context, i int) error {
 		var err error
 		it := items[i]
-		results[i], err = p.call(ctx, m, block(chunks[it.chunk]), groups[it.group], rp.blocks[it.group], req.Detail)
+		results[i], err = p.callSplit(ctx, m, block(chunks[it.chunk]), groups[it.group], rp.blocks[it.group], req.Detail)
 		return err
 	}); err != nil {
 		return nil, err
@@ -394,7 +405,7 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 		// the diff was never judged, so report it rather than let another
 		// chunk's verdict stand as complete.
 		for _, in := range groups[it.group] {
-			if !seen[in.Rule.ID] {
+			if !seen[in.Rule.ID] && !results[i].unasked[in.Rule.ID] {
 				out.Errors = append(out.Errors, fmt.Errorf(
 					"provider returned no verdict for rule %s in %s %d of %d", in.Rule.ID, m.part, it.chunk+1, len(chunks)))
 			}
@@ -560,6 +571,40 @@ type wireResponse struct {
 	Verdicts []wireVerdict
 	// Errors lists recoverable detail-request failures.
 	Errors []error
+	// unasked holds the rules no request could ask about, each reported in
+	// Errors.
+	unasked map[string]bool
+}
+
+// callSplit is call, splitting group in halves while the API refuses its
+// output schema as too large. A rule refused alone is reported in Errors
+// and marked unasked.
+func (p *Provider) callSplit(ctx context.Context, m mode, diffBlock string, group []ruleeval.RuleInput, rulesBlock string, level ruleeval.Detail) (*wireResponse, error) {
+	out, err := p.call(ctx, m, diffBlock, group, rulesBlock, level)
+	if !errors.Is(err, ErrSchemaTooLarge) {
+		return out, err
+	}
+	if len(group) == 1 {
+		id := group[0].Rule.ID
+		return &wireResponse{
+			Errors:  []error{fmt.Errorf("rule %s was not evaluated: %w", id, err)},
+			unasked: map[string]bool{id: true},
+		}, nil
+	}
+	half := len(group) / 2
+	merged := &wireResponse{unasked: map[string]bool{}}
+	for _, g := range [][]ruleeval.RuleInput{group[:half], group[half:]} {
+		r, err := p.callSplit(ctx, m, diffBlock, g, prompt.RulesBlock(g), level)
+		if err != nil {
+			return nil, err
+		}
+		merged.Verdicts = append(merged.Verdicts, r.Verdicts...)
+		merged.Errors = append(merged.Errors, r.Errors...)
+		for id := range r.unasked {
+			merged.unasked[id] = true
+		}
+	}
+	return merged, nil
 }
 
 type wireVerdict struct {
@@ -783,6 +828,13 @@ func (p *Provider) send(ctx context.Context, system, diffBlock string, blocks []
 	return "", fmt.Errorf("%w: no text block in response (stop_reason %q)", ErrMalformed, msg.StopReason)
 }
 
+// isSchemaTooLarge reports whether a 400 refuses the request's output
+// schema as compiling to too large a grammar.
+func isSchemaTooLarge(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "grammar") && strings.Contains(msg, "too large")
+}
+
 // classify maps SDK errors: credential, permission and model errors become
 // ruleeval.ErrUnavailable; everything else (including exhausted retries)
 // is returned with context.
@@ -793,6 +845,9 @@ func classify(err error) error {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
 			return fmt.Errorf("%w: HTTP %d %s: %w", ruleeval.ErrUnavailable, apierr.StatusCode, apierr.Type(), err)
 		case http.StatusBadRequest:
+			if isSchemaTooLarge(err) {
+				return fmt.Errorf("%w: HTTP %d %s: %w", ErrSchemaTooLarge, apierr.StatusCode, apierr.Type(), err)
+			}
 			// An organisation-level key without a workspace, or a key the
 			// endpoint does not accept, comes back as 400 invalid_request;
 			// no request will ever succeed, so report the provider as

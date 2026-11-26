@@ -37,6 +37,10 @@ type Options struct {
 	Effort string
 	// Concurrency takes the provider default when zero.
 	Concurrency int
+	// MaxRulesPerRequest caps the rules sharing one request; zero takes the
+	// provider default. The provider reports the effective cap through
+	// ruleeval.RuleGrouper.
+	MaxRulesPerRequest int
 
 	// HTTPClient overrides the transport (tests).
 	HTTPClient *http.Client
@@ -54,12 +58,13 @@ func New(name string, o Options) (ruleeval.Provider, error) {
 		return nil, ErrStatic
 	case "claude":
 		return claude.New(claude.Config{
-			APIKey:      o.APIKey,
-			Model:       o.Model,
-			BaseURL:     o.Endpoint,
-			Effort:      o.Effort,
-			Concurrency: o.Concurrency,
-			HTTPClient:  o.HTTPClient,
+			APIKey:             o.APIKey,
+			Model:              o.Model,
+			BaseURL:            o.Endpoint,
+			Effort:             o.Effort,
+			Concurrency:        o.Concurrency,
+			MaxRulesPerRequest: o.MaxRulesPerRequest,
+			HTTPClient:         o.HTTPClient,
 		})
 	case "openai", "ollama":
 		return nil, fmt.Errorf("%w: %q (tracked in SteerSpec/strspc-manager#67)", ErrProviderNotImplemented, name)

@@ -208,6 +208,16 @@ type Describer interface {
 	PromptVersion() string
 }
 
+// RuleGrouper is optionally implemented by a BatchProvider that groups
+// the rules of a batch into requests, so a caller can estimate the
+// requests a batch will take.
+type RuleGrouper interface {
+	// MaxRulesPerRequest is the most rules one request carries. A group
+	// may still be split further, for the token budget or when the API
+	// refuses its output schema as too large.
+	MaxRulesPerRequest() int
+}
+
 // EventKind classifies Observer events.
 type EventKind int
 
