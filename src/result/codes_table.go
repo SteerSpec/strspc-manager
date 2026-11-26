@@ -1189,7 +1189,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-eval",
 		Severity: "Warning",
 		Title:    "Draft override conflicts with the rule it overrides",
-		Summary:  "A Draft rule that overrides an inherited rule conflicts with it: code that follows the Draft would violate the inherited rule, which stays in force until the Draft is Published (RUL-023). The provider judges the two rule texts, and the answer is cached under both. Never an Error, whatever `fail_on` says.",
+		Summary:  "A Draft rule that overrides an inherited rule conflicts with it: code that follows the Draft would violate the inherited rule, which stays in force until the Draft is Published (RUL-023). The provider judges the two rules, and the answer is cached under them, not the diff. Never an Error, whatever `fail_on` says.",
 		Fix:      "Keep code following the inherited rule until the override is Published, with an `override_ack` note (RUL-022), or change the Draft so that it no longer conflicts.",
 	},
 	{

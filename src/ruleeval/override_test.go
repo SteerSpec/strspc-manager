@@ -133,3 +133,26 @@ func TestStandardSkip_ReadsTheEnforcedState(t *testing.T) {
 		t.Fatalf("diagnostics = %v, want one %s", res.Diagnostics, ruleeval.CodeUnsafeSkip)
 	}
 }
+
+// TestRuleInputsFromEffective_DraftSuccessor marks the target of a Draft
+// successor of a Published override as already replaced.
+func TestRuleInputsFromEffective_DraftSuccessor(t *testing.T) {
+	target := "core:ACCT-001"
+	prev := "SAV-001"
+	acct := inherit.Hop{RealmID: "core", Entity: &entity.File{
+		Entity: entity.Entity{ID: "ACCT"},
+		Rules:  []entity.Rule{{ID: "ACCT-001", State: "I", Body: "a"}},
+	}}
+	sav := inherit.Hop{RealmID: "prod", Entity: &entity.File{
+		Entity: entity.Entity{ID: "SAV"},
+		Rules: []entity.Rule{
+			{ID: "SAV-001", State: "P", Body: "b", Overrides: &target},
+			{ID: "SAV-002", State: "D", Body: "c", Overrides: &target, Supersedes: &prev},
+		},
+	}}
+	for _, in := range ruleeval.RuleInputsFromEffective("SAV", inherit.Effective(sav, []inherit.Hop{acct}, nil)) {
+		if want := in.Rule.ID == "SAV-002"; in.OverriddenReplaced != want {
+			t.Errorf("%s OverriddenReplaced = %v, want %v", in.Rule.ID, in.OverriddenReplaced, want)
+		}
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/result"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
@@ -132,5 +133,34 @@ func TestEvaluate_NoConflictCheckerNoCheck(t *testing.T) {
 	}
 	if got := conflicts(e.Evaluate(context.Background(), []ruleeval.RuleInput{draftOverride("SAV-001")}, "diff")); len(got) != 0 {
 		t.Errorf("conflicts = %v, want none", got)
+	}
+}
+
+func TestConflictCacheKey_FollowsWhatIsSent(t *testing.T) {
+	base := draftOverride("SAV-001")
+	key := ruleeval.ConflictCacheKey(base, "m", "c")
+	noted := draftOverride("SAV-001")
+	noted.Notes = []entity.Note{{Type: "clarification", Content: "Joint accounts only."}}
+	if ruleeval.ConflictCacheKey(noted, "m", "c") == key {
+		t.Error("a clarification note must change the conflict cache key")
+	}
+	if ruleeval.ConflictCacheKey(base, "m", "c") != ruleeval.ConflictCacheKey(draftOverride("SAV-001"), "m", "c") {
+		t.Error("the conflict cache key must be stable")
+	}
+}
+
+// TestEvaluate_NoConflictCheckOnceReplaced checks that a Draft successor of a
+// Published override, whose target is already replaced, is not checked.
+func TestEvaluate_NoConflictCheckOnceReplaced(t *testing.T) {
+	cp := &conflictProvider{conflicts: map[string]bool{"SAV-002": true}}
+	e, err := ruleeval.New(cp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := draftOverride("SAV-002")
+	in.OverriddenReplaced = true
+	e.Evaluate(context.Background(), []ruleeval.RuleInput{in}, "diff")
+	if len(cp.checked) != 0 {
+		t.Errorf("checked %v, want nothing", cp.checked)
 	}
 }

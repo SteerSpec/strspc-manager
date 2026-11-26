@@ -303,3 +303,20 @@ func TestRulesBlock_OverrideContext(t *testing.T) {
 		}
 	}
 }
+
+func TestRulesBlock_OverrideMarks(t *testing.T) {
+	ctx := &inherit.Extended{ID: "core:ACCT-001", Body: "a"}
+	for _, tt := range []struct {
+		in   ruleeval.RuleInput
+		want string
+	}{
+		{ruleeval.RuleInput{Rule: entity.Rule{ID: "S-002", State: "D"}, Overridden: ctx, OverriddenReplaced: true},
+			"proposes to override: core:ACCT-001 (already replaced by another rule of this entity)\n"},
+		{ruleeval.RuleInput{Rule: entity.Rule{ID: "S-003", State: "R"}, Overridden: ctx},
+			"overrides, without replacing: core:ACCT-001\n"},
+	} {
+		if got := prompt.RulesBlock([]ruleeval.RuleInput{tt.in}); !strings.Contains(got, tt.want) {
+			t.Errorf("%s: rules block lacks %q:\n%s", tt.in.Rule.ID, tt.want, got)
+		}
+	}
+}

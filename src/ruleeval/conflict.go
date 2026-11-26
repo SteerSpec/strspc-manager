@@ -2,12 +2,7 @@ package ruleeval
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"strconv"
-	"strings"
-
-	"lukechampine.com/blake3"
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/result"
@@ -50,31 +45,21 @@ type ConflictResponse struct {
 	Explanation string `json:"explanation"`
 }
 
+// conflictKeyPrefix keeps conflict answers apart from verdicts in a Cache.
+const conflictKeyPrefix = "conflict:"
+
 // ConflictCacheKey is the cache key of a conflict check of in, a Draft
-// override, against in.Overridden: both rules' IDs, revisions and bodies, the
-// model and the conflict prompt version.
+// override, against in.Overridden. It covers everything the check sends, the
+// rule with its notes and the overridden rule (CacheKey's fields), with the
+// model and the conflict prompt version, and no diff: the answer depends on
+// the two rules alone.
 func ConflictCacheKey(in RuleInput, model, promptVersion string) string {
-	o := in.Overridden
-	var b strings.Builder
-	for i, f := range []string{
-		"conflict",
-		in.Rule.ID, strconv.Itoa(in.Rule.Revision), in.Rule.Body,
-		o.ID, strconv.Itoa(o.Revision), o.Body,
-		model, promptVersion,
-	} {
-		if i > 0 {
-			b.WriteByte(0)
-		}
-		b.WriteString(strconv.Itoa(len(f)))
-		b.WriteByte(':')
-		b.WriteString(f)
-	}
-	sum := blake3.Sum256([]byte(b.String()))
-	return hex.EncodeToString(sum[:])
+	return conflictKeyPrefix + CacheKey(in, "", model, promptVersion)
 }
 
 // reportConflicts checks every Draft override among inputs that is evaluated
-// against the rule it overrides, when the provider can, and reports each
+// against the rule it overrides, when the provider can and that rule is still
+// in force (not already replaced by another rule of the entity), and reports each
 // conflict as RE007 (RUL-023). A failed check is an RE002 warning. A cached
 // answer is stored as a Violated (conflict) or Compliant EvalResponse.
 func (e *Evaluator) reportConflicts(ctx context.Context, res *result.Result, inputs []RuleInput) {
@@ -90,7 +75,7 @@ func (e *Evaluator) reportConflicts(ctx context.Context, res *result.Result, inp
 		if ctx.Err() != nil {
 			return
 		}
-		if !in.draftOverride() || in.RealmKind == entity.KindStandard || !e.cfg.EvaluateStates[in.EnforcedState()] {
+		if !in.draftOverride() || in.OverriddenReplaced || in.RealmKind == entity.KindStandard || !e.cfg.EvaluateStates[in.EnforcedState()] {
 			continue
 		}
 		resp, err := e.checkConflict(ctx, cc, in, ConflictCacheKey(in, model, cc.ConflictPromptVersion()))

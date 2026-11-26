@@ -310,7 +310,7 @@ func CacheKey(rule RuleInput, diffHash, model, promptVersion string) string {
 	sort.Strings(extended)
 	var overridden string
 	if o := rule.Overridden; o != nil {
-		overridden = o.ID + "\x1f" + strconv.Itoa(o.Revision) + "\x1f" + o.Body
+		overridden = o.ID + "\x1f" + strconv.Itoa(o.Revision) + "\x1f" + o.Body + "\x1f" + strconv.FormatBool(rule.OverriddenReplaced)
 	}
 
 	var b strings.Builder

@@ -95,6 +95,10 @@ type RuleInput struct {
 	// empty Overrides: it replaces nothing, and the inherited rule is judged
 	// on its own as well (RUL-018).
 	Overridden *inherit.Extended
+	// OverriddenReplaced is true when another rule of the entity, such as a
+	// Published override that Rule is to supersede, already replaces
+	// Overridden: it is then no longer in force here.
+	OverriddenReplaced bool
 	// Enforced is Rule's enforced state when it differs from its State, as
 	// inherit.Rule.EnforcedState derives it (RUL-024). Read it through
 	// EnforcedState; evaluate_on and fail_on match it (SPCFG-010).
@@ -127,6 +131,17 @@ func (r RuleInput) draftOverride() bool {
 	return r.Overridden != nil && r.Overrides == "" && r.Rule.State == entity.StateDraft
 }
 
+// replacedIn returns the qualified IDs of the rules that rules replace.
+func replacedIn(rules []inherit.Rule) map[string]bool {
+	out := make(map[string]bool)
+	for _, r := range rules {
+		if r.Overrides != "" {
+			out[r.Overrides] = true
+		}
+	}
+	return out
+}
+
 // RuleInputsFromEffective builds RuleInputs from the effective rule set of
 // the entity entityID, as computed by inherit.Effective. Every input
 // carries entityID and the kind of the Realm owning its rule; inherited rules
@@ -141,11 +156,13 @@ func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput 
 			seen[r.Rule.ID] = true
 		}
 	}
+	replaced := replacedIn(rules)
 	inputs := make([]RuleInput, 0, len(rules))
 	for _, r := range rules {
 		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides, RealmKind: r.RealmKind, Enforced: r.Enforced}
 		if o := r.Overridden; o != nil {
 			in.Overridden = &inherit.Extended{ID: o.QualifiedID(), Revision: o.Rule.Revision, Body: o.Rule.Body}
+			in.OverriddenReplaced = r.Overrides == "" && replaced[o.QualifiedID()]
 		}
 		if r.InheritedBy != "" {
 			in.Owner = r.OwnerRealm + ":" + r.Owner
@@ -255,9 +272,11 @@ type EvalRequest struct {
 	InheritedBy  string
 	Overrides    string
 	OverriddenBy []string
-	// Overridden and Enforced carry the override context (see RuleInput).
-	Overridden *inherit.Extended
-	Enforced   string
+	// Overridden, OverriddenReplaced and Enforced carry the override context
+	// (see RuleInput).
+	Overridden         *inherit.Extended
+	OverriddenReplaced bool
+	Enforced           string
 	// Extended lists the rules Rule extends (see RuleInput).
 	Extended []inherit.Extended
 	// Detail says which verdicts the provider details.
@@ -269,7 +288,7 @@ func (r EvalRequest) Input() RuleInput {
 	return RuleInput{
 		Rule: r.Rule, Notes: r.Notes, EntityID: r.EntityID, Source: r.Source, Scope: r.Scope,
 		Owner: r.Owner, InheritedBy: r.InheritedBy, Overrides: r.Overrides, OverriddenBy: r.OverriddenBy, Extended: r.Extended,
-		Overridden: r.Overridden, Enforced: r.Enforced,
+		Overridden: r.Overridden, OverriddenReplaced: r.OverriddenReplaced, Enforced: r.Enforced,
 	}
 }
 
@@ -755,7 +774,7 @@ func (e *Evaluator) runGroup(ctx context.Context, g group, inputs []RuleInput, s
 				Rule: in.Rule, Notes: in.Notes, Diff: sub.diff, Files: sub.files,
 				EntityID: in.EntityID, Source: in.Source, Scope: in.Scope,
 				Owner: in.Owner, InheritedBy: in.InheritedBy, Overrides: in.Overrides, OverriddenBy: in.OverriddenBy, Extended: in.Extended,
-				Overridden: in.Overridden, Enforced: in.Enforced,
+				Overridden: in.Overridden, OverriddenReplaced: in.OverriddenReplaced, Enforced: in.Enforced,
 				Detail: e.cfg.Detail,
 			})
 			e.observe(Event{Kind: EventProviderCall, EntityID: g.entityID, RuleIDs: []string{in.Rule.ID}, Err: err})
