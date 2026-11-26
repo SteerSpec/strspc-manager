@@ -844,7 +844,7 @@ For each changed entity file, the validator compares the before and after states
 Workflow II compares rule files. Some files decide which rules are enforced without being one, and a change to them passes it:
 
 - `.strspc/config.yaml`: the rule sources, `fail_on`, `evaluate_on` and the evaluator;
-- the Realm manifest (`realm.json`): its dependencies and `inherits`, which rule-diff checks (RD031 and others) but cannot judge;
+- the Realm manifest (`realm.json`): its dependencies and sub-realms, which rule-diff checks (RD031 and others) but cannot judge;
 - a dependency Realm copied into the repository and used as a local source, when it sits outside the trees `diff` compares;
 - the CI workflows that run the gate.
 
