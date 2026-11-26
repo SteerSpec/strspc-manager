@@ -22,7 +22,7 @@ import (
 
 // Version identifies the prompt revision. Bump it whenever a change to this
 // package could change verdicts so that cached results are invalidated.
-const Version = "v8"
+const Version = "v9"
 
 const system = `You are the SteerSpec rule evaluator. You receive a unified diff and a list of governance rules, and you return one verdict per rule as JSON that conforms to the response schema.
 
@@ -33,7 +33,7 @@ How to evaluate:
 - Notes refine a rule. "applies_to" notes describe where the rule applies (language, module, API surface); when the diff falls outside that scope the verdict is "not_applicable". "rationale" explains the intent, "example" shows compliance, "counter_example" shows a violation, "clarification" resolves ambiguity.
 - A rule with "extended rules" builds on the rules quoted there. Read it together with them to understand what it requires, and give a verdict for the rule itself only. An extended rule is not judged here: a change that breaks only the extended rule does not violate the rule that extends it.
 - A rule whose source has scope "local" applies only to files under that source's own directory. Files elsewhere in the diff make such a rule "not_applicable".
-- Entities can inherit rules. A rule marked "inherited by" is owned by the entity named in "entity" and applies to both that owner's subject and the inheriting entity's subject. A rule marked "overrides" replaces the named inherited rule for its own entity's subject. A rule marked "overridden by" lists the replacing rules with their entities' titles: it does not apply to those entities' subjects, and still applies to its own entity's subject everywhere else.
+- Entities can inherit rules. A rule marked "inherited by" is owned by the entity named in "entity" and applies to both that owner's subject and the inheriting entity's subject. A rule marked "overrides" replaces the inherited rule quoted under "overridden rule" for its own entity's subject: code that follows the overriding rule there does not violate the overridden one. A rule marked "proposes to override" is a Draft that replaces nothing yet: unless it is marked as already replaced, the rule quoted under "overridden rule" still applies and is judged on its own, and the Draft is judged as written. A rule marked "overrides, without replacing" no longer replaces the rule it names. A rule marked "overridden by" lists the replacing rules with their entities' titles: it does not apply to those entities' subjects, and still applies to its own entity's subject everywhere else.
 - The verdict response is one JSON object with one key per rule id listed in the rules block and the verdict as its value. Every listed id is present, including when every verdict is "not_applicable".
 - Rule states are lifecycle codes, not activity flags: D Draft, P Published, I Implemented, R Retired, T Terminated. A state never changes whether a rule applies to the diff; the consumer decides which states block a merge. Never treat "I" as inactive.
 - Files under a "testdata", "fixtures" or "__fixtures__" directory, and files whose name or path marks them as test fixtures, are inputs for tests. A fixture that is deliberately malformed does not violate a rule about the artefact it imitates; judge it only by rules that govern test data.
@@ -78,10 +78,11 @@ func FileEntry(path string) string {
 }
 
 // RulesBlock renders the rules to evaluate. Each rule carries its id,
-// owning entity, state, revision, source and scope, and for inheritance the
-// inheriting entity, the rule it overrides and the rules overriding it,
-// followed by its body, its notes grouped by type in a fixed order, and the
-// rules it extends.
+// owning entity, state (with the enforced state when it differs), revision,
+// source and scope, and for inheritance the inheriting entity, the rule it
+// overrides or, as a Draft, proposes to override, and the rules overriding
+// it, followed by its body, its notes grouped by type in a fixed order, the
+// text of the rule it overrides (RUL-020), and the rules it extends.
 func RulesBlock(rules []ruleeval.RuleInput) string {
 	var b strings.Builder
 	b.WriteString("<rules>\n")
@@ -104,7 +105,11 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 		fmt.Fprintf(b, "entity: %s\n", r.EntityID)
 	}
 	if r.Rule.State != "" {
-		fmt.Fprintf(b, "state: %s\n", r.Rule.State)
+		if es := r.EnforcedState(); es != r.Rule.State {
+			fmt.Fprintf(b, "state: %s (enforced as %s)\n", r.Rule.State, es)
+		} else {
+			fmt.Fprintf(b, "state: %s\n", r.Rule.State)
+		}
 	}
 	fmt.Fprintf(b, "revision: %s\n", strconv.Itoa(r.Rule.Revision))
 	if r.Source != "" {
@@ -117,8 +122,15 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 	if r.InheritedBy != "" {
 		fmt.Fprintf(b, "inherited by: %s\n", r.InheritedBy)
 	}
-	if r.Overrides != "" {
+	switch {
+	case r.Overrides != "":
 		fmt.Fprintf(b, "overrides: %s\n", r.Overrides)
+	case r.Overridden != nil && r.Rule.State == entity.StateDraft && r.OverriddenReplaced:
+		fmt.Fprintf(b, "proposes to override: %s (already replaced by another rule of this entity)\n", r.Overridden.ID)
+	case r.Overridden != nil && r.Rule.State == entity.StateDraft:
+		fmt.Fprintf(b, "proposes to override: %s\n", r.Overridden.ID)
+	case r.Overridden != nil:
+		fmt.Fprintf(b, "overrides, without replacing: %s\n", r.Overridden.ID)
 	}
 	if len(r.OverriddenBy) > 0 {
 		fmt.Fprintf(b, "overridden by: %s\n", strings.Join(r.OverriddenBy, ", "))
@@ -138,6 +150,9 @@ func writeRule(b *strings.Builder, r ruleeval.RuleInput) {
 		for _, n := range notes {
 			fmt.Fprintf(b, "  - %s\n", indentContinuation(strings.TrimSpace(n.Content)))
 		}
+	}
+	if o := r.Overridden; o != nil {
+		fmt.Fprintf(b, "overridden rule: %s (revision %d): %s\n", o.ID, o.Revision, indentContinuation(strings.TrimSpace(o.Body)))
 	}
 	if len(r.Extended) > 0 {
 		b.WriteString("extended rules:\n")

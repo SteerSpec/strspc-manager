@@ -255,7 +255,7 @@ func (p *Provider) Model() string { return p.cfg.Model }
 func (p *Provider) MaxRulesPerRequest() int { return p.cfg.MaxRulesPerRequest }
 
 // PromptVersion returns the prompt revision qualified by the effort level
-// and the split configuration, e.g. "v8/effort=medium/split=100000,40,2/1".
+// and the split configuration, e.g. "v9/effort=medium/split=100000,40,2/1".
 // Effort changes how carefully the model judges the same prompt, so it is
 // part of the cache identity: raising effort must not reuse a verdict
 // produced at a lower one. The split configuration (MaxInputTokens,
@@ -268,13 +268,43 @@ func (p *Provider) PromptVersion() string {
 
 // AuditPromptVersion returns the audit prompt revision with the prompt
 // revision it shares the rules block and verdict schema with, qualified as
-// PromptVersion is, e.g. "audit-a1+v8/effort=medium/split=100000,40,2/1".
+// PromptVersion is, e.g. "audit-a3+v9/effort=medium/split=100000,40,2/1".
 // The split configuration matters even more to an audit, where something
 // missing from a set that fits one request is a violation that a part may
 // not report. The provider audits every request whose Files are set
 // (ruleeval.Auditor).
 func (p *Provider) AuditPromptVersion() string {
 	return "audit-" + prompt.AuditVersion + "+" + prompt.Version + "/effort=" + p.cfg.Effort + p.splitIdentity()
+}
+
+// ConflictPromptVersion returns the conflict prompt revision qualified by the
+// effort level, e.g. "conflict-c1/effort=medium". A conflict check sends two
+// rules and no diff, so the split configuration does not bear on it
+// (ruleeval.ConflictChecker).
+func (p *Provider) ConflictPromptVersion() string {
+	return "conflict-" + prompt.ConflictVersion + "/effort=" + p.cfg.Effort
+}
+
+// CheckConflict asks whether req.Rule, a Draft override, conflicts with the
+// inherited rule it overrides (RUL-023), in one request.
+func (p *Provider) CheckConflict(ctx context.Context, req ruleeval.ConflictRequest) (*ruleeval.ConflictResponse, error) {
+	if req.Rule.Overridden == nil {
+		return nil, fmt.Errorf("claude: conflict check of rule %s without the rule it overrides", req.Rule.Rule.ID)
+	}
+	text, err := p.send(ctx, prompt.ConflictSystem(), prompt.ConflictBlock(req.Rule), []anthropic.ContentBlockParamUnion{
+		anthropic.NewTextBlock(prompt.ConflictInstruction(req.Rule)),
+	}, prompt.ConflictSchema())
+	if err != nil {
+		return nil, err
+	}
+	var resp ruleeval.ConflictResponse
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrMalformed, err)
+	}
+	if strings.TrimSpace(resp.Explanation) == "" {
+		return nil, fmt.Errorf("%w: conflict check of rule %s has no explanation", ErrMalformed, req.Rule.Rule.ID)
+	}
+	return &resp, nil
 }
 
 // splitIdentity renders the configuration that decides how a request is

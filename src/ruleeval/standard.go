@@ -29,7 +29,7 @@ func (e *Evaluator) reportStandardRules(res *result.Result, inputs []RuleInput) 
 			continue
 		}
 		id := in.Rule.ID
-		if reason := e.unsafeSkip(&in.Rule); reason != "" {
+		if reason := e.unsafeSkip(in); reason != "" {
 			if key := id + "\x00" + reason; !seen[key] {
 				seen[key] = true
 				res.Add(result.Diagnostic{
@@ -43,7 +43,7 @@ func (e *Evaluator) reportStandardRules(res *result.Result, inputs []RuleInput) 
 			}
 			continue
 		}
-		if e.cfg.EvaluateStates[in.Rule.State] && !slices.Contains(skipped, id) {
+		if e.cfg.EvaluateStates[in.EnforcedState()] && !slices.Contains(skipped, id) {
 			skipped = append(skipped, id)
 		}
 	}
@@ -63,21 +63,30 @@ func (e *Evaluator) reportStandardRules(res *result.Result, inputs []RuleInput) 
 	})
 }
 
-// unsafeSkip says why r, a rule labelled as a Standard Realm's, can't be
-// skipped with a warning only, or returns "".
-func (e *Evaluator) unsafeSkip(r *entity.Rule) string {
-	// Implemented is the enforced state, whatever the configuration says.
-	if r.State == entity.StateImplemented {
+// unsafeSkip says why in, a rule labelled as a Standard Realm's, can't be
+// skipped with a warning only, or returns "". States are read as the rule's
+// enforced state (SPCFG-010).
+func (e *Evaluator) unsafeSkip(in *RuleInput) string {
+	r := &in.Rule
+	state := in.EnforcedState()
+	switch {
+	case r.State == entity.StateImplemented:
 		return "it is Implemented, which a rule of a Standard Realm can't be (STDRLM-010)"
+	case state == entity.StateImplemented:
+		return "it is enforced as Implemented (RUL-021), which a rule of a Standard Realm can't be (STDRLM-010)"
 	}
-	if !e.cfg.EvaluateStates[r.State] {
+	if !e.cfg.EvaluateStates[state] {
 		return "" // It wouldn't be evaluated in a code Realm either.
 	}
 	switch {
-	case e.cfg.FailOn[r.State]:
-		return fmt.Sprintf("a violation of a rule in state %s blocks here (fail_on), and a skipped rule gets no verdict", r.State)
+	case e.cfg.FailOn[state]:
+		return fmt.Sprintf("a violation of a rule in state %s blocks here (fail_on), and a skipped rule gets no verdict", state)
+	case in.Overrides != "":
+		return fmt.Sprintf("it overrides %s, which would then be enforced by neither rule", in.Overrides)
 	case r.Overrides != nil && *r.Overrides != "":
-		return fmt.Sprintf("it overrides %s, which would then be enforced by neither rule", *r.Overrides)
+		// Fail closed before the override takes effect: once Published it
+		// replaces its target with a rule that is never evaluated.
+		return fmt.Sprintf("it declares overrides of %s, which it would replace, unevaluated, once Published", *r.Overrides)
 	case strings.TrimSpace(r.Clause) == "" && entity.IsLiveStandardRule(*r):
 		return "it has no clause, so it transcribes no standard (STDRLM-005)"
 	}

@@ -125,7 +125,10 @@ type computer struct {
 }
 
 // Compute measures each entity over its coverage rule set (STDREF-010), which
-// inherit.Effective yields with its default states.
+// inherit.Effective yields with its default states: a Draft override replaces
+// nothing, so it removes no coverage. A clause is covered by a rule whose
+// enforced state is Implemented (STDREF-012), and lapsed for a rule that a
+// Published or Implemented override replaced (STDREF-015).
 func Compute(entities []*realmresolve.Inheritance, opts ...Option) *Report {
 	c := &computer{realmFigures: make(map[realmFigureKey]*realmFigure)}
 	for _, opt := range opts {
@@ -186,7 +189,9 @@ func (r *Report) measure(c *computer, e *realmresolve.Inheritance, declared map[
 			switch {
 			case ref.Relation != entity.RelationImplements:
 				add(cites, key, StatusCited, m)
-			case rule.Rule.State == entity.StateImplemented:
+			case rule.EnforcedState() == entity.StateImplemented:
+				// A Published override of an Implemented rule is enforced as
+				// Implemented, so it covers (STDREF-012, RUL-024).
 				add(claims, key, StatusCovered, m)
 			default:
 				add(claims, key, StatusMapped, m)

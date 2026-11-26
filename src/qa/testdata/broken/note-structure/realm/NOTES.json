@@ -7,7 +7,7 @@
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:376b1fbe47992a76110b86446b2f055ff5c6971cdb2089bb7c61e0f1cd1d0567"
+    "hash": "blake3:920a0e16a163cae9d93ac155ccb68817b93b16b2892ddf75ef4a33e151b89261"
   },
   "rules": [
     {
@@ -125,6 +125,15 @@
       "rule_ref": "NOTES-005",
       "type": "rationale",
       "content": "Context for the rule.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "revision": 0
+    },
+    {
+      "id": "NOTES-005/01",
+      "rule_ref": "NOTES-005",
+      "type": "override_ack",
+      "content": "0",
       "added_by": "github:qa",
       "added_at": "2026-01-15",
       "revision": 0

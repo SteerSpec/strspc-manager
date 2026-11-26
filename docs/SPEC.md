@@ -49,7 +49,9 @@ Each entity carries its **Entity Unique Identifier** (EUID, ENT-005):
 
 An entity MAY declare `inherits`, the EUID of one other entity whose effective rule set it inherits (ENT-006): the short EUID in the same Realm, or `<realm-id>:<EUID>` for an entity in a declared dependency (ENT-007). Chains MUST NOT cycle or exceed three hops (ENT-008). The field is omitted when the entity inherits nothing.
 
-**Effective rule set.** An inheriting entity's effective rule set is computed by the `inherit` package from its resolved chain. Starting from the root-most ancestor, each ancestor contributes its Published and Implemented rules after removing the inherited rules its own Published and Implemented rules override; then the entity's own rules that pass the consumer's evaluate states (default `D`, `P`, `I`) are added after removing the rules they override. Filtering before overriding lets an inherited rule reappear once the rule overriding it is Retired or Terminated. Inherited rules stay owned by their entity (ENT-009) and never count towards the inheriting entity's hash (ENT-010). Given an entity's resolved chain (`render.WithInheritance`), the Markdown renderer adds an "Inherited rules" section listing each inherited rule with its owner, Realm and state, and marking those the entity's own rules override; the rules are listed, never copied into the entity.
+**Effective rule set.** An inheriting entity's effective rule set is computed by the `inherit` package from its resolved chain. Starting from the root-most ancestor, each ancestor contributes its Published and Implemented rules after removing the inherited rules its own Published and Implemented rules override (ENT-020). Then the entity's own Published and Implemented rules remove the rules they override (RUL-019), and its own rules whose enforced state passes the consumer's evaluate states (default `D`, `P`, `I`) are added. A Draft override replaces nothing (RUL-018): the rule it overrides stays in force and is evaluated beside it, and a Draft override is not passed down to an inheriting entity. A Published override whose successor is in Draft keeps replacing. An inherited rule reappears once the rule overriding it is Retired or Terminated. Which rules are replaced does not depend on the evaluate states.
+
+**Enforced state.** The enforced state of a rule is Implemented when it is a Published override replacing a rule whose enforced state is Implemented, and its State otherwise (RUL-021, RUL-024); `inherit.Rule.EnforcedState` derives it each time the chain is resolved, and nothing stores it. `evaluate_on` and `fail_on` match against it (SPCFG-010), as do the evaluate states `inherit.Effective` keeps an entity's own rules by, so a Published override of an Implemented rule is never enforced below the rule it replaces. Every overriding rule whose target is in its inherited set carries that rule as `inherit.Rule.Overridden`, for a Draft override too, so that its evaluation can receive it as context (RUL-020). Inherited rules stay owned by their entity (ENT-009) and never count towards the inheriting entity's hash (ENT-010). Given an entity's resolved chain (`render.WithInheritance`), the Markdown renderer adds an "Inherited rules" section listing each inherited rule with its owner, Realm and state, and marking those the entity's own Published or Implemented rules replace, and those its Draft rules propose to override; the rules are listed, never copied into the entity.
 
 **Visibility.** An entity MAY declare `visibility`, which limits who may build on it (ENT-011). When it is absent, a sub-entity takes the visibility of the entity containing it and any other entity is `public`.
 
@@ -61,7 +63,7 @@ An entity MAY declare `inherits`, the EUID of one other entity whose effective r
 
 **Standards.** An entity MAY declare a `standards` array of Standard References (ENT-017), and so MAY a Realm (RLMMNFST-007). Each holds `id`, `relation` (`implements` or `derived_from`) and optional `version` and `url`, and from Core 1.21.0 an optional `realm`, the Standard Realm the reference links to (STDREF-017), with an optional `profile` of that Realm, allowed only with `realm` (STDREF-019). A rule maps to a clause through a `standard` note (§2.6), whose `id` resolves in the entity owning the rule, its containing entities nearest first, its Realm, then that Realm's parent (NTE-016). `inherits` passes on no references (STDREF-009).
 
-**Coverage.** The `coverage` package measures each entity of a Realm tree over its coverage rule set (STDREF-010): `inherit.Effective` with its default states. A clause, identified by its text with the `id` and `version` its note resolves to (STDREF-011), is `covered`, `mapped` or `lapsed`, or `cited` when its reference is `derived_from`. Only an Implemented rule covers. A rule that overrides or supersedes another has only its own mappings (STDREF-016), and a clause it drops shows as `lapsed`, built from the old rule's note. SteerSpec holds no clause lists, so for a reference without a `realm` a clause nothing maps can't be reported.
+**Coverage.** The `coverage` package measures each entity of a Realm tree over its coverage rule set (STDREF-010): `inherit.Effective` with its default states. A clause, identified by its text with the `id` and `version` its note resolves to (STDREF-011), is `covered`, `mapped` or `lapsed`, or `cited` when its reference is `derived_from`. Only a rule whose enforced state is Implemented covers (STDREF-012), so a Published override of an Implemented rule covers through its own mappings. A rule that overrides or supersedes another has only its own mappings (STDREF-016), and a clause it drops shows as `lapsed`, built from the old rule's note. A Draft override replaces nothing, so it removes no coverage and lapses nothing (STDREF-010, STDREF-015). SteerSpec holds no clause lists, so for a reference without a `realm` a clause nothing maps can't be reported.
 
 A reference with a `realm` and the relation `implements` has a clause list: that of the linked Standard Realm, narrowed when it has a `profile` to the clauses whose rules declare it (STDREF-020). `coverage.Links` provides it from the trees `realm-resolve` resolved: a reference resolves its `realm` against the dependencies of the Realm whose manifest declares it, where a sub-realm's own pin wins (RLM-014), so every entity measured against it reads one clause list. A reference an entity declares resolves against the entity's Realm. Figures go to the references in the entity's own scopes. A reference that only the owner of an inherited rule declares, possibly in another Realm tree, still gets the rule's mapping rows but no figure. A mapping counts toward any reference with the same `id` and `version`, the clause identity of STDREF-011. With `coverage.WithLinks`, `Compute` then reports two more statuses:
 - `excluded`: a clause of the list that the manifest declaring the reference excludes with an `exclusion` Realm Note (STDREF-022), whatever maps it; its mappings are kept. Its `Exclusion` names the note: the manifest's `realm_id`, the note's ID and its content. When two notes exclude the clause, it names the first in the manifest.
@@ -110,7 +112,7 @@ Each rule carries:
 | `added_by` | string | Contributor identifier of the author (`github:<login>`, CTRB-001). |
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
-| `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. Omitted when the rule overrides none. |
+| `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. The replacement starts once the rule is Published (RUL-018, RUL-019), and publishing it needs an `override_ack` note (RUL-022). Omitted when the rule overrides none. |
 | `clause` | string (optional) | The clause of an external standard the rule transcribes (RUL-015). Only a Standard Realm's rules have one (RUL-017). Omitted when empty. Core 1.21.0 or later. |
 | `profiles` | array of strings (optional) | Unique names of the profiles of its Standard Realm the rule belongs to (RUL-016). Omitted when empty. Core 1.21.0 or later. |
 
@@ -153,7 +155,7 @@ A Note is a supplemental explanation attached to a specific rule. Notes provide 
 Notes are stored in the same entity file as the rules they reference and are edited in place, never deleted:
 
 - A note is never removed once added. A note that no longer applies is revised in place.
-- Notes of type `changelog`, `supersedes`, `extends` and `related` are immutable: neither their content nor their type may change once added.
+- Notes of type `changelog`, `supersedes`, `extends`, `related` and `override_ack` are immutable: neither their content nor their type may change once added.
 - Any other note may be revised; each change to its content or type increments its `revision` by exactly one.
 - A `standard` note changes type only to or from `reference`. A withdrawal to `reference` keeps the content (NTE-017, NTE-019).
 - Note IDs under a rule are sequential from `01`. Since no note is ever removed, an ID is never reused.
@@ -177,6 +179,7 @@ The evaluator receives the note types listed in `ruleeval.PromptNoteTypes`, ever
 | `related` | Declares a relationship to another rule or entity. | Rules, Rule Sets |
 | `standard` | Maps the rule to one clause of an external standard, as `<id>:<clause>` split at the first colon (NTE-013, NTE-014). Can be added, revised or withdrawn in any rule state, and never moves the rule's revision (NTE-017, NTE-018). | Rules |
 | `structured` | Holds the machine-readable form of the rule as `<format>:<payload>` split at the first colon, the payload being opaque to SteerSpec (NTE-036, NTE-037, NTE-039). At most one per rule, and frozen once the rule leaves Draft (NTE-040, NTE-041). | Rules |
+| `override_ack` | Acknowledges, by a contributor of its Realm, that its rule is to replace the inherited rule it overrides; the content is the revision acknowledged (NTE-042). Only on a rule that declares `overrides`, and append-only (NTE-043, NTE-044). A rule that overrides enters Published only with one acknowledging its current revision (RUL-022): `PromoteRule` refuses otherwise, and rule-diff reports RD032. Core 1.26.0 or later. | Rules |
 | `exclusion` | Declares one clause not applicable to its Realm, with `ref` `<id>:<clause>` and the justification as content (NTE-032 to NTE-034). Withdrawn only by retyping it to `reference` (NTE-035). Core 1.21.0 or later. | Realms (Realm Notes) |
 
 Realm Notes, stored in the `notes` array of `realm.json` (§2.8, Realm Manifest), take only `exclusion`, `rationale`, `clarification` and `reference` (NTE-029, NTE-031).
@@ -224,7 +227,7 @@ The Realm Manifest is `realm.json` (RLMMNFST-001). It declares the Realm's ident
 | `realm.edition` | string | The edition of the standard a Standard Realm transcribes (STDRLM-002). Core 1.21.0 or later. |
 | `realm.profiles` | array of strings | Profile names a Standard Realm's rules may declare, in order (STDRLM-004). Core 1.21.0 or later. |
 | `realm.contributors` | array | Contributors of the Realm (CTRB-004), each `{ id, email, github_id }`: `id` is the contributor identifier `<idp>:<subject>` (CTRB-001); `email` (CTRB-007) and the numeric `github_id` of a `github` contributor (CTRB-008) are optional. A sub-realm uses its parent's list (CTRB-006). Omitted when empty. Core 1.16.0 or later. |
-| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.25.0/rules/core`, see §6.4). |
+| `dependencies` | array | Array of `{ realm_id, version, source }` objects referencing other Realms (RLMMNFST-003). `source` is a path relative to the manifest's directory (`../core/`) or a remote reference (`github://SteerSpec/strspc-rules@v1.26.0/rules/core`, see §6.4). |
 | `sub_realms` | array of strings or null | Subdirectory names of child Realms (RLMMNFST-005). Null or absent if none. |
 | `rule_identifier_format` | object or null | Override RLIFRMT defaults (RLMMNFST-004): optional `brackets`, `euid_position`, `id_splitter`, `revision_splitter` and `state_splitter` (§4); an absent field keeps its default. `null` keeps all defaults, or for a sub-realm the parent's format. |
 | `notes` | array | Realm Notes (RLMMNFST-012, NTE-029), each `{ id, type, ref, content, added_by, added_at, revision }`: `id` is `REALM/NNN` (NTE-030), `type` is `exclusion`, `rationale`, `clarification` or `reference` (NTE-031), and `ref`, the `<id>:<clause>` an exclusion excludes, appears only on an exclusion or on the `reference` it becomes when withdrawn (NTE-034, NTE-035). Omitted when empty. Core 1.21.0 or later. |
@@ -311,11 +314,11 @@ The `cache` object MAY declare a `ttl` property (time-to-live string) controllin
 
 #### Evaluation States
 
-The Configuration MAY declare which rule lifecycle states are sent to the evaluator. The `evaluate_on` array contains state codes; it defaults to `[D, P, I]` (Draft, Published, Implemented). Rules in other states (`A`, `R`, `T`) are never evaluated.
+The Configuration MAY declare which rule lifecycle states are sent to the evaluator. The `evaluate_on` array contains state codes; it defaults to `[D, P, I]` (Draft, Published, Implemented). Rules in other states (`A`, `R`, `T`) are never evaluated. The state codes match a rule's enforced state (SPCFG-010, §2): a Published override of an Implemented rule is evaluated as Implemented.
 
 #### Fail Conditions
 
-The optional `fail_on` array (SPCFG-007) contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails. Violations of evaluated rules whose state is not listed in `fail_on` are reported as warnings.
+The optional `fail_on` array (SPCFG-007) contains state codes (`D`, `A`, `P`, `I`, `R`, `T`) — when a rule in one of these states is violated, enforcement fails. Violations of evaluated rules whose state is not listed in `fail_on` are reported as warnings. As for `evaluate_on`, the codes match the enforced state (SPCFG-010), so a Published override of an Implemented rule fails where its Implemented target would.
 
 **Schema:** The `config.v1.schema.json` schema validates this configuration format. Unlike hand-maintained axioms (`bootstrap.schema.json`, `realm.v1.schema.json`), the config schema is **generated** from SPCFG entity rules by `tools/build-schema.py`. This follows the same self-referential pattern as `entity.v1.schema.json` — the rules define the schema that validates the artifact.
 
@@ -564,13 +567,14 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL041 | Error | A rule of a Standard Realm that supersedes another is past Draft and not Abandoned, while the rule it supersedes is not Terminated (STDRLM-013). |
 | RL042 | Error | The content of a `structured` note is not `<format>:<payload>` with neither part blank (NTE-037). |
 | RL043 | Error | A rule holds more than one `structured` note (NTE-040). |
+| RL044 | Error | An `override_ack` note is on a rule that declares no `overrides` (NTE-043). |
 
 #### `rule-diff` (RD)
 
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RD000 | Error | The base or head entity file is nil, cannot be read, or cannot be parsed, or a Realm comparison cannot read a directory or manifest it compares. |
-| RD001 | Error | A Draft rule body was edited without incrementing the revision, or together with a state change. |
+| RD001 | Error | A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it. |
 | RD002 | Error | The body of a rule that has left Draft was edited. |
 | RD003 | Error | A state transition is not allowed by the state machine (§3.2), or a Published rule went to `T` while no rule that supersedes it is Published or later (RULST-012). |
 | RD004 | Error | A new rule has revision ≠ 0 or state ≠ `D`, or new rule numbers are not consecutive. |
@@ -581,7 +585,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD009 | Error | `rule_set.timestamp` is unchanged from the base version. |
 | RD010 | Error | A new rule reuses a rule number present in the base version. |
 | RD011 | Error | A new rule or new note has an empty `added_by`. |
-| RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped. |
+| RD012 | Error | An append-only note (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) was removed or retyped. |
 | RD013 | Error | A note's content or type changed without its revision incrementing by exactly 1, or its revision changed without a content or type change. |
 | RD014 | Error | A note that is not append-only and is present in the base version was removed. |
 | RD015 | Error | A new note has revision ≠ 0. |
@@ -601,6 +605,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RD029 | Error | A Realm Note's `ref` changed, its type changed other than by withdrawing an exclusion to `reference` with its content unchanged, or a new `reference` has a `ref` (NTE-035). |
 | RD030 | Error | A rule of a Standard Realm came to supersede a rule, or left Draft superseding one, that was live neither before the change nor after it (STDRLM-017). |
 | RD031 | Error | A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged. |
+| RD032 | Error | A rule that declares `overrides` moved from Draft to Published without an `override_ack` note whose content is its current revision (RUL-022). |
 
 RD023 runs only when the caller passes the Realm's contributors with `WithContributors`, as `entity.RealmContributors` returns them; `Compare` and `CompareNew` read no manifest.
 
@@ -697,12 +702,13 @@ RSV001 is unassigned. `rule-resolve` has no strict mode.
 
 | Code | Severity | When it fires |
 |------|----------|---------------|
-| RE001 | Warning / Error | The diff violates a rule; Error when the rule's state is in `fail_on`, Warning otherwise. |
+| RE001 | Warning / Error | The diff violates a rule; Error when the rule's enforced state (SPCFG-010) is in `fail_on`, Warning otherwise. |
 | RE002 | Warning | The AI provider failed for a rule or entity, or returned no verdict or an unrecognized one. |
 | RE003 | Info | AI evaluation skipped because the evaluator runs in static-only mode. |
 | RE004 | Info | The diff, or the file set of an audit, is empty; nothing to evaluate. |
 | RE005 | Warning | Rules were not evaluated because their Realm declares `kind` `standard` (STDRLM-011). Reported also in static-only mode and when there is nothing to evaluate. |
 | RE006 | Error | A rule not evaluated because its Realm declares `kind` `standard` is Implemented, or is in a state of `evaluate_on` and is in a state of `fail_on`, has `overrides` or is live without a `clause`: skipping it would switch off enforcement, so it blocks. Reported also in static-only mode and when there is nothing to evaluate. |
+| RE007 | Warning | A Draft rule that overrides an inherited rule conflicts with it: code that follows the Draft would violate the inherited rule, which stays in force until the Draft is Published (RUL-023). The provider judges the two rules, and the answer is cached under them, not the diff. Never an Error, whatever `fail_on` says. |
 
 #### `rule-refs` (RF)
 
@@ -813,7 +819,7 @@ github://<owner>/<repo>@<ref>[/<path>]
 
 For each changed entity file, the validator compares the before and after states:
 
-1. **Draft rule edited:** Revision must equal `previous_revision + 1`. State must remain `D`.
+1. **Draft rule edited:** When the body or `overrides` changes, the revision must equal `previous_revision + 1` and the state must remain `D`.
 2. **Non-draft rule body edited:** Reject. The rule is immutable. The author must supersede it with a new rule.
 3. **State transition:** Must follow the state machine (§3.2). No skipping states, no backward transitions; the one skip is P→T for a superseded Published rule whose successor is Published or later in head (RULST-012).
 4. **New rule added:** Must have `revision: 0`, `state: "D"`, and the next sequential number for that entity.
@@ -824,7 +830,7 @@ For each changed entity file, the validator compares the before and after states
 9. **Rule Set timestamp:** Must be updated.
 10. **No ID reuse:** New rule numbers must not reuse any previously existing rule number in the entity's history.
 11. **`added_by` present:** Required on new rules and new notes. Must be present; its format is checked by `rule-lint` (RL032).
-12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`) must also keep their type and content unchanged.
+12. **Notes never removed:** Every note present in the base version must still be present. Append-only notes (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) must also keep their type and content unchanged.
 13. **Note edited:** When a note's content or type changes, its revision must equal `previous_revision + 1`. A revision change without a content or type change is rejected.
 14. **New note added:** Must have `revision: 0`.
 15. **Inheritance is stable:** Once an entity has a rule beyond Draft, its `inherits` may not change, and may not be removed while a rule is Published or Implemented; adding it where there was none is allowed.
@@ -836,6 +842,7 @@ For each changed entity file, the validator compares the before and after states
 21. **A Realm keeps its kind:** Neither a `kind` field nor a change to the manifests around existing files may move rules between a code Realm and a Standard Realm (RD028). Relabeling is how evaluation would be switched off (STDRLM-011).
 22. **Realm Notes keep their history:** None is removed, each change to its type, content or `ref` moves the revision by one (its `added_by` and `added_at` may be rewritten, as `strspc realm rewrite-added-by` does), and the only change of type is withdrawing an exclusion to `reference` with its `ref` and content unchanged (RD029).
 23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).
+24. **An override is acknowledged before it governs:** A rule that declares `overrides` moves from Draft to Published only with an `override_ack` note whose content is its current revision (RD032, RUL-022). A later Draft edit moves the revision, so publishing it needs a new acknowledgement.
 
 **Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
 
@@ -909,6 +916,9 @@ The `fail_on` list references rule lifecycle state codes, not severity levels (s
 5. Group the remaining rules by owning entity and send one request per entity: a shared system prompt, the diff, and the rules with their notes (`applies_to`, `rationale`, `example`, `counter_example`, `clarification`). Providers split large diffs on file and hunk boundaries and merge verdicts, a violation in any chunk winning; a hunk too large to send is reported, never silently skipped. A request that shows part of a diff says so and lists the files of the whole diff, so a rule spanning files is not reported as broken because the other file sits in another chunk. A file listed but not shown cannot fail such a rule, so a companion change that is missing from a file changed for another reason can go unreported on a split diff. A list too long for its share of the budget names as many files as fit, says how many it left out and is reported like an oversize hunk.
 6. The AI returns exactly one verdict per rule — compliant, violated, or not applicable — as a structured object keyed by rule id, so the output schema itself guarantees a verdict for every rule sent; a second request per violated rule then re-reads the diff with that single rule in focus and either confirms the verdict with its explanation and evidence locations (file, line, excerpt) or withdraws it (`compliant` or `not_applicable`, explanation kept, counted in `Usage.Withdrawn`). `not_applicable` is the default when the rule's subject is absent from the diff. A caller that needs reasons for compliance too, such as a gate promoting a rule to Implemented, opts in with `ruleeval.WithDetail(ruleeval.DetailCompliant)`: each rule judged compliant then gets the same second request, which confirms the verdict with an explanation and the lines that satisfy the rule, or withdraws it (`violated`, keeping the lines that break the rule, or `not_applicable`), also counted in `Usage.Withdrawn`. It costs one more request per compliant rule, so a PR check leaves it off. On a split diff the evidence of every part that judged the rule compliant is merged, as it is for a violation. `not_applicable` is never detailed. A detailed verdict is cached apart from an undetailed one. A detail with a blank explanation or a confidence of 0 or less neither confirms nor withdraws the verdict: the verdict stands with an `RE002` warning, which keeps the result out of the cache.
 7. Report results. Violations carry the first evidence location; a provider failure is a warning (`RE002`) for each affected rule and never blocks on its own. Block merge if `fail_on` conditions are met.
+8. Check each evaluated Draft override against the inherited rule it overrides (RUL-023), when the provider implements `ruleeval.ConflictChecker`. The two rules conflict when code that follows the Draft would violate the inherited rule. Each conflict is a warning (`RE007`) that never blocks, whatever `fail_on` says; a failed check is `RE002`. The answer depends on the two rules alone, so it is cached under what the check sends (the Draft with its notes and the overridden rule, as in §8.4), the model and the conflict prompt version, never the diff. A Draft that supersedes a Published override, whose target that override already replaces, is not checked: the inherited rule is no longer in force there.
+
+**Overrides.** An overriding rule is sent with the inherited rule it overrides, its ID, revision and body, as context (RUL-020), and that context is part of its cache key. A Published or Implemented override is marked `overrides`: it replaces the inherited rule for its entity, which is not sent. A Draft override is marked `proposes to override`: it replaces nothing, and the inherited rule is sent and judged on its own as well (RUL-018), unless another rule of the entity already replaces it, which the mark then says. Any other override that replaces nothing, such as a Retired one when `evaluate_on` asks for it, is marked `overrides, without replacing`. A rule whose enforced state differs from its state shows both, as `state: P (enforced as I)`.
 
 **Audit mode.** `Evaluator.Audit` judges rules against code as it stands, a set of files, instead of a change, which a gate needs before promoting a rule to Implemented. The flow is the one above with these differences:
 

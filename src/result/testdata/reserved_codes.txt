@@ -59,6 +59,7 @@ RL040 active supersedes-rule-not-live
 RL041 active superseded-rule-not-terminated
 RL042 active structured-note-malformed
 RL043 active structured-note-duplicate
+RL044 active override-ack-without-overrides
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited
@@ -158,6 +159,7 @@ RE003 active ai-evaluation-skipped
 RE004 active diff-empty
 RE005 active standard-rules-not-evaluated
 RE006 active enforced-rule-labelled-standard
+RE007 active draft-override-conflict
 EC001 active cache-recreated
 RF001 active citation-unknown
 RF002 active citation-abandoned
@@ -168,3 +170,4 @@ RF006 active citation-draft
 RF007 active copied-rule-body
 RM030 active realm-note-added-by-format
 RD031 active dependency-source-changed
+RD032 active override-published-unacknowledged

@@ -80,8 +80,8 @@ var sampleDiff = strings.Join([]string{
 }, "\n")
 
 func TestVersion(t *testing.T) {
-	if prompt.Version != "v8" {
-		t.Fatalf("Version = %q, want v8", prompt.Version)
+	if prompt.Version != "v9" {
+		t.Fatalf("Version = %q, want v9", prompt.Version)
 	}
 }
 
@@ -282,6 +282,41 @@ func TestRulesBlock_InheritanceLines(t *testing.T) {
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("rules block missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+// TestRulesBlock_OverrideContext checks that an overriding rule carries the
+// inherited rule's text, and a Draft one says it only proposes (RUL-020).
+func TestRulesBlock_OverrideContext(t *testing.T) {
+	ctx := &inherit.Extended{ID: "core:ACCT-001", Revision: 2, Body: "Accounts MUST pay."}
+	got := prompt.RulesBlock([]ruleeval.RuleInput{
+		{Rule: entity.Rule{ID: "SAV-001", State: "D", Body: "Savings MUST cap."}, EntityID: "SAV", Overridden: ctx},
+		{Rule: entity.Rule{ID: "LOAN-001", State: "P", Body: "Loans MUST cap."}, EntityID: "LOAN", Overrides: "core:ACCT-001", Overridden: ctx, Enforced: "I"},
+	})
+	for _, want := range []string{
+		"### SAV-001\nentity: SAV\nstate: D\nrevision: 0\nproposes to override: core:ACCT-001\nrule: Savings MUST cap.\noverridden rule: core:ACCT-001 (revision 2): Accounts MUST pay.\n",
+		"### LOAN-001\nentity: LOAN\nstate: P (enforced as I)\nrevision: 0\noverrides: core:ACCT-001\nrule: Loans MUST cap.\noverridden rule: core:ACCT-001 (revision 2): Accounts MUST pay.\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("rules block lacks\n%s\ngot\n%s", want, got)
+		}
+	}
+}
+
+func TestRulesBlock_OverrideMarks(t *testing.T) {
+	ctx := &inherit.Extended{ID: "core:ACCT-001", Body: "a"}
+	for _, tt := range []struct {
+		in   ruleeval.RuleInput
+		want string
+	}{
+		{ruleeval.RuleInput{Rule: entity.Rule{ID: "S-002", State: "D"}, Overridden: ctx, OverriddenReplaced: true},
+			"proposes to override: core:ACCT-001 (already replaced by another rule of this entity)\n"},
+		{ruleeval.RuleInput{Rule: entity.Rule{ID: "S-003", State: "R"}, Overridden: ctx},
+			"overrides, without replacing: core:ACCT-001\n"},
+	} {
+		if got := prompt.RulesBlock([]ruleeval.RuleInput{tt.in}); !strings.Contains(got, tt.want) {
+			t.Errorf("%s: rules block lacks %q:\n%s", tt.in.Rule.ID, tt.want, got)
 		}
 	}
 }

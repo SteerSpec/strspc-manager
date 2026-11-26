@@ -15,7 +15,7 @@ Savings Account
 ## Inherited rules
 
 - **dev.bank.core:ACCT-001** Every account MUST have an owner. (I, from ACCT in dev.bank.core)
-- **dev.bank.core:ACCT-002** Withdrawals MUST NOT exceed the balance. (P, from ACCT in dev.bank.core) *Overridden by SAV-001.*
+- **dev.bank.core:ACCT-002** Withdrawals MUST NOT exceed the balance. (P, from ACCT in dev.bank.core) *Draft override proposed by SAV-001; in force until it is Published.*
 
 ## Sub-entities
 

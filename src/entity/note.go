@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +27,10 @@ const (
 	NoteTypeRationale = "rationale"
 	// NoteTypeClarification marks a Note clarifying what is meant.
 	NoteTypeClarification = "clarification"
+	// NoteTypeOverrideAck marks the acknowledgement, by a contributor of its
+	// Realm, that its Rule is to replace the inherited Rule it overrides
+	// (NTE-042). Its content is the revision acknowledged (RUL-022).
+	NoteTypeOverrideAck = "override_ack"
 )
 
 // realmNoteTypes is the closed enum of Realm Note types (NTE-031), in schema
@@ -85,6 +90,7 @@ var noteTypes = []string{
 	"related",
 	NoteTypeStandard,
 	NoteTypeStructured,
+	NoteTypeOverrideAck,
 }
 
 // validNoteTypes is the set form of noteTypes.
@@ -103,6 +109,8 @@ var appendOnlyNoteTypes = map[string]bool{
 	"supersedes": true,
 	"extends":    true,
 	"related":    true,
+	// An acknowledgement must not change once added (NTE-044).
+	NoteTypeOverrideAck: true,
 }
 
 // NoteTypes returns the closed enum of note types in schema order. The slice
@@ -117,7 +125,18 @@ func IsValidNoteType(t string) bool {
 }
 
 // IsAppendOnlyNoteType reports whether notes of type t are immutable once
-// added (changelog, supersedes, extends, related).
+// added (changelog, supersedes, extends, related, override_ack).
 func IsAppendOnlyNoteType(t string) bool {
 	return appendOnlyNoteTypes[t]
+}
+
+// HasOverrideAck reports whether notes hold an `override_ack` Note on the rule
+// ruleID whose content is revision, the acknowledgement a Rule that overrides
+// needs to enter Published at that revision (RUL-022). Earlier acknowledgements
+// stay in place (NTE-044), so any one matching counts.
+func HasOverrideAck(notes []Note, ruleID string, revision int) bool {
+	want := strconv.Itoa(revision)
+	return slices.ContainsFunc(notes, func(n Note) bool {
+		return n.RuleRef == ruleID && n.Type == NoteTypeOverrideAck && strings.TrimSpace(n.Content) == want
+	})
 }

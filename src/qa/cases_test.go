@@ -14,6 +14,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/entity"
 	"github.com/SteerSpec/strspc-manager/src/evalcache"
+	"github.com/SteerSpec/strspc-manager/src/inherit"
 	"github.com/SteerSpec/strspc-manager/src/realmlint"
 	"github.com/SteerSpec/strspc-manager/src/realmresolve"
 	"github.com/SteerSpec/strspc-manager/src/remote"
@@ -540,6 +541,21 @@ var goCases = []goCase{
 		},
 	},
 	{
+		name: "rule-eval reports a Draft override that conflicts with the rule it overrides",
+		want: []string{"RE007 warning"},
+		run: func(t *testing.T) *result.Result {
+			e, err := ruleeval.New(conflictFunc(true))
+			if err != nil {
+				t.Fatal(err)
+			}
+			inputs := []ruleeval.RuleInput{{
+				Rule: entity.Rule{ID: "QA-001", State: entity.StateDraft}, EntityID: "QA",
+				Overridden: &inherit.Extended{ID: "dev.qa:BASE-001", Body: "The subject MUST hold."},
+			}}
+			return e.Evaluate(t.Context(), inputs, defaultDiff)
+		},
+	},
+	{
 		name: "rule-eval reports a provider that returns nothing",
 		want: []string{"RE002 warning"},
 		run: func(t *testing.T) *result.Result {
@@ -715,6 +731,23 @@ func evaluate(t *testing.T, p ruleeval.Provider) *result.Result {
 	}
 	inputs := []ruleeval.RuleInput{{Rule: entity.Rule{ID: "QA-001", State: entity.StateDraft}, EntityID: "QA"}}
 	return e.Evaluate(t.Context(), inputs, defaultDiff)
+}
+
+// conflictFunc is a Provider that finds every rule compliant and answers every
+// conflict check with conflicts.
+type conflictFunc bool
+
+// Evaluate finds every rule compliant.
+func (conflictFunc) Evaluate(context.Context, ruleeval.EvalRequest) (*ruleeval.EvalResponse, error) {
+	return &ruleeval.EvalResponse{Verdict: ruleeval.Compliant}, nil
+}
+
+// ConflictPromptVersion returns a fixed version, so conflicts are checked.
+func (conflictFunc) ConflictPromptVersion() string { return "qa" }
+
+// CheckConflict answers every check with f.
+func (f conflictFunc) CheckConflict(context.Context, ruleeval.ConflictRequest) (*ruleeval.ConflictResponse, error) {
+	return &ruleeval.ConflictResponse{Conflicts: bool(f), Explanation: "it allows what the rule forbids"}, nil
 }
 
 // providerFunc is a Provider that answers every rule the same way.

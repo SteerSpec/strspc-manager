@@ -475,6 +475,7 @@ func (l *Linter) lintEntity(ef *entity.File, container string, standard bool, re
 	checkDraftBodies(ef, standard, res, path)
 	checkStandards(ef, res, path)
 	checkStructured(ef, res, path)
+	checkOverrideAcks(ef, res, path)
 	checkAddedBy(ef, res, path)
 	checkVisibility(ef, container, res, path)
 	checkSupersedesEntity(ef, res, path)

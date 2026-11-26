@@ -7,7 +7,9 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/entity"
 )
 
-// PromoteRule advances a rule: D→P or P→I.
+// PromoteRule advances a rule: D→P or P→I. A rule that declares `overrides`
+// enters Published only with an `override_ack` note acknowledging its current
+// revision (RUL-022).
 func PromoteRule(f *entity.File, ruleID string) error {
 	r, err := findRule(f, ruleID)
 	if err != nil {
@@ -26,6 +28,11 @@ func PromoteRule(f *entity.File, ruleID string) error {
 
 	if err := entity.ValidateTransition(r.State, target); err != nil {
 		return err
+	}
+	if target == entity.StatePublished && r.Overrides != nil && *r.Overrides != "" &&
+		!entity.HasOverrideAck(f.Notes, ruleID, r.Revision) {
+		return fmt.Errorf("rule %q overrides %s: add an override_ack note whose content is its revision, %d, before publishing it (RUL-022)",
+			ruleID, *r.Overrides, r.Revision)
 	}
 
 	// Compute the new version first, so that a version that does not parse

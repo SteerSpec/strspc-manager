@@ -8,7 +8,7 @@
   "rule_set": {
     "version": "1.0.1",
     "timestamp": "2026-11-01T14:06:35Z",
-    "hash": "blake3:b6ce70f985811caaa13d125b26b18e6b6f57efcf92fb5879a35853ce362e929b"
+    "hash": "blake3:152c8509ddcdf523f60c004e625c110423773bb1eccf6b12308bc215a71fbade"
   },
   "rules": [
     {
@@ -48,6 +48,15 @@
       "content": "qa/1:{\"limit\":3}",
       "added_by": "github:qa",
       "added_at": "2026-11-01",
+      "revision": 0
+    },
+    {
+      "id": "BILLING-001/04",
+      "rule_ref": "BILLING-001",
+      "type": "override_ack",
+      "content": "0",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
       "revision": 0
     }
   ]
