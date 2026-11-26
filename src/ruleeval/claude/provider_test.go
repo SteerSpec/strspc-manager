@@ -1120,7 +1120,7 @@ func scenarios() []scenario {
 			inputs: []ruleeval.RuleInput{rule("CMD-001", cobraLongRule)},
 			diff:   diffWithLong,
 			script: func(w http.ResponseWriter, _ string, _ int) {
-				writeJSON(w, 400, apiError(400, "invalid_request_error", "output_config.format.schema: The compiled grammar is too large."))
+				writeJSON(w, 400, apiError(400, "invalid_request_error", "messages.0.content.0.text: text content blocks must be non-empty"))
 			},
 			check: func(t *testing.T, _ *ruleeval.BatchResponse, err error, _ *claude.Provider, _ *replay.Transport) {
 				if err == nil || errors.Is(err, ruleeval.ErrUnavailable) {

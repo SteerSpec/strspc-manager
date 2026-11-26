@@ -57,6 +57,24 @@ func TestNew_Claude(t *testing.T) {
 	}
 }
 
+// The rules-per-request cap is settable and the effective one readable, so
+// a caller's estimate of the requests follows the provider's.
+func TestNew_ClaudeMaxRulesPerRequest(t *testing.T) {
+	for set, want := range map[int]int{0: 40, 5: 5} {
+		p, err := providers.New("claude", providers.Options{APIKey: "k", MaxRulesPerRequest: set})
+		if err != nil {
+			t.Fatal(err)
+		}
+		g, ok := p.(ruleeval.RuleGrouper)
+		if !ok {
+			t.Fatalf("claude provider should report its rules-per-request cap, got %T", p)
+		}
+		if got := g.MaxRulesPerRequest(); got != want {
+			t.Errorf("MaxRulesPerRequest set %d = %d, want %d", set, got, want)
+		}
+	}
+}
+
 func TestNew_ClaudeRequiresHTTPS(t *testing.T) {
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	_, err := providers.New("claude", providers.Options{APIKey: "k", Endpoint: "http://llm.example"})
