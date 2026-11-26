@@ -100,5 +100,11 @@
     "code": "RD018",
     "severity": "error",
     "path": "OVER/OVER-003"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD032",
+    "severity": "error",
+    "path": "ACK/ACK-001"
   }
 ]

@@ -93,7 +93,7 @@ var codeTable = []CodeInfo{
 		Severity: "Error",
 		Title:    "Unknown note type",
 		Summary:  "A note type is outside the closed enum.",
-		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard` or `structured`.",
+		Fix:      "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard`, `structured` or `override_ack`.",
 	},
 	{
 		Code:     "RL011",
@@ -360,6 +360,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Keep one note. To withdraw the other, retype it to `reference`.",
 	},
 	{
+		Code:     "RL044",
+		Module:   "rule-lint",
+		Severity: "Error",
+		Title:    "Acknowledgement on a rule that overrides nothing",
+		Summary:  "An `override_ack` note is on a rule that declares no `overrides` (NTE-043).",
+		Fix:      "Put the acknowledgement on the overriding rule, or retype the note to `reference` if it was added by mistake.",
+	},
+	{
 		Code:     "RD000",
 		Module:   "rule-diff",
 		Severity: "Error",
@@ -371,9 +379,9 @@ var codeTable = []CodeInfo{
 		Code:     "RD001",
 		Module:   "rule-diff",
 		Severity: "Error",
-		Title:    "Invalid Draft body edit",
-		Summary:  "A Draft rule body was edited without incrementing the revision, or together with a state change.",
-		Fix:      "Change the body in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+		Title:    "Invalid Draft body or overrides edit",
+		Summary:  "A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it.",
+		Fix:      "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this for the body; the CLI sets `overrides` only on a new rule.",
 	},
 	{
 		Code:     "RD002",
@@ -460,7 +468,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Error",
 		Title:    "Append-only note removed or retyped",
-		Summary:  "An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped.",
+		Summary:  "An append-only note (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) was removed or retyped.",
 		Fix:      "Restore the note as it was, and add a new note for any correction.",
 	},
 	{
@@ -615,6 +623,14 @@ var codeTable = []CodeInfo{
 		Title:    "Dependency source changed",
 		Summary:  "A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged.",
 		Fix:      "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
+	},
+	{
+		Code:     "RD032",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Override published without acknowledgement",
+		Summary:  "A rule that declares `overrides` moved from Draft to Published without an `override_ack` note whose content is its current revision (RUL-022).",
+		Fix:      "Add an `override_ack` note whose content is the rule's revision, by a contributor of its Realm, in the change that publishes it.",
 	},
 	{
 		Code:     "RM001",

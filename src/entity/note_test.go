@@ -4,8 +4,8 @@ import "testing"
 
 func TestNoteTypes(t *testing.T) {
 	got := NoteTypes()
-	if len(got) != 13 {
-		t.Fatalf("NoteTypes() has %d entries, want 13", len(got))
+	if len(got) != 14 {
+		t.Fatalf("NoteTypes() has %d entries, want 14", len(got))
 	}
 	for _, nt := range got {
 		if !IsValidNoteType(nt) {
@@ -29,7 +29,7 @@ func TestIsValidNoteType(t *testing.T) {
 
 func TestIsAppendOnlyNoteType(t *testing.T) {
 	for _, nt := range NoteTypes() {
-		want := nt == "changelog" || nt == "supersedes" || nt == "extends" || nt == "related"
+		want := nt == "changelog" || nt == "supersedes" || nt == "extends" || nt == "related" || nt == "override_ack"
 		if got := IsAppendOnlyNoteType(nt); got != want {
 			t.Errorf("IsAppendOnlyNoteType(%q) = %v, want %v", nt, got, want)
 		}

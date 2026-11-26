@@ -21,9 +21,9 @@
     "code": "RD001",
     "module": "rule-diff",
     "severity": "Error",
-    "title": "Invalid Draft body edit",
-    "summary": "A Draft rule body was edited without incrementing the revision, or together with a state change.",
-    "fix": "Change the body in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this.",
+    "title": "Invalid Draft body or overrides edit",
+    "summary": "A Draft rule's body or `overrides` was edited without incrementing the revision, or together with a state change. An `override_ack` note names the revision it acknowledges (RUL-022), so the target can't change under it.",
+    "fix": "Change the body or `overrides` in its own change, apart from any state change, and raise the revision by exactly 1. `strspc rule update` does this for the body; the CLI sets `overrides` only on a new rule.",
     "retired": false
   },
   {
@@ -121,7 +121,7 @@
     "module": "rule-diff",
     "severity": "Error",
     "title": "Append-only note removed or retyped",
-    "summary": "An append-only note (`changelog`, `supersedes`, `extends`, `related`) was removed or retyped.",
+    "summary": "An append-only note (`changelog`, `supersedes`, `extends`, `related`, `override_ack`) was removed or retyped.",
     "fix": "Restore the note as it was, and add a new note for any correction.",
     "retired": false
   },
@@ -294,6 +294,15 @@
     "title": "Dependency source changed",
     "summary": "A dependency's `source` changed other than by the ref of a `github://` source to a release tag `vX.Y.Z` no lower than the version a bounding ref names: another repository, path or local directory would fetch another tree under the same realm ID, a commit or branch may come from a fork GitHub serves through the repository, and an older release may hold weaker rules. The bounding refs are the same manifest's base refs for the dependency when one names a version, else those of the whole base tree; any ref holding a digit that is not a commit hash (7 to 40 hex digits, or 64) bounds the move by the version it names, or else by the highest version in it (`release-1.2` by 1.2.0), one too large to parse bounding every move, while a ref with no digit, such as a branch or `latest`, bounds none. A source the same manifest declared in base passes unchanged.",
     "fix": "Restore the source and move only its ref to a newer release tag, or add a dependency with a new realm ID.",
+    "retired": false
+  },
+  {
+    "code": "RD032",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Override published without acknowledgement",
+    "summary": "A rule that declares `overrides` moved from Draft to Published without an `override_ack` note whose content is its current revision (RUL-022).",
+    "fix": "Add an `override_ack` note whose content is the rule's revision, by a contributor of its Realm, in the change that publishes it.",
     "retired": false
   },
   {
@@ -509,7 +518,7 @@
     "severity": "Error",
     "title": "Unknown note type",
     "summary": "A note type is outside the closed enum.",
-    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard` or `structured`.",
+    "fix": "Use one of `rationale`, `example`, `counter_example`, `reference`, `applies_to`, `changelog`, `clarification`, `deprecation_notice`, `supersedes`, `extends`, `related`, `standard`, `structured` or `override_ack`.",
     "retired": false
   },
   {
@@ -807,6 +816,15 @@
     "title": "Second structured note",
     "summary": "A rule holds more than one `structured` note (NTE-040).",
     "fix": "Keep one note. To withdraw the other, retype it to `reference`.",
+    "retired": false
+  },
+  {
+    "code": "RL044",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Acknowledgement on a rule that overrides nothing",
+    "summary": "An `override_ack` note is on a rule that declares no `overrides` (NTE-043).",
+    "fix": "Put the acknowledgement on the overriding rule, or retype the note to `reference` if it was added by mistake.",
     "retired": false
   },
   {
