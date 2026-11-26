@@ -737,12 +737,15 @@ func evaluate(t *testing.T, p ruleeval.Provider) *result.Result {
 // conflict check with conflicts.
 type conflictFunc bool
 
+// Evaluate finds every rule compliant.
 func (conflictFunc) Evaluate(context.Context, ruleeval.EvalRequest) (*ruleeval.EvalResponse, error) {
 	return &ruleeval.EvalResponse{Verdict: ruleeval.Compliant}, nil
 }
 
+// ConflictPromptVersion returns a fixed version, so conflicts are checked.
 func (conflictFunc) ConflictPromptVersion() string { return "qa" }
 
+// CheckConflict answers every check with f.
 func (f conflictFunc) CheckConflict(context.Context, ruleeval.ConflictRequest) (*ruleeval.ConflictResponse, error) {
 	return &ruleeval.ConflictResponse{Conflicts: bool(f), Explanation: "it allows what the rule forbids"}, nil
 }

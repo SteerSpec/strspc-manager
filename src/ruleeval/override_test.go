@@ -156,3 +156,26 @@ func TestRuleInputsFromEffective_DraftSuccessor(t *testing.T) {
 		}
 	}
 }
+
+// TestRuleInputsFromEffective_DraftSuccessorWithoutItsPredecessor keeps the
+// mark when evaluate_on leaves out the Published predecessor, which still
+// replaces the target.
+func TestRuleInputsFromEffective_DraftSuccessorWithoutItsPredecessor(t *testing.T) {
+	target := "core:ACCT-001"
+	prev := "SAV-001"
+	acct := inherit.Hop{RealmID: "core", Entity: &entity.File{
+		Entity: entity.Entity{ID: "ACCT"},
+		Rules:  []entity.Rule{{ID: "ACCT-001", State: "I", Body: "a"}},
+	}}
+	sav := inherit.Hop{RealmID: "prod", Entity: &entity.File{
+		Entity: entity.Entity{ID: "SAV"},
+		Rules: []entity.Rule{
+			{ID: "SAV-001", State: "P", Body: "b", Overrides: &target},
+			{ID: "SAV-002", State: "D", Body: "c", Overrides: &target, Supersedes: &prev},
+		},
+	}}
+	in := ruleeval.RuleInputsFromEffective("SAV", inherit.Effective(sav, []inherit.Hop{acct}, []string{"D"}))
+	if len(in) != 1 || in[0].Rule.ID != "SAV-002" || !in[0].OverriddenReplaced {
+		t.Errorf("inputs = %+v, want SAV-002 with its target marked replaced", in)
+	}
+}

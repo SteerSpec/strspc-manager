@@ -21,8 +21,10 @@ type conflictProvider struct {
 	checked   []ruleeval.ConflictRequest
 }
 
+// ConflictPromptVersion returns a fixed version, so conflicts are checked.
 func (c *conflictProvider) ConflictPromptVersion() string { return "ctest" }
 
+// CheckConflict records req and answers from c.conflicts, or fails with c.err.
 func (c *conflictProvider) CheckConflict(_ context.Context, req ruleeval.ConflictRequest) (*ruleeval.ConflictResponse, error) {
 	c.checked = append(c.checked, req)
 	if c.err != nil {

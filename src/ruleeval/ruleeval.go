@@ -131,17 +131,6 @@ func (r RuleInput) draftOverride() bool {
 	return r.Overridden != nil && r.Overrides == "" && r.Rule.State == entity.StateDraft
 }
 
-// replacedIn returns the qualified IDs of the rules that rules replace.
-func replacedIn(rules []inherit.Rule) map[string]bool {
-	out := make(map[string]bool)
-	for _, r := range rules {
-		if r.Overrides != "" {
-			out[r.Overrides] = true
-		}
-	}
-	return out
-}
-
 // RuleInputsFromEffective builds RuleInputs from the effective rule set of
 // the entity entityID, as computed by inherit.Effective. Every input
 // carries entityID and the kind of the Realm owning its rule; inherited rules
@@ -156,13 +145,12 @@ func RuleInputsFromEffective(entityID string, rules []inherit.Rule) []RuleInput 
 			seen[r.Rule.ID] = true
 		}
 	}
-	replaced := replacedIn(rules)
 	inputs := make([]RuleInput, 0, len(rules))
 	for _, r := range rules {
 		in := RuleInput{Rule: r.Rule, Notes: r.Notes, EntityID: entityID, Overrides: r.Overrides, RealmKind: r.RealmKind, Enforced: r.Enforced}
 		if o := r.Overridden; o != nil {
 			in.Overridden = &inherit.Extended{ID: o.QualifiedID(), Revision: o.Rule.Revision, Body: o.Rule.Body}
-			in.OverriddenReplaced = r.Overrides == "" && replaced[o.QualifiedID()]
+			in.OverriddenReplaced = r.OverriddenReplaced
 		}
 		if r.InheritedBy != "" {
 			in.Owner = r.OwnerRealm + ":" + r.Owner
