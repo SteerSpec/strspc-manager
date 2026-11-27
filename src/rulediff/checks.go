@@ -16,7 +16,7 @@ import (
 // ruleNumRe extracts the numeric suffix from a rule ID (e.g. "FOO-042" → "042").
 var ruleNumRe = regexp.MustCompile(`-(\d{3})$`)
 
-// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022 and RD024–RD027 for one entity's rules and notes.
+// checkRules runs RD001–RD006, RD010–RD016, RD018, RD021, RD022, RD024–RD027 and RD033 for one entity's rules and notes.
 // RD017 (entity inherits) is run by checkInherits.
 func checkRules(base, head *entity.File, res *result.Result, path string) {
 	baseMap, baseNums := buildRuleIndex(base.Rules)
@@ -332,8 +332,9 @@ func checkAddedBy(kind, addedBy string, res *result.Result, path string) {
 	}
 }
 
-// checkNotes runs RD011–RD016 for the notes of one entity: notes are never
-// removed (NTE-009), append-only notes never change (NTE-010), and every other
+// checkNotes runs RD011–RD016 and RD033 for the notes of one entity: notes are
+// never removed (NTE-009), append-only notes never change (NTE-010), an
+// `override_ack` note never changes in any field (NTE-044), and every other
 // change to a note's content or type increments its revision by one, which
 // starts at 0 (NTE-008).
 func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path string) {
@@ -369,6 +370,16 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 				Message:  fmt.Sprintf("note %q (type %q) removed: revise it in place instead of deleting", b.ID, b.Type),
 				Path:     notePath,
 			})
+		case b.Type == entity.NoteTypeOverrideAck && h != b:
+			// RD033: an override_ack note never changes in any field (NTE-044).
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RD033",
+				Severity: result.Error,
+				Message: fmt.Sprintf("override_ack note %q changed (%s): it never changes once added, so add a new one instead (NTE-044)",
+					b.ID, strings.Join(changedNoteFields(b, h), ", ")),
+				Path: notePath,
+			})
 		case appendOnly && h.Content != b.Content:
 			// RD016: append-only notes are immutable once added.
 			res.Add(result.Diagnostic{
@@ -393,6 +404,27 @@ func checkNotes(baseNotes, headNotes []entity.Note, res *result.Result, path str
 			checkNewNote(n, res, path+"/notes/"+n.ID)
 		}
 	}
+}
+
+// changedNoteFields names the fields other than id and type in which h
+// differs from b.
+func changedNoteFields(b, h entity.Note) []string {
+	var out []string
+	for _, f := range []struct {
+		name    string
+		changed bool
+	}{
+		{"content", h.Content != b.Content},
+		{"rule_ref", h.RuleRef != b.RuleRef},
+		{"added_by", h.AddedBy != b.AddedBy},
+		{"added_at", h.AddedAt != b.AddedAt},
+		{"revision", h.Revision != b.Revision},
+	} {
+		if f.changed {
+			out = append(out, f.name)
+		}
+	}
+	return out
 }
 
 // checkStandardRetype runs RD022: a `standard` note is retyped only to or from

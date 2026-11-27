@@ -106,5 +106,11 @@
     "code": "RD032",
     "severity": "error",
     "path": "ACK/ACK-001"
+  },
+  {
+    "module": "rule-diff",
+    "code": "RD033",
+    "severity": "error",
+    "path": "ACKFROZEN/notes/ACKFROZEN-001/01"
   }
 ]
