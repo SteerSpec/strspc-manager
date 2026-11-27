@@ -12,16 +12,9 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/SteerSpec/strspc-manager?color=161B22&labelColor=161B22)](go.mod)
 [![License](https://img.shields.io/badge/License-Apache%202.0-161B22?labelColor=161B22)](LICENSE)
 
-[Install](#install) · [Where to go](#where-to-go) · [Governance](#governance) · [Security](#security) · [Community](#community)
+[Install](#install) · [Behavior](#behavior) · [Where to go](#where-to-go) · [Governance](#governance) · [Security](#security) · [Community](#community)
 
 </div>
-
-Every package under `src/` that has statements keeps at least 85% statement coverage, which CI
-enforces with [`scripts/coverage-gate.sh`](https://github.com/SteerSpec/strspc-manager/blob/v1.42.0/scripts/coverage-gate.sh). The lint, history
-and refs modules are [stateless](https://github.com/SteerSpec/strspc-manager/blob/v1.42.0/docs/SPEC.md#62-module-breakdown)
-and the diff module compares two versions of a file. The verdicts of an AI
-provider in `ruleeval` depend on the model, and with no provider configured `ruleeval` runs static
-checks only.
 
 ## Install
 
@@ -60,6 +53,17 @@ func main() {
 Most users want [`strspc`](https://github.com/SteerSpec/strspc-CLI), the command line built on this
 library. Releases also ship a `strspc-manager` binary with `version` and `realm-lint`.
 
+## Behavior
+
+- The lint, history and Realm-lint modules are
+  [stateless](docs/SPEC.md#62-module-breakdown). The diff module compares two versions of a
+  file. A `rulerefs` `Checker` remembers the citations it has seen, so it can report the rules
+  that no checked text cites.
+- With no provider configured, `ruleeval` runs static checks only. The verdicts of an AI
+  provider depend on its model.
+- Every package under `src/` that has statements keeps at least 85% statement coverage, which
+  CI enforces with [`scripts/coverage-gate.sh`](scripts/coverage-gate.sh).
+
 ## Where to go
 
 | I want to | Go to |
@@ -67,6 +71,7 @@ library. Releases also ship a `strspc-manager` binary with `version` and `realm-
 | Run rule checks from a terminal | [strspc-CLI](https://github.com/SteerSpec/strspc-CLI) |
 | See how the manager fits the platform | [Architecture](docs/REFERENCE.md#architecture) |
 | Find the package for a task | [Packages](docs/REFERENCE.md#packages) |
+| Check the rule citations in prompts and docs, and find uncited rules | [`rulerefs`](docs/REFERENCE.md#modules) |
 | Evaluate code against rules with an AI provider | [Evaluation providers](docs/REFERENCE.md#evaluation-providers) |
 | Know which schemas and rules the manager fetches | [Rule sources](docs/REFERENCE.md#rule-sources) |
 | Understand Realms | [Realms](docs/REFERENCE.md#realms) |
