@@ -633,6 +633,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Add an `override_ack` note whose content is the rule's revision, by a contributor of its Realm, in the change that publishes it.",
 	},
 	{
+		Code:     "RD033",
+		Module:   "rule-diff",
+		Severity: "Error",
+		Title:    "Override acknowledgement changed",
+		Summary:  "An `override_ack` note present in the base changed in a field other than its type: `content`, `rule_ref`, `added_by`, `added_at` or `revision` (NTE-044). Removing or retyping one is RD012.",
+		Fix:      "Restore the note as it was, and add a new `override_ack` note to acknowledge another revision. A rewrite of contributor identifiers leaves `override_ack` notes alone.",
+	},
+	{
 		Code:     "RM001",
 		Module:   "realm-lint",
 		Severity: "Error",

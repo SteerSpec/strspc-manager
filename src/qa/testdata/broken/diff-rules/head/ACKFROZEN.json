@@ -1,0 +1,36 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "ACKFROZEN",
+    "title": "QA entity ACKFROZEN",
+    "inherits": "dev.steerspec.qa.shared:PAY"
+  },
+  "rule_set": {
+    "version": "1.0.1",
+    "timestamp": "2026-02-15T10:00:00Z",
+    "hash": "blake3:ceb51411dee1cb13b73c3c044a243132e1e174c2624da7a9fe4f763b427bc33a"
+  },
+  "rules": [
+    {
+      "id": "ACKFROZEN-001",
+      "revision": 0,
+      "state": "P",
+      "body": "The subject of ackfrozen MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null,
+      "overrides": "dev.steerspec.qa.shared:PAY-001"
+    }
+  ],
+  "notes": [
+    {
+      "id": "ACKFROZEN-001/01",
+      "rule_ref": "ACKFROZEN-001",
+      "type": "override_ack",
+      "content": "0",
+      "added_by": "github:qa-renamed",
+      "added_at": "2026-01-15",
+      "revision": 0
+    }
+  ]
+}
