@@ -189,3 +189,15 @@ func TestVisibility(t *testing.T) {
 		t.Errorf("got %d visibility diagnostics, want %d: %v", got, len(tests), res.Diagnostics)
 	}
 }
+
+// TestVisibilityReportsFailedLoad checks that a dependency loaded only to
+// compute a visibility reports a failure to load, once: R1 and R2 inherit
+// dev.lib:LSUB, whose container LBOX inherits from dev.gone, which has no
+// directory. No walked chain reaches dev.gone.
+func TestVisibilityReportsFailedLoad(t *testing.T) {
+	_, res := New().Resolve(context.Background(), loadTestRealm(t, "visibility-load/root"), absTestdata(t, "visibility-load/root"))
+	got := diagsFor(res, "RR002", `dependency "dev.gone"`)
+	if len(got) != 1 || len(res.Diagnostics) != 1 {
+		t.Errorf("got %v, want one RR002 for dev.gone", res.Diagnostics)
+	}
+}
