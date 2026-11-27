@@ -1265,6 +1265,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Replace the copied text with a citation of the rule's ID, which the message names.",
 	},
 	{
+		Code:     "RF008",
+		Module:   "rule-refs",
+		Severity: "Error",
+		Title:    "Uncited rule",
+		Summary:  "A rule of an entity named for coverage, in one of the states checked (`D`, `P` and `I` unless others are given), is cited by none of the texts checked.",
+		Fix:      "Cite the rule's ID in one of the files of the coverage set, or leave its entity or state out of the coverage.",
+	},
+	{
 		Code:     "EC001",
 		Module:   "eval-cache",
 		Severity: "Info",

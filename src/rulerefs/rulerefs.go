@@ -1,9 +1,10 @@
 // Package rulerefs validates the rule identifiers that text files cite, such as
 // agent prompts, READMEs and CI config, against a set of known rules. It
 // reports citations that are unknown or no longer live (RF001–RF006) and text
-// that copies a rule's body instead of citing it (RF007). It is deterministic
-// and reads no files: the caller chooses them and passes their content to
-// Checker.CheckText.
+// that copies a rule's body instead of citing it (RF007). After the texts are
+// checked, Checker.Coverage reports the rules of chosen entities that none of
+// them cites (RF008). It is deterministic and reads no files: the caller
+// chooses them and passes their content to Checker.CheckText.
 package rulerefs
 
 import (
@@ -65,6 +66,10 @@ type Source struct {
 	Format *entity.RuleIdentifierFormat
 	// Entities holds the parsed entity files; their sub-entities are included.
 	Entities []*entity.File
+	// Local marks a source of the Realm being checked, such as the Realm and
+	// its sub-realms, as against a dependency. Coverage reports only on the
+	// entities of local sources.
+	Local bool
 }
 
 // Config holds options for the Checker.
@@ -109,9 +114,13 @@ func WithStandards(ids ...string) Option {
 
 // citedRule is what a citation is judged against.
 type citedRule struct {
+	id             string
+	realm          string // the RealmID of the source that holds the rule
+	entity         string // the ID of the entity that holds the rule
 	state          string
 	successor      string // the rule that replaces this one, if any
 	successorState string
+	cited          bool // a checked text cites it, since the last ResetCoverage
 }
 
 // form is a Realm's rendered identifier shape, when it differs from the stored
@@ -124,7 +133,9 @@ type form struct {
 	knownEUIDs map[string]bool
 }
 
-// Checker judges the citations in text against a set of sources.
+// Checker judges the citations in text against a set of sources. CheckText
+// records the rules each text cites, for Coverage, so a Checker is not safe for
+// concurrent use.
 type Checker struct {
 	cfg     Config
 	allowed map[string]bool
@@ -137,6 +148,11 @@ type Checker struct {
 	forms     []form
 	bodies    []ruleBody
 	seen      map[string]bool // normalized bodies already in bodies
+	// local holds, by entity ID, the rules of that entity and of its
+	// sub-entities in the local sources; localRules holds them all, in source
+	// order with each parent before its sub-entities.
+	local      map[string][]*citedRule
+	localRules []*citedRule
 }
 
 // ruleBody is a rule's normalized body. Rules that share a body are one entry,
@@ -158,6 +174,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		realms:    make(map[string]map[string]*citedRule),
 		euids:     make(map[string]bool),
 		seen:      make(map[string]bool),
+		local:     make(map[string][]*citedRule),
 	}
 	for _, opt := range opts {
 		opt(&c.cfg)
@@ -185,7 +202,7 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 		euids := make(map[string]bool)
 		var replaced []*entity.Rule
 		for _, ef := range s.Entities {
-			if err := c.collect(ef, s.RealmID, own, euids, &replaced); err != nil {
+			if _, err := c.collect(ef, s.RealmID, s.Local, own, euids, &replaced); err != nil {
 				return nil, fmt.Errorf("realm %q: %w", s.RealmID, err)
 			}
 		}
@@ -221,22 +238,27 @@ func New(sources []Source, opts ...Option) (*Checker, error) {
 
 // collect adds the rules of ef and of its sub-entities to rules and euids, and
 // appends every rule that supersedes another to replaced. realm is the source's
-// Realm. A rule in an unknown state is an error: no citation of it could be
-// judged.
-func (c *Checker) collect(ef *entity.File, realm string, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) error {
+// Realm, and local whether the source is local, in which case each entity's
+// rules and its sub-entities' are indexed for Coverage. It returns the rules of
+// ef and of its sub-entities. A rule in an unknown state is an error: no
+// citation of it could be judged.
+func (c *Checker) collect(ef *entity.File, realm string, local bool, rules map[string]*citedRule, euids map[string]bool, replaced *[]*entity.Rule) ([]*citedRule, error) {
 	if ef == nil {
-		return nil
+		return nil, nil
 	}
 	euids[ef.Entity.ID] = true
 	for _, ref := range ef.Entity.Standards {
 		c.standards[ref.ID] = true
 	}
+	var tree []*citedRule
 	for i := range ef.Rules {
 		r := &ef.Rules[i]
 		if !entity.IsValidState(r.State) {
-			return fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
+			return nil, fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
 		}
-		rules[r.ID] = &citedRule{state: r.State}
+		cr := &citedRule{id: r.ID, realm: realm, entity: ef.Entity.ID, state: r.State}
+		rules[r.ID] = cr
+		tree = append(tree, cr)
 		if c.citable(realm, r.ID) {
 			c.addBody(r)
 		}
@@ -244,12 +266,20 @@ func (c *Checker) collect(ef *entity.File, realm string, rules map[string]*cited
 			*replaced = append(*replaced, r)
 		}
 	}
-	for i := range ef.SubEntities {
-		if err := c.collect(&ef.SubEntities[i], realm, rules, euids, replaced); err != nil {
-			return err
-		}
+	if local {
+		c.localRules = append(c.localRules, tree...)
 	}
-	return nil
+	for i := range ef.SubEntities {
+		sub, err := c.collect(&ef.SubEntities[i], realm, local, rules, euids, replaced)
+		if err != nil {
+			return nil, err
+		}
+		tree = append(tree, sub...)
+	}
+	if local {
+		c.local[ef.Entity.ID] = append(c.local[ef.Entity.ID], tree...)
+	}
+	return tree, nil
 }
 
 // citable reports whether a citation can resolve to rule id of the source being
@@ -339,7 +369,8 @@ func (s site) add(res *result.Result, d result.Diagnostic) {
 }
 
 // CheckText reports the citations in data that are unknown or no longer live,
-// and the copies of a rule's body. path names the text in the diagnostics.
+// and the copies of a rule's body. path names the text in the diagnostics. It
+// records each rule a citation resolves to, whatever its state, for Coverage.
 func (c *Checker) CheckText(path string, data []byte) *result.Result {
 	res := &result.Result{}
 	lines := strings.Split(string(data), "\n")
@@ -472,6 +503,7 @@ func (c *Checker) judge(realm, euid, num string, at site, res *result.Result) {
 	}
 	switch {
 	case rule != nil:
+		rule.cited = true
 		if !c.allowed[rule.state] {
 			rule.report(id, at, res)
 		}
@@ -511,5 +543,82 @@ func (c *citedRule) report(id string, at site, res *result.Result) {
 		at.add(res, result.Diagnostic{Code: "RF004", Severity: result.Error, Message: fmt.Sprintf("cited rule %s is replaced by %s (state %s)", id, c.successor, c.successorState)})
 	case c.state == entity.StateDraft:
 		at.add(res, result.Diagnostic{Code: "RF006", Severity: result.Warning, Message: fmt.Sprintf("cited rule %s is still a Draft", id)})
+	}
+}
+
+// coverageStates are the states Coverage checks when it is given none: the
+// live ones.
+var coverageStates = []string{entity.StateDraft, entity.StatePublished, entity.StateImplemented}
+
+// Coverage reports RF008 for each rule that belongs to one of entities, a
+// rule of a sub-entity counting toward its parent, is in one of states, and
+// that no text checked since New or the last ResetCoverage cites. Empty
+// states means D, P and I. Only the entities of local sources are in scope.
+// It returns an error, and no result, when entities is empty or names an
+// entity that no local source holds, or when a state is outside the rule
+// lifecycle. Rules come in source order, each parent's before its
+// sub-entities', and each once. A rule that no citation can resolve to,
+// because an earlier source shadows it, is left out.
+func (c *Checker) Coverage(entities, states []string) (*result.Result, error) {
+	if len(entities) == 0 {
+		return nil, fmt.Errorf("coverage names no entity")
+	}
+	if len(states) == 0 {
+		states = coverageStates
+	}
+	want := make(map[string]bool, len(states))
+	for _, s := range states {
+		if !entity.IsValidState(s) {
+			return nil, fmt.Errorf("unknown rule state %q", s)
+		}
+		want[s] = true
+	}
+	named := make(map[*citedRule]bool)
+	for _, id := range entities {
+		rules, ok := c.local[id]
+		if !ok {
+			return nil, fmt.Errorf("entity %q is not in the local realm", id)
+		}
+		for _, r := range rules {
+			named[r] = true
+		}
+	}
+	res := &result.Result{}
+	for _, r := range c.localRules {
+		if named[r] && want[r.state] && !r.cited && c.reachable(r) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RF008",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("%s (entity %s) is not cited in any file of this coverage set", r.id, r.entity),
+			})
+		}
+	}
+	return res, nil
+}
+
+// reachable reports whether a citation can resolve to r: by its bare ID or by
+// its Realm's qualifier. A rule that an earlier source shadows for both cannot
+// be cited.
+func (c *Checker) reachable(r *citedRule) bool {
+	if c.rules[r.id] == r {
+		return true
+	}
+	return r.realm != "" && c.realms[r.realm][r.id] == r
+}
+
+// ResetCoverage forgets which rules the texts checked so far cite, so that the
+// next Coverage covers only the texts checked after it.
+func (c *Checker) ResetCoverage() {
+	for _, r := range c.rules {
+		r.cited = false
+	}
+	for _, rules := range c.realms {
+		for _, r := range rules {
+			r.cited = false
+		}
+	}
+	for _, r := range c.localRules {
+		r.cited = false
 	}
 }
