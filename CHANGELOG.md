@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.58.0](https://github.com/SteerSpec/strspc-manager/compare/v1.57.0...v1.58.0) (2026-11-27)
+
+
+### Features
+
+* **rulediff:** warn when an inherits edit can change an undeclared entity's visibility ([#400](https://github.com/SteerSpec/strspc-manager/issues/400)) ([2dd5a5f](https://github.com/SteerSpec/strspc-manager/commit/2dd5a5f600868dee1df21c8ebe7234bf14643310))
+
 ## [1.57.0](https://github.com/SteerSpec/strspc-manager/compare/v1.56.0...v1.57.0) (2026-11-27)
 
 
