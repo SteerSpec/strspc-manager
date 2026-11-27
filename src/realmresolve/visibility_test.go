@@ -55,29 +55,68 @@ func TestRelationOf(t *testing.T) {
 	}
 }
 
-func TestNodeVisibility(t *testing.T) {
-	file := func(id, parent, visibility string) *entity.File {
-		return &entity.File{Entity: entity.Entity{ID: id, Parent: parent, Visibility: visibility}}
+func TestChainVisibility(t *testing.T) {
+	file := func(id, parent, inherits, visibility string) *entity.File {
+		return &entity.File{Entity: entity.Entity{ID: id, Parent: parent, Inherits: inherits, Visibility: visibility}}
 	}
-	top, narrow, mid, leaf := file("TOP", "", ""), file("NAR", "", entity.VisibilityPrivate), file("MID", "NAR", ""), file("LEAF", "MID", "")
-	loop := file("LOOP", "LOOP", "")
-	n := &node{entities: map[string]*entity.File{"TOP": top, "NAR": narrow, "MID": mid, "LEAF": leaf, "LOOP": loop}}
+	all := []*entity.File{
+		file("TOP", "", "", ""),
+		file("NAR", "", "", entity.VisibilityPrivate),
+		file("PROT", "", "", entity.VisibilityProtected),
+		file("MID", "NAR", "", ""),
+		file("LEAF", "MID", "", ""),
+		file("LOOP", "LOOP", "", ""),
+		// ENT-011 r1: an undeclared Entity takes the visibility of the
+		// Entity it inherits, through undeclared ones too (ENT-011/02).
+		file("HEIR", "", "PROT", ""),
+		file("HEIR2", "", "HEIR", ""),
+		file("PUBHEIR", "", "TOP", ""),
+		// The narrower of container and inherited Entity, either way round.
+		file("INPROT", "PROT", "NAR", ""),
+		file("INPRIV", "NAR", "PROT", ""),
+		// A declared visibility is kept, even when wider (RR024 reports it).
+		file("WIDE", "", "PROT", entity.VisibilityPublic),
+		// An Entity that inherits one it contains, and a loop through both links.
+		file("OUTER", "", "INNER", ""),
+		file("INNER", "OUTER", "", ""),
+		file("CYC", "", "CYC2", ""),
+		file("CYC2", "CYC", "", ""),
+		file("UNRES", "", "NOPE", ""),
+	}
+	entities := make(map[string]*entity.File, len(all))
+	for _, e := range all {
+		entities[e.Entity.ID] = e
+	}
+	n := &node{ns: "dev.r", entities: entities, deps: map[string]*ResolvedRealm{}}
+	s := &chainState{}
 
 	tests := []struct {
-		e    *entity.File
+		id   string
 		want string
 	}{
-		{top, entity.VisibilityPublic},
-		{narrow, entity.VisibilityPrivate},
-		{mid, entity.VisibilityPrivate},
-		{leaf, entity.VisibilityPrivate},
-		{file("ORPHAN", "NOPE", ""), entity.VisibilityPublic},
-		{loop, entity.VisibilityPublic},
+		{"TOP", entity.VisibilityPublic},
+		{"NAR", entity.VisibilityPrivate},
+		{"MID", entity.VisibilityPrivate},
+		{"LEAF", entity.VisibilityPrivate},
+		{"LOOP", entity.VisibilityPublic},
+		{"HEIR", entity.VisibilityProtected},
+		{"HEIR2", entity.VisibilityProtected},
+		{"PUBHEIR", entity.VisibilityPublic},
+		{"INPROT", entity.VisibilityPrivate},
+		{"INPRIV", entity.VisibilityPrivate},
+		{"WIDE", entity.VisibilityPublic},
+		{"OUTER", entity.VisibilityPublic},
+		{"INNER", entity.VisibilityPublic},
+		{"CYC", entity.VisibilityPublic},
+		{"UNRES", entity.VisibilityPublic},
 	}
 	for _, tt := range tests {
-		if got := n.visibility(tt.e); got != tt.want {
-			t.Errorf("visibility(%s) = %q, want %q", tt.e.Entity.ID, got, tt.want)
+		if got := s.visibility(n, entities[tt.id]); got != tt.want {
+			t.Errorf("visibility(%s) = %q, want %q", tt.id, got, tt.want)
 		}
+	}
+	if got := s.visibility(n, file("ORPHAN", "NOPE", "", "")); got != entity.VisibilityPublic {
+		t.Errorf("visibility(ORPHAN) = %q, want public", got)
 	}
 }
 
@@ -115,6 +154,13 @@ func TestVisibility(t *testing.T) {
 		{"RR025", "note NOTES-004/01 references \"dev.lib:LPROT-001\": visibility `protected` is narrower than `public` of entity NOTES"},
 		// ENT-011: a sub-entity takes the visibility of its container.
 		{"RR025", "note NOTES-007/01 references \"dev.lib:LSUB-001\": visibility `protected` is narrower than `public` of entity NOTES"},
+		// ENT-011 r1: an undeclared Entity takes the visibility of the Entity
+		// it inherits, here a dependency's undeclared Entity inheriting a
+		// `private` one.
+		{"RR022", "entity UPK: inherits dev.lib:LPRIVKID, whose visibility `private` does not permit it from realm dev.root"},
+		// ENT-018: CONT is `protected` by what it inherits, which rule-lint
+		// cannot see.
+		{"RR026", "entity CSUB: visibility `public` is wider than `protected` of containing entity CONT, whose visibility comes from inheritance"},
 	}
 	for _, tt := range tests {
 		got := diagsFor(res, tt.code, tt.substr)
@@ -127,14 +173,15 @@ func TestVisibility(t *testing.T) {
 		}
 	}
 
-	// Anything else stays silent: UKID, as UWIDE answers for itself; UPUB, ROWN (stopping at the owner keeps AOWN
+	// Anything else stays silent: UDEF and UDEFKID, which take `protected`
+	// from LPROT, UPK and CONT, which take theirs likewise, UKID, as UWIDE answers for itself; UPUB, ROWN (stopping at the owner keeps AOWN
 	// from being judged by the Entity above ROWN), ASAME in its own Realm,
 	// APROT within the tree, the Retired UPROT-005, NOTES-003's related note,
 	// the Retired NOTES-006, and NPRIV-001 within the tree.
 	var got int
 	for _, d := range res.Diagnostics {
 		switch d.Code {
-		case "RR022", "RR023", "RR024", "RR025":
+		case "RR022", "RR023", "RR024", "RR025", "RR026":
 			got++
 		}
 	}

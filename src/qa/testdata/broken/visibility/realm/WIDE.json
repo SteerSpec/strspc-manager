@@ -3,12 +3,13 @@
   "entity": {
     "id": "WIDE",
     "title": "QA entity WIDE",
-    "inherits": "dev.steerspec.qa.vislib:LIBPROT"
+    "inherits": "dev.steerspec.qa.vislib:LIBPROT",
+    "visibility": "public"
   },
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:ac33e57cb4fb698904a1cadeabe077393d56e987b313f4f7314184e9043b0eb5"
+    "hash": "blake3:03927da6f7159d7ce9f7b65793a9d273879d5177009c09f531bd5c02b97f1ab2"
   },
   "rules": [
     {

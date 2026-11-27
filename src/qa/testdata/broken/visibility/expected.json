@@ -96,6 +96,12 @@
     "path": "realm/EXTB.json"
   },
   {
+    "module": "realm-resolve",
+    "code": "RR026",
+    "severity": "error",
+    "path": "realm/NARROW.json"
+  },
+  {
     "module": "rule-lint",
     "code": "RL002",
     "severity": "error",

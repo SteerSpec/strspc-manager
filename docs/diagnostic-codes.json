@@ -193,7 +193,7 @@
     "module": "rule-diff",
     "severity": "Info / Error",
     "title": "Visibility changed",
-    "summary": "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed.",
+    "summary": "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs unless the absent value came from an inherited entity; Error when the key is removed.",
     "fix": "Set `public` explicitly rather than removing the key. Bump `realm.version` as the message says.",
     "retired": false
   },
@@ -1327,7 +1327,7 @@
     "module": "realm-resolve",
     "severity": "Error",
     "title": "Wider than the inherited entity",
-    "summary": "An entity is wider than the entity it inherits (ENT-015). An absent `visibility` counts as `public`.",
+    "summary": "An entity declares a `visibility` wider than that of the entity it inherits (ENT-015). An entity that declares none is never wider (ENT-011).",
     "fix": "Declare a `visibility` no wider than the inherited entity's.",
     "retired": false
   },
@@ -1338,6 +1338,15 @@
     "title": "`extends` target not permitted",
     "summary": "An `extends` note on a rule that is not Abandoned, Retired or Terminated references a rule whose entity's visibility does not permit inheritance from the note's Realm or is narrower than that of the entity holding the note (NTE-012). Short references count.",
     "fix": "Reference another rule, or supersede the rule and retire it: the note itself can't change.",
+    "retired": false
+  },
+  {
+    "code": "RR026",
+    "module": "realm-resolve",
+    "severity": "Error",
+    "title": "Wider than the containing entity, through inheritance",
+    "summary": "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it, which that entity, or one containing it, takes from the entity it inherits (ENT-011, ENT-018). Without inheritance rule-lint reports it (RL024).",
+    "fix": "Declare a `visibility` no wider than the containing entity's.",
     "retired": false
   },
   {

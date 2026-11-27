@@ -3,7 +3,8 @@
   "entity": {
     "id": "LWIDE",
     "title": "LWIDE",
-    "inherits": "dev.deep:DPRIV"
+    "inherits": "dev.deep:DPRIV",
+    "visibility": "public"
   },
   "rule_set": {
     "version": "0.1.0",

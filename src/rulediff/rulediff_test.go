@@ -1206,6 +1206,43 @@ func TestDiff_RD020_SubEntity(t *testing.T) {
 	}
 }
 
+// TestDiff_RD020_InheritedDefault checks that no version bump is named when
+// the absent visibility came from an inherited entity, which rule-diff cannot
+// see (ENT-011): on the entity itself and on a sub-entity of an undeclared one.
+func TestDiff_RD020_InheritedDefault(t *testing.T) {
+	t.Run("entity", func(t *testing.T) {
+		base := makeBase()
+		base.Entity.Inherits = "dev.lib:LIB"
+		head := makeHead(base)
+		head.Entity.Visibility = "protected"
+		assertRD020Unbumped(t, New().Diff(base, head), "")
+	})
+	t.Run("sub-entity", func(t *testing.T) {
+		base := makeBase()
+		base.Entity.Inherits = "dev.lib:LIB"
+		base.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID}}}
+		head := makeHead(base)
+		head.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID, Visibility: "private"}}}
+		assertRD020Unbumped(t, New().Diff(base, head), "SUB")
+	})
+}
+
+// assertRD020Unbumped checks that res holds one RD020 on a path containing
+// path, naming the inherited entity and neither bump.
+func assertRD020Unbumped(t *testing.T, res *result.Result, path string) {
+	t.Helper()
+	var got []result.Diagnostic
+	for _, d := range res.Diagnostics {
+		if d.Code == "RD020" && strings.Contains(d.Path, path) {
+			got = append(got, d)
+		}
+	}
+	if len(got) != 1 || got[0].Severity != result.Info || strings.Contains(got[0].Message, "MAJOR") ||
+		strings.Contains(got[0].Message, "MINOR") || !strings.Contains(got[0].Message, "inherited entity") {
+		t.Errorf("RD020 diagnostics = %v, want one Info naming the inherited entity and no bump", got)
+	}
+}
+
 func TestDiff_RD017_RemovedFromEntityOutOfForce(t *testing.T) {
 	for _, state := range []string{entity.StateAbandoned, entity.StateRetired, entity.StateTerminated} {
 		base := makeBase()
