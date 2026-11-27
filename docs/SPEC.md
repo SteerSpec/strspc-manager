@@ -491,7 +491,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache, and reports what it holds without the network. Shared by `rule-resolve` and `realm-resolve`. |
-| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Also reports text that copies a rule's body. Takes the text from its caller. |
+| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Also reports text that copies a rule's body, and, for a coverage set, the rules that none of its texts cites. Takes the text from its caller. |
 
 ### 6.3 Diagnostic Codes
 
@@ -722,6 +722,8 @@ A clause qualified with the id of a declared external standard, as in `mitre.cwe
 
 RF007 compares whole bodies in every rule state, after dropping URLs and HTML tags and comments, so `WithAllowedStates` doesn't exempt it. `WithIgnore` and the `strspc-refs: ignore` marker do, the marker on the line the copy starts on. Rules sharing a body are reported under the first one found, and a rule no citation can reach, because earlier sources hold its ID and its Realm, isn't compared. Rendered entity files are copies by construction, so leave them out of the scan. A paraphrase passes RF007; DOC-002 leaves that to the evaluator.
 
+RF008 is a coverage check that runs after the texts are checked: `Checker.Coverage(entities, states)` reports each rule of the named entities, a sub-entity's rules counting toward its parent, that is in one of `states` and that no text checked since `New` or the last `ResetCoverage` cites. Only sources marked `Local`, the Realm being checked and its sub-realms as the caller chooses, are in scope, so a rule of a dependency is never reported. A citation counts whatever the rule's state; an ignored identifier, an ignored line, a standard's clause and a citation that resolves to another Realm's rule do not. An entity that no local source holds, or a state outside the lifecycle, is a configuration error.
+
 | Code | Severity | When it fires |
 |------|----------|---------------|
 | RF001 | Error | The cited rule does not exist in the sources, or the citation names a Realm that is not one of them. |
@@ -731,6 +733,7 @@ RF007 compares whole bodies in every rule state, after dropping URLs and HTML ta
 | RF005 | Warning | The cited rule, in `D`, `P` or `I`, is superseded by a rule in `P`, so it stays in force until that rule reaches `I` (§3.3). |
 | RF006 | Warning | The cited rule is in state `D` and no rule supersedes it. |
 | RF007 | Error | The text holds the whole body of a rule of five words or more, ignoring case, punctuation and line breaks. |
+| RF008 | Error | A rule of an entity named for coverage, in one of the states checked (`D`, `P` and `I` unless others are given), is cited by none of the texts checked. |
 
 #### `eval-cache` (EC)
 

@@ -22,6 +22,7 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/rulediff"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/rulelint"
+	"github.com/SteerSpec/strspc-manager/src/rulerefs"
 	"github.com/SteerSpec/strspc-manager/src/ruleresolve"
 	"github.com/SteerSpec/strspc-manager/src/schema"
 )
@@ -608,6 +609,32 @@ var goCases = []goCase{
 			}
 			t.Cleanup(func() { _ = store.Close() })
 			return store.Diagnostics()
+		},
+	},
+	{
+		name: "rule-refs reports a rule no text of the coverage set cites",
+		want: []string{"RF008 error"},
+		run: func(t *testing.T) *result.Result {
+			c, err := rulerefs.New([]rulerefs.Source{{
+				RealmID: "dev.steerspec.qa",
+				Local:   true,
+				Entities: []*entity.File{{
+					Entity: entity.Entity{ID: "QAC"},
+					Rules: []entity.Rule{
+						{ID: "QAC-001", State: entity.StateImplemented},
+						{ID: "QAC-002", State: entity.StateImplemented},
+					},
+				}},
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			c.CheckText("agent.md", []byte("Apply QAC-001."))
+			res, err := c.Coverage([]string{"QAC"}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return res
 		},
 	},
 }
