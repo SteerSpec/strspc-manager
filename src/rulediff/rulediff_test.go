@@ -1289,7 +1289,8 @@ func TestDiff_RD020_InheritsChanged(t *testing.T) {
 }
 
 // TestDiff_RD020_InheritsChangedSubEntity checks the warning on an
-// undeclared sub-entity, and its absence under a container that declares one.
+// undeclared sub-entity, under an undeclared container and under one that
+// declares a visibility: the inherited entity can narrow it either way.
 func TestDiff_RD020_InheritsChangedSubEntity(t *testing.T) {
 	for _, container := range []string{"", "protected"} {
 		base := draftBase()
