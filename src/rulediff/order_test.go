@@ -1,10 +1,12 @@
 package rulediff
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -39,5 +41,40 @@ func TestDiagnosticOrderIsStable(t *testing.T) {
 		if got := CompareDir(baseDir, headDir).Diagnostics; !reflect.DeepEqual(got, first) {
 			t.Fatal("diagnostic order changed between runs")
 		}
+	}
+}
+
+// A hand edit of a Published rule's body trips RD002 and, because the rule
+// set was not bumped, RD007, RD009 and RD008. The cause comes first: the rule
+// codes, then the rule set's version and timestamp, then its hash (gh #396).
+func TestDiff_RuleCodesComeBeforeRuleSetCodes(t *testing.T) {
+	base := makeBase()
+	head := makeHead(base)
+	head.RuleSet = base.RuleSet
+	head.RuleSet.Hash = ptr("blake3:stale") // not recomputed after the edit
+	head.Rules[1].Body = "Edited published body"
+
+	baseData, err := json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	headData, err := json.Marshal(head)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, got := range map[string][]string{
+		"DiffBytes": codes(New().DiffBytes(baseData, headData)),
+		"Diff":      codes(New().Diff(base, head)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			want := []string{"RD002", "RD007", "RD009"}
+			if name == "DiffBytes" {
+				want = append(want, "RD008")
+			}
+			if !slices.Equal(got, want) {
+				t.Errorf("codes = %v, want %v", got, want)
+			}
+		})
 	}
 }

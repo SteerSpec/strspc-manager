@@ -491,7 +491,7 @@ Each `.json` file is one top-level entity with its sub-entities nested. The `_sc
 | `realm-lint` | No | Validates `realm.json` manifests against `realm.v1.schema.json`. Checks structural compliance with RLM rules. |
 | `rule-resolve` | Yes (cache) | Fetches the rule sources declared in a Configuration (local directories or `github://` references), verifies entity hashes, and detects EUID collisions across sources. |
 | `remote` | Yes (cache) | Downloads `github://` references into the local cache, and reports what it holds without the network. Shared by `rule-resolve` and `realm-resolve`. |
-| `rule-refs` | No | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Also reports text that copies a rule's body, and, for a coverage set, the rules that none of its texts cites. Takes the text from its caller. |
+| `rule-refs` | Yes (in memory) | Finds rule identifiers cited in text, such as prompts and READMEs, and judges each one against a set of known rules. Also reports text that copies a rule's body, and, for a coverage set, the rules that none of its texts cites. Takes the text from its caller. |
 
 ### 6.3 Diagnostic Codes
 
@@ -851,7 +851,7 @@ For each changed entity file, the validator compares the before and after states
 23. **A fix supersedes a live rule:** In a Standard Realm, the rule a fix comes to supersede was live before the change or is live after it (RD030).
 24. **An override is acknowledged before it governs:** A rule that declares `overrides` moves from Draft to Published only with an `override_ack` note whose content is its current revision (RD032, RUL-022). A later Draft edit moves the revision, so publishing it needs a new acknowledgement.
 
-**Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation.
+**Output:** GitHub Actions check run with pass/fail per entity file, detailed error messages for each violation. Within one file, the diagnostics about its rules, notes and entities come first, then the rule set's version (RD007) and timestamp (RD009), then its hash (RD008): a hand edit that trips all of them names the edit before its consequences.
 
 ### 7.3 Files Outside the Compared Trees
 

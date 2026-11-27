@@ -81,10 +81,12 @@ func (d *Differ) DiffBytes(baseData, headData []byte) *result.Result {
 		return res
 	}
 
-	checkVersion(baseEnt, headEnt, res, headEnt.Entity.ID)
-	checkTimestamp(baseEnt, headEnt, res, headEnt.Entity.ID)
+	// The rule codes come first: they name what the edit did wrong, and the
+	// rule set's version, timestamp and hash codes follow from it (gh #396).
 	d.diffEntityTree(baseEnt, headEnt, entity.VisibilityPublic, res, headEnt.Entity.ID)
 	checkContributors(baseEnt, headEnt, d.cfg.Contributors, res, headEnt.Entity.ID)
+	checkVersion(baseEnt, headEnt, res, headEnt.Entity.ID)
+	checkTimestamp(baseEnt, headEnt, res, headEnt.Entity.ID)
 	checkHashBytes(headEnt, headData, res, headEnt.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
@@ -106,10 +108,12 @@ func (d *Differ) Diff(base, head *entity.File) *result.Result {
 		})
 		return res
 	}
-	checkVersion(base, head, res, head.Entity.ID)
-	checkTimestamp(base, head, res, head.Entity.ID)
+	// The rule codes come first: they name what the edit did wrong, and the
+	// rule set's version, timestamp and hash codes follow from it (gh #396).
 	d.diffEntityTree(base, head, entity.VisibilityPublic, res, head.Entity.ID)
 	checkContributors(base, head, d.cfg.Contributors, res, head.Entity.ID)
+	checkVersion(base, head, res, head.Entity.ID)
+	checkTimestamp(base, head, res, head.Entity.ID)
 	if d.cfg.Strict {
 		promoteWarnings(res)
 	}
