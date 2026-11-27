@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.59.0](https://github.com/SteerSpec/strspc-manager/compare/v1.58.0...v1.59.0) (2026-11-27)
+
+
+### Features
+
+* keep override_ack notes unchanged in rewrites and diffs (NTE-044) ([#408](https://github.com/SteerSpec/strspc-manager/issues/408)) ([5a466c0](https://github.com/SteerSpec/strspc-manager/commit/5a466c033944e03e81bc37fa0628d56a419fb346))
+
+
+### Bug Fixes
+
+* **claude:** count the verdict schema in diff request budgets ([#404](https://github.com/SteerSpec/strspc-manager/issues/404)) ([8624e4f](https://github.com/SteerSpec/strspc-manager/commit/8624e4fb4e5495539dfb0722fd7ca982e5b1f7d0))
+
+
+### Documentation
+
+* **spec:** align revision semantics with RD001 and RD021 ([#403](https://github.com/SteerSpec/strspc-manager/issues/403)) ([8624e4f](https://github.com/SteerSpec/strspc-manager/commit/8624e4fb4e5495539dfb0722fd7ca982e5b1f7d0))
+
 ## [1.58.0](https://github.com/SteerSpec/strspc-manager/compare/v1.57.0...v1.58.0) (2026-11-27)
 
 
