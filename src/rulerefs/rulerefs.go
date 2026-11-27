@@ -115,6 +115,7 @@ func WithStandards(ids ...string) Option {
 // citedRule is what a citation is judged against.
 type citedRule struct {
 	id             string
+	realm          string // the RealmID of the source that holds the rule
 	entity         string // the ID of the entity that holds the rule
 	state          string
 	successor      string // the rule that replaces this one, if any
@@ -255,7 +256,7 @@ func (c *Checker) collect(ef *entity.File, realm string, local bool, rules map[s
 		if !entity.IsValidState(r.State) {
 			return nil, fmt.Errorf("rule %s has unknown state %q", r.ID, r.State)
 		}
-		cr := &citedRule{id: r.ID, entity: ef.Entity.ID, state: r.State}
+		cr := &citedRule{id: r.ID, realm: realm, entity: ef.Entity.ID, state: r.State}
 		rules[r.ID] = cr
 		tree = append(tree, cr)
 		if c.citable(realm, r.ID) {
@@ -556,7 +557,8 @@ var coverageStates = []string{entity.StateDraft, entity.StatePublished, entity.S
 // It returns an error, and no result, when entities is empty or names an
 // entity that no local source holds, or when a state is outside the rule
 // lifecycle. Rules come in source order, each parent's before its
-// sub-entities', and each once.
+// sub-entities', and each once. A rule that no citation can resolve to,
+// because an earlier source shadows it, is left out.
 func (c *Checker) Coverage(entities, states []string) (*result.Result, error) {
 	if len(entities) == 0 {
 		return nil, fmt.Errorf("coverage names no entity")
@@ -583,7 +585,7 @@ func (c *Checker) Coverage(entities, states []string) (*result.Result, error) {
 	}
 	res := &result.Result{}
 	for _, r := range c.localRules {
-		if named[r] && want[r.state] && !r.cited {
+		if named[r] && want[r.state] && !r.cited && c.reachable(r) {
 			res.Add(result.Diagnostic{
 				Module:   module,
 				Code:     "RF008",
@@ -593,6 +595,16 @@ func (c *Checker) Coverage(entities, states []string) (*result.Result, error) {
 		}
 	}
 	return res, nil
+}
+
+// reachable reports whether a citation can resolve to r: by its bare ID or by
+// its Realm's qualifier. A rule that an earlier source shadows for both cannot
+// be cited.
+func (c *Checker) reachable(r *citedRule) bool {
+	if c.rules[r.id] == r {
+		return true
+	}
+	return r.realm != "" && c.realms[r.realm][r.id] == r
 }
 
 // ResetCoverage forgets which rules the texts checked so far cite, so that the

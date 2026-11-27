@@ -203,3 +203,39 @@ func TestCoverage_Errors(t *testing.T) {
 		})
 	}
 }
+
+// A rule of a later local source that an earlier one shadows, for its bare ID
+// and, when it has one, for its Realm's qualifier, can never be cited, so
+// Coverage leaves it out, as New's first-source-wins resolution does.
+func TestCoverage_ShadowedRulesAreLeftOut(t *testing.T) {
+	src := func(realm string) rulerefs.Source {
+		return rulerefs.Source{RealmID: realm, Local: true, Entities: []*entity.File{{
+			Entity: entity.Entity{ID: "CLM"},
+			Rules:  []entity.Rule{{ID: "CLM-001", State: entity.StateImplemented}},
+		}}}
+	}
+	for _, tt := range []struct {
+		name  string
+		first string
+		later string
+		text  string
+		want  int
+	}{
+		{"same realm, qualified citation", "dev.example.app", "dev.example.app", "See dev.example.app:CLM-001.", 0},
+		{"same realm, bare citation", "dev.example.app", "dev.example.app", "See CLM-001.", 0},
+		{"no realm, bare citation", "", "", "See CLM-001.", 0},
+		// The later copy is still reachable by its own Realm's qualifier.
+		{"other realm, bare citation", "dev.example.app", "dev.example.app.sub", "See CLM-001.", 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := rulerefs.New([]rulerefs.Source{src(tt.first), src(tt.later)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			c.CheckText("a.md", []byte(tt.text))
+			if got := coverage(t, c, []string{"CLM"}, nil); len(got) != tt.want {
+				t.Errorf("uncited = %v, want %d", got, tt.want)
+			}
+		})
+	}
+}
