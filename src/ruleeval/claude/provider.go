@@ -367,9 +367,9 @@ func (p *Provider) EvaluateBatch(ctx context.Context, req ruleeval.BatchRequest)
 	}
 
 	m := modeFor(req)
-	// The verdict schema is a few tokens per rule, left to
-	// requestOverheadTokens.
-	rp := p.planRules(m.system, nil, req.Inputs)
+	// The verdict schema repeats an object per rule, which the API turns into
+	// a prompt of its own, so it counts against the budget like the rules.
+	rp := p.planRules(m.system, prompt.VerdictSchema, req.Inputs)
 	var (
 		chunks   []string
 		block    func(string) string
@@ -491,7 +491,7 @@ type rulePlan struct {
 // diff or files. Rules get at most half, so that a token-heavy group can
 // never starve the code of its budget. The API turns the schema into a
 // prompt of its own, which grows with every rule; a nil schema is left to
-// requestOverheadTokens, as the verdict schema of a diff is.
+// requestOverheadTokens.
 func (p *Provider) planRules(system string, schema func(ids []string) map[string]any, inputs []ruleeval.RuleInput) rulePlan {
 	available := p.cfg.MaxInputTokens - estimateTokens(system) - requestOverheadTokens
 	rulesBudget := available / 2

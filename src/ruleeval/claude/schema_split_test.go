@@ -14,6 +14,7 @@ import (
 
 	"github.com/SteerSpec/strspc-manager/src/ruleeval"
 	"github.com/SteerSpec/strspc-manager/src/ruleeval/claude"
+	"github.com/SteerSpec/strspc-manager/src/ruleeval/prompt"
 )
 
 // grammarTooLarge is the message the API returns when the output schema of
@@ -257,5 +258,25 @@ func TestEvaluateBatch_ClassifiesA400ByItsMessage(t *testing.T) {
 				t.Errorf("err = %v, schema too large = %v, want %v", got, !tc.tooLarge, tc.tooLarge)
 			}
 		})
+	}
+}
+
+// The verdict schema of a diff counts against the rules' half of the budget
+// (strspc-manager-z7d): forty rules whose text alone fits in one request
+// but whose schema does not are split, with no request refused.
+func TestEvaluateBatch_CountsTheVerdictSchemaInTheBudget(t *testing.T) {
+	g := &grammarServer{limit: 1000}
+	inputs := manyRules(40)
+	rulesOnly := claude.EstimateTokens(prompt.RulesBlock(inputs))
+	p := g.provider(t, func(c *claude.Config) {
+		c.MaxRulesPerRequest = len(inputs)
+		// The rules get half of what is left: room for their text with a
+		// quarter to spare, not for their schema as well.
+		c.MaxInputTokens = claude.EstimateTokens(prompt.System()) + 256 + 2*(rulesOnly+rulesOnly/4)
+	})
+	resp, err := p.EvaluateBatch(context.Background(), ruleeval.BatchRequest{EntityID: "CMD", Inputs: inputs, Diff: diffWithLong})
+	checkAllCompliant(t, resp, err, inputs)
+	if len(g.answered) < 2 {
+		t.Errorf("answered %d verdict requests, want the rules split by their schema", len(g.answered))
 	}
 }
