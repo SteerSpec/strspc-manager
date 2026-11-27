@@ -255,7 +255,7 @@ func (p *Provider) Model() string { return p.cfg.Model }
 func (p *Provider) MaxRulesPerRequest() int { return p.cfg.MaxRulesPerRequest }
 
 // PromptVersion returns the prompt revision qualified by the effort level
-// and the split configuration, e.g. "v9/effort=medium/split=100000,40,2/1".
+// and the split configuration, e.g. "v9/effort=medium/split=100000,40,2/1,plan=2".
 // Effort changes how carefully the model judges the same prompt, so it is
 // part of the cache identity: raising effort must not reuse a verdict
 // produced at a lower one. The split configuration (MaxInputTokens,
@@ -268,7 +268,7 @@ func (p *Provider) PromptVersion() string {
 
 // AuditPromptVersion returns the audit prompt revision with the prompt
 // revision it shares the rules block and verdict schema with, qualified as
-// PromptVersion is, e.g. "audit-a3+v9/effort=medium/split=100000,40,2/1".
+// PromptVersion is, e.g. "audit-a3+v9/effort=medium/split=100000,40,2/1,plan=2".
 // The split configuration matters even more to an audit, where something
 // missing from a set that fits one request is a violation that a part may
 // not report. The provider audits every request whose Files are set
@@ -307,10 +307,15 @@ func (p *Provider) CheckConflict(ctx context.Context, req ruleeval.ConflictReque
 	return &resp, nil
 }
 
+// planVersion counts changes to how planRules and the planners after it
+// split the same configuration, so that a verdict planned the old way is not
+// reused. 2 counts the verdict schema against a diff's budget.
+const planVersion = 2
+
 // splitIdentity renders the configuration that decides how a request is
-// split into parts.
+// split into parts, and the version of the planner applying it.
 func (p *Provider) splitIdentity() string {
-	return fmt.Sprintf("/split=%d,%d,%d/%d", p.cfg.MaxInputTokens, p.cfg.MaxRulesPerRequest, bytesPerTokenNum, bytesPerTokenDen)
+	return fmt.Sprintf("/split=%d,%d,%d/%d,plan=%d", p.cfg.MaxInputTokens, p.cfg.MaxRulesPerRequest, bytesPerTokenNum, bytesPerTokenDen, planVersion)
 }
 
 // Usage returns the tokens and completed requests accumulated so far.

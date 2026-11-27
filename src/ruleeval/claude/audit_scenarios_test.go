@@ -187,5 +187,12 @@ func TestPromptVersions_FollowTheSplit(t *testing.T) {
 	}
 	if !strings.Contains(base.PromptVersion(), fmt.Sprintf("/split=%d,%d,", claude.DefaultMaxInputTokens, claude.DefaultMaxRulesPerRequest)) {
 		t.Errorf("PromptVersion = %q, want the default split", base.PromptVersion())
+	}	// A verdict cached by the planner that left the verdict schema out of a
+	// diff's budget (plan 1, no suffix) must not be reused: the same
+	// configuration may now split the diff (strspc-manager-z7d).
+	for _, v := range []string{base.PromptVersion(), base.AuditPromptVersion()} {
+		if !strings.HasSuffix(v, ",plan=2") {
+			t.Errorf("version %q does not name planner 2", v)
+		}
 	}
 }
