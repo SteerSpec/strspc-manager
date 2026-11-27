@@ -1249,12 +1249,11 @@ func assertRD020Unbumped(t *testing.T, res *result.Result, path string) {
 // allows the change.
 func TestDiff_RD020_InheritsChanged(t *testing.T) {
 	tests := []struct {
-		name          string
-		base, head    string
-		visibility    string
-		subVisibility string
-		want          string
-		wantPath      string
+		name       string
+		base, head string
+		visibility string
+		want       string
+		wantPath   string
 	}{
 		{name: "added", head: "dev.lib:LIB", want: "inherits \"dev.lib:LIB\" added", wantPath: "TSTENT/entity.inherits"},
 		{name: "changed", base: "dev.lib:A", head: "dev.lib:B", want: "inherits changed from \"dev.lib:A\" to \"dev.lib:B\"", wantPath: "TSTENT/entity.inherits"},
