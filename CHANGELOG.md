@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.60.1](https://github.com/SteerSpec/strspc-manager/compare/v1.60.0...v1.60.1) (2026-11-27)
+
+
+### Documentation
+
+* **changelog:** drop the duplicate 1.60.0 entries ([36650cc](https://github.com/SteerSpec/strspc-manager/commit/36650cc64f7cf93a527796665d0082f0776c0be4))
+* **changelog:** drop the duplicate 1.60.0 entries ([c426750](https://github.com/SteerSpec/strspc-manager/commit/c42675027be4b02e1c30d5104cc79aac295aa9e1))
+
 ## [1.60.0](https://github.com/SteerSpec/strspc-manager/compare/v1.59.0...v1.60.0) (2026-11-27)
 
 
