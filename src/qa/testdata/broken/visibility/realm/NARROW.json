@@ -1,0 +1,53 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "NARROW",
+    "title": "QA entity NARROW",
+    "inherits": "dev.steerspec.qa.vislib:LIBPROT"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:3be2f95996a91ba5cf34bc454a715917867aded8d2bdd3592cfed4138cc638b6"
+  },
+  "rules": [
+    {
+      "id": "NARROW-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of narrow MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": [],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "NARROWSUB",
+        "title": "QA entity NARROWSUB",
+        "parent": "NARROW",
+        "visibility": "public"
+      },
+      "rule_set": {
+        "version": "1.0.0",
+        "timestamp": "2026-01-15T10:00:00Z",
+        "hash": "blake3:a9ae4c4ffd0a423ece9baad505b753b5a355f1fbc9a31c87fca65936427b05d5"
+      },
+      "rules": [
+        {
+          "id": "NARROWSUB-001",
+          "revision": 0,
+          "state": "I",
+          "body": "The subject of narrowsub MUST hold.",
+          "added_by": "github:qa",
+          "added_at": "2026-01-15",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

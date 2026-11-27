@@ -3,7 +3,8 @@
   "entity": {
     "id": "UWIDE",
     "title": "UWIDE",
-    "inherits": "dev.lib:LPROT"
+    "inherits": "dev.lib:LPROT",
+    "visibility": "public"
   },
   "rule_set": {
     "version": "0.1.0",

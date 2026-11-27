@@ -189,7 +189,9 @@ type chainState struct {
 // resolveInheritance resolves the inheritance chain of every entity of the
 // root Realm and its sub-realms (RR013, RR014) and checks their overrides
 // against the inherited rule sets (RR015, RR016) and both against the
-// visibility of the entities in the chain (RR022 to RR024). Nothing is loaded
+// visibility of the entities in the chain (RR022 to RR024), and each declared
+// visibility against that of the containing entity where inheritance narrows
+// it (RR026). Nothing is loaded
 // when no entity uses inheritance.
 func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRealm, subs []*ResolvedRealm, res *result.Result) []*Inheritance {
 	entities, paths := treeEntities(root, subs)
@@ -232,6 +234,9 @@ func (r *RealmResolver) resolveInheritance(ctx context.Context, root *ResolvedRe
 		child := s.treeNode[id].hop(entities[id])
 		checkOverrides(child, chains[id], superseded, paths[id], res)
 		s.checkVisibility(s.treeNode[id], child, chains[id], paths[id])
+	}
+	for _, id := range ids {
+		s.checkContainment(entities, entities[id], paths[id])
 	}
 	return out
 }

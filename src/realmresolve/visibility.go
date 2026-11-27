@@ -93,21 +93,95 @@ func mayOverride(visibility string, rel relation) bool {
 	}
 }
 
-// visibility returns the effective visibility of e, an entity of n (ENT-011).
-// Each step follows `parent` to the containing entity; the bound stops a file
-// whose `parent` loops, which rule-lint reports as RL007.
-func (n *node) visibility(e *entity.File) string {
-	for i := 0; i <= len(n.entities); i++ {
+// visibility returns the effective visibility of e, an entity of n (ENT-011):
+// its own, or else the narrowest one declared by an entity reached through
+// `parent` and `inherits` links, and `public` when none declares one
+// (ENT-011/02). Each branch stops at the first entity declaring one. A link
+// that loops or cannot be resolved adds nothing; rule-lint and the chain walk
+// report those (RL007, RR013, RR014). Following an `inherits` link can load a
+// dependency, and a failure to load it is reported, as the visibility then
+// cannot be known.
+func (s *chainState) visibility(n *node, e *entity.File) string {
+	if v := s.narrowest(n, e, make(map[*entity.File]bool)); v != "" {
+		return v
+	}
+	return entity.VisibilityPublic
+}
+
+// narrowest returns the narrowest visibility declared by e or, when e declares
+// none, by the entities its `parent` and `inherits` links reach, or "" when
+// none of them declares one. seen holds the entities already visited.
+func (s *chainState) narrowest(n *node, e *entity.File, seen map[*entity.File]bool) string {
+	if seen[e] {
+		return ""
+	}
+	seen[e] = true
+	if e.Entity.Visibility != "" {
+		return e.Entity.Visibility
+	}
+	var out string
+	if container, ok := n.entities[e.Entity.Parent]; e.Entity.Parent != "" && ok {
+		out = narrower(out, s.narrowest(n, container, seen))
+	}
+	if e.Entity.Inherits != "" {
+		if next, target, _ := s.lookup(n, e.Entity.Inherits); target != nil {
+			out = narrower(out, s.narrowest(next, target, seen))
+		}
+	}
+	return out
+}
+
+// narrower returns the narrower of a and b, either of which may be "" for
+// none (ENT-015).
+func narrower(a, b string) string {
+	switch {
+	case a == "":
+		return b
+	case b == "" || entity.VisibilityWider(b, a):
+		return a
+	default:
+		return b
+	}
+}
+
+// containedVisibility returns the effective visibility of e from `parent` links
+// alone, as rule-lint computes it for RL024. The bound stops a `parent` loop.
+func containedVisibility(entities map[string]*entity.File, e *entity.File) string {
+	for i := 0; i <= len(entities); i++ {
 		if e.Entity.Visibility != "" {
 			return e.Entity.Visibility
 		}
-		container, ok := n.entities[e.Entity.Parent]
+		container, ok := entities[e.Entity.Parent]
 		if e.Entity.Parent == "" || !ok {
 			break
 		}
 		e = container
 	}
 	return entity.VisibilityPublic
+}
+
+// checkContainment reports RR026 when e, an entity of the resolved Realm tree,
+// declares a visibility wider than the effective visibility of the entity
+// containing it (ENT-018) only because of what that entity, or one containing
+// it, inherits (ENT-011). Without inheritance rule-lint reports it (RL024), as
+// it does an unknown value (RL023).
+func (s *chainState) checkContainment(entities map[string]*entity.File, e *entity.File, path string) {
+	own := e.Entity.Visibility
+	container, ok := entities[e.Entity.Parent]
+	if own == "" || !entity.ValidVisibility(own) || e.Entity.Parent == "" || !ok {
+		return
+	}
+	limit := s.visibility(s.treeNode[e.Entity.ID], container)
+	if !entity.VisibilityWider(own, limit) || entity.VisibilityWider(own, containedVisibility(entities, container)) {
+		return
+	}
+	s.res.Add(result.Diagnostic{
+		Module:   module,
+		Code:     "RR026",
+		Severity: result.Error,
+		Message:  fmt.Sprintf("entity %s: visibility `%s` is wider than `%s` of containing entity %s, whose visibility comes from inheritance", e.Entity.ID, own, limit, container.Entity.ID),
+		Path:     path,
+	})
 }
 
 // outOfForce reports whether a rule in state no longer counts for ENT-019 and
@@ -147,7 +221,7 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 	}
 	parent := ancestors[0]
 	at := s.holder[parent.Entity]
-	v := at.visibility(parent.Entity)
+	v := s.visibility(at, parent.Entity)
 	name := parent.RealmID + ":" + parent.Entity.Entity.ID
 	here := from.place(hop.Entity)
 	if !mayInherit(v, relationOf(here, at.place(parent.Entity))) {
@@ -159,7 +233,7 @@ func (s *chainState) checkHop(who string, from *node, hop inherit.Hop, ancestors
 			Path:     path,
 		})
 	}
-	if own := from.visibility(hop.Entity); entity.VisibilityWider(own, v) {
+	if own := s.visibility(from, hop.Entity); entity.VisibilityWider(own, v) {
 		s.res.Add(result.Diagnostic{
 			Module:   module,
 			Code:     "RR024",
@@ -195,7 +269,7 @@ func (s *chainState) checkOverrideVisibility(from place, ruleID, target string, 
 	}
 	for _, h := range ancestors[:owner+1] {
 		at := s.holder[h.Entity]
-		v := at.visibility(h.Entity)
+		v := s.visibility(at, h.Entity)
 		if mayOverride(v, relationOf(from, at.place(h.Entity))) {
 			continue
 		}
@@ -233,9 +307,9 @@ func (s *chainState) checkExtendsVisibility(at *node, e *entity.File, n entity.N
 		if _, ok := findRule(target, m[2]+"-"+m[3]); !ok {
 			continue
 		}
-		v := next.visibility(target)
+		v := s.visibility(next, target)
 		var why string
-		switch own := at.visibility(e); {
+		switch own := s.visibility(at, e); {
 		case !mayInherit(v, relationOf(at.place(e), next.place(target))):
 			why = fmt.Sprintf("visibility `%s` does not permit inheritance from realm %s", v, at.place(e).realm)
 		case entity.VisibilityWider(own, v):

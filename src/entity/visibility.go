@@ -8,7 +8,8 @@ const (
 	// VisibilityProtected limits overrides to the Realm tree (ENT-013).
 	VisibilityProtected = "protected"
 	// VisibilityPublic permits inheritance and overrides from any Realm
-	// (ENT-012). It is the default of an entity that no other contains.
+	// (ENT-012). It is the default of an entity that nothing it is contained
+	// by or inherits declares narrower (ENT-011).
 	VisibilityPublic = "public"
 )
 
@@ -18,8 +19,11 @@ func ValidVisibility(v string) bool {
 }
 
 // EffectiveVisibility returns declared, or container, the effective visibility
-// of the containing entity, when declared is empty (ENT-011). For an entity
-// that no other contains, pass VisibilityPublic.
+// of the containing entity, when declared is empty. This is the containment
+// half of ENT-011 only: an entity that declares none also takes the narrower
+// of that and the visibility of the entity it inherits, which needs the
+// resolved chain (see realm-resolve). For an entity that no other contains,
+// pass VisibilityPublic.
 func EffectiveVisibility(declared, container string) string {
 	if declared == "" {
 		return container
