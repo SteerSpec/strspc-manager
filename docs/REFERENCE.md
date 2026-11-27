@@ -58,7 +58,7 @@ Public packages live under `src/`, for example
 | `ruleeval` | AI, pluggable providers | Evaluates code compliance against rules (§8.3). Batches rules per entity, caches verdicts, and degrades to static-only mode when no provider is configured. See [Evaluation providers](#evaluation-providers). |
 | `evalcache` | stateful (cache) | Persists `ruleeval` verdicts in an embedded key-value store at `.strspc/cache.db` with TTL expiry (§8.4) |
 | `ruleresolve` | stateful (cache) | Fetches, caches, and resolves rules from configured sources (§8.2) |
-| `rulerefs` | stateless | Validates the rule identifiers that text files cite against a set of known rules, and reports copied rule bodies (§6.2). A `Checker` records the rules each text cites, and `Coverage` reports the rules of chosen entities that none cites (RF008) |
+| `rulerefs` | stateful (in memory, per `Checker`) | Validates the rule identifiers that text files cite against a set of known rules, and reports copied rule bodies (§6.2). A `Checker` records the rules each text cites, and `Coverage` reports the rules of chosen entities that none cites (RF008) |
 | `realmlint` | stateless | Validates Realm structure, `realm.json` manifests including sub-realms, EUID uniqueness, and, with `WithDependencyFetcher`, the Realm against its pinned dependencies |
 | `realmresolve` | stateful (cache) | Resolves Realm dependencies declared in `realm.json`, fetches remote Realms, and resolves inheritance chains across Realms |
 
