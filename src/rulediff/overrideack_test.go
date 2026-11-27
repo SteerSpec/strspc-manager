@@ -145,3 +145,39 @@ func codes(res *result.Result) []string {
 	}
 	return out
 }
+
+// TestRD001_OverridesEditMovesTheRevision checks that a Draft rule's
+// `overrides` changes only with its revision, by one, and apart from a state
+// change, so that an override_ack names what it acknowledges (RUL-022).
+func TestRD001_OverridesEditMovesTheRevision(t *testing.T) {
+	other := "dev.example.lib:BASE-002"
+	tests := []struct {
+		name  string
+		rev   int
+		state string
+		want  bool
+	}{
+		{"retargeted with the revision raised", 1, "D", false},
+		{"retargeted with the revision kept", 0, "D", true},
+		{"retargeted in the change that publishes it", 1, "P", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := overridingBase(0)
+			base.Notes = append(base.Notes, ackNote("TSTENT-001/02", "0"))
+			head := makeHead(base)
+			head.Rules[0].Overrides = &other
+			head.Rules[0].Revision = tt.rev
+			head.Rules[0].State = tt.state
+			if tt.state == "P" {
+				head.Notes = append(head.Notes, ackNote("TSTENT-001/03", "1"))
+			}
+			res := New().Diff(base, head)
+			if tt.want {
+				assertHasCode(t, res, "RD001")
+			} else {
+				assertNoCode(t, res, "RD001")
+			}
+		})
+	}
+}
