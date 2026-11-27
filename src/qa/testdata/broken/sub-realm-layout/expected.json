@@ -135,12 +135,6 @@
     "module": "rule-lint",
     "code": "RL000",
     "severity": "error",
-    "path": "outside"
-  },
-  {
-    "module": "rule-lint",
-    "code": "RL000",
-    "severity": "error",
     "path": "realm/missing"
   }
 ]

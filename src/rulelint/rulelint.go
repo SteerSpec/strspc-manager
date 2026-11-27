@@ -329,7 +329,8 @@ func (l *Linter) LintRealm(ctx context.Context, dir string) *result.Result {
 // lintRealmWithSubs lints the parent realm and each sub-realm separately,
 // then validates RL012/RL014 cross-references across the combined rule ID set.
 // Each Realm is linted as the kind its own manifest declares: a sub-realm
-// without one is a code Realm (RLMMNFST-009).
+// without one is a code Realm (RLMMNFST-009). A sub_realms entry that isn't a
+// directory directly inside dir is never walked: realm-lint reports it (RM008).
 func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, rf *entity.RealmFile) *result.Result {
 	subRealms := rf.SubRealms
 	res := &result.Result{}
@@ -344,6 +345,9 @@ func (l *Linter) lintRealmWithSubs(ctx context.Context, dir string, rf *entity.R
 	// Lint each sub-realm directory, with its own linter when it pins its own
 	// core Realm.
 	for _, sub := range subRealms {
+		if !isSubRealmName(sub) {
+			continue // realm-lint reports it (RM008).
+		}
 		subDir := filepath.Join(dir, sub)
 		l.forSubRealm(subDir).lintDirCollect(ctx, subDir, subRealmKind(subDir) == entity.KindStandard, res, allRuleIDs, &allParsed)
 	}
