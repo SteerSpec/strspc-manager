@@ -533,7 +533,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Info / Error",
 		Title:    "Visibility changed",
-		Summary:  "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs unless the absent value came from an inherited entity; Error when the key is removed.",
+		Summary:  "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs unless the absent value came from an inherited entity; Error when the key is removed. Also Info when `inherits` is added, changed or removed on an entity that declares no `visibility`, whose visibility follows the inherited entity (ENT-011).",
 		Fix:      "Set `public` explicitly rather than removing the key. Bump `realm.version` as the message says.",
 	},
 	{

@@ -1243,6 +1243,85 @@ func assertRD020Unbumped(t *testing.T, res *result.Result, path string) {
 	}
 }
 
+// TestDiff_RD020_InheritsChanged checks that a change to `inherits` on an
+// entity that declares no `visibility` warns that its visibility follows the
+// inherited entity (ENT-011), with makeBase's rules all Draft so that RD017
+// allows the change.
+func TestDiff_RD020_InheritsChanged(t *testing.T) {
+	tests := []struct {
+		name          string
+		base, head    string
+		visibility    string
+		subVisibility string
+		want          string
+		wantPath      string
+	}{
+		{name: "added", head: "dev.lib:LIB", want: "inherits \"dev.lib:LIB\" added", wantPath: "TSTENT/entity.inherits"},
+		{name: "changed", base: "dev.lib:A", head: "dev.lib:B", want: "inherits changed from \"dev.lib:A\" to \"dev.lib:B\"", wantPath: "TSTENT/entity.inherits"},
+		{name: "removed", base: "dev.lib:A", want: "inherits \"dev.lib:A\" removed", wantPath: "TSTENT/entity.inherits"},
+		{name: "declared", head: "dev.lib:LIB", visibility: "protected"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := draftBase()
+			base.Entity.Inherits = tt.base
+			base.Entity.Visibility = tt.visibility
+			head := makeHead(base)
+			head.Entity.Inherits = tt.head
+			var got []result.Diagnostic
+			for _, d := range New().Diff(base, head).Diagnostics {
+				if d.Code == "RD020" {
+					got = append(got, d)
+				}
+			}
+			if tt.want == "" {
+				if len(got) != 0 {
+					t.Errorf("RD020 diagnostics = %v, want none", got)
+				}
+				return
+			}
+			if len(got) != 1 || got[0].Severity != result.Info || got[0].Path != tt.wantPath ||
+				!strings.Contains(got[0].Message, tt.want) || !strings.Contains(got[0].Message, "MAJOR") {
+				t.Errorf("RD020 diagnostics = %v, want one Info at %s with %q", got, tt.wantPath, tt.want)
+			}
+		})
+	}
+}
+
+// TestDiff_RD020_InheritsChangedSubEntity checks the warning on an
+// undeclared sub-entity, and its absence under a container that declares one.
+func TestDiff_RD020_InheritsChangedSubEntity(t *testing.T) {
+	for _, container := range []string{"", "protected"} {
+		base := draftBase()
+		base.Entity.Visibility = container
+		base.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID}}}
+		head := makeHead(base)
+		head.SubEntities = []entity.File{{Entity: entity.Entity{ID: "SUB", Title: "SUB", Parent: base.Entity.ID, Inherits: "dev.lib:LIB"}}}
+		var got int
+		for _, d := range New().Diff(base, head).Diagnostics {
+			if d.Code == "RD020" && d.Path == "TSTENT > SUB/entity.inherits" {
+				got++
+			}
+		}
+		// A declared container doesn't stop the inherited entity narrowing SUB.
+		if got != 1 {
+			t.Errorf("container %q: got %d RD020 on SUB, want 1", container, got)
+		}
+	}
+}
+
+// TestDiff_RD020_InheritsRefused checks that RD017 alone is reported when the
+// change is refused.
+func TestDiff_RD020_InheritsRefused(t *testing.T) {
+	base := makeBase()
+	base.Entity.Inherits = "dev.lib:A"
+	head := makeHead(base)
+	head.Entity.Inherits = "dev.lib:B"
+	res := New().Diff(base, head)
+	assertHasCode(t, res, "RD017")
+	assertNoCode(t, res, "RD020")
+}
+
 func TestDiff_RD017_RemovedFromEntityOutOfForce(t *testing.T) {
 	for _, state := range []string{entity.StateAbandoned, entity.StateRetired, entity.StateTerminated} {
 		base := makeBase()
@@ -1441,3 +1520,11 @@ func TestRD025_NoteWithPromotion(t *testing.T) {
 }
 
 func ptrNote(n entity.Note) *entity.Note { return &n }
+
+// draftBase returns makeBase with its Draft rule only, so that RD017 allows an
+// `inherits` change.
+func draftBase() *entity.File {
+	base := makeBase()
+	base.Rules = base.Rules[:1]
+	return base
+}
