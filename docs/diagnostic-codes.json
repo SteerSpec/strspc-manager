@@ -306,6 +306,15 @@
     "retired": false
   },
   {
+    "code": "RD033",
+    "module": "rule-diff",
+    "severity": "Error",
+    "title": "Override acknowledgement changed",
+    "summary": "An `override_ack` note present in the base changed in a field other than its type: `content`, `rule_ref`, `added_by`, `added_at` or `revision` (NTE-044). Removing or retyping one is RD012.",
+    "fix": "Restore the note as it was, and add a new `override_ack` note to acknowledge another revision. A rewrite of contributor identifiers leaves `override_ack` notes alone.",
+    "retired": false
+  },
+  {
     "code": "RE001",
     "module": "rule-eval",
     "severity": "Warning / Error",

@@ -172,3 +172,4 @@ RF007 active copied-rule-body
 RM030 active realm-note-added-by-format
 RD031 active dependency-source-changed
 RD032 active override-published-unacknowledged
+RD033 active override-ack-changed
