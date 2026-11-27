@@ -135,10 +135,21 @@ var (
 // system prompt and the overhead of 256 tokens pay for the rules (~165
 // bytes), the file list (~165 bytes) and one ~430-byte file. It follows the
 // system prompt's size and the provider's own estimate, so neither rewording
-// the prompt nor retuning the estimate moves the split.
+// the prompt nor retuning the estimate moves the split. The verdict schema of
+// the one rule each scenario evaluates counts too, as the planner counts it.
 func twoChunks(c *claude.Config) {
-	c.MaxInputTokens = claude.EstimateTokens(prompt.System()) + 256 + claude.EstimateTokens(strings.Repeat("x", 795))
+	c.MaxInputTokens = claude.EstimateTokens(prompt.System()) + 256 + claude.EstimateTokens(strings.Repeat("x", 795)) + verdictSchemaTokens
 }
+
+// verdictSchemaTokens estimates the verdict schema for one seven-character
+// rule ID, as the scenarios using twoChunks have.
+var verdictSchemaTokens = func() int {
+	b, err := json.Marshal(prompt.VerdictSchema([]string{"CMD-001"}))
+	if err != nil {
+		panic(err)
+	}
+	return claude.EstimateTokens(string(b))
+}()
 
 // --- synthetic Messages API responses -------------------------------------
 
