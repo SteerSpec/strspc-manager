@@ -149,7 +149,8 @@ func walkEntityStandards(ef *entity.File, outer [][]entity.StandardRef, path str
 // entity file at path resolves against after its entities (NTE-016), as
 // UnresolvedStandardNotes uses them: the Realm at dir then its parent, or, for a
 // file inside one of dir's sub-realms, that sub-realm then dir's Realm. Without
-// a manifest at dir there are none. When the sub-realm's manifest can't be
+// a manifest at dir there are none. A sub_realms entry that isn't a directory
+// directly inside dir names no sub-realm (RM008). When the sub-realm's manifest can't be
 // loaded, dir's Realm alone is returned, so a removal guard still checks
 // against it.
 func RealmStandardScopes(dir, path string) [][]entity.StandardRef {
@@ -158,7 +159,7 @@ func RealmStandardScopes(dir, path string) [][]entity.StandardRef {
 		return nil
 	}
 	if rel, err := filepath.Rel(dir, path); err == nil {
-		if first, _, nested := strings.Cut(filepath.ToSlash(rel), "/"); nested && slices.Contains(rf.SubRealms, first) {
+		if first, _, nested := strings.Cut(filepath.ToSlash(rel), "/"); nested && isSubRealmName(first) && slices.Contains(rf.SubRealms, first) {
 			sub, err := entity.LoadRealm(filepath.Join(dir, first, "realm.json"))
 			if err != nil {
 				return [][]entity.StandardRef{rf.Realm.Standards}
