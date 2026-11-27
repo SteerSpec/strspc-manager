@@ -491,8 +491,10 @@ func (l *Linter) lintEntity(ef *entity.File, container string, standard bool, re
 
 // checkVisibility runs RL023 and RL024: a declared visibility is a known value
 // and no wider than the effective visibility of the entity containing it
-// (ENT-018). The limit from the inherited entity needs the chain, so it stays
-// with realm-resolve.
+// (ENT-018). container comes from `parent` links alone: the limit from an
+// inherited entity, and the narrower default an undeclared container takes
+// from what it inherits (ENT-011), need the chain, so they stay with
+// realm-resolve (RR024, RR026).
 func checkVisibility(ef *entity.File, container string, res *result.Result, path string) {
 	v := ef.Entity.Visibility
 	if v == "" {

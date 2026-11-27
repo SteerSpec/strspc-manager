@@ -520,11 +520,12 @@ func checkInherits(base, head *entity.File, res *result.Result, path string) {
 
 // checkVisibility runs RD020 on any change to the `visibility` of an entity.
 // Removing the key is an Error, because it also catches a tool that drops the
-// field and so silently widens the entity; the fix is to set `public`
-// explicitly. Any other change is Info, so strict mode doesn't block it, and
-// says which version bump it needs. baseContainer and headContainer are the
-// effective visibilities of the entity containing this one.
-func checkVisibility(base, head *entity.File, baseContainer, headContainer string, res *result.Result, path string) {
+// field and so silently changes the entity's visibility to the default; the
+// fix is to set `public` explicitly. Any other change is Info, so strict mode
+// doesn't block it, and says which version bump it needs. baseContainer is the
+// effective visibility in base of the entity containing this one, "" when it
+// cannot be known here.
+func checkVisibility(base, head *entity.File, baseContainer string, res *result.Result, path string) {
 	from, to := base.Entity.Visibility, head.Entity.Visibility
 	if from == to {
 		return
@@ -540,18 +541,36 @@ func checkVisibility(base, head *entity.File, baseContainer, headContainer strin
 		})
 		return
 	}
-	before, after := entity.EffectiveVisibility(from, baseContainer), entity.EffectiveVisibility(to, headContainer)
+	before, after := visibilityOf(&base.Entity, baseContainer), to
 	msg := fmt.Sprintf("visibility changed from `%s` to `%s`", from, to)
 	if from == "" {
 		msg = fmt.Sprintf("visibility changed from absent to `%s`", to)
 	}
 	switch {
+	case before == "":
+		msg += ": the absent visibility came from an inherited entity, so the version bump depends on that entity's visibility"
 	case entity.VisibilityWider(before, after):
 		msg += ": narrowing needs a MAJOR bump of realm.version"
 	case entity.VisibilityWider(after, before):
 		msg += ": widening needs a MINOR bump of realm.version"
 	}
 	res.Add(result.Diagnostic{Module: module, Code: "RD020", Severity: result.Info, Message: msg, Path: path})
+}
+
+// visibilityOf returns the effective visibility of e on one side of the diff,
+// given that of the entity containing it, or "" when it cannot be known here:
+// an entity that declares none takes the narrower of its container's and that
+// of the entity it inherits (ENT-011), and rule-diff does not resolve the
+// chain. That one is left to realm-resolve.
+func visibilityOf(e *entity.Entity, container string) string {
+	switch {
+	case e.Visibility != "":
+		return e.Visibility
+	case e.Inherits != "":
+		return ""
+	default:
+		return container
+	}
 }
 
 // checkTimestamp runs RD009: rule_set.timestamp must be updated.

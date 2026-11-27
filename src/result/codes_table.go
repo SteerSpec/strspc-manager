@@ -533,7 +533,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-diff",
 		Severity: "Info / Error",
 		Title:    "Visibility changed",
-		Summary:  "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs; Error when the key is removed.",
+		Summary:  "`visibility` changed. Info for a new or changed value, naming the `realm.version` bump a narrowing or widening needs unless the absent value came from an inherited entity; Error when the key is removed.",
 		Fix:      "Set `public` explicitly rather than removing the key. Bump `realm.version` as the message says.",
 	},
 	{
@@ -1069,7 +1069,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-resolve",
 		Severity: "Error",
 		Title:    "Wider than the inherited entity",
-		Summary:  "An entity is wider than the entity it inherits (ENT-015). An absent `visibility` counts as `public`.",
+		Summary:  "An entity declares a `visibility` wider than that of the entity it inherits (ENT-015). An entity that declares none is never wider (ENT-011).",
 		Fix:      "Declare a `visibility` no wider than the inherited entity's.",
 	},
 	{
@@ -1079,6 +1079,14 @@ var codeTable = []CodeInfo{
 		Title:    "`extends` target not permitted",
 		Summary:  "An `extends` note on a rule that is not Abandoned, Retired or Terminated references a rule whose entity's visibility does not permit inheritance from the note's Realm or is narrower than that of the entity holding the note (NTE-012). Short references count.",
 		Fix:      "Reference another rule, or supersede the rule and retire it: the note itself can't change.",
+	},
+	{
+		Code:     "RR026",
+		Module:   "realm-resolve",
+		Severity: "Error",
+		Title:    "Wider than the containing entity, through inheritance",
+		Summary:  "A sub-entity declares a `visibility` wider than the effective visibility of the entity containing it, which that entity, or one containing it, takes from the entity it inherits (ENT-011, ENT-018). Without inheritance rule-lint reports it (RL024).",
+		Fix:      "Declare a `visibility` no wider than the containing entity's.",
 	},
 	{
 		Code:     "RSV000",

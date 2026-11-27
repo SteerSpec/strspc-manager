@@ -1,0 +1,52 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "LBOX",
+    "title": "LBOX",
+    "inherits": "dev.gone:G"
+  },
+  "rule_set": {
+    "version": "0.1.0",
+    "timestamp": "2026-11-27T00:00:00Z",
+    "hash": null
+  },
+  "rules": [
+    {
+      "id": "LBOX-001",
+      "revision": 0,
+      "state": "P",
+      "body": "Rule 1 of LBOX.",
+      "added_by": "t",
+      "added_at": "2026-11-27",
+      "supersedes": null
+    }
+  ],
+  "notes": [],
+  "sub_entities": [
+    {
+      "$schema": "./_schema/entity.v1.schema.json",
+      "entity": {
+        "id": "LSUB",
+        "title": "LSUB",
+        "parent": "LBOX"
+      },
+      "rule_set": {
+        "version": "0.1.0",
+        "timestamp": "2026-11-27T00:00:00Z",
+        "hash": null
+      },
+      "rules": [
+        {
+          "id": "LSUB-001",
+          "revision": 0,
+          "state": "P",
+          "body": "Rule 1 of LSUB.",
+          "added_by": "t",
+          "added_at": "2026-11-27",
+          "supersedes": null
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

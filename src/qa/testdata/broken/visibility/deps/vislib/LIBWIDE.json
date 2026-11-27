@@ -3,12 +3,13 @@
   "entity": {
     "id": "LIBWIDE",
     "title": "QA entity LIBWIDE",
-    "inherits": "LIBPROT"
+    "inherits": "LIBPROT",
+    "visibility": "public"
   },
   "rule_set": {
     "version": "1.0.0",
     "timestamp": "2026-01-15T10:00:00Z",
-    "hash": "blake3:7f2dc33320667a0a91609c5cf76c4d5649fa4c807e44fc091e3422a6f84f4f73"
+    "hash": "blake3:5566a3655735f723d45fe9914d6cbe5d106c1f78d07b19f3787c79cb3a09203c"
   },
   "rules": [
     {
