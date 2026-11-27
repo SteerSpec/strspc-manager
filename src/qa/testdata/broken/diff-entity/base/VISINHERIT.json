@@ -1,0 +1,24 @@
+{
+  "$schema": "./_schema/entity.v1.schema.json",
+  "entity": {
+    "id": "VISINHERIT",
+    "title": "QA entity VISINHERIT"
+  },
+  "rule_set": {
+    "version": "1.0.0",
+    "timestamp": "2026-01-15T10:00:00Z",
+    "hash": "blake3:45f9fdf454eac9c8e9dac6dc437a624433916cd893d42fb3bc2533e0e5c973ac"
+  },
+  "rules": [
+    {
+      "id": "VISINHERIT-001",
+      "revision": 0,
+      "state": "I",
+      "body": "The subject of visinherit MUST hold.",
+      "added_by": "github:qa",
+      "added_at": "2026-01-15",
+      "supersedes": null
+    }
+  ],
+  "notes": []
+}

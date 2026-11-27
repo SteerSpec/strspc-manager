@@ -491,8 +491,10 @@ func refString(r *string) string {
 // `inherits` where there was none only adds rules and is allowed. So is
 // removing it once no rule is Published or Implemented: nothing relies on the
 // parent, and a consumer may have to leave a parent narrowed to `private`.
+// An allowed change goes on to checkInheritsVisibility.
 func checkInherits(base, head *entity.File, res *result.Result, path string) {
 	if base.Entity.Inherits == "" || head.Entity.Inherits == base.Entity.Inherits {
+		checkInheritsVisibility(base, head, res, path)
 		return
 	}
 	removed := head.Entity.Inherits == ""
@@ -516,6 +518,37 @@ func checkInherits(base, head *entity.File, res *result.Result, path string) {
 		})
 		return
 	}
+	checkInheritsVisibility(base, head, res, path)
+}
+
+// checkInheritsVisibility runs RD020 on an `inherits` change that RD017 allows,
+// on an entity that declares no `visibility` on either side. Such an entity
+// takes the narrower of its container's visibility and that of the entity it
+// inherits (ENT-011), so the change can narrow it. rule-diff cannot resolve the
+// chain to tell, so it is Info, like any other RD020. A declared container
+// does not silence it, as the inherited entity can still be narrower. When
+// either side declares one, the `visibility` change itself is reported.
+func checkInheritsVisibility(base, head *entity.File, res *result.Result, path string) {
+	from, to := base.Entity.Inherits, head.Entity.Inherits
+	if from == to || base.Entity.Visibility != "" || head.Entity.Visibility != "" {
+		return
+	}
+	var msg string
+	switch {
+	case from == "":
+		msg = fmt.Sprintf("inherits %q added", to)
+	case to == "":
+		msg = fmt.Sprintf("inherits %q removed", from)
+	default:
+		msg = fmt.Sprintf("inherits changed from %q to %q", from, to)
+	}
+	res.Add(result.Diagnostic{
+		Module:   module,
+		Code:     "RD020",
+		Severity: result.Info,
+		Message:  msg + " on an entity that declares no `visibility`: its visibility, and that of its undeclared sub-entities, follows the inherited entity (ENT-011); a narrowing needs a MAJOR bump of realm.version",
+		Path:     path + "/entity.inherits",
+	})
 }
 
 // checkVisibility runs RD020 on any change to the `visibility` of an entity.
