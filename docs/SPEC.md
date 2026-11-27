@@ -359,8 +359,10 @@ The PR validator enforces consistency: if a rule declares `supersedes` and reach
 ### 3.4 Revision Semantics
 
 - **Revision** is a simple integer starting at `0`.
-- It increments by exactly `+1` on every edit to the rule.
-- Revisions only change while the rule is in Draft state (since non-Draft rules are immutable).
+- An edit to the body or to `overrides` increments it by exactly `+1` (RD001): an `override_ack` note names the revision it acknowledges (RUL-022).
+- An edit to `supersedes`, `clause` or `profiles` may increment it by `+1` or leave it unchanged.
+- It moves only with one of these edits, and never by more than `+1` (RD021).
+- Revisions only change while the rule is in Draft state (since non-Draft rules are immutable); an edit to the body, `overrides`, `clause` or `profiles` and a state change are separate changes (RD001, RD026, RD027).
 - State transitions do not increment the revision — they change the `state` field only.
 - Nothing else moves it: a `standard` note leaves it unchanged (NTE-018).
 - Notes carry their own revision counter with the same semantics, independent of the rule's (§2.5).
