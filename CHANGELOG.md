@@ -5,13 +5,11 @@
 
 ### Features
 
-* **rulerefs:** report uncited rules for a coverage set (RF008) ([#410](https://github.com/SteerSpec/strspc-manager/issues/410)) ([7c0e82b](https://github.com/SteerSpec/strspc-manager/commit/7c0e82bf8e64e1c001e178da120b8b77477f0623))
 * **rulerefs:** report uncited rules for a coverage set (RF008) ([#410](https://github.com/SteerSpec/strspc-manager/issues/410)) ([bfe061c](https://github.com/SteerSpec/strspc-manager/commit/bfe061c43bbdf4da7aea21671ae719e2ad5c9972))
 
 
 ### Bug Fixes
 
-* **rulelint:** walk only sub_realms entries directly inside the Realm ([#412](https://github.com/SteerSpec/strspc-manager/issues/412)) ([7c0e82b](https://github.com/SteerSpec/strspc-manager/commit/7c0e82bf8e64e1c001e178da120b8b77477f0623))
 * **rulelint:** walk only sub_realms entries directly inside the Realm ([#412](https://github.com/SteerSpec/strspc-manager/issues/412)) ([4c3f9d4](https://github.com/SteerSpec/strspc-manager/commit/4c3f9d4fea2093cd0776c1376e82e1c4c96e83cc))
 
 ## [1.59.0](https://github.com/SteerSpec/strspc-manager/compare/v1.58.0...v1.59.0) (2026-11-27)
