@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.61.0](https://github.com/SteerSpec/strspc-manager/compare/v1.60.1...v1.61.0) (2026-11-27)
+
+
+### Features
+
+* **rulediff:** report a file's rule codes before its rule set codes ([#417](https://github.com/SteerSpec/strspc-manager/issues/417)) ([1255c38](https://github.com/SteerSpec/strspc-manager/commit/1255c383d4218bbcd14e11041d328987dff34d93))
+
+
+### Documentation
+
+* **readme:** correct the statefulness note and move it under Behavior ([#415](https://github.com/SteerSpec/strspc-manager/issues/415)) ([2e3f264](https://github.com/SteerSpec/strspc-manager/commit/2e3f264248c0b376611915d4edc6eb04f8810bdb))
+
 ## [1.60.1](https://github.com/SteerSpec/strspc-manager/compare/v1.60.0...v1.60.1) (2026-11-27)
 
 
