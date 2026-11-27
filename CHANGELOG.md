@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.57.0](https://github.com/SteerSpec/strspc-manager/compare/v1.56.0...v1.57.0) (2026-11-27)
+
+
+### Features
+
+* **realmresolve:** default an undeclared entity's visibility through what it inherits (ENT-011 r1) ([#397](https://github.com/SteerSpec/strspc-manager/issues/397)) ([fe31e8e](https://github.com/SteerSpec/strspc-manager/commit/fe31e8e5a45705b6060b279677abf69bd1d66e12))
+
 ## [1.56.0](https://github.com/SteerSpec/strspc-manager/compare/v1.55.0...v1.56.0) (2026-11-26)
 
 
