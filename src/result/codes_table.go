@@ -268,7 +268,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "added_by not a contributor identifier",
-		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
+		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
 		Fix:      "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
 	},
 	{
@@ -789,7 +789,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Invalid realm contributor",
-		Summary:  "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002).",
+		Summary:  "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists, or repeats an `id` (CTRB-001, CTRB-002).",
 		Fix:      "Write each `id` as `github:<login>`, and list each contributor once.",
 	},
 	{
@@ -845,7 +845,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Linked realm is not a Standard Realm dependency",
-		Summary:  "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
+		Summary:  "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency that a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
 		Fix:      "Add the Standard Realm to `dependencies`, pinned to the transcription release, or correct the `realm` to the `realm_id` of one.",
 	},
 	{
