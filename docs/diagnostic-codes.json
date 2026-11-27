@@ -441,6 +441,15 @@
     "retired": false
   },
   {
+    "code": "RF008",
+    "module": "rule-refs",
+    "severity": "Error",
+    "title": "Uncited rule",
+    "summary": "A rule of an entity named for coverage, in one of the states checked (`D`, `P` and `I` unless others are given), is cited by none of the texts checked.",
+    "fix": "Cite the rule's ID in one of the files of the coverage set, or leave its entity or state out of the coverage.",
+    "retired": false
+  },
+  {
     "code": "RL000",
     "module": "rule-lint",
     "severity": "Error",
