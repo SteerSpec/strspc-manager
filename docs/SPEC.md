@@ -557,7 +557,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL029 | Error | The content of a `standard` note is not `<id>:<clause>`, where the clause is printable with no space around it (NTE-014). |
 | RL030 | Error | A rule holds two `standard` notes with the same content (NTE-015). |
 | RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
-| RL032 | Error | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error. |
+| RL032 | Error | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error. |
 | RL033 | Error | A live rule of a Standard Realm has no `clause` (STDRLM-005). |
 | RL034 | Error | A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017). |
 | RL035 | Error | An entry of a rule's `profiles` is not in the `profiles` of its Standard Realm's manifest (STDRLM-008). |
@@ -643,14 +643,14 @@ RM999 is not emitted by `realm-lint`; it appears only as a placeholder in its st
 | RM016 | Warning | A pinned dependency or its manifest cannot be fetched or read, so the manifest half of RM014 and any RM015 comparison with it could not run; or an entity file of a linked Standard Realm cannot be read, so RM029 does not check notes against its clause list. |
 | RM017 | Error | A sub-realm `realm.json` sets `realm.language` (RLM-022); a sub-realm inherits its parent's language (RLM-018). |
 | RM018 | Error | An entry of `realm.standards` has a bad `id`, an unknown `relation`, a `url` that is not http or https or a `profile` without a `realm`, or repeats an `id` (STDREF-002 to STDREF-004, STDREF-008, STDREF-019). |
-| RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002). |
+| RM019 | Error | An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists, or repeats an `id` (CTRB-001, CTRB-002). |
 | RM020 | Error | A sub-realm `realm.json` declares `realm.contributors`, even empty or null; a sub-realm uses its parent's contributors (CTRB-006). |
 | RM021 | Error | A `realm.json` that declares `kind` `standard` has no `edition`, `license` or `attribution` (STDRLM-002, STDRLM-003, STDRLM-015). |
 | RM022 | Error | The Realm Notes of `realm.json` repeat or skip a number, or use `REALM/000`: they are numbered from `REALM/001` with no gap, in any order (NTE-030). |
 | RM023 | Error | A Realm Note of type `exclusion` has no `ref`, a `ref` not of the form `<id>:<clause>`, or one whose `<id>` names no entry of `realm.standards` with a `realm` (NTE-034). |
 | RM024 | Error | A Realm Note of type `rationale` or `clarification` has a `ref`; only an `exclusion`, or a `reference` withdrawn from one, has a `ref` (NTE-035). |
 | RM025 | Error | `realm.json` declares a `hash` other than the Blake3 hash of the manifest without its `hash` field (RLMMNFST-013). A manifest without a `hash` is not reported. |
-| RM026 | Error | The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017). |
+| RM026 | Error | The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency that a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017). |
 | RM027 | Error | A Standard Reference with a `realm` has no `version`, or, with a dependency fetcher, a `version` other than the `edition` of that Realm (STDREF-018). |
 | RM028 | Error | With a dependency fetcher: the `profile` of a Standard Reference names none of the `profiles` of the Standard Realm its `realm` names (STDREF-027). |
 | RM029 | Error | With a dependency fetcher: a `standard` note whose Standard Reference has a `realm` maps a clause that is not in that Realm's clause list, the distinct `clause` values of its live rules, matched exactly (STDREF-021). |
