@@ -81,11 +81,13 @@ type Rule struct {
 	// omitted when nil, so files without overrides keep their bytes and hash.
 	Overrides *string `json:"overrides,omitempty"`
 	// Clause names the clause of an external standard the rule transcribes
-	// (RUL-015). Only a Standard Realm's rules have one (RUL-017). It stays
+	// (RUL-015). Only a Standard Realm's rules have one, though an Abandoned,
+	// Retired or Terminated rule elsewhere may keep it (RUL-017). It stays
 	// omitted when empty, so files without it keep their bytes and hash.
 	Clause string `json:"clause,omitempty"`
 	// Profiles lists the profiles of its Standard Realm the rule belongs to
-	// (RUL-016). It stays omitted when empty.
+	// (RUL-016). As for Clause, an Abandoned, Retired or Terminated rule of
+	// another Realm may keep them (RUL-017). It stays omitted when empty.
 	Profiles []string `json:"profiles,omitempty"`
 }
 

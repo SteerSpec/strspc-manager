@@ -284,8 +284,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Clause outside a Standard Realm",
-		Summary:  "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017).",
-		Fix:      "Remove `clause` and `profiles` from the rule, or declare `kind` `standard` in the manifest of a Realm that transcribes a standard. To map a rule to a clause, add a `standard` note.",
+		Summary:  "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` and is not Abandoned, Retired or Terminated (RUL-017).",
+		Fix:      "Remove `clause` and `profiles` from a Draft rule. A Published or Implemented rule can't be edited (RUL-007): supersede it with a rule that has neither, then terminate a Published rule once its successor is Published, or retire an Implemented one. If the Realm transcribes a standard, declare `kind` `standard` in its manifest instead. To map a rule to a clause, add a `standard` note.",
 	},
 	{
 		Code:     "RL035",
