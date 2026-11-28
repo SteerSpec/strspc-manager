@@ -90,10 +90,16 @@ func walkEntities(ef *entity.File, fn func(*entity.File)) {
 	}
 }
 
-// checkCodeRealmRules runs RL034: a rule outside a Standard Realm has no
-// `clause` and no `profiles` (RUL-017).
+// checkCodeRealmRules runs RL034: a rule outside a Standard Realm that is not
+// Abandoned, Retired or Terminated has no `clause` and no `profiles` (RUL-017
+// r1). A dead rule keeps them: such a rule is repaired by superseding it, and
+// the fields are frozen once it has left Draft (RUL-007).
 func checkCodeRealmRules(ef *entity.File, path string, res *result.Result) {
 	for _, r := range ef.Rules {
+		switch r.State {
+		case entity.StateAbandoned, entity.StateRetired, entity.StateTerminated:
+			continue
+		}
 		if r.Clause == "" && len(r.Profiles) == 0 {
 			continue
 		}

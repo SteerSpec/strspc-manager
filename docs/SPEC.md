@@ -113,7 +113,7 @@ Each rule carries:
 | `added_at` | string | ISO date when the rule was created. |
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
 | `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. The replacement starts once the rule is Published (RUL-018, RUL-019), and publishing it needs an `override_ack` note (RUL-022). Omitted when the rule overrides none. |
-| `clause` | string (optional) | The clause of an external standard the rule transcribes (RUL-015). Only a Standard Realm's rules have one (RUL-017). Omitted when empty. Core 1.21.0 or later. |
+| `clause` | string (optional) | The clause of an external standard the rule transcribes (RUL-015). Only a Standard Realm's rules have one, though an Abandoned, Retired or Terminated rule elsewhere may keep it (RUL-017). Omitted when empty. Core 1.21.0 or later. |
 | `profiles` | array of strings (optional) | Unique names of the profiles of its Standard Realm the rule belongs to (RUL-016). Omitted when empty. Core 1.21.0 or later. |
 
 Both fields are part of the file the Rule Set Hash covers.
@@ -245,7 +245,7 @@ The core 1.21.0 fields are modeled and kept on every rewrite. The checks their D
 - in a Standard Realm, a rule without a `clause` (STDRLM-005), or without `profiles` when the Realm declares some (STDRLM-018, Draft, not yet linted), as a new Draft rule is live (STDRLM-014);
 - a `clause` that a live rule of the same entity carries with another set of profiles (STDRLM-009). Rules of the clause in its sub-entities and in other files are left to RL036.
 
-`entityops.SupersedeRule` gives the new rule the `clause` and `profiles` of the rule it supersedes (STDRLM-012, STDRLM-009). Outside a Standard Realm a rule has neither, so nothing is copied.
+`entityops.SupersedeRule` gives the new rule the `clause` and `profiles` of the rule it supersedes (STDRLM-012, STDRLM-009). `entityops.SupersedeRuleWith` takes the Realm's manifest (`SupersedeOptions`) and copies them only in a Standard Realm. Outside one, a rule that has them breaks RUL-017 and is repaired by superseding it: the new rule has neither, and the old one keeps them, as RUL-017 allows once it is Retired or Terminated. A new rule enters as Draft (RD004), so a Published rule takes two changes, and RL034 reports it until the second: add the successor, then publish it and terminate the old rule (RULST-012). An Implemented rule is retired in the change that adds its successor.
 
 RLMMNFST-002 sets the required fields. Dependencies use pinned version references (RLMMNFST-003): `realm-resolve` loads the dependency's own `realm.json` from its `source` and requires `realm.id` and `realm.version` to match the declared `realm_id` and `version` exactly (RR003, RR004). A dependency's `source` MUST be relative or remote; absolute paths are rejected (RR001).
 
@@ -559,7 +559,7 @@ RL031 and RL033–RL041 need the Realm's manifest, so they run in `LintRealm`, o
 | RL031 | Error | The `<id>` of a `standard` note matches no reference declared by the entity, an entity containing it, its Realm or that Realm's parent (NTE-016). |
 | RL032 | Error | The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error. |
 | RL033 | Error | A live rule of a Standard Realm has no `clause` (STDRLM-005). |
-| RL034 | Error | A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017). |
+| RL034 | Error | A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` and is not Abandoned, Retired or Terminated (RUL-017). |
 | RL035 | Error | An entry of a rule's `profiles` is not in the `profiles` of its Standard Realm's manifest (STDRLM-008). |
 | RL036 | Error | Live rules of a Standard Realm that carry the same `clause` declare different `profiles`, compared as sets (STDRLM-009). The set most of the clause's rules declare is the clause's, the first one found on a tie, and each rule that declares another is reported. |
 | RL037 | Error | A rule of a Standard Realm is Implemented (STDRLM-010). |

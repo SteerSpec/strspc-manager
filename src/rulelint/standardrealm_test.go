@@ -197,6 +197,22 @@ func TestCodeRealm_ClauseAndProfiles(t *testing.T) {
 	}
 }
 
+// An Abandoned, Retired or Terminated rule of a code Realm may keep a clause
+// or profiles (RUL-017 r1): it is the history of a rule repaired by
+// superseding it. A Draft successor is still checked.
+func TestCodeRealm_DeadRulesKeepClause(t *testing.T) {
+	rules := []entity.Rule{
+		stdRule("STD-001", entity.StateAbandoned, "V1.1.1", nil, nil),
+		stdRule("STD-002", entity.StateRetired, "", []string{"L1"}, nil),
+		stdRule("STD-003", entity.StateTerminated, "V1.1.1", []string{"L1"}, nil),
+		stdRule("STD-004", entity.StateDraft, "V1.1.1", nil, strp("STD-003")),
+	}
+	dir := writeStdRealm(t, entity.RealmMeta{ID: "dev.test.code", Title: "C", Version: "1.0.0"}, rules)
+	if got, want := lintStd(t, dir), map[string]int{"RL034": 1}; !maps.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 // Each Realm of the tree is judged by its own manifest: a sub-realm that
 // declares no kind is a code Realm under a Standard Realm (RLMMNFST-009), and
 // one that declares it is a Standard Realm under a code Realm.
