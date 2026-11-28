@@ -10,7 +10,7 @@ import (
 )
 
 // standardRealmCodes are the codes CheckStandardRealm emits.
-var standardRealmCodes = []string{"RL033", "RL034", "RL035", "RL036", "RL037", "RL038", "RL039", "RL040", "RL041"}
+var standardRealmCodes = []string{"RL033", "RL034", "RL035", "RL036", "RL037", "RL038", "RL039", "RL040", "RL041", "RL045"}
 
 // standardCodes counts the diagnostics of res with a code CheckStandardRealm
 // emits, leaving out the others.
@@ -44,7 +44,7 @@ func stdRules() []entity.Rule {
 		stdRule("STD-002", entity.StatePublished, "V1.1.1", []string{"L1"}, nil),
 		stdRule("STD-003", entity.StateTerminated, "V1.2.1", []string{"L2"}, nil),
 		stdRule("STD-004", entity.StatePublished, "V1.2.1", []string{"L2"}, strp("STD-003")),
-		stdRule("STD-005", entity.StateDraft, "V1.3.1", nil, nil),
+		stdRule("STD-005", entity.StateDraft, "V1.3.1", []string{"L2"}, nil),
 		stdRule("STD-006", entity.StateDraft, "V1.1.1", []string{"L1"}, strp("STD-001")),
 		stdRule("STD-007", entity.StateAbandoned, "X", nil, strp("STD-005")),
 	}
@@ -155,7 +155,7 @@ func TestStandardRealm_AbandonedFixExempt(t *testing.T) {
 
 // A fix whose target is in another entity is left to RL025.
 func TestStandardRealm_FixTargetElsewhere(t *testing.T) {
-	rules := append(stdRules(), stdRule("STD-008", entity.StatePublished, "V1.4.1", nil, strp("OTHER-001")))
+	rules := append(stdRules(), stdRule("STD-008", entity.StatePublished, "V1.4.1", []string{"L1"}, strp("OTHER-001")))
 	dir := writeStdRealm(t, stdMeta("dev.test.std"), rules)
 	if got := lintStd(t, dir); len(got) != 0 {
 		t.Errorf("got %v, want none", got)
@@ -166,7 +166,7 @@ func TestStandardRealm_FixTargetElsewhere(t *testing.T) {
 // sub-entities, and reports the one that differs at its own file.
 func TestStandardRealm_ProfilesAcrossEntities(t *testing.T) {
 	dir := writeStdRealm(t, stdMeta("dev.test.std"), stdRules())
-	other := entityWith("OTHER", []entity.Rule{stdRule("OTHER-001", entity.StatePublished, "V1.3.1", nil, nil)})
+	other := entityWith("OTHER", []entity.Rule{stdRule("OTHER-001", entity.StatePublished, "V1.3.1", []string{"L2"}, nil)})
 	sub := entityWith("SUBENT", []entity.Rule{stdRule("SUBENT-001", entity.StatePublished, "V1.1.1", []string{"L2"}, nil)})
 	sub.Entity.Parent = "OTHER"
 	other.SubEntities = []entity.File{*sub}
@@ -233,7 +233,7 @@ func TestStandardRealm_SubRealmKind(t *testing.T) {
 		writeJSON(t, filepath.Join(dir, "realm.json"), &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: entity.RealmMeta{ID: "dev.test.code", Title: "C", Version: "1.0.0"}, SubRealms: []string{"std"}})
 		writeJSON(t, filepath.Join(dir, "CODE.json"), entityWith("CODE", []entity.Rule{stdRule("CODE-001", entity.StateImplemented, "", nil, nil)}))
 		writeJSON(t, filepath.Join(dir, "std", "realm.json"), &entity.RealmFile{Schema: "./_schema/realm.v1.schema.json", Realm: stdMeta("dev.test.code.std")})
-		writeJSON(t, filepath.Join(dir, "std", "STD.json"), entityWith("STD", []entity.Rule{stdRule("STD-001", entity.StatePublished, "", nil, nil)}))
+		writeJSON(t, filepath.Join(dir, "std", "STD.json"), entityWith("STD", []entity.Rule{stdRule("STD-001", entity.StatePublished, "", []string{"L1"}, nil)}))
 		if got, want := lintStd(t, dir), map[string]int{"RL033": 1}; !maps.Equal(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
@@ -277,5 +277,28 @@ func TestStandardRealm_NoManifest(t *testing.T) {
 func TestStandardRealm_OwnRulesUnaffected(t *testing.T) {
 	if got := standardCodes(New().LintRealm(t.Context(), filepath.Join("..", "..", "rules"))); len(got) != 0 {
 		t.Errorf("rules/ got %v, want none", got)
+	}
+}
+
+// When a Standard Realm declares profiles, each of its live rules declares
+// some (STDRLM-018). A rule that isn't live (STDRLM-014) is exempt, and so is
+// every rule of a Realm that declares none.
+func TestStandardRealm_LiveRuleWithoutProfiles(t *testing.T) {
+	rules := []entity.Rule{
+		stdRule("STD-001", entity.StatePublished, "V1.1.1", nil, nil),
+		stdRule("STD-002", entity.StateDraft, "V1.2.1", nil, nil),
+		stdRule("STD-003", entity.StatePublished, "V1.3.1", []string{"L1"}, nil),
+		stdRule("STD-004", entity.StateDraft, "V1.3.1", nil, strp("STD-003")),
+		stdRule("STD-005", entity.StateTerminated, "V1.4.1", nil, nil),
+		stdRule("STD-006", entity.StateAbandoned, "V1.5.1", nil, nil),
+	}
+	if got, want := lintStd(t, writeStdRealm(t, stdMeta("dev.test.std"), rules)), map[string]int{"RL045": 2}; !maps.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	noProfiles := stdMeta("dev.test.std")
+	noProfiles.Profiles = nil
+	rules[2].Profiles = nil
+	if got := lintStd(t, writeStdRealm(t, noProfiles, rules)); len(got) != 0 {
+		t.Errorf("got %v, want none: the Realm declares no profiles", got)
 	}
 }

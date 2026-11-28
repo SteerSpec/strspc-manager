@@ -136,5 +136,23 @@
     "code": "RL041",
     "severity": "error",
     "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL045",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL045",
+    "severity": "error",
+    "path": "realm/STD.json"
+  },
+  {
+    "module": "rule-lint",
+    "code": "RL045",
+    "severity": "error",
+    "path": "realm/STD.json"
   }
 ]
