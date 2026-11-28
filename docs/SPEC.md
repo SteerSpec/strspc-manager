@@ -114,7 +114,7 @@ Each rule carries:
 | `supersedes` | string or null | ID of the rule this one replaces, if any. |
 | `overrides` | string (optional) | ID of the inherited rule this one replaces within the inheriting entity's effective rule set (RUL-009), short or `<realm-id>:<EUID>-<NNN>`. The replacement starts once the rule is Published (RUL-018, RUL-019), and publishing it needs an `override_ack` note (RUL-022). Omitted when the rule overrides none. |
 | `clause` | string (optional) | The clause of an external standard the rule transcribes (RUL-015). Only a Standard Realm's rules have one, though an Abandoned, Retired or Terminated rule elsewhere may keep it (RUL-017). Omitted when empty. Core 1.21.0 or later. |
-| `profiles` | array of strings (optional) | Unique names of the profiles of its Standard Realm the rule belongs to (RUL-016). Omitted when empty. Core 1.21.0 or later. |
+| `profiles` | array of strings (optional) | Unique names of the profiles of its Standard Realm the rule belongs to (RUL-016). Only a Standard Realm's rules have them, though an Abandoned, Retired or Terminated rule elsewhere may keep them (RUL-017). Omitted when empty. Core 1.21.0 or later. |
 
 Both fields are part of the file the Rule Set Hash covers.
 
