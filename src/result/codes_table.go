@@ -368,6 +368,14 @@ var codeTable = []CodeInfo{
 		Fix:      "Put the acknowledgement on the overriding rule, or retype the note to `reference` if it was added by mistake.",
 	},
 	{
+		Code:     "RL045",
+		Module:   "rule-lint",
+		Severity: "Error",
+		Title:    "Live Standard Realm rule without profiles",
+		Summary:  "A live rule of a Standard Realm whose manifest declares `profiles` declares no `profiles` (STDRLM-018).",
+		Fix:      "Give a Draft rule the profiles of the Realm its clause belongs to. A Published rule can't be edited (RUL-007): supersede it with a rule that declares them, then terminate it once the fix is Published (STDRLM-013).",
+	},
+	{
 		Code:     "RD000",
 		Module:   "rule-diff",
 		Severity: "Error",

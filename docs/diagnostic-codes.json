@@ -855,6 +855,15 @@
     "retired": false
   },
   {
+    "code": "RL045",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Live Standard Realm rule without profiles",
+    "summary": "A live rule of a Standard Realm whose manifest declares `profiles` declares no `profiles` (STDRLM-018).",
+    "fix": "Give a Draft rule the profiles of the Realm its clause belongs to. A Published rule can't be edited (RUL-007): supersede it with a rule that declares them, then terminate it once the fix is Published (STDRLM-013).",
+    "retired": false
+  },
+  {
     "code": "RM001",
     "module": "realm-lint",
     "severity": "Error",
