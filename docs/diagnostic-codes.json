@@ -742,7 +742,7 @@
     "module": "rule-lint",
     "severity": "Error",
     "title": "added_by not a contributor identifier",
-    "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
+    "summary": "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
     "fix": "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
     "retired": false
   },
@@ -760,8 +760,8 @@
     "module": "rule-lint",
     "severity": "Error",
     "title": "Clause outside a Standard Realm",
-    "summary": "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017).",
-    "fix": "Remove `clause` and `profiles` from the rule, or declare `kind` `standard` in the manifest of a Realm that transcribes a standard. To map a rule to a clause, add a `standard` note.",
+    "summary": "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` and is not Abandoned, Retired or Terminated (RUL-017).",
+    "fix": "Remove `clause` and `profiles` from a Draft rule. A Published or Implemented rule can't be edited (RUL-007): supersede it with a rule that has neither, then terminate a Published rule once its successor is Published, or retire an Implemented one. If the Realm transcribes a standard, declare `kind` `standard` in its manifest instead. To map a rule to a clause, add a `standard` note.",
     "retired": false
   },
   {
@@ -852,6 +852,15 @@
     "title": "Acknowledgement on a rule that overrides nothing",
     "summary": "An `override_ack` note is on a rule that declares no `overrides` (NTE-043).",
     "fix": "Put the acknowledgement on the overriding rule, or retype the note to `reference` if it was added by mistake.",
+    "retired": false
+  },
+  {
+    "code": "RL045",
+    "module": "rule-lint",
+    "severity": "Error",
+    "title": "Live Standard Realm rule without profiles",
+    "summary": "A live rule of a Standard Realm whose manifest declares `profiles` declares no `profiles` (STDRLM-018).",
+    "fix": "Give a Draft rule the profiles of the Realm its clause belongs to. A Published rule can't be edited (RUL-007): supersede it with a rule that declares them, then terminate it once the fix is Published (STDRLM-013).",
     "retired": false
   },
   {
@@ -1021,7 +1030,7 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Invalid realm contributor",
-    "summary": "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002).",
+    "summary": "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists, or repeats an `id` (CTRB-001, CTRB-002).",
     "fix": "Write each `id` as `github:<login>`, and list each contributor once.",
     "retired": false
   },
@@ -1084,7 +1093,7 @@
     "module": "realm-lint",
     "severity": "Error",
     "title": "Linked realm is not a Standard Realm dependency",
-    "summary": "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
+    "summary": "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency that a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
     "fix": "Add the Standard Realm to `dependencies`, pinned to the transcription release, or correct the `realm` to the `realm_id` of one.",
     "retired": false
   },

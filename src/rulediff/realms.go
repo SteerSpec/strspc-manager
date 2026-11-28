@@ -630,7 +630,7 @@ func (c *realmComparison) compareFile(rel string) {
 		}
 	}
 
-	changed, standard := false, false
+	changed, standardRoot := false, ""
 	root, rest := ".", rel
 	for {
 		was, now := "", kindIn(c.headKinds, c.head, root, rel)
@@ -642,12 +642,14 @@ func (c *realmComparison) compareFile(rel string) {
 					Module:   module,
 					Code:     "RD028",
 					Severity: result.Error,
-					Message:  fmt.Sprintf("file moved from a %s Realm to a %s Realm for a source rooted at %q: the manifests around rules that already exist may not change their kind (STDRLM-011); add a new Realm with new files instead", kindName(was), kindName(now), root),
+					Message:  fmt.Sprintf("file moved from a %s Realm to a %s Realm for a source rooted at %q%s: the manifests around rules that already exist may not change their kind (STDRLM-011); add a new Realm with new files instead", kindName(was), kindName(now), root, c.whyCode(root, rel, was, now)),
 					Path:     rel,
 				})
 			}
 		}
-		standard = standard || now == entity.KindStandard
+		if now == entity.KindStandard && standardRoot == "" {
+			standardRoot = root
+		}
 		dir, below, ok := strings.Cut(rest, "/")
 		if !ok {
 			break
@@ -659,20 +661,54 @@ func (c *realmComparison) compareFile(rel string) {
 		}
 		rest = below
 	}
-	if standard {
-		c.checkSupersession(rel, existed)
+	if standardRoot != "" {
+		c.checkSupersession(rel, existed, standardRoot)
 	}
+}
+
+// whyCode names, for RD028, the manifest that makes the file a code Realm's on
+// the side where it is one, when that manifest is invalid: the change that
+// repairs it is what changes the file's kind.
+func (c *realmComparison) whyCode(root, rel, was, now string) string {
+	side, tree, finders := "base", c.base, c.baseKinds
+	if now == "" {
+		side, tree, finders = "head", c.head, c.headKinds
+	} else if was != "" {
+		return ""
+	}
+	path, problem := finder(finders, tree, root).InvalidManifest(filepath.Join(tree, filepath.FromSlash(rel)))
+	if path == "" {
+		return ""
+	}
+	if root != "." {
+		path = root + "/" + path
+	}
+	return fmt.Sprintf(", as %s's %s is not a valid manifest (%s), so the files below it are a code Realm's", side, path, problem)
 }
 
 // kindIn returns the kind of the file at rel for a source rooted at root, both
 // below tree.
 func kindIn(finders map[string]*realmkind.Finder, tree, root, rel string) string {
+	return finder(finders, tree, root).KindOf(filepath.Join(tree, filepath.FromSlash(rel)))
+}
+
+// finder returns the Finder of finders for a source rooted at root below tree.
+func finder(finders map[string]*realmkind.Finder, tree, root string) *realmkind.Finder {
 	f, ok := finders[root]
 	if !ok {
 		f = realmkind.New(filepath.Join(tree, filepath.FromSlash(root)))
 		finders[root] = f
 	}
-	return f.KindOf(filepath.Join(tree, filepath.FromSlash(rel)))
+	return f
+}
+
+// forRoot names, in a message, a source root other than the tree's: the one
+// for which the file is a Standard Realm's.
+func forRoot(root string) string {
+	if root == "." {
+		return ""
+	}
+	return fmt.Sprintf(" (the file is a Standard Realm's for a source rooted at %q)", root)
 }
 
 func kindName(kind string) string {
@@ -682,9 +718,10 @@ func kindName(kind string) string {
 	return fmt.Sprintf("%q", kind)
 }
 
-// checkSupersession runs RD030 on a file of a Standard Realm. A file that
-// doesn't parse is left to Compare's RD000.
-func (c *realmComparison) checkSupersession(rel string, existed bool) {
+// checkSupersession runs RD030 on a file of a Standard Realm, root being the
+// first source root for which it is one. A file that doesn't parse is left to
+// Compare's RD000.
+func (c *realmComparison) checkSupersession(rel string, existed bool, root string) {
 	headData, err := c.readIn(c.head, rel)
 	if err != nil {
 		addReadError(c.res, rel, err)
@@ -710,7 +747,7 @@ func (c *realmComparison) checkSupersession(rel string, existed bool) {
 			base = parsed
 		}
 	}
-	checkSupersedesLive(base, head, c.res, rel)
+	checkSupersedesLive(base, head, c.res, rel, root)
 }
 
 // checkSupersedesLive runs RD030 on one entity and its sub-entities: when a
@@ -718,7 +755,7 @@ func (c *realmComparison) checkSupersession(rel string, existed bool) {
 // must have been live before the change or be live after it (STDRLM-017). The
 // first covers a fix that terminates its target in the change that publishes
 // it (STDRLM-013), the second a target published in this change.
-func checkSupersedesLive(base, head *entity.File, res *result.Result, path string) {
+func checkSupersedesLive(base, head *entity.File, res *result.Result, path, root string) {
 	before := map[string]entity.Rule{}
 	oldSubs := map[string]*entity.File{}
 	if base != nil {
@@ -749,13 +786,13 @@ func checkSupersedesLive(base, head *entity.File, res *result.Result, path strin
 			Module:   module,
 			Code:     "RD030",
 			Severity: result.Error,
-			Message:  fmt.Sprintf("rule %s supersedes %s, which was live neither before this change nor after it: supersede the live rule (STDRLM-017)", h.ID, *h.Supersedes),
+			Message:  fmt.Sprintf("rule %s supersedes %s, which was live neither before this change nor after it%s: supersede the live rule (STDRLM-017)", h.ID, *h.Supersedes, forRoot(root)),
 			Path:     path + "/" + h.ID,
 		})
 	}
 	for i := range head.SubEntities {
 		sub := &head.SubEntities[i]
-		checkSupersedesLive(oldSubs[sub.Entity.ID], sub, res, path+" > "+sub.Entity.ID)
+		checkSupersedesLive(oldSubs[sub.Entity.ID], sub, res, path+" > "+sub.Entity.ID, root)
 	}
 }
 

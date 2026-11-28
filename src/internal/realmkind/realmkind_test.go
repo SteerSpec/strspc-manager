@@ -95,3 +95,43 @@ func TestKindOfLinkedManifest(t *testing.T) {
 		t.Errorf("KindOf = %q, want a code Realm", got)
 	}
 }
+
+// InvalidManifest names the first manifest on the way to a file that KindOf
+// rejects, and why, and nothing when every manifest is valid.
+func TestInvalidManifest(t *testing.T) {
+	const meta = `{"realm":{"id":"dev.x","kind":"standard"},"sub_realms":`
+	tests := []struct {
+		name      string
+		manifests map[string]string
+		file      string
+		path      string
+		problem   string
+	}{
+		{"none", nil, "A.json", "", ""},
+		{"valid", map[string]string{".": meta + `["a"]}`}, "A.json", "", ""},
+		{"listed twice", map[string]string{".": meta + `["a","a"]}`}, "A.json", "realm.json", `sub_realms entry "a" is listed twice`},
+		{"case only", map[string]string{".": meta + `["a","A"]}`}, "A.json", "realm.json", `sub_realms entries "a" and "A" differ only in case`},
+		{"not a name", map[string]string{".": meta + `["a/b"]}`}, "A.json", "realm.json", `sub_realms entry "a/b" is not a directory name`},
+		{"no id", map[string]string{".": `{"realm":{}}`}, "A.json", "realm.json", "it has no realm.id"},
+		{"bad kind", map[string]string{".": `{"realm":{"id":"dev.x","kind":"code"}}`}, "A.json", "realm.json", `realm.kind "code" is not a valid kind`},
+		{"unreadable, below", map[string]string{".": meta + `["a"]}`, "a": "{"}, "a/A.json", "a/realm.json", "it can't be read as a manifest"},
+		{"outside the root", nil, "../A.json", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			for dir, content := range tt.manifests {
+				if err := os.MkdirAll(filepath.Join(root, dir), 0o750); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, dir, "realm.json"), []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			path, problem := New(root).InvalidManifest(filepath.Join(root, filepath.FromSlash(tt.file)))
+			if path != tt.path || problem != tt.problem {
+				t.Errorf("got (%q, %q), want (%q, %q)", path, problem, tt.path, tt.problem)
+			}
+		})
+	}
+}

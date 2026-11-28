@@ -5,6 +5,7 @@ package realmkind
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -112,21 +113,67 @@ func (f *Finder) standard(path string) bool {
 // standard kind or none, and lists its sub-realms as directory names, each
 // once in any case.
 func validManifest(rf *entity.RealmFile) bool {
-	if rf == nil || rf.Realm.ID == "" {
-		return false
+	return manifestProblem(rf) == ""
+}
+
+// manifestProblem returns why validManifest rejects rf, or "" when it doesn't.
+func manifestProblem(rf *entity.RealmFile) string {
+	if rf == nil {
+		return "it can't be read as a manifest"
+	}
+	if rf.Realm.ID == "" {
+		return "it has no realm.id"
 	}
 	if k := rf.Realm.Kind; k != "" && k != entity.KindStandard {
-		return false
+		return fmt.Sprintf("realm.kind %q is not a valid kind", k)
 	}
 	for i, s := range rf.SubRealms {
 		if s == "." || !filepath.IsLocal(s) || strings.ContainsAny(s, `/\`) {
-			return false
+			return fmt.Sprintf("sub_realms entry %q is not a directory name", s)
 		}
-		if slices.ContainsFunc(rf.SubRealms[:i], func(prev string) bool { return strings.EqualFold(prev, s) }) {
-			return false
+		if j := slices.IndexFunc(rf.SubRealms[:i], func(prev string) bool { return strings.EqualFold(prev, s) }); j >= 0 {
+			if rf.SubRealms[j] == s {
+				return fmt.Sprintf("sub_realms entry %q is listed twice", s)
+			}
+			return fmt.Sprintf("sub_realms entries %q and %q differ only in case", rf.SubRealms[j], s)
 		}
 	}
-	return true
+	return ""
+}
+
+// InvalidManifest returns the first manifest on the way from the root down to
+// the file at path that KindOf rejects, as a slash path below the root, and
+// why. Such a manifest is what makes the file a code Realm's. It returns two
+// empty strings when there is none.
+func (f *Finder) InvalidManifest(path string) (manifestPath, problem string) {
+	root, err := filepath.Abs(f.root)
+	if err != nil {
+		return "", ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", ""
+	}
+	rel, err := filepath.Rel(root, filepath.Dir(abs))
+	if err != nil || !filepath.IsLocal(rel) {
+		return "", ""
+	}
+	dir, at := root, "."
+	var names []string
+	if rel != "." {
+		names = strings.Split(rel, string(filepath.Separator))
+	}
+	for depth := 0; ; depth++ {
+		if m := f.load(dir); m.found {
+			if p := manifestProblem(m.file); p != "" {
+				return filepath.ToSlash(filepath.Join(at, "realm.json")), p
+			}
+		}
+		if depth == len(names) {
+			return "", ""
+		}
+		dir, at = filepath.Join(dir, names[depth]), filepath.Join(at, names[depth])
+	}
 }
 
 // load returns the manifest of dir.

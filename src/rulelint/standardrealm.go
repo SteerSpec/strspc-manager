@@ -10,10 +10,10 @@ import (
 	"github.com/SteerSpec/strspc-manager/src/result"
 )
 
-// CheckStandardRealm runs RL033 to RL041 over the Realm at dir and its
-// sub-realms: the checks on rules that depend on whether their Realm is a
+// CheckStandardRealm runs RL033 to RL041 and RL045 over the Realm at dir and
+// its sub-realms: the checks on rules that depend on whether their Realm is a
 // Standard Realm (RUL-017, STDRLM-005, STDRLM-008 to STDRLM-010, STDRLM-012,
-// STDRLM-013, STDRLM-016, STDRLM-017). Each Realm is judged by the kind its own
+// STDRLM-013, STDRLM-016 to STDRLM-018). Each Realm is judged by the kind its own
 // manifest declares: a sub-realm without one is a code Realm (RLMMNFST-009).
 // rf is used as given and dir/realm.json is not read again. LintRealm calls it,
 // and realm-lint when it lints entity files itself; a source with no manifest
@@ -90,10 +90,16 @@ func walkEntities(ef *entity.File, fn func(*entity.File)) {
 	}
 }
 
-// checkCodeRealmRules runs RL034: a rule outside a Standard Realm has no
-// `clause` and no `profiles` (RUL-017).
+// checkCodeRealmRules runs RL034: a rule outside a Standard Realm that is not
+// Abandoned, Retired or Terminated has no `clause` and no `profiles` (RUL-017
+// r1). A dead rule keeps them: such a rule is repaired by superseding it, and
+// the fields are frozen once it has left Draft (RUL-007).
 func checkCodeRealmRules(ef *entity.File, path string, res *result.Result) {
 	for _, r := range ef.Rules {
+		switch r.State {
+		case entity.StateAbandoned, entity.StateRetired, entity.StateTerminated:
+			continue
+		}
 		if r.Clause == "" && len(r.Profiles) == 0 {
 			continue
 		}
@@ -108,7 +114,8 @@ func checkCodeRealmRules(ef *entity.File, path string, res *result.Result) {
 }
 
 // checkStandardRules runs the checks on each rule of a Standard Realm on its
-// own: RL033 (STDRLM-005), RL035 (STDRLM-008) and RL037 (STDRLM-010).
+// own: RL033 (STDRLM-005), RL035 (STDRLM-008), RL037 (STDRLM-010) and RL045
+// (STDRLM-018).
 func checkStandardRules(ef *entity.File, meta *entity.RealmMeta, path string, res *result.Result) {
 	for _, r := range ef.Rules {
 		if r.Clause == "" && entity.IsLiveStandardRule(r) {
@@ -117,6 +124,15 @@ func checkStandardRules(ef *entity.File, meta *entity.RealmMeta, path string, re
 				Code:     "RL033",
 				Severity: result.Error,
 				Message:  fmt.Sprintf("rule %s is live in a Standard Realm but has no clause (STDRLM-005)", r.ID),
+				Path:     path,
+			})
+		}
+		if len(r.Profiles) == 0 && len(meta.Profiles) > 0 && entity.IsLiveStandardRule(r) {
+			res.Add(result.Diagnostic{
+				Module:   module,
+				Code:     "RL045",
+				Severity: result.Error,
+				Message:  fmt.Sprintf("rule %s is live in a Standard Realm that declares profiles but declares none (STDRLM-018)", r.ID),
 				Path:     path,
 			})
 		}

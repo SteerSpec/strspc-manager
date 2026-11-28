@@ -60,6 +60,7 @@ RL041 active superseded-rule-not-terminated
 RL042 active structured-note-malformed
 RL043 active structured-note-duplicate
 RL044 active override-ack-without-overrides
+RL045 active live-standard-rule-without-profiles
 RD000 active entity-unreadable
 RD001 active draft-body-edit-without-revision
 RD002 active non-draft-body-edited

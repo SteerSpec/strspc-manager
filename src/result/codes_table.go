@@ -268,7 +268,7 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "added_by not a contributor identifier",
-		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
+		Summary:  "The `added_by` of a rule or note is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists (CTRB-003, CTRB-001, CTRB-002). An `@handle` or an email address is an Error.",
 		Fix:      "Rewrite `added_by` as a contributor identifier such as `github:<login>`; `@login` becomes `github:login`. The CLI's migration command rewrites a whole Realm and keeps the hashes valid.",
 	},
 	{
@@ -284,8 +284,8 @@ var codeTable = []CodeInfo{
 		Module:   "rule-lint",
 		Severity: "Error",
 		Title:    "Clause outside a Standard Realm",
-		Summary:  "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` (RUL-017).",
-		Fix:      "Remove `clause` and `profiles` from the rule, or declare `kind` `standard` in the manifest of a Realm that transcribes a standard. To map a rule to a clause, add a `standard` note.",
+		Summary:  "A rule of a Realm that is not a Standard Realm has a `clause` or `profiles` and is not Abandoned, Retired or Terminated (RUL-017).",
+		Fix:      "Remove `clause` and `profiles` from a Draft rule. A Published or Implemented rule can't be edited (RUL-007): supersede it with a rule that has neither, then terminate a Published rule once its successor is Published, or retire an Implemented one. If the Realm transcribes a standard, declare `kind` `standard` in its manifest instead. To map a rule to a clause, add a `standard` note.",
 	},
 	{
 		Code:     "RL035",
@@ -366,6 +366,14 @@ var codeTable = []CodeInfo{
 		Title:    "Acknowledgement on a rule that overrides nothing",
 		Summary:  "An `override_ack` note is on a rule that declares no `overrides` (NTE-043).",
 		Fix:      "Put the acknowledgement on the overriding rule, or retype the note to `reference` if it was added by mistake.",
+	},
+	{
+		Code:     "RL045",
+		Module:   "rule-lint",
+		Severity: "Error",
+		Title:    "Live Standard Realm rule without profiles",
+		Summary:  "A live rule of a Standard Realm whose manifest declares `profiles` declares no `profiles` (STDRLM-018).",
+		Fix:      "Give a Draft rule the profiles of the Realm its clause belongs to. A Published rule can't be edited (RUL-007): supersede it with a rule that declares them, then terminate it once the fix is Published (STDRLM-013).",
 	},
 	{
 		Code:     "RD000",
@@ -789,7 +797,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Invalid realm contributor",
-		Summary:  "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider core lists, or repeats an `id` (CTRB-001, CTRB-002).",
+		Summary:  "An entry of `realm.contributors` has an `id` that is not a contributor identifier `<idp>:<subject>` with an identity provider that core lists, or repeats an `id` (CTRB-001, CTRB-002).",
 		Fix:      "Write each `id` as `github:<login>`, and list each contributor once.",
 	},
 	{
@@ -845,7 +853,7 @@ var codeTable = []CodeInfo{
 		Module:   "realm-lint",
 		Severity: "Error",
 		Title:    "Linked realm is not a Standard Realm dependency",
-		Summary:  "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
+		Summary:  "The `realm` of a Standard Reference, in a manifest or an entity of the Realm tree, names no dependency that a manifest of the tree declares, or, with a dependency fetcher, a dependency whose manifest doesn't declare `kind` `standard` (STDREF-017).",
 		Fix:      "Add the Standard Realm to `dependencies`, pinned to the transcription release, or correct the `realm` to the `realm_id` of one.",
 	},
 	{
