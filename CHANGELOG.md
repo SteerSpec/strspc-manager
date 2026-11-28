@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.62.0](https://github.com/SteerSpec/strspc-manager/compare/v1.61.0...v1.62.0) (2026-11-28)
+
+
+### Features
+
+* **rulelint:** report a live Standard Realm rule without profiles (RL045) ([#429](https://github.com/SteerSpec/strspc-manager/issues/429)) ([d75d67e](https://github.com/SteerSpec/strspc-manager/commit/d75d67e0a4d1958c5d80c70f8e29a1747c4cf25a))
+
+
+### Bug Fixes
+
+* **result:** clarify RL032, RM019 and RM026 summaries ([#421](https://github.com/SteerSpec/strspc-manager/issues/421)) ([6e909be](https://github.com/SteerSpec/strspc-manager/commit/6e909be45bdd8485dac13e67501ef1ef3ecf87bd))
+* **rulediff:** say why RD028 and RD030 hold in surprising layouts ([#420](https://github.com/SteerSpec/strspc-manager/issues/420)) ([6ccfe79](https://github.com/SteerSpec/strspc-manager/commit/6ccfe792a630ac2d072d4391ed1badd4563f3d1b))
+* **rulelint:** let a dead code-Realm rule keep its clause; supersede drops it ([#427](https://github.com/SteerSpec/strspc-manager/issues/427)) ([0ef2a91](https://github.com/SteerSpec/strspc-manager/commit/0ef2a91e7b94cb836a92b8964d392df6abde03fd))
+
 ## [1.61.0](https://github.com/SteerSpec/strspc-manager/compare/v1.60.1...v1.61.0) (2026-11-27)
 
 
